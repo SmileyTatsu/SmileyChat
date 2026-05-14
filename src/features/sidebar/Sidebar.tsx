@@ -4,8 +4,11 @@ import {
     FileInput,
     ImageOff,
     MessageSquare,
+    PanelLeftClose,
+    PanelLeftOpen,
     PencilLine,
     Plus,
+    Settings,
     Sparkles,
     Trash2,
     UploadCloud,
@@ -32,12 +35,14 @@ type SidebarProps = {
     characterImportStatus?: string;
     characterLoadError?: string;
     hasCharacters: boolean;
+    isOpen: boolean;
     persona: SmileyPersona;
     personas: PersonaSummary[];
     userStatus: UserStatus;
     onCreateCharacter: () => void;
     onImportCharacterFiles: (files: File[]) => void;
     onNewChat: () => void;
+    onOpenChange: (isOpen: boolean) => void;
     onOpenSettings: () => void;
     onOpenPersonasSettings: () => void;
     onDeleteChat: (chatId: string) => void;
@@ -61,12 +66,14 @@ export function Sidebar({
     characterImportStatus,
     characterLoadError,
     hasCharacters,
+    isOpen,
     persona,
     personas,
     userStatus,
     onCreateCharacter,
     onImportCharacterFiles,
     onNewChat,
+    onOpenChange,
     onOpenSettings,
     onOpenPersonasSettings,
     onDeleteChat,
@@ -247,16 +254,53 @@ export function Sidebar({
         setChatDeleteCandidate(undefined);
     }
 
+    if (!isOpen) {
+        return (
+            <aside className="left-rail collapsed" aria-label="Chats and characters">
+                <button
+                    className="collapsed-rail-button"
+                    type="button"
+                    title="Show left sidebar"
+                    aria-label="Show left sidebar"
+                    onClick={() => onOpenChange(true)}
+                >
+                    <PanelLeftOpen size={18} />
+                    <span>Sidebar</span>
+                </button>
+                <button
+                    className="collapsed-rail-settings"
+                    type="button"
+                    title="Open settings"
+                    aria-label="Open settings"
+                    onClick={onOpenSettings}
+                >
+                    <Settings size={18} />
+                </button>
+            </aside>
+        );
+    }
+
     return (
-        <aside className="left-rail" aria-label="Chats and characters">
+        <aside className="left-rail open" aria-label="Chats and characters">
             <div className="brand">
-                <div className="brand-mark">
-                    <Sparkles size={18} />
+                <div className="brand-main">
+                    <div className="brand-mark">
+                        <Sparkles size={18} />
+                    </div>
+                    <div>
+                        <strong>SmileyChat</strong>
+                        <span>Local app</span>
+                    </div>
                 </div>
-                <div>
-                    <strong>SmileyChat</strong>
-                    <span>Local app</span>
-                </div>
+                <button
+                    className="rail-icon-button"
+                    type="button"
+                    title="Hide left sidebar"
+                    aria-label="Hide left sidebar"
+                    onClick={() => onOpenChange(false)}
+                >
+                    <PanelLeftClose size={15} />
+                </button>
             </div>
 
             <button

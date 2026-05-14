@@ -40,6 +40,7 @@ import "./App.css";
 
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const [characterOpen, setCharacterOpen] = useState(true);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [activeSettingsCategory, setActiveSettingsCategory] =
@@ -256,7 +257,7 @@ export function App() {
 
     return (
         <main
-            className={`app-shell density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`}
+            className={`app-shell ${sidebarOpen ? "" : "sidebar-collapsed"} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`}
         >
             <Sidebar
                 activeChatId={activeChat?.id ?? ""}
@@ -270,11 +271,13 @@ export function App() {
                 personas={personaSummaries.personas}
                 userStatus={userStatus}
                 hasCharacters={hasCharacters}
+                isOpen={sidebarOpen}
                 onCreateCharacter={() => void createCharacter()}
                 onImportCharacterFiles={(files) => void importCharacterFiles(files)}
                 onNewChat={startNewChat}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onOpenPersonasSettings={openPersonasSettings}
+                onOpenChange={setSidebarOpen}
                 chatCountsByCharacterId={chatCountsByCharacterId}
                 onDeleteCharacter={(characterId, options) =>
                     void deleteCharacter(characterId, options)
