@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
-import { cp, mkdir, readdir, rename, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { Glob } from "bun";
+import { cp, mkdir, rename, rm, stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { BadRequestError, writeJsonAtomic } from "./http";
 import {
     characterIndexPath,
@@ -11,6 +11,7 @@ import {
 import {
     characterBaseDirectoryPath,
     characterBasePath,
+    characterDataFileName,
     characterDataPath,
     characterFolderName,
 } from "./character-file-paths";
@@ -249,7 +250,7 @@ export async function writeCharacterWithBasePath(
 }
 
 async function readCharacterIndex(): Promise<CharacterIndex> {
-    if (existsSync(characterIndexPath)) {
+    if (await Bun.file(characterIndexPath).exists()) {
         try {
             const file = Bun.file(characterIndexPath);
             return await repairCharacterIndex(normalizeCharacterIndex(await file.json()));
@@ -366,23 +367,20 @@ async function discoverCharacters(): Promise<StoredCharacter[]> {
 }
 
 async function seedDefaultCharacters() {
-    if (!existsSync(defaultCharacterSeedsDir)) {
+    if (!(await directoryExists(defaultCharacterSeedsDir))) {
         return;
     }
 
     await mkdir(characterLibraryDir, { recursive: true });
 
-    const seedFolders = await readdir(defaultCharacterSeedsDir, { withFileTypes: true });
+    const glob = new Glob(`*/${characterDataFileName}`);
 
-    for (const seedFolder of seedFolders) {
-        if (!seedFolder.isDirectory()) {
-            continue;
-        }
+    for await (const seedCharacterFile of glob.scan(defaultCharacterSeedsDir)) {
+        const folderName = dirname(seedCharacterFile);
+        const sourcePath = join(defaultCharacterSeedsDir, folderName);
+        const targetPath = characterBaseDirectoryPath(characterBasePath(folderName));
 
-        const sourcePath = join(defaultCharacterSeedsDir, seedFolder.name);
-        const targetPath = characterBaseDirectoryPath(characterBasePath(seedFolder.name));
-
-        if (existsSync(targetPath)) {
+        if (await directoryExists(targetPath)) {
             continue;
         }
 
@@ -395,18 +393,15 @@ async function seedDefaultCharacters() {
 }
 
 async function discoverLibraryCharacters(discovered: Map<string, StoredCharacter>) {
-    if (!existsSync(characterLibraryDir)) {
+    if (!(await directoryExists(characterLibraryDir))) {
         return;
     }
 
-    const entries = await readdir(characterLibraryDir, { withFileTypes: true });
+    const glob = new Glob(`*/${characterDataFileName}`);
 
-    for (const entry of entries) {
-        if (!entry.isDirectory()) {
-            continue;
-        }
-
-        const basePath = characterBasePath(entry.name);
+    for await (const characterFile of glob.scan(characterLibraryDir)) {
+        const folderName = dirname(characterFile);
+        const basePath = characterBasePath(folderName);
         const character = await readCharacterAtBasePath(basePath);
 
         if (!character) {
@@ -417,7 +412,7 @@ async function discoverLibraryCharacters(discovered: Map<string, StoredCharacter
             await moveToUniquePath(
                 characterBaseDirectoryPath(basePath),
                 characterOrphanedDir,
-                entry.name,
+                folderName,
             );
             continue;
         }
@@ -438,7 +433,7 @@ async function readCharacterFromEntry(entry: CharacterIndexEntry) {
 async function readCharacterAtBasePath(basePath: string, expectedId?: string) {
     const path = characterDataPath(basePath);
 
-    if (!existsSync(path)) {
+    if (!(await Bun.file(path).exists())) {
         return undefined;
     }
 
@@ -464,7 +459,8 @@ async function writeCharacterToLibrary(
         existingBasePath,
     );
     const existingDirectory =
-        existingBasePath && existsSync(characterBaseDirectoryPath(existingBasePath))
+        existingBasePath &&
+        (await directoryExists(characterBaseDirectoryPath(existingBasePath)))
             ? characterBaseDirectoryPath(existingBasePath)
             : "";
     const targetDirectory = characterBaseDirectoryPath(desiredBasePath);
@@ -472,7 +468,7 @@ async function writeCharacterToLibrary(
     if (
         existingDirectory &&
         existingDirectory !== targetDirectory &&
-        !existsSync(targetDirectory)
+        !(await directoryExists(targetDirectory))
     ) {
         await rename(existingDirectory, targetDirectory);
     } else {
@@ -516,7 +512,7 @@ async function uniqueBasePathForCharacter(
         return requestedBasePath;
     }
 
-    if (!existsSync(characterBaseDirectoryPath(requestedBasePath))) {
+    if (!(await directoryExists(characterBaseDirectoryPath(requestedBasePath)))) {
         return requestedBasePath;
     }
 
@@ -529,7 +525,7 @@ async function uniqueBasePathForCharacter(
     for (let counter = 2; counter < 1000; counter += 1) {
         const candidate = characterBasePath(`${folderName}-${counter}`);
 
-        if (!existsSync(characterBaseDirectoryPath(candidate))) {
+        if (!(await directoryExists(characterBaseDirectoryPath(candidate)))) {
             return candidate;
         }
     }
@@ -668,4 +664,12 @@ function indexEntryToSummary(entry: CharacterIndexEntry) {
 function timestampMs(value: string) {
     const ms = Date.parse(value);
     return Number.isFinite(ms) ? ms : 0;
+}
+
+async function directoryExists(pathname: string) {
+    try {
+        return (await stat(pathname)).isDirectory();
+    } catch {
+        return false;
+    }
 }

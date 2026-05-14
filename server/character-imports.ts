@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { readdir, rm } from "node:fs/promises";
+import { Glob } from "bun";
+import { rm } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { stableStringify } from "./character-file-utils";
 import {
@@ -41,26 +41,16 @@ export async function importDroppedCharacterFiles(): Promise<DroppedCharacterImp
         skipped: 0,
         failed: [],
     };
-    const entries = await readdir(characterImportsDir, { withFileTypes: true });
     const importedFingerprints = await readImportedFingerprints();
 
-    for (const entry of entries) {
-        if (!entry.isFile()) {
-            continue;
-        }
-
-        const extension = extname(entry.name).toLowerCase();
-
-        if (extension !== ".json" && extension !== ".png") {
-            continue;
-        }
-
-        const sourcePath = join(characterImportsDir, entry.name);
+    for (const fileName of await droppedCharacterImportFileNames()) {
+        const extension = extname(fileName).toLowerCase();
+        const sourcePath = join(characterImportsDir, fileName);
 
         try {
             const candidate = await importCharacterFileFromDisk(
                 sourcePath,
-                entry.name,
+                fileName,
                 extension,
             );
             let imported = candidate.character;
@@ -83,7 +73,7 @@ export async function importDroppedCharacterFiles(): Promise<DroppedCharacterImp
             await rm(sourcePath, { force: true });
         } catch (error) {
             result.failed.push({
-                fileName: entry.name,
+                fileName,
                 error:
                     error instanceof Error ? error.message : "Unexpected import error.",
             });
@@ -337,5 +327,19 @@ function parseDataImageUri(
 }
 
 function fingerprintCharacterCard(raw: unknown) {
-    return `sha256-${createHash("sha256").update(stableStringify(raw)).digest("hex")}`;
+    return `sha256-${new Bun.CryptoHasher("sha256").update(stableStringify(raw)).digest("hex")}`;
+}
+
+async function droppedCharacterImportFileNames() {
+    const fileNames: string[] = [];
+
+    for (const pattern of ["*.json", "*.png"]) {
+        const glob = new Glob(pattern);
+
+        for await (const fileName of glob.scan(characterImportsDir)) {
+            fileNames.push(fileName);
+        }
+    }
+
+    return fileNames.sort((left, right) => left.localeCompare(right));
 }

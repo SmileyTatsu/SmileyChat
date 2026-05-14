@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { writeJsonAtomic } from "./http";
 import {
     connectionSecretsPath,
@@ -26,7 +25,7 @@ import {
 } from "../src/lib/preferences/types";
 
 export async function readConnectionSettings(): Promise<ConnectionSettings> {
-    if (!existsSync(connectionSettingsPath)) {
+    if (!(await Bun.file(connectionSettingsPath).exists())) {
         await writeConnectionSettings(defaultConnectionSettings);
         return defaultConnectionSettings;
     }
@@ -44,7 +43,7 @@ export async function writeConnectionSettings(settings: unknown) {
 export async function readConnectionSecrets(): Promise<ConnectionSecrets> {
     const settingsSecrets = await readSecretsEmbeddedInConnectionSettings();
 
-    if (!existsSync(connectionSecretsPath)) {
+    if (!(await Bun.file(connectionSecretsPath).exists())) {
         await writeConnectionSecrets(settingsSecrets);
         return settingsSecrets;
     }
@@ -67,7 +66,7 @@ export async function writeConnectionSecrets(secrets: unknown) {
 }
 
 async function readSecretsEmbeddedInConnectionSettings(): Promise<ConnectionSecrets> {
-    if (!existsSync(connectionSettingsPath)) {
+    if (!(await Bun.file(connectionSettingsPath).exists())) {
         return defaultConnectionSecrets;
     }
 
@@ -99,7 +98,7 @@ function mergeConnectionSecrets(
 }
 
 export async function readPresetCollection(): Promise<PresetCollection> {
-    if (!existsSync(presetsPath)) {
+    if (!(await Bun.file(presetsPath).exists())) {
         await writePresetCollection(defaultPresetCollection);
         return defaultPresetCollection;
     }
@@ -115,7 +114,7 @@ export async function writePresetCollection(presets: unknown) {
 }
 
 export async function readAppPreferences(): Promise<AppPreferences> {
-    if (!existsSync(preferencesPath)) {
+    if (!(await Bun.file(preferencesPath).exists())) {
         await writeAppPreferences(defaultAppPreferences);
         return defaultAppPreferences;
     }

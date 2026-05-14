@@ -1,6 +1,5 @@
-import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
-import { BadRequestError, contentTypeFor } from "./http";
+import { BadRequestError } from "./http";
 import { maxAvatarBytes } from "./paths";
 import {
     characterAvatarPath,
@@ -37,7 +36,7 @@ export async function characterAvatarFilePath(character: SmileyCharacter) {
         ? characterAvatarPath(basePath, character.avatar.type)
         : "";
 
-    if (!requestedPath || !existsSync(requestedPath)) {
+    if (!requestedPath || !(await Bun.file(requestedPath).exists())) {
         return "";
     }
 
@@ -83,11 +82,7 @@ export async function serveCharacterAvatar(character: SmileyCharacter) {
         return new Response("Not found", { status: 404 });
     }
 
-    return new Response(Bun.file(path), {
-        headers: {
-            "Content-Type": contentTypeFor(path),
-        },
-    });
+    return new Response(Bun.file(path));
 }
 
 export function avatarTypeForContentType(contentType: string): AvatarType | "" {

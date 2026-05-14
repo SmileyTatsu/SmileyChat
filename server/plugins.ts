@@ -1,7 +1,7 @@
-import { existsSync } from "node:fs";
-import { mkdir, readdir, rm } from "node:fs/promises";
-import { basename, isAbsolute, join, normalize, relative } from "node:path";
-import { BadRequestError, contentTypeFor, json, writeJsonAtomic } from "./http";
+import { Glob } from "bun";
+import { mkdir, rm } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, normalize, relative } from "node:path";
+import { BadRequestError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
 import type { PluginManifest } from "../src/lib/plugins/types";
 
@@ -12,22 +12,14 @@ const legacyCorePluginFolders: Record<string, string[]> = {
 
 export async function readPluginManifests(): Promise<PluginManifest[]> {
     const coreManifests = await readCorePluginManifests();
+    await mkdir(pluginsDir, { recursive: true });
 
-    if (!existsSync(pluginsDir)) {
-        await mkdir(pluginsDir, { recursive: true });
-        return coreManifests;
-    }
-
-    const entries = await readdir(pluginsDir, { withFileTypes: true });
     const manifests: PluginManifest[] = [...coreManifests];
+    const glob = new Glob("*/plugin.json");
 
-    for (const entry of entries) {
-        if (!entry.isDirectory()) {
-            continue;
-        }
-
-        const pluginDir = join(pluginsDir, entry.name);
-        const manifestPath = join(pluginDir, "plugin.json");
+    for await (const manifestFile of glob.scan(pluginsDir)) {
+        const folderName = dirname(manifestFile);
+        const manifestPath = join(pluginsDir, manifestFile);
         const file = Bun.file(manifestPath);
 
         if (!(await file.exists())) {
@@ -35,7 +27,7 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
         }
 
         try {
-            const manifest = normalizePluginManifest(await file.json(), entry.name);
+            const manifest = normalizePluginManifest(await file.json(), folderName);
 
             if (!manifest) {
                 continue;
@@ -44,10 +36,10 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
             manifests.push({
                 ...manifest,
                 source: "user",
-                entryUrl: `/plugins/${encodeURIComponent(entry.name)}/${encodePath(manifest.main)}`,
+                entryUrl: `/plugins/${encodeURIComponent(folderName)}/${encodePath(manifest.main)}`,
                 styleUrls: (manifest.styles ?? []).map(
                     (style) =>
-                        `/plugins/${encodeURIComponent(entry.name)}/${encodePath(style)}`,
+                        `/plugins/${encodeURIComponent(folderName)}/${encodePath(style)}`,
                 ),
             });
         } catch (error) {
@@ -116,11 +108,7 @@ export async function servePluginAsset(url: URL) {
         return new Response("Not found", { status: 404 });
     }
 
-    return new Response(file, {
-        headers: {
-            "Content-Type": contentTypeFor(requestedPath),
-        },
-    });
+    return new Response(file);
 }
 
 export async function readPluginStorage(pluginId: string, key: string) {
@@ -134,11 +122,7 @@ export async function readPluginStorage(pluginId: string, key: string) {
     const file = Bun.file(path);
 
     if (await file.exists()) {
-        return new Response(file, {
-            headers: {
-                "Content-Type": "application/json; charset=utf-8",
-            },
-        });
+        return new Response(file);
     }
 
     if (pluginRecord.source === "core") {
@@ -146,11 +130,7 @@ export async function readPluginStorage(pluginId: string, key: string) {
             const legacyFile = Bun.file(legacyPath);
 
             if (await legacyFile.exists()) {
-                return new Response(legacyFile, {
-                    headers: {
-                        "Content-Type": "application/json; charset=utf-8",
-                    },
-                });
+                return new Response(legacyFile);
             }
         }
     }
@@ -196,18 +176,13 @@ async function findPluginById(pluginId: string) {
         };
     }
 
-    if (!existsSync(pluginsDir)) {
-        return undefined;
-    }
+    await mkdir(pluginsDir, { recursive: true });
 
-    const entries = await readdir(pluginsDir, { withFileTypes: true });
+    const glob = new Glob("*/plugin.json");
 
-    for (const entry of entries) {
-        if (!entry.isDirectory()) {
-            continue;
-        }
-
-        const manifestPath = join(pluginsDir, entry.name, "plugin.json");
+    for await (const manifestFile of glob.scan(pluginsDir)) {
+        const folderName = dirname(manifestFile);
+        const manifestPath = join(pluginsDir, manifestFile);
         const file = Bun.file(manifestPath);
 
         if (!(await file.exists())) {
@@ -215,11 +190,11 @@ async function findPluginById(pluginId: string) {
         }
 
         try {
-            const manifest = normalizePluginManifest(await file.json(), entry.name);
+            const manifest = normalizePluginManifest(await file.json(), folderName);
 
             if (manifest?.id === pluginId) {
                 return {
-                    folderName: entry.name,
+                    folderName,
                     manifestPath,
                     source: "user" as const,
                 };

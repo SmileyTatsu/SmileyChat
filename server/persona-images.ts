@@ -1,8 +1,6 @@
-import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { extname, isAbsolute, join, normalize, relative } from "node:path";
-import { BadRequestError, contentTypeFor } from "./http";
+import { BadRequestError } from "./http";
 import { safeFileStem } from "./persona-file-paths";
 import { maxAvatarBytes, personaAssetsDir } from "./paths";
 import {
@@ -26,11 +24,7 @@ export async function servePersonaAsset(url: URL) {
         return new Response("Not found", { status: 404 });
     }
 
-    return new Response(file, {
-        headers: {
-            "Content-Type": contentTypeFor(requestedPath),
-        },
-    });
+    return new Response(file);
 }
 
 export async function writePersonaAvatarAssetBytes(
@@ -51,7 +45,10 @@ export async function writePersonaAvatarAssetBytes(
     }
 
     const extension = avatarType === "jpeg" ? "jpg" : avatarType;
-    const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 12);
+    const hash = new Bun.CryptoHasher("sha256")
+        .update(bytes)
+        .digest("hex")
+        .slice(0, 12);
     const fileName = await uniquePersonaAvatarFileName(
         `${safeFileStem(personaId)}-${Date.now()}-${hash}.${extension}`,
     );
@@ -107,7 +104,7 @@ async function uniquePersonaAvatarFileName(fileName: string) {
     const baseName = fileName.slice(0, fileName.length - extension.length);
     let counter = 1;
 
-    while (existsSync(join(personaAssetsDir, candidate))) {
+    while (await Bun.file(join(personaAssetsDir, candidate)).exists()) {
         candidate = `${baseName}-${counter}${extension}`;
         counter += 1;
     }

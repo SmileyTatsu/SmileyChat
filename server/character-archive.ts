@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { writeJsonAtomic } from "./http";
 import { characterArchivePath } from "./paths";
 import type { SmileyCharacter } from "../src/lib/characters/types";
@@ -38,7 +37,7 @@ export async function archivedCharacterIdForFingerprint(fingerprint: string) {
 }
 
 async function readCharacterArchive(): Promise<CharacterArchive> {
-    if (!existsSync(characterArchivePath)) {
+    if (!(await Bun.file(characterArchivePath).exists())) {
         return emptyArchive();
     }
 

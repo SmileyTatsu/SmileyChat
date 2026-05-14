@@ -1,5 +1,4 @@
 import { extname, isAbsolute, join, normalize, relative } from "node:path";
-import { contentTypeFor } from "./http";
 import { distDir } from "./paths";
 
 export async function serveStatic(url: URL) {
@@ -15,11 +14,7 @@ export async function serveStatic(url: URL) {
     const file = Bun.file(requestedPath);
 
     if (await file.exists()) {
-        return new Response(file, {
-            headers: {
-                "Content-Type": contentTypeFor(requestedPath),
-            },
-        });
+        return new Response(file);
     }
 
     if (extname(pathname)) {
@@ -37,9 +32,5 @@ export async function serveStatic(url: URL) {
         });
     }
 
-    return new Response(indexFile, {
-        headers: {
-            "Content-Type": "text/html; charset=utf-8",
-        },
-    });
+    return new Response(indexFile);
 }

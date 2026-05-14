@@ -1,6 +1,4 @@
-import { randomUUID } from "node:crypto";
 import { rm, rename } from "node:fs/promises";
-import { extname } from "node:path";
 
 export class HttpError extends Error {
     constructor(
@@ -27,7 +25,7 @@ export class NotFoundError extends HttpError {
 }
 
 export async function writeJsonAtomic(pathname: string, data: unknown) {
-    const tempPath = `${pathname}.${process.pid}.${randomUUID()}.tmp`;
+    const tempPath = `${pathname}.${process.pid}.${Bun.randomUUIDv7()}.tmp`;
 
     try {
         await Bun.write(tempPath, `${JSON.stringify(data, null, 2)}\n`);
@@ -63,42 +61,4 @@ export function parsePort(value: string | undefined) {
 
     console.warn(`Invalid SMILEYCHAT_PORT "${value}". Falling back to 4173.`);
     return 4173;
-}
-
-export function contentTypeFor(pathname: string) {
-    const extension = extname(pathname);
-
-    if (extension === ".html") {
-        return "text/html; charset=utf-8";
-    }
-
-    if (extension === ".js") {
-        return "text/javascript; charset=utf-8";
-    }
-
-    if (extension === ".css") {
-        return "text/css; charset=utf-8";
-    }
-
-    if (extension === ".svg") {
-        return "image/svg+xml";
-    }
-
-    if (extension === ".png") {
-        return "image/png";
-    }
-
-    if (extension === ".jpg" || extension === ".jpeg") {
-        return "image/jpeg";
-    }
-
-    if (extension === ".webp") {
-        return "image/webp";
-    }
-
-    if (extension === ".json") {
-        return "application/json; charset=utf-8";
-    }
-
-    return "application/octet-stream";
 }

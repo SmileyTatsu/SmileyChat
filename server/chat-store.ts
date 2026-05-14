@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
-import { readdir, rm } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { Glob } from "bun";
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { BadRequestError, writeJsonAtomic } from "./http";
 import { chatFilePath } from "./chat-file-paths";
 import { moveToUniquePath } from "./character-file-utils";
@@ -31,7 +31,7 @@ export async function readChatSummaryCollection(): Promise<ChatSummaryCollection
 export async function readChatById(chatId: string) {
     const path = chatFilePath(chatId);
 
-    if (!existsSync(path)) {
+    if (!(await Bun.file(path).exists())) {
         return undefined;
     }
 
@@ -113,7 +113,7 @@ export async function writeChatById(chatId: string, value: unknown) {
 export async function deleteChatById(chatId: string) {
     const chat = await readChatById(chatId);
 
-    if (!chat || !existsSync(chatFilePath(chatId))) {
+    if (!chat || !(await Bun.file(chatFilePath(chatId)).exists())) {
         return undefined;
     }
 
@@ -212,7 +212,7 @@ export async function updateChatIndex(value: unknown) {
 }
 
 async function readChatIndex(): Promise<ChatIndex> {
-    if (existsSync(chatIndexPath)) {
+    if (await Bun.file(chatIndexPath).exists()) {
         try {
             const file = Bun.file(chatIndexPath);
             return repairChatIndex(normalizeChatIndex(await file.json()));
@@ -225,7 +225,13 @@ async function readChatIndex(): Promise<ChatIndex> {
 }
 
 async function repairChatIndex(index: ChatIndex): Promise<ChatIndex> {
-    const chatIds = index.chatIds.filter((chatId) => existsSync(chatFilePath(chatId)));
+    const chatIds: string[] = [];
+
+    for (const chatId of index.chatIds) {
+        if (await Bun.file(chatFilePath(chatId)).exists()) {
+            chatIds.push(chatId);
+        }
+    }
 
     if (chatIds.length === index.chatIds.length) {
         return index;
@@ -248,27 +254,23 @@ async function repairChatIndex(index: ChatIndex): Promise<ChatIndex> {
 }
 
 async function rebuildChatIndexFromSessions(): Promise<ChatIndex> {
-    const entries = await readdir(chatSessionsDir, { withFileTypes: true });
     const chats: ChatSession[] = [];
+    const glob = new Glob("*.json");
 
-    for (const entry of entries) {
-        if (!entry.isFile() || extname(entry.name).toLowerCase() !== ".json") {
-            continue;
-        }
-
-        const filePath = join(chatSessionsDir, entry.name);
+    for await (const fileName of glob.scan(chatSessionsDir)) {
+        const filePath = join(chatSessionsDir, fileName);
 
         try {
             const chat = normalizeChat({
                 ...(await Bun.file(filePath).json()),
-                id: entry.name.slice(0, -extname(entry.name).length),
+                id: fileName.slice(0, -".json".length),
             });
 
             if (chat) {
                 chats.push(chat);
             }
         } catch {
-            await moveToUniquePath(filePath, chatOrphanedDir, entry.name);
+            await moveToUniquePath(filePath, chatOrphanedDir, fileName);
         }
     }
 

@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
-import { readdir, rm } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { Glob } from "bun";
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { BadRequestError, writeJsonAtomic } from "./http";
 import { moveToUniquePath } from "./character-file-utils";
 import { deletePersonaAvatarAsset } from "./persona-images";
@@ -33,7 +33,7 @@ export async function readPersonaSummaryCollection(): Promise<PersonaSummaryColl
 export async function readPersonaById(personaId: string) {
     const path = personaFilePath(personaId);
 
-    if (!existsSync(path)) {
+    if (!(await Bun.file(path).exists())) {
         return undefined;
     }
 
@@ -109,7 +109,10 @@ export async function updatePersonaIndex(value: unknown) {
     const personaIds: string[] = [];
 
     for (const personaId of requestedIds) {
-        if (personaIds.includes(personaId) || !existsSync(personaFilePath(personaId))) {
+        if (
+            personaIds.includes(personaId) ||
+            !(await Bun.file(personaFilePath(personaId)).exists())
+        ) {
             continue;
         }
 
@@ -141,7 +144,7 @@ export async function updatePersonaIndex(value: unknown) {
 export async function deletePersonaById(personaId: string) {
     const persona = await readPersonaById(personaId);
 
-    if (!persona || !existsSync(personaFilePath(personaId))) {
+    if (!persona || !(await Bun.file(personaFilePath(personaId)).exists())) {
         return undefined;
     }
 
@@ -169,7 +172,7 @@ export async function deletePersonaById(personaId: string) {
 }
 
 async function readPersonaIndex(): Promise<PersonaIndex> {
-    if (existsSync(personaIndexPath)) {
+    if (await Bun.file(personaIndexPath).exists()) {
         try {
             const file = Bun.file(personaIndexPath);
             return repairPersonaIndex(normalizePersonaIndex(await file.json()));
@@ -188,9 +191,13 @@ async function readPersonaIndex(): Promise<PersonaIndex> {
 }
 
 async function repairPersonaIndex(index: PersonaIndex): Promise<PersonaIndex> {
-    const personaIds = index.personaIds.filter((personaId) =>
-        existsSync(personaFilePath(personaId)),
-    );
+    const personaIds: string[] = [];
+
+    for (const personaId of index.personaIds) {
+        if (await Bun.file(personaFilePath(personaId)).exists()) {
+            personaIds.push(personaId);
+        }
+    }
 
     if (personaIds.length === index.personaIds.length && personaIds.length > 0) {
         return index;
@@ -213,27 +220,23 @@ async function repairPersonaIndex(index: PersonaIndex): Promise<PersonaIndex> {
 }
 
 async function rebuildPersonaIndexFromCards(): Promise<PersonaIndex> {
-    const entries = await readdir(personaCardsDir, { withFileTypes: true });
     const personas: SmileyPersona[] = [];
+    const glob = new Glob("*.json");
 
-    for (const entry of entries) {
-        if (!entry.isFile() || extname(entry.name).toLowerCase() !== ".json") {
-            continue;
-        }
-
-        const filePath = join(personaCardsDir, entry.name);
+    for await (const fileName of glob.scan(personaCardsDir)) {
+        const filePath = join(personaCardsDir, fileName);
 
         try {
             const persona = normalizePersona({
                 ...(await Bun.file(filePath).json()),
-                id: entry.name.slice(0, -extname(entry.name).length),
+                id: fileName.slice(0, -".json".length),
             });
 
             if (persona) {
                 personas.push(persona);
             }
         } catch {
-            await moveToUniquePath(filePath, personaOrphanedDir, entry.name);
+            await moveToUniquePath(filePath, personaOrphanedDir, fileName);
         }
     }
 

@@ -1,5 +1,4 @@
-import { existsSync } from "node:fs";
-import { mkdir, rename } from "node:fs/promises";
+import { mkdir, rename, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
 
 export async function moveToUniquePath(
@@ -14,7 +13,7 @@ export async function moveToUniquePath(
     const baseName = fileName.slice(0, fileName.length - extension.length);
     let counter = 1;
 
-    while (existsSync(targetPath)) {
+    while (await pathExists(targetPath)) {
         targetPath = join(targetDir, `${baseName}-${counter}${extension}`);
         counter += 1;
     }
@@ -39,4 +38,13 @@ export function stableStringify(value: unknown): string {
                 `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`,
         )
         .join(",")}}`;
+}
+
+async function pathExists(pathname: string) {
+    try {
+        await stat(pathname);
+        return true;
+    } catch {
+        return false;
+    }
 }
