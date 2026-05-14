@@ -11,6 +11,7 @@ import {
     updateChatIndex,
     writeChatById,
 } from "./chat-store";
+import { importUploadedChatFile } from "./chat-imports";
 import {
     createCharacter,
     deleteCharacterById,
@@ -184,6 +185,15 @@ const server = Bun.serve({
                 const chats = await readChatSummaryCollection();
 
                 return json({ ok: true, index, chats });
+            }),
+        },
+
+        "/api/chats/import": {
+            POST: api(async (request, routeServer) => {
+                routeServer.timeout(request, 60);
+                const result = await importUploadedChatFile(request);
+
+                return json({ ok: true, ...result });
             }),
         },
 
