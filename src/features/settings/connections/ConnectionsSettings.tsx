@@ -100,14 +100,30 @@ export function ConnectionsSettings({
         isOpenAICompatibleProfile(activeProfile)
             ? activeProfile.config.apiKey
             : undefined,
-        isOpenAICompatibleProfile(activeProfile)
-            ? activeProfile.config.model.source
-            : undefined,
         isOpenRouterProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
-        isOpenRouterProfile(activeProfile)
-            ? activeProfile.config.model.source
-            : undefined,
     ]);
+
+    useEffect(() => {
+        if (!activeProfile) return;
+        if (
+            isOpenAICompatibleProfile(activeProfile) &&
+            activeProfile.config.model.source === "api" &&
+            activeProfile.config.baseUrl.trim().length > 0
+        ) {
+            void loadModels();
+            return;
+        }
+        if (
+            isOpenRouterProfile(activeProfile) &&
+            activeProfile.config.model.source === "api"
+        ) {
+            void loadModels();
+        }
+        // loadModels is intentionally omitted — we only want to auto-fetch
+        // when the active profile id changes (panel open / profile switch),
+        // not on every keystroke in baseUrl / apiKey.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeProfile?.id]);
 
     async function saveSettings(nextSettings = settings) {
         setRequestState("loading");
@@ -296,18 +312,21 @@ export function ConnectionsSettings({
                 [activeProfile.id]: nextModels,
             }));
 
-            if (
-                activeProfile.config.model.source === "api" &&
-                !activeProfile.config.model.id &&
-                nextModels[0]
-            ) {
-                updateActiveProfileConfig({
-                    ...activeProfile.config,
-                    model: {
-                        source: "api",
-                        id: nextModels[0].id,
-                    },
-                });
+            if (nextModels[0] && activeProfile.config.model.source !== "custom") {
+                const currentId = activeProfile.config.model.id;
+                const currentIsLoaded =
+                    activeProfile.config.model.source === "api" &&
+                    nextModels.some((model) => model.id === currentId);
+
+                if (!currentIsLoaded) {
+                    updateActiveProfileConfig({
+                        ...activeProfile.config,
+                        model: {
+                            source: "api",
+                            id: nextModels[0].id,
+                        },
+                    });
+                }
             }
 
             setStatusMessage(

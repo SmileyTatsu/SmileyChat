@@ -66,9 +66,13 @@ export function OpenAICompatibleConnection({
         config.model.source === "custom"
             ? "custom:"
             : `${config.model.source}:${config.model.id}`;
-    const selectedApiModelIsLoaded =
-        config.model.source !== "api" ||
-        models.some((model) => model.id === config.model.id);
+    const hasLoadedApiModels = models.length > 0;
+    const savedApiModelId =
+        !hasLoadedApiModels &&
+        config.model.source === "api" &&
+        config.model.id.length > 0
+            ? config.model.id
+            : null;
 
     return (
         <section className="connection-provider-panel">
@@ -118,32 +122,41 @@ export function OpenAICompatibleConnection({
                             )
                         }
                     >
-                        {defaultModelCategories.map((category) => (
-                            <optgroup key={category.id} label={category.label}>
-                                {category.models.map((model) => (
-                                    <option key={model.id} value={`default:${model.id}`}>
-                                        {model.label}
+                        {hasLoadedApiModels ? (
+                            <optgroup label="Loaded from API">
+                                {models.map((model) => (
+                                    <option key={model.id} value={`api:${model.id}`}>
+                                        {model.id}
                                     </option>
                                 ))}
                             </optgroup>
-                        ))}
-                        <optgroup label="Other">
-                            {!selectedApiModelIsLoaded && (
-                                <option value={`api:${config.model.id}`}>
-                                    {config.model.id}
+                        ) : savedApiModelId ? (
+                            <optgroup label="Loaded from API">
+                                <option value={`api:${savedApiModelId}`}>
+                                    {savedApiModelId}
                                 </option>
-                            )}
-                            {models.length === 0 && (
-                                <option disabled value="api:">
-                                    Load models to fill this category
-                                </option>
-                            )}
-                            {models.map((model) => (
-                                <option key={model.id} value={`api:${model.id}`}>
-                                    {model.id}
-                                </option>
-                            ))}
-                        </optgroup>
+                            </optgroup>
+                        ) : (
+                            <>
+                                {defaultModelCategories.map((category) => (
+                                    <optgroup key={category.id} label={category.label}>
+                                        {category.models.map((model) => (
+                                            <option
+                                                key={model.id}
+                                                value={`default:${model.id}`}
+                                            >
+                                                {model.label}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                                <optgroup label="Loaded from API">
+                                    <option disabled value="api:">
+                                        Load models to fill this category
+                                    </option>
+                                </optgroup>
+                            </>
+                        )}
                         <option value="custom:">Custom model...</option>
                     </select>
                 </label>
