@@ -1,8 +1,16 @@
 import defaultOpenAIModels from "../../data/defaultOpenAIModels.json";
 import { isRecord } from "../common/guards";
 import type { OpenAICompatibleConnectionConfig } from "./openai-compatible/types";
+import type {
+    OpenRouterConnectionConfig,
+    OpenRouterProviderPreferences,
+    OpenRouterSort,
+} from "./openrouter/types";
 
-export type ConnectionProviderId = "openai-compatible" | (string & {});
+export type ConnectionProviderId =
+    | "openai-compatible"
+    | "openrouter"
+    | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
     id: string;
@@ -13,10 +21,19 @@ export type OpenAICompatibleConnectionProfile = {
     updatedAt: string;
 };
 
+export type OpenRouterConnectionProfile = {
+    id: string;
+    name: string;
+    provider: "openrouter";
+    config: OpenRouterConnectionConfig;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type PluginConnectionProfile = {
     id: string;
     name: string;
-    provider: Exclude<ConnectionProviderId, "openai-compatible">;
+    provider: Exclude<ConnectionProviderId, "openai-compatible" | "openrouter">;
     config: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
@@ -24,6 +41,7 @@ export type PluginConnectionProfile = {
 
 export type ConnectionProfile =
     | OpenAICompatibleConnectionProfile
+    | OpenRouterConnectionProfile
     | PluginConnectionProfile;
 
 export type ConnectionSettings = {
@@ -49,6 +67,17 @@ export const defaultOpenAICompatibleConfig: OpenAICompatibleConnectionConfig = {
     model: {
         source: "default",
         id: defaultOpenAIModels[0]?.models[0]?.id ?? "",
+    },
+};
+
+export const defaultOpenRouterConfig: OpenRouterConnectionConfig = {
+    model: {
+        source: "api",
+        id: "",
+    },
+    providerPreferences: {
+        allow_fallbacks: true,
+        data_collection: "allow",
     },
 };
 
@@ -167,6 +196,17 @@ export function createConnectionProfile(
 ): ConnectionProfile {
     const now = new Date().toISOString();
 
+    if (provider === "openrouter") {
+        return {
+            id: createConnectionProfileId(),
+            name,
+            provider,
+            config: normalizeOpenRouterConfig(defaultConfig ?? defaultOpenRouterConfig),
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
     if (provider !== "openai-compatible") {
         return {
             id: createConnectionProfileId(),
@@ -201,6 +241,12 @@ export function isOpenAICompatibleProfile(
     profile: ConnectionProfile | undefined,
 ): profile is OpenAICompatibleConnectionProfile {
     return profile?.provider === "openai-compatible";
+}
+
+export function isOpenRouterProfile(
+    profile: ConnectionProfile | undefined,
+): profile is OpenRouterConnectionProfile {
+    return profile?.provider === "openrouter";
 }
 
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {
@@ -243,10 +289,60 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
         config:
             provider === "openai-compatible"
                 ? normalizeOpenAICompatibleConfig(profile.config)
+                : provider === "openrouter"
+                  ? normalizeOpenRouterConfig(profile.config)
                 : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;
+}
+
+function normalizeOpenRouterConfig(value: unknown): OpenRouterConnectionConfig {
+    const config = isRecord(value) ? value : {};
+    const model = isRecord(config.model) ? config.model : {};
+
+    return {
+        apiKey: stringOrUndefined(config.apiKey),
+        model: {
+            source: "api",
+            id: typeof model.id === "string" ? model.id : "",
+        },
+        providerPreferences: normalizeOpenRouterProviderPreferences(
+            config.providerPreferences,
+        ),
+    };
+}
+
+function normalizeOpenRouterProviderPreferences(
+    value: unknown,
+): OpenRouterProviderPreferences {
+    const preferences = isRecord(value) ? value : {};
+    const sort = normalizeOpenRouterSort(preferences.sort);
+    const dataCollection =
+        preferences.data_collection === "deny" ? "deny" : "allow";
+
+    return {
+        ...(sort ? { sort } : {}),
+        allow_fallbacks:
+            typeof preferences.allow_fallbacks === "boolean"
+                ? preferences.allow_fallbacks
+                : true,
+        require_parameters:
+            typeof preferences.require_parameters === "boolean"
+                ? preferences.require_parameters
+                : false,
+        data_collection: dataCollection,
+        zdr: typeof preferences.zdr === "boolean" ? preferences.zdr : false,
+        order: normalizeStringList(preferences.order),
+        only: normalizeStringList(preferences.only),
+        ignore: normalizeStringList(preferences.ignore),
+    };
+}
+
+function normalizeOpenRouterSort(value: unknown): OpenRouterSort | undefined {
+    return value === "price" || value === "throughput" || value === "latency"
+        ? value
+        : undefined;
 }
 
 function migrateLegacySettings(settings: Record<string, unknown>): ConnectionSettings {
@@ -311,6 +407,20 @@ function normalizeProvider(value: unknown): ConnectionProviderId | undefined {
 
 function normalizePluginConfig(value: unknown): Record<string, unknown> {
     return isRecord(value) ? { ...value, apiKey: stringOrUndefined(value.apiKey) } : {};
+}
+
+function normalizeStringList(value: unknown) {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return Array.from(
+        new Set(
+            value
+                .map((item) => (typeof item === "string" ? item.trim() : ""))
+                .filter(Boolean),
+        ),
+    );
 }
 
 function createConnectionProfileId() {

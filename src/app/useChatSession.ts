@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { PresetCollection } from "../lib/presets/types";
+import type { AppPreferences } from "../lib/preferences/types";
 import type {
     ChatSession,
     ChatMode,
@@ -34,6 +35,7 @@ type UseChatSessionOptions = {
     mode: ChatMode;
     onChatChange: (chat: ChatSession) => void;
     persona: SmileyPersona;
+    preferences: AppPreferences;
     presetCollection: PresetCollection;
     userStatus: UserStatus;
 };
@@ -45,6 +47,7 @@ export function useChatSession({
     mode,
     onChatChange,
     persona,
+    preferences,
     presetCollection,
     userStatus,
 }: UseChatSessionOptions) {
@@ -129,31 +132,74 @@ export function useChatSession({
         beginChatPending(chatId);
 
         try {
+            const streamingReply = preferences.chat.streaming
+                ? createCharacterMessage(generationCharacter.data.name, "")
+                : undefined;
+
+            if (streamingReply) {
+                updateChatMessages(
+                    [...pendingChat.messages, streamingReply],
+                    currentOrSourceChat(pendingChat),
+                );
+            }
+
+            let streamedContent = "";
             const result = await generateWithPreset(
                 nextMessages,
                 generationCharacter,
                 mode,
                 userStatus,
                 connectionSettings,
+                {
+                    stream: preferences.chat.streaming,
+                    onToken: streamingReply
+                        ? (token) => {
+                              streamedContent += token;
+                              updateMessageContent(
+                                  streamingReply.id,
+                                  streamedContent,
+                              );
+                          }
+                        : undefined,
+                },
             );
-            const reply = createCharacterMessage(generationCharacter.data.name, result);
 
-            updateChatMessages(
-                [...pendingChat.messages, reply],
-                currentOrSourceChat(pendingChat),
-            );
+            if (streamingReply) {
+                updateMessageContent(streamingReply.id, result);
+            } else {
+                const reply = createCharacterMessage(
+                    generationCharacter.data.name,
+                    result,
+                );
+
+                updateChatMessages(
+                    [...pendingChat.messages, reply],
+                    currentOrSourceChat(pendingChat),
+                );
+            }
         } catch (error) {
             const errorMessage = generationErrorMessage(error);
-            updateChatMessages(
-                [
-                    ...pendingChat.messages,
-                    createCharacterErrorMessage(
-                        generationCharacter.data.name,
-                        errorMessage,
-                    ),
-                ],
-                currentOrSourceChat(pendingChat),
-            );
+            const targetChat = currentOrSourceChat(pendingChat);
+            const lastMessage = targetChat.messages[targetChat.messages.length - 1];
+
+            if (
+                preferences.chat.streaming &&
+                lastMessage?.role === "character" &&
+                lastMessage.author === generationCharacter.data.name
+            ) {
+                updateMessageContent(lastMessage.id, errorMessage, "error");
+            } else {
+                updateChatMessages(
+                    [
+                        ...pendingChat.messages,
+                        createCharacterErrorMessage(
+                            generationCharacter.data.name,
+                            errorMessage,
+                        ),
+                    ],
+                    targetChat,
+                );
+            }
             if (latestChatRef.current?.id === chatId) {
                 setChatError(
                     "Generation failed. Swipe the failed response or send again to retry.",
@@ -272,33 +318,64 @@ export function useChatSession({
         beginChatPending(chatId, messageId);
 
         try {
+            if (preferences.chat.streaming) {
+                updateChatMessages(
+                    sourceChat.messages.map((message) =>
+                        message.id === messageId
+                            ? appendMessageSwipe(message, "")
+                            : message,
+                    ),
+                    sourceChat,
+                );
+            }
+
+            let streamedContent = "";
             const result = await generateWithPreset(
                 historyBeforeTarget,
                 generationCharacter,
                 mode,
                 userStatus,
                 connectionSettings,
+                {
+                    stream: preferences.chat.streaming,
+                    onToken: preferences.chat.streaming
+                        ? (token) => {
+                              streamedContent += token;
+                              updateMessageContent(messageId, streamedContent);
+                          }
+                        : undefined,
+                },
             );
 
             const targetChat = currentOrSourceChat(sourceChat);
-            updateChatMessages(
-                targetChat.messages.map((message) =>
-                    message.id === messageId
-                        ? appendMessageSwipe(message, result)
-                        : message,
-                ),
-                targetChat,
-            );
+            if (preferences.chat.streaming) {
+                updateMessageContent(messageId, result);
+            } else {
+                updateChatMessages(
+                    targetChat.messages.map((message) =>
+                        message.id === messageId
+                            ? appendMessageSwipe(message, result)
+                            : message,
+                    ),
+                    targetChat,
+                );
+            }
         } catch (error) {
             const targetChat = currentOrSourceChat(sourceChat);
             updateChatMessages(
                 targetChat.messages.map((message) =>
                     message.id === messageId
-                        ? appendMessageSwipe(
-                              message,
-                              generationErrorMessage(error),
-                              "error",
-                          )
+                        ? preferences.chat.streaming
+                            ? updateActiveSwipeContent(
+                                  message,
+                                  generationErrorMessage(error),
+                                  "error",
+                              )
+                            : appendMessageSwipe(
+                                  message,
+                                  generationErrorMessage(error),
+                                  "error",
+                              )
                         : message,
                 ),
                 targetChat,
@@ -328,6 +405,27 @@ export function useChatSession({
             latestChatRef.current = nextChat;
         }
         onChatChange(nextChat);
+    }
+
+    function updateMessageContent(
+        messageId: string,
+        content: string,
+        status?: Message["swipes"][number]["status"],
+    ) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? updateActiveSwipeContent(message, content, status)
+                    : message,
+            ),
+            sourceChat,
+        );
     }
 
     function currentOrSourceChat(sourceChat: ChatSession) {
@@ -386,6 +484,10 @@ export function useChatSession({
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
         sourceConnectionSettings: ConnectionSettings,
+        options: {
+            onToken?: (token: string) => void;
+            stream?: boolean;
+        } = {},
     ) {
         const generationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
@@ -408,7 +510,9 @@ export function useChatSession({
         );
         const result = await connection.generate({
             messages: generationMessages,
+            onToken: options.onToken,
             promptMessages,
+            stream: options.stream,
         });
 
         return applyOutputMiddlewares(

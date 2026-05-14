@@ -1,9 +1,11 @@
 import {
     getActiveConnectionProfile,
     isOpenAICompatibleProfile,
+    isOpenRouterProfile,
     type ConnectionSettings,
 } from "./config";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
+import { createOpenRouterConnection } from "./openrouter/adapter";
 import { createAdapterFromPluginProvider } from "../plugins/registry";
 
 export function getAdapterForSettings(settings: ConnectionSettings) {
@@ -19,6 +21,17 @@ export function getAdapterForSettings(settings: ConnectionSettings) {
         }
 
         return createOpenAICompatibleConnection({
+            ...profile.config,
+            apiKey: profile.config.apiKey?.trim() || undefined,
+        });
+    }
+
+    if (isOpenRouterProfile(profile)) {
+        if (!profile.config.model.id.trim()) {
+            throw new Error(`${profile.name} needs a model.`);
+        }
+
+        return createOpenRouterConnection({
             ...profile.config,
             apiKey: profile.config.apiKey?.trim() || undefined,
         });

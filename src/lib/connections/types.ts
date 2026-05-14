@@ -8,7 +8,9 @@ export type ChatGenerationMessage = {
 export type ChatGenerationRequest = {
     context?: string;
     messages: Message[];
+    onToken?: (token: string) => void;
     promptMessages?: ChatGenerationMessage[];
+    stream?: boolean;
 };
 
 export type ChatGenerationResult = {

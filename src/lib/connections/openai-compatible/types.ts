@@ -28,7 +28,7 @@ export type OpenAICompatibleChatMessage = {
 export type OpenAICompatibleChatCompletionRequest = {
     model: string;
     messages: OpenAICompatibleChatMessage[];
-    stream?: false;
+    stream?: boolean;
 };
 
 export type OpenAICompatibleChatCompletionResponse = {

@@ -81,6 +81,68 @@
     filter: brightness(1.08);
 }
 
+.connection-card {
+    display: grid;
+    gap: 12px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 12px;
+}
+
+.connection-card h4 {
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.88rem;
+}
+
+.connection-field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.connection-field-grid label:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}
+
+.connection-field-grid textarea {
+    min-height: 68px;
+    resize: vertical;
+}
+
+.openrouter-model-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+
+.openrouter-model-meta div {
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #171a20;
+    padding: 8px 9px;
+}
+
+.openrouter-model-meta dt {
+    color: #8f96a6;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.openrouter-model-meta dd {
+    min-width: 0;
+    margin: 3px 0 0;
+    overflow: hidden;
+    color: #e5e7ee;
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .connection-status {
     border: 1px solid #303440;
     border-radius: 8px;

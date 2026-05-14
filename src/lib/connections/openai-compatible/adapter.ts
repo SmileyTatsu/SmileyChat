@@ -1,5 +1,6 @@
 import type { ConnectionAdapter } from "../types";
 import { safeResponseText, trimTrailingSlash } from "../http";
+import { readChatCompletionStream } from "../streaming";
 import { createChatCompletionBody, normalizeChatCompletion } from "./mappers";
 import type {
     OpenAICompatibleChatCompletionResponse,
@@ -33,6 +34,40 @@ export function createOpenAICompatibleConnection(
                 throw new Error(
                     `OpenAI-compatible request failed at ${targetUrl}: ${response.status} ${await safeResponseText(response)}`,
                 );
+            }
+
+            if (body.stream) {
+                let message = "";
+                let model: string | undefined;
+
+                await readChatCompletionStream(response, (chunk) => {
+                    if (chunk.error?.message) {
+                        throw new Error(
+                            `OpenAI-compatible stream failed: ${chunk.error.message}`,
+                        );
+                    }
+
+                    model = chunk.model ?? model;
+
+                    const token = chunk.choices?.[0]?.delta?.content;
+
+                    if (token) {
+                        message += token;
+                        request.onToken?.(token);
+                    }
+                });
+
+                if (!message.trim()) {
+                    throw new Error(
+                        "OpenAI-compatible stream did not include message content.",
+                    );
+                }
+
+                return {
+                    message: message.trim(),
+                    provider: "openai-compatible",
+                    model,
+                };
             }
 
             const data =

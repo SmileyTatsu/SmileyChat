@@ -122,6 +122,7 @@ textarea:disabled {
 
     .connection-profile-toolbar,
     .connection-profile-fields,
+    .connection-field-grid,
     .preset-toolbar {
         grid-template-columns: 1fr;
     }

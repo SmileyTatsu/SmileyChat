@@ -129,6 +129,13 @@ export function GeneralSettings({
                     label="Auto-scroll on new messages"
                     onChange={(autoScroll) => updateChat({ autoScroll })}
                 />
+
+                <ToggleRow
+                    checked={preferences.chat.streaming}
+                    description="Show model replies as they arrive from supported providers."
+                    label="Stream responses"
+                    onChange={(streaming) => updateChat({ streaming })}
+                />
             </section>
 
             <section className="settings-card">

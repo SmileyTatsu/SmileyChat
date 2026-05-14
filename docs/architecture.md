@@ -9,7 +9,7 @@ SmileyChat's architecture separates the UI, the state orchestration, the text ge
 3. **State Update**: The chat session updates. A temporary "pending" state locks the generation.
 4. **Preset Compilation**: The `compilePresetMessages` function processes the `Preset`. It evaluates macros (`{{char}}`, `{{user}}`, etc.) and orders the prompts (System, Lore, History, etc.) according to the preset configuration.
 5. **Middlewares (Prompt)**: The compiled context array is passed to prompt middlewares, allowing plugins to inject or mutate the AI prompt right before generation.
-6. **Adapter Generation**: The context is sent to the configured `ConnectionAdapter` (e.g., OpenAI-compatible). The adapter is responsible for handling the HTTP request.
+6. **Adapter Generation**: The context is sent to the configured `ConnectionAdapter` (e.g., OpenAI-compatible or OpenRouter). The adapter is responsible for handling the HTTP request. Streaming is enabled by default and updates the pending character message as SSE chunks arrive; the app-level Settings panel can disable streaming globally.
 7. **Middlewares (Output)**: The raw AI response is filtered through output middlewares.
 8. **Save**: The final message is appended to the chat, and the Bun server saves the JSON state to `userData/chats/`.
 

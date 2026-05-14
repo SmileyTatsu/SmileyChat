@@ -7,6 +7,7 @@ import {
     extractConnectionSecrets,
     getActiveConnectionProfile,
     isOpenAICompatibleProfile,
+    isOpenRouterProfile,
     sanitizeConnectionSecrets,
     sanitizeConnectionSettings,
     type ConnectionProfile,
@@ -15,6 +16,8 @@ import {
 import { trimTrailingSlash } from "../../../lib/connections/http";
 import { createOpenAICompatibleConnection } from "../../../lib/connections/openai-compatible/adapter";
 import { listOpenAICompatibleModels } from "../../../lib/connections/openai-compatible/models";
+import { createOpenRouterConnection } from "../../../lib/connections/openrouter/adapter";
+import { listOpenRouterModels } from "../../../lib/connections/openrouter/models";
 import { createUserMessage } from "../../../lib/messages";
 import { defaultPersona } from "../../../lib/personas/defaults";
 import {
@@ -23,7 +26,9 @@ import {
     subscribeToPluginRegistry,
 } from "../../../lib/plugins/registry";
 import type { OpenAICompatibleModel } from "../../../lib/connections/openai-compatible/types";
+import type { OpenRouterModel } from "../../../lib/connections/openrouter/types";
 import { OpenAICompatibleConnection } from "./providers/OpenAICompatibleConnection";
+import { OpenRouterConnection } from "./providers/OpenRouterConnection";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
@@ -41,6 +46,9 @@ export function ConnectionsSettings({
     const [modelsByProfileId, setModelsByProfileId] = useState<
         Record<string, OpenAICompatibleModel[]>
     >({});
+    const [openRouterModelsByProfileId, setOpenRouterModelsByProfileId] = useState<
+        Record<string, OpenRouterModel[]>
+    >({});
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
     const [, setRegistryRevision] = useState(0);
@@ -48,6 +56,9 @@ export function ConnectionsSettings({
     const activeProfile = getActiveConnectionProfile(settings);
     const isBusy = requestState === "loading";
     const activeModels = activeProfile ? (modelsByProfileId[activeProfile.id] ?? []) : [];
+    const activeOpenRouterModels = activeProfile
+        ? (openRouterModelsByProfileId[activeProfile.id] ?? [])
+        : [];
     const pluginProviders = getPluginConnectionProviders();
     const activePluginProvider = activeProfile
         ? getPluginConnectionProvider(activeProfile.provider)
@@ -77,6 +88,10 @@ export function ConnectionsSettings({
             ...current,
             [activeProfile.id]: [],
         }));
+        setOpenRouterModelsByProfileId((current) => ({
+            ...current,
+            [activeProfile.id]: [],
+        }));
     }, [
         activeProfile?.id,
         isOpenAICompatibleProfile(activeProfile)
@@ -86,6 +101,10 @@ export function ConnectionsSettings({
             ? activeProfile.config.apiKey
             : undefined,
         isOpenAICompatibleProfile(activeProfile)
+            ? activeProfile.config.model.source
+            : undefined,
+        isOpenRouterProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
+        isOpenRouterProfile(activeProfile)
             ? activeProfile.config.model.source
             : undefined,
     ]);
@@ -138,6 +157,36 @@ export function ConnectionsSettings({
         }
 
         if (!isOpenAICompatibleProfile(activeProfile)) {
+            if (isOpenRouterProfile(activeProfile)) {
+                setRequestState("loading");
+                setStatusMessage(
+                    "Testing POST https://openrouter.ai/api/v1/chat/completions",
+                );
+
+                try {
+                    const adapter = createOpenRouterConnection({
+                        ...activeProfile.config,
+                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    });
+                    const result = await adapter.generate({
+                        context: "Reply briefly to confirm the connection works.",
+                        messages: [createUserMessage("hello", defaultPersona)],
+                    });
+
+                    setStatusMessage(
+                        `OpenRouter connection test succeeded: ${result.message}`,
+                    );
+                    setRequestState("success");
+                } catch (error) {
+                    setStatusMessage(
+                        messageFromError(error, "Unexpected connection error."),
+                    );
+                    setRequestState("error");
+                }
+
+                return;
+            }
+
             if (!activePluginProvider?.testConnection) {
                 setStatusMessage(
                     `${activeProfile.name} does not provide a connection test.`,
@@ -187,6 +236,46 @@ export function ConnectionsSettings({
     }
 
     async function loadModels() {
+        if (isOpenRouterProfile(activeProfile)) {
+            setRequestState("loading");
+            setStatusMessage("Loading models from GET https://openrouter.ai/api/v1/models");
+
+            try {
+                const nextModels = await listOpenRouterModels({
+                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                });
+
+                setOpenRouterModelsByProfileId((current) => ({
+                    ...current,
+                    [activeProfile.id]: nextModels,
+                }));
+
+                if (
+                    activeProfile.config.model.source === "api" &&
+                    !activeProfile.config.model.id &&
+                    nextModels[0]
+                ) {
+                    updateActiveProfileConfig({
+                        ...activeProfile.config,
+                        model: {
+                            source: "api",
+                            id: nextModels[0].id,
+                        },
+                    });
+                }
+
+                setStatusMessage(
+                    `Loaded ${nextModels.length} OpenRouter model(s).`,
+                );
+                setRequestState("success");
+            } catch (error) {
+                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setRequestState("error");
+            }
+
+            return;
+        }
+
         if (!isOpenAICompatibleProfile(activeProfile)) {
             return;
         }
@@ -293,12 +382,14 @@ export function ConnectionsSettings({
 
         const provider = getPluginConnectionProvider(providerId);
         const config =
-            providerId === "openai-compatible"
+            providerId === "openai-compatible" || providerId === "openrouter"
                 ? undefined
                 : (provider?.defaultConfig ?? {});
         const nextProfile = createConnectionProfile(
             providerId,
-            provider?.label ?? "OpenAI compatible",
+            providerId === "openrouter"
+                ? "OpenRouter"
+                : (provider?.label ?? "OpenAI compatible"),
             config,
         );
 
@@ -357,6 +448,11 @@ export function ConnectionsSettings({
 
         onSettingsChange(nextSettings);
         setModelsByProfileId((current) => {
+            const next = { ...current };
+            delete next[activeProfile.id];
+            return next;
+        });
+        setOpenRouterModelsByProfileId((current) => {
             const next = { ...current };
             delete next[activeProfile.id];
             return next;
@@ -443,6 +539,7 @@ export function ConnectionsSettings({
                                 <option value="openai-compatible">
                                     OpenAI compatible
                                 </option>
+                                <option value="openrouter">OpenRouter</option>
                                 {pluginProviders.map((provider) => (
                                     <option key={provider.id} value={provider.id}>
                                         {provider.label}
@@ -457,6 +554,17 @@ export function ConnectionsSettings({
                             config={activeProfile.config}
                             disabled={isBusy}
                             models={activeModels}
+                            onChange={(config) => updateActiveProfileConfig(config)}
+                            onClearApiKey={clearApiKey}
+                            onLoadModels={loadModels}
+                            onSave={() => void saveSettings()}
+                            onTest={testConnection}
+                        />
+                    ) : isOpenRouterProfile(activeProfile) ? (
+                        <OpenRouterConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            models={activeOpenRouterModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
@@ -499,21 +607,19 @@ export function ConnectionsSettings({
                 </>
             )}
 
-            {pluginProviders.length > 0 && (
-                <div className="button-row">
-                    {pluginProviders.map((provider) => (
-                        <button
-                            key={provider.id}
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => addPluginProfile(provider.id)}
-                        >
-                            <Plus size={16} />
-                            {provider.label}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <div className="button-row">
+                {pluginProviders.map((provider) => (
+                    <button
+                        key={provider.id}
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => addPluginProfile(provider.id)}
+                    >
+                        <Plus size={16} />
+                        {provider.label}
+                    </button>
+                ))}
+            </div>
 
             {statusMessage && (
                 <p className={`connection-status ${requestState}`}>{statusMessage}</p>

@@ -72,11 +72,15 @@ export function isActiveSwipeError(message: Message) {
     return getActiveSwipe(message)?.status === "error";
 }
 
-export function updateActiveSwipeContent(message: Message, content: string): Message {
+export function updateActiveSwipeContent(
+    message: Message,
+    content: string,
+    status?: MessageSwipe["status"],
+): Message {
     if (message.swipes.length === 0) {
         return {
             ...message,
-            swipes: [createMessageSwipe(content)],
+            swipes: [createMessageSwipe(content, status)],
             activeSwipeIndex: 0,
         };
     }
@@ -88,6 +92,7 @@ export function updateActiveSwipeContent(message: Message, content: string): Mes
                 ? {
                       ...swipe,
                       content,
+                      ...(status ? { status } : {}),
                   }
                 : swipe,
         ),

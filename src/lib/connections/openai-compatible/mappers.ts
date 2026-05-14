@@ -19,7 +19,7 @@ export function createChatCompletionBody(
     return {
         model: config.model.id,
         messages,
-        stream: false,
+        stream: request.stream === true,
     };
 }
 

@@ -15,6 +15,7 @@ export type AppPreferences = {
         enterToSend: boolean;
         autoScroll: boolean;
         defaultMode: ChatMode;
+        streaming: boolean;
     };
     layout: {
         characterPanelOpenByDefault: boolean;
@@ -32,6 +33,7 @@ export const defaultAppPreferences: AppPreferences = {
         enterToSend: true,
         autoScroll: true,
         defaultMode: "chat",
+        streaming: true,
     },
     layout: {
         characterPanelOpenByDefault: true,
@@ -72,6 +74,10 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             defaultMode: normalizeChatMode(
                 chat.defaultMode,
                 defaultAppPreferences.chat.defaultMode,
+            ),
+            streaming: booleanOrFallback(
+                chat.streaming,
+                defaultAppPreferences.chat.streaming,
             ),
         },
         layout: {

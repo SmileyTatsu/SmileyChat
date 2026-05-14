@@ -1,6 +1,6 @@
 # AI Providers & Connections
 
-SmileyChat uses a generalized "Connection Adapter" system to communicate with various AI backends. Currently, it focuses heavily on an **OpenAI-Compatible** adapter because most local and cloud LLM tools support this standard.
+SmileyChat uses a generalized "Connection Adapter" system to communicate with various AI backends. The built-in providers are **OpenAI-Compatible** for local and compatible APIs, and **OpenRouter** for OpenRouter-specific model routing.
 
 ## Supported Configurations
 
@@ -15,9 +15,28 @@ By using the **OpenAI-Compatible** provider connection, you can connect to:
 
 ### 2. Cloud AI APIs
 
-- **OpenRouter**: Set base URL to `https://openrouter.ai/api/v1` and provide your OpenRouter API key.
 - **Groq**: Set base URL to `https://api.groq.com/openai/v1` and provide your Groq API key.
 - **OpenAI**: Set base URL to `https://api.openai.com/v1`.
+
+### 3. OpenRouter
+
+Use the **OpenRouter** provider when you want OpenRouter's model catalog and routing controls instead of a generic compatible endpoint.
+
+The OpenRouter provider stores:
+
+- API key in `userData/settings/connection-secrets.json`.
+- Model selection in `userData/settings/connections.json`.
+- Provider routing preferences such as priority, fallbacks, data collection policy, ZDR, and provider order/allow/ignore lists.
+
+OpenRouter requests are sent directly from the frontend to `https://openrouter.ai/api/v1/chat/completions`. Model loading uses `https://openrouter.ai/api/v1/models`.
+
+SmileyChat sends fixed OpenRouter app attribution headers:
+
+- `HTTP-Referer`: `https://github.com/SmileyTatsu/SmileyChat`
+- `X-OpenRouter-Title`: `SmileyChat`
+- `X-OpenRouter-Categories`: `roleplay,creative-writing,general-chat`
+
+OpenAI-compatible and OpenRouter chat requests stream by default. Users can disable streaming globally in Options -> Settings; the preference is app-level, not per provider.
 
 ## Profile System
 

@@ -111,6 +111,7 @@ export function App() {
         mode,
         onChatChange: queueChatSave,
         persona,
+        preferences,
         presetCollection,
         userStatus,
     });
