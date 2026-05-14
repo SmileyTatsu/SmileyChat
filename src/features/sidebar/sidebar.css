@@ -18,29 +18,9 @@
     padding: 0;
 }
 
-.collapsed-rail-button {
-    display: grid;
-    place-items: center;
-    gap: 8px;
-    width: 100%;
-    min-height: 144px;
-    border: 0;
-    background: transparent;
-    color: #b9bfd0;
-    padding: 12px 0;
-}
-
-.collapsed-rail-button:hover,
 .collapsed-rail-settings:hover {
     background: #20232b;
     color: #ececf1;
-}
-
-.collapsed-rail-button span {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    font-size: 0.78rem;
-    text-transform: uppercase;
 }
 
 .collapsed-rail-settings {

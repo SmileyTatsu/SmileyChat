@@ -1,11 +1,11 @@
 import {
     AlertTriangle,
+    ChevronLeft,
+    ChevronRight,
     Download,
     FileInput,
     ImageOff,
     MessageSquare,
-    PanelLeftClose,
-    PanelLeftOpen,
     PencilLine,
     Plus,
     Settings,
@@ -258,13 +258,13 @@ export function Sidebar({
         return (
             <aside className="left-rail collapsed" aria-label="Chats and characters">
                 <button
-                    className="collapsed-rail-button"
+                    className="collapsed-panel-button"
                     type="button"
                     title="Show left sidebar"
                     aria-label="Show left sidebar"
                     onClick={() => onOpenChange(true)}
                 >
-                    <PanelLeftOpen size={18} />
+                    <ChevronRight size={18} />
                     <span>Sidebar</span>
                 </button>
                 <button
@@ -293,13 +293,13 @@ export function Sidebar({
                     </div>
                 </div>
                 <button
-                    className="rail-icon-button"
+                    className="icon-button"
                     type="button"
                     title="Hide left sidebar"
                     aria-label="Hide left sidebar"
                     onClick={() => onOpenChange(false)}
                 >
-                    <PanelLeftClose size={15} />
+                    <ChevronLeft size={18} />
                 </button>
             </div>
 
