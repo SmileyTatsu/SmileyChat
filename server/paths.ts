@@ -3,7 +3,12 @@ import { join, resolve } from "node:path";
 export const rootDir = resolve(import.meta.dir, "..");
 export const distDir = join(rootDir, "dist");
 export const userDataDir = join(rootDir, "userData");
-export const defaultCharacterSeedsDir = join(rootDir, "src", "data", "default-characters");
+export const defaultCharacterSeedsDir = join(
+    rootDir,
+    "src",
+    "data",
+    "default-characters",
+);
 
 export const connectionSettingsPath = join(userDataDir, "settings", "connections.json");
 export const connectionSecretsPath = join(

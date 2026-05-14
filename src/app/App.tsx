@@ -51,8 +51,7 @@ export function App() {
     const [presetCollection, setPresetCollection] = useState<PresetCollection>(
         defaultPresetCollection,
     );
-    const [preferences, setPreferences] =
-        useState<AppPreferences>(defaultAppPreferences);
+    const [preferences, setPreferences] = useState<AppPreferences>(defaultAppPreferences);
     const [connectionLoadError, setConnectionLoadError] = useState("");
     const [presetLoadError, setPresetLoadError] = useState("");
     const [preferencesLoadError, setPreferencesLoadError] = useState("");
@@ -301,7 +300,9 @@ export function App() {
                           characterInitialAvatar(character.data.name))
                         : undefined
                 }
-                characterName={hasCharacters ? character.data.name : "No character selected"}
+                characterName={
+                    hasCharacters ? character.data.name : "No character selected"
+                }
                 chatTitle={hasCharacters ? activeChatTitle : "No active chat"}
                 errorMessage={chatSession.chatError}
                 isSending={chatSession.isSending}

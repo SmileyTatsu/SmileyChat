@@ -14,8 +14,10 @@ SmileyChat's architecture separates the UI, the state orchestration, the text ge
 8. **Save**: The final message is appended to the chat, and the Bun server saves the JSON state to `userData/chats/`.
 
 ## The Connection Adapter
-Adapters are defined in `src/lib/connections/`. The goal is that the frontend UI should never know if it's talking to OpenAI, Anthropic, or a local model. 
+
+Adapters are defined in `src/lib/connections/`. The goal is that the frontend UI should never know if it's talking to OpenAI, Anthropic, or a local model.
 The adapter normalizes the generation request and returns a standardized response format.
 
 ## Plugins
+
 SmileyChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are executed securely as local ESM browser modules. For more information, see the [Plugins Docs](plugins/README.md).

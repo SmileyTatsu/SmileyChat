@@ -41,10 +41,7 @@ type SidebarProps = {
     onOpenSettings: () => void;
     onOpenPersonasSettings: () => void;
     onDeleteChat: (chatId: string) => void;
-    onDeleteCharacter: (
-        characterId: string,
-        options?: { deleteChats?: boolean },
-    ) => void;
+    onDeleteCharacter: (characterId: string, options?: { deleteChats?: boolean }) => void;
     onExportCharacter: (characterId: string, format: "json" | "png") => void;
     onRemoveCharacterAvatar: (characterId: string) => void;
     onRenameChat: (chatId: string, title: string) => void;
@@ -622,12 +619,14 @@ export function Sidebar({
                                   )}.`
                                 : `This deletes ${characterDeleteCandidate.name} from userData. This cannot be undone.`}
                         </p>
-                        {Boolean(chatCountsByCharacterId[characterDeleteCandidate.id]) && (
+                        {Boolean(
+                            chatCountsByCharacterId[characterDeleteCandidate.id],
+                        ) && (
                             <p>
-                                Keep chats to archive them under this character ID. If
-                                you import the character again later, SmileyChat will
-                                reconnect matching archived chats when it can restore
-                                the same ID.
+                                Keep chats to archive them under this character ID. If you
+                                import the character again later, SmileyChat will
+                                reconnect matching archived chats when it can restore the
+                                same ID.
                             </p>
                         )}
                         <div className="message-confirm-actions">

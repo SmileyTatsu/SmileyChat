@@ -20,9 +20,7 @@ export function GeneralSettings({
     saveStatus,
     onPreferencesChange,
 }: GeneralSettingsProps) {
-    function updateAppearance(
-        nextAppearance: Partial<AppPreferences["appearance"]>,
-    ) {
+    function updateAppearance(nextAppearance: Partial<AppPreferences["appearance"]>) {
         onPreferencesChange({
             ...preferences,
             appearance: {
@@ -102,9 +100,7 @@ export function GeneralSettings({
                 <ToggleRow
                     checked={preferences.appearance.showTimestamps}
                     label="Show timestamps"
-                    onChange={(showTimestamps) =>
-                        updateAppearance({ showTimestamps })
-                    }
+                    onChange={(showTimestamps) => updateAppearance({ showTimestamps })}
                 />
             </section>
 
@@ -178,8 +174,8 @@ export function GeneralSettings({
                         {preferences.appearance.showTimestamps && <time>10:24 PM</time>}
                     </strong>
                     <p>
-                        The room settles into quiet light while the next line waits in
-                        the composer.
+                        The room settles into quiet light while the next line waits in the
+                        composer.
                     </p>
                 </div>
             </section>

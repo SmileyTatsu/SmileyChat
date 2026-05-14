@@ -216,7 +216,9 @@ export async function deleteCharacterById(characterId: string) {
     const nextIndex = {
         version: 1 as const,
         activeCharacterId:
-            index.activeCharacterId === characterId ? entries[0].id : index.activeCharacterId,
+            index.activeCharacterId === characterId
+                ? entries[0].id
+                : index.activeCharacterId,
         characters: entries,
     };
 
@@ -279,10 +281,16 @@ async function repairCharacterIndex(index: CharacterIndex): Promise<CharacterInd
         entries.push(characterToIndexEntry(character, entry.basePath));
     }
 
-    if (!needsRebuild && entries.length === index.characters.length && entries.length > 0) {
+    if (
+        !needsRebuild &&
+        entries.length === index.characters.length &&
+        entries.length > 0
+    ) {
         const repairedIndex = {
             version: 1 as const,
-            activeCharacterId: entries.some((entry) => entry.id === index.activeCharacterId)
+            activeCharacterId: entries.some(
+                (entry) => entry.id === index.activeCharacterId,
+            )
                 ? index.activeCharacterId
                 : entries[0].id,
             characters: entries,
@@ -294,7 +302,9 @@ async function repairCharacterIndex(index: CharacterIndex): Promise<CharacterInd
     return rebuildCharacterIndex(index);
 }
 
-async function rebuildCharacterIndex(previousIndex?: CharacterIndex): Promise<CharacterIndex> {
+async function rebuildCharacterIndex(
+    previousIndex?: CharacterIndex,
+): Promise<CharacterIndex> {
     let discovered = await discoverCharacters();
 
     if (!previousIndex && discovered.length === 0) {
@@ -449,14 +459,21 @@ async function writeCharacterToLibrary(
     sourceCharacter: SmileyCharacter,
     existingBasePath?: string,
 ): Promise<StoredCharacter> {
-    const desiredBasePath = await uniqueBasePathForCharacter(sourceCharacter, existingBasePath);
+    const desiredBasePath = await uniqueBasePathForCharacter(
+        sourceCharacter,
+        existingBasePath,
+    );
     const existingDirectory =
         existingBasePath && existsSync(characterBaseDirectoryPath(existingBasePath))
             ? characterBaseDirectoryPath(existingBasePath)
             : "";
     const targetDirectory = characterBaseDirectoryPath(desiredBasePath);
 
-    if (existingDirectory && existingDirectory !== targetDirectory && !existsSync(targetDirectory)) {
+    if (
+        existingDirectory &&
+        existingDirectory !== targetDirectory &&
+        !existsSync(targetDirectory)
+    ) {
         await rename(existingDirectory, targetDirectory);
     } else {
         await mkdir(targetDirectory, { recursive: true });
@@ -564,7 +581,9 @@ function normalizeCharacterIndex(value: unknown): CharacterIndex {
 
         return {
             version: 1,
-            activeCharacterId: safeCharacters.some((entry) => entry.id === requestedActiveId)
+            activeCharacterId: safeCharacters.some(
+                (entry) => entry.id === requestedActiveId,
+            )
                 ? requestedActiveId
                 : (safeCharacters[0]?.id ?? ""),
             characters: safeCharacters,
@@ -599,7 +618,9 @@ function normalizeCharacterIndexEntry(value: unknown): CharacterIndexEntry | und
         name,
         tagline: typeof value.tagline === "string" ? value.tagline : "",
         basePath,
-        ...(isRecord(value.avatar) ? { avatar: value.avatar as SmileyCharacter["avatar"] } : {}),
+        ...(isRecord(value.avatar)
+            ? { avatar: value.avatar as SmileyCharacter["avatar"] }
+            : {}),
         ...(isRecord(value.importedFrom)
             ? { importedFrom: value.importedFrom as SmileyCharacter["importedFrom"] }
             : {}),

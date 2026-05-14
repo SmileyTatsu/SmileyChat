@@ -369,7 +369,9 @@ async function handleCharacterApi(request: Request, url: URL) {
         const result = await deleteCharacterById(characterId);
 
         const chatDeleteResult =
-            result && deleteChats ? await deleteChatsByCharacterId(characterId) : undefined;
+            result && deleteChats
+                ? await deleteChatsByCharacterId(characterId)
+                : undefined;
 
         if (result && deleteChats) {
             return json({

@@ -278,7 +278,10 @@ export function saveCharacterIndex(index: CharacterSummaryCollection) {
     );
 }
 
-export function deleteCharacter(characterId: string, options: { deleteChats?: boolean } = {}) {
+export function deleteCharacter(
+    characterId: string,
+    options: { deleteChats?: boolean } = {},
+) {
     const query = options.deleteChats ? "?deleteChats=true" : "";
 
     return requestJson<{

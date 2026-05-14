@@ -232,7 +232,9 @@ async function importCharacterFileFromUpload(
     const imageType = detectImageType(bytes);
 
     if (imageType !== "png") {
-        throw new BadRequestError("PNG character card file content is not a valid PNG image.");
+        throw new BadRequestError(
+            "PNG character card file content is not a valid PNG image.",
+        );
     }
 
     const raw = readPngCharacterJson(bytes);

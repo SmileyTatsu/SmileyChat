@@ -7,18 +7,18 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
 ## Directory Structure
 
 - `userData/characters/`: Contains your character library.
-  - `library/`: Each character is stored in a subfolder (e.g., `luna-f987e46f`) containing a `character.json` and its `avatar.png/jpg`. This avoids filename collisions.
-  - `imports/`: Drop `.png` or `.json` (Tavern/SillyTavern V1/V2/V3 format) files here. The backend will automatically normalize and import them on startup or when the import API is called.
-  - `index.json`: Maintains the list of active characters, their order, and summaries.
+    - `library/`: Each character is stored in a subfolder (e.g., `luna-f987e46f`) containing a `character.json` and its `avatar.png/jpg`. This avoids filename collisions.
+    - `imports/`: Drop `.png` or `.json` (Tavern/SillyTavern V1/V2/V3 format) files here. The backend will automatically normalize and import them on startup or when the import API is called.
+    - `index.json`: Maintains the list of active characters, their order, and summaries.
 - `userData/chats/`: Chat sessions are stored here as individual JSON files. The `index.json` tracks active chats per character.
-- `userData/personas/`: Your personas (user profiles). 
-  - `cards/`: JSON files for each persona.
-  - `assets/`: Avatar images for personas.
+- `userData/personas/`: Your personas (user profiles).
+    - `cards/`: JSON files for each persona.
+    - `assets/`: Avatar images for personas.
 - `userData/presets/`: Contains generation presets (context templates, macros).
 - `userData/settings/`: App configuration.
-  - `preferences.json`: Local UI preferences (dark mode, font size, etc.).
-  - `connections.json`: Provider URLs and generic model settings.
-  - `connection-secrets.json`: **API Keys**. This is kept strictly separated so it is never accidentally exported.
+    - `preferences.json`: Local UI preferences (dark mode, font size, etc.).
+    - `connections.json`: Provider URLs and generic model settings.
+    - `connection-secrets.json`: **API Keys**. This is kept strictly separated so it is never accidentally exported.
 - `userData/plugins/`: Folder for user-installed extension modules.
 
 ## File Formats

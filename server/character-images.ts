@@ -63,7 +63,8 @@ export async function writeAvatarAssetBytes(
     }
 
     const targetBasePath =
-        basePath || characterBasePath(characterFolderName(character.data.name, character.id));
+        basePath ||
+        characterBasePath(characterFolderName(character.data.name, character.id));
     const targetDirectory = characterBaseDirectoryPath(targetBasePath);
 
     await mkdir(targetDirectory, { recursive: true });

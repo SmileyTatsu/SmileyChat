@@ -24,20 +24,20 @@ The API shape is defined in `src/lib/plugins/types.ts`. Most runtime APIs requir
 
 These permissions are currently enforced:
 
-| API | Required permission |
-| --- | --- |
-| `api.state.getSnapshot`, `api.state.subscribe` | `state:read` |
-| `api.ui.registerSettingsPanel` | `ui:settings` |
-| `api.ui.registerMessageRenderer` | `ui:messages` |
-| `api.ui.registerMessageAction` | `ui:message-actions` |
-| `api.ui.registerComposerAction` | `ui:composer` |
-| `api.ui.addStyles` and manifest `styles` loading | `ui:styles` |
-| `api.chat.registerInputMiddleware` | `chat:input` |
-| `api.chat.registerPromptMiddleware` | `chat:prompt` |
-| `api.chat.registerOutputMiddleware` | `chat:output` |
-| `api.presets.registerMacro` | `presets:macros` |
-| `api.connections.registerProvider` | `connections:providers` |
-| `api.events.on`, `api.events.emit` | `events` |
+| API                                              | Required permission     |
+| ------------------------------------------------ | ----------------------- |
+| `api.state.getSnapshot`, `api.state.subscribe`   | `state:read`            |
+| `api.ui.registerSettingsPanel`                   | `ui:settings`           |
+| `api.ui.registerMessageRenderer`                 | `ui:messages`           |
+| `api.ui.registerMessageAction`                   | `ui:message-actions`    |
+| `api.ui.registerComposerAction`                  | `ui:composer`           |
+| `api.ui.addStyles` and manifest `styles` loading | `ui:styles`             |
+| `api.chat.registerInputMiddleware`               | `chat:input`            |
+| `api.chat.registerPromptMiddleware`              | `chat:prompt`           |
+| `api.chat.registerOutputMiddleware`              | `chat:output`           |
+| `api.presets.registerMacro`                      | `presets:macros`        |
+| `api.connections.registerProvider`               | `connections:providers` |
+| `api.events.on`, `api.events.emit`               | `events`                |
 
 `api.storage` is available to loaded plugins without a separate runtime permission, but `storage` is still a useful manifest label for user visibility.
 

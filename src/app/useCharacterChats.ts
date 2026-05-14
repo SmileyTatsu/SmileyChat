@@ -561,7 +561,10 @@ export function useCharacterChats({
         }
     }
 
-    async function deleteCharacter(characterId: string, options: { deleteChats?: boolean } = {}) {
+    async function deleteCharacter(
+        characterId: string,
+        options: { deleteChats?: boolean } = {},
+    ) {
         await flushPendingCharacterAutosaveWithoutStateUpdate();
         await flushPendingChatAutosaveWithoutStateUpdate();
 
