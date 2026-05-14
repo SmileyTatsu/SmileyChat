@@ -155,10 +155,7 @@ export function useChatSession({
                     onToken: streamingReply
                         ? (token) => {
                               streamedContent += token;
-                              updateMessageContent(
-                                  streamingReply.id,
-                                  streamedContent,
-                              );
+                              updateMessageContent(streamingReply.id, streamedContent);
                           }
                         : undefined,
                 },

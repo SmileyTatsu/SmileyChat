@@ -7,10 +7,7 @@ import type {
     OpenRouterSort,
 } from "./openrouter/types";
 
-export type ConnectionProviderId =
-    | "openai-compatible"
-    | "openrouter"
-    | (string & {});
+export type ConnectionProviderId = "openai-compatible" | "openrouter" | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
     id: string;
@@ -291,7 +288,7 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                 ? normalizeOpenAICompatibleConfig(profile.config)
                 : provider === "openrouter"
                   ? normalizeOpenRouterConfig(profile.config)
-                : normalizePluginConfig(profile.config),
+                  : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;
@@ -318,8 +315,7 @@ function normalizeOpenRouterProviderPreferences(
 ): OpenRouterProviderPreferences {
     const preferences = isRecord(value) ? value : {};
     const sort = normalizeOpenRouterSort(preferences.sort);
-    const dataCollection =
-        preferences.data_collection === "deny" ? "deny" : "allow";
+    const dataCollection = preferences.data_collection === "deny" ? "deny" : "allow";
 
     return {
         ...(sort ? { sort } : {}),

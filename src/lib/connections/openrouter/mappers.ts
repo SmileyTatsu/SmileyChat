@@ -109,7 +109,9 @@ export function formatOpenRouterSlugList(value: string[] | undefined) {
     return cleanSlugList(value).join(", ");
 }
 
-function toOpenRouterPromptMessage(message: ChatGenerationMessage): OpenRouterChatMessage {
+function toOpenRouterPromptMessage(
+    message: ChatGenerationMessage,
+): OpenRouterChatMessage {
     return {
         role: message.role === "developer" ? "system" : message.role,
         content: message.content,
@@ -140,11 +142,5 @@ function legacyMessages(request: ChatGenerationRequest): OpenRouterChatMessage[]
 }
 
 function cleanSlugList(value: string[] | undefined) {
-    return Array.from(
-        new Set(
-            (value ?? [])
-                .map((item) => item.trim())
-                .filter(Boolean),
-        ),
-    );
+    return Array.from(new Set((value ?? []).map((item) => item.trim()).filter(Boolean)));
 }

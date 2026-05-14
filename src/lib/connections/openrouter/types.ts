@@ -6,11 +6,10 @@ export type OpenRouterConnectionConfig = {
 
 export type OpenRouterRuntimeConfig = OpenRouterConnectionConfig;
 
-export type OpenRouterModelSelection =
-    {
-        source: "api";
-        id: string;
-    };
+export type OpenRouterModelSelection = {
+    source: "api";
+    id: string;
+};
 
 export type OpenRouterProviderPreferences = {
     sort?: OpenRouterSort;

@@ -238,7 +238,9 @@ export function ConnectionsSettings({
     async function loadModels() {
         if (isOpenRouterProfile(activeProfile)) {
             setRequestState("loading");
-            setStatusMessage("Loading models from GET https://openrouter.ai/api/v1/models");
+            setStatusMessage(
+                "Loading models from GET https://openrouter.ai/api/v1/models",
+            );
 
             try {
                 const nextModels = await listOpenRouterModels({
@@ -264,9 +266,7 @@ export function ConnectionsSettings({
                     });
                 }
 
-                setStatusMessage(
-                    `Loaded ${nextModels.length} OpenRouter model(s).`,
-                );
+                setStatusMessage(`Loaded ${nextModels.length} OpenRouter model(s).`);
                 setRequestState("success");
             } catch (error) {
                 setStatusMessage(messageFromError(error, "Unexpected connection error."));

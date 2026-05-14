@@ -231,9 +231,8 @@ export function OpenRouterConnection({
                             checked={preferences.zdr === true}
                             onInput={(event) =>
                                 updateProviderPreferences({
-                                    zdr: (
-                                        event.currentTarget as HTMLInputElement
-                                    ).checked,
+                                    zdr: (event.currentTarget as HTMLInputElement)
+                                        .checked,
                                 })
                             }
                         />
