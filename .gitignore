@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local app data
+# SmileyChat user data is created and edited by the local runtime.
+# Keep default/seed data in src/ or docs/, not in userData/.
+userData/**
+!userData/
+!userData/**/
+!userData/.gitkeep
+!userData/**/.gitkeep
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# Runtime caches
+.vite/
+.cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Misc
+
+## AI shenigans...
+AGENTS.md

@@ -1,0 +1,550 @@
+import { Copy, Plus, Trash2 } from "lucide-preact";
+import { useEffect, useState } from "preact/hooks";
+import { saveConnectionSecrets, saveConnectionSettings } from "../../../lib/api/client";
+import { messageFromError } from "../../../lib/common/errors";
+import {
+    createConnectionProfile,
+    extractConnectionSecrets,
+    getActiveConnectionProfile,
+    isOpenAICompatibleProfile,
+    sanitizeConnectionSecrets,
+    sanitizeConnectionSettings,
+    type ConnectionProfile,
+    type ConnectionSettings,
+} from "../../../lib/connections/config";
+import { trimTrailingSlash } from "../../../lib/connections/http";
+import { createOpenAICompatibleConnection } from "../../../lib/connections/openai-compatible/adapter";
+import { listOpenAICompatibleModels } from "../../../lib/connections/openai-compatible/models";
+import { createUserMessage } from "../../../lib/messages";
+import { defaultPersona } from "../../../lib/personas/defaults";
+import {
+    getPluginConnectionProvider,
+    getPluginConnectionProviders,
+    subscribeToPluginRegistry,
+} from "../../../lib/plugins/registry";
+import type { OpenAICompatibleModel } from "../../../lib/connections/openai-compatible/types";
+import { OpenAICompatibleConnection } from "./providers/OpenAICompatibleConnection";
+
+type RequestState = "idle" | "loading" | "success" | "error";
+
+type ConnectionsSettingsProps = {
+    loadError?: string;
+    settings: ConnectionSettings;
+    onSettingsChange: (settings: ConnectionSettings) => void;
+};
+
+export function ConnectionsSettings({
+    loadError,
+    settings,
+    onSettingsChange,
+}: ConnectionsSettingsProps) {
+    const [modelsByProfileId, setModelsByProfileId] = useState<
+        Record<string, OpenAICompatibleModel[]>
+    >({});
+    const [requestState, setRequestState] = useState<RequestState>("idle");
+    const [statusMessage, setStatusMessage] = useState("");
+    const [, setRegistryRevision] = useState(0);
+
+    const activeProfile = getActiveConnectionProfile(settings);
+    const isBusy = requestState === "loading";
+    const activeModels = activeProfile ? (modelsByProfileId[activeProfile.id] ?? []) : [];
+    const pluginProviders = getPluginConnectionProviders();
+    const activePluginProvider = activeProfile
+        ? getPluginConnectionProvider(activeProfile.provider)
+        : undefined;
+
+    useEffect(() => {
+        if (loadError) {
+            setStatusMessage(loadError);
+            setRequestState("error");
+        }
+    }, [loadError]);
+
+    useEffect(
+        () =>
+            subscribeToPluginRegistry(() =>
+                setRegistryRevision((revision) => revision + 1),
+            ),
+        [],
+    );
+
+    useEffect(() => {
+        if (!activeProfile) {
+            return;
+        }
+
+        setModelsByProfileId((current) => ({
+            ...current,
+            [activeProfile.id]: [],
+        }));
+    }, [
+        activeProfile?.id,
+        isOpenAICompatibleProfile(activeProfile)
+            ? activeProfile.config.baseUrl
+            : undefined,
+        isOpenAICompatibleProfile(activeProfile)
+            ? activeProfile.config.apiKey
+            : undefined,
+        isOpenAICompatibleProfile(activeProfile)
+            ? activeProfile.config.model.source
+            : undefined,
+    ]);
+
+    async function saveSettings(nextSettings = settings) {
+        setRequestState("loading");
+
+        try {
+            const safeSettings = sanitizeConnectionSettings(nextSettings);
+            const secrets = extractConnectionSecrets(nextSettings);
+            await saveConnectionSettings(safeSettings);
+            await saveConnectionSecrets(secrets);
+
+            setStatusMessage("Connection profiles saved.");
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Unexpected connection error."));
+            setRequestState("error");
+        }
+    }
+
+    async function clearApiKey() {
+        if (!activeProfile) {
+            return;
+        }
+
+        setRequestState("loading");
+
+        try {
+            const nextSettings = updateProfileConfig(settings, activeProfile.id, {
+                ...activeProfile.config,
+                apiKey: undefined,
+            });
+            onSettingsChange(nextSettings);
+
+            const nextSecrets = extractConnectionSecrets(nextSettings);
+            await saveConnectionSecrets(sanitizeConnectionSecrets(nextSecrets));
+
+            setStatusMessage(`API key removed from ${activeProfile.name}.`);
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Unexpected connection error."));
+            setRequestState("error");
+        }
+    }
+
+    async function testConnection() {
+        if (!activeProfile) {
+            return;
+        }
+
+        if (!isOpenAICompatibleProfile(activeProfile)) {
+            if (!activePluginProvider?.testConnection) {
+                setStatusMessage(
+                    `${activeProfile.name} does not provide a connection test.`,
+                );
+                setRequestState("error");
+                return;
+            }
+
+            setRequestState("loading");
+
+            try {
+                setStatusMessage(
+                    await activePluginProvider.testConnection(activeProfile),
+                );
+                setRequestState("success");
+            } catch (error) {
+                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setRequestState("error");
+            }
+
+            return;
+        }
+
+        setRequestState("loading");
+        setStatusMessage(
+            `Testing POST ${trimTrailingSlash(activeProfile.config.baseUrl)}/chat/completions`,
+        );
+
+        try {
+            const adapter = createOpenAICompatibleConnection({
+                ...activeProfile.config,
+                apiKey: activeProfile.config.apiKey?.trim() || undefined,
+            });
+            const result = await adapter.generate({
+                context: "Reply briefly to confirm the connection works.",
+                messages: [createUserMessage("hello", defaultPersona)],
+            });
+
+            setStatusMessage(
+                `Connection test succeeded via ${trimTrailingSlash(activeProfile.config.baseUrl)}/chat/completions: ${result.message}`,
+            );
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Unexpected connection error."));
+            setRequestState("error");
+        }
+    }
+
+    async function loadModels() {
+        if (!isOpenAICompatibleProfile(activeProfile)) {
+            return;
+        }
+
+        setRequestState("loading");
+        setStatusMessage(
+            `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
+        );
+
+        try {
+            const nextModels = await listOpenAICompatibleModels({
+                apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                baseUrl: activeProfile.config.baseUrl,
+            });
+
+            setModelsByProfileId((current) => ({
+                ...current,
+                [activeProfile.id]: nextModels,
+            }));
+
+            if (
+                activeProfile.config.model.source === "api" &&
+                !activeProfile.config.model.id &&
+                nextModels[0]
+            ) {
+                updateActiveProfileConfig({
+                    ...activeProfile.config,
+                    model: {
+                        source: "api",
+                        id: nextModels[0].id,
+                    },
+                });
+            }
+
+            setStatusMessage(
+                `Loaded ${nextModels.length} model(s) from ${trimTrailingSlash(activeProfile.config.baseUrl)}/models.`,
+            );
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Unexpected connection error."));
+            setRequestState("error");
+        }
+    }
+
+    function updateActiveProfileConfig(nextConfig: Record<string, unknown>) {
+        if (!activeProfile) {
+            return;
+        }
+
+        onSettingsChange(updateProfileConfig(settings, activeProfile.id, nextConfig));
+    }
+
+    function updateActiveProfileName(name: string) {
+        if (!activeProfile) {
+            return;
+        }
+
+        onSettingsChange(updateProfile(settings, activeProfile.id, { name }));
+    }
+
+    function addProfile() {
+        const profile = createConnectionProfile(
+            "openai-compatible",
+            `OpenAI compatible ${settings.profiles.length + 1}`,
+        );
+        const nextSettings = {
+            ...settings,
+            activeProfileId: profile.id,
+            profiles: [...settings.profiles, profile],
+        };
+
+        onSettingsChange(nextSettings);
+        setStatusMessage("Created connection profile.");
+        setRequestState("success");
+    }
+
+    function addPluginProfile(providerId: string) {
+        const provider = getPluginConnectionProvider(providerId);
+
+        if (!provider) {
+            return;
+        }
+
+        const profile = createConnectionProfile(
+            provider.id,
+            provider.label,
+            provider.defaultConfig,
+        );
+        const nextSettings = {
+            ...settings,
+            activeProfileId: profile.id,
+            profiles: [...settings.profiles, profile],
+        };
+
+        onSettingsChange(nextSettings);
+        setStatusMessage(`Created ${provider.label} profile.`);
+        setRequestState("success");
+    }
+
+    function changeActiveProvider(providerId: string) {
+        if (!activeProfile || activeProfile.provider === providerId) {
+            return;
+        }
+
+        const provider = getPluginConnectionProvider(providerId);
+        const config =
+            providerId === "openai-compatible"
+                ? undefined
+                : (provider?.defaultConfig ?? {});
+        const nextProfile = createConnectionProfile(
+            providerId,
+            provider?.label ?? "OpenAI compatible",
+            config,
+        );
+
+        onSettingsChange(
+            updateProfile(settings, activeProfile.id, {
+                provider: nextProfile.provider,
+                config: nextProfile.config,
+            }),
+        );
+        setStatusMessage("Changed provider. Save to keep this profile.");
+        setRequestState("success");
+    }
+
+    function duplicateProfile() {
+        if (!activeProfile) {
+            return;
+        }
+
+        const now = new Date().toISOString();
+        const profile = {
+            ...createConnectionProfile(
+                activeProfile.provider,
+                `${activeProfile.name} Copy`,
+            ),
+            config: {
+                ...activeProfile.config,
+                apiKey: undefined,
+            },
+            createdAt: now,
+            updatedAt: now,
+        };
+        const nextSettings = {
+            ...settings,
+            activeProfileId: profile.id,
+            profiles: [...settings.profiles, profile],
+        };
+
+        onSettingsChange(nextSettings);
+        setStatusMessage("Duplicated connection profile without copying its API key.");
+        setRequestState("success");
+    }
+
+    function deleteProfile() {
+        if (!activeProfile || settings.profiles.length <= 1) {
+            return;
+        }
+
+        const profiles = settings.profiles.filter(
+            (profile) => profile.id !== activeProfile.id,
+        );
+        const nextSettings = {
+            ...settings,
+            activeProfileId: profiles[0].id,
+            profiles,
+        };
+
+        onSettingsChange(nextSettings);
+        setModelsByProfileId((current) => {
+            const next = { ...current };
+            delete next[activeProfile.id];
+            return next;
+        });
+        setStatusMessage("Deleted connection profile. Save to remove it from disk.");
+        setRequestState("success");
+    }
+
+    return (
+        <section className="tool-window">
+            <h2>Connections</h2>
+
+            <div className="connection-profile-toolbar">
+                <label>
+                    Profile
+                    <select
+                        value={settings.activeProfileId}
+                        onInput={(event) =>
+                            onSettingsChange({
+                                ...settings,
+                                activeProfileId: (
+                                    event.currentTarget as HTMLSelectElement
+                                ).value,
+                            })
+                        }
+                    >
+                        {settings.profiles.map((profile) => (
+                            <option key={profile.id} value={profile.id}>
+                                {profile.name}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <div className="button-row">
+                    <button type="button" disabled={isBusy} onClick={addProfile}>
+                        <Plus size={16} />
+                        New
+                    </button>
+                    <button
+                        type="button"
+                        disabled={isBusy || !activeProfile}
+                        onClick={duplicateProfile}
+                    >
+                        <Copy size={16} />
+                        Duplicate
+                    </button>
+                    <button
+                        className="danger-button"
+                        type="button"
+                        disabled={isBusy || settings.profiles.length <= 1}
+                        onClick={deleteProfile}
+                    >
+                        <Trash2 size={16} />
+                        Delete
+                    </button>
+                </div>
+            </div>
+
+            {activeProfile && (
+                <>
+                    <div className="connection-profile-fields">
+                        <label>
+                            Profile name
+                            <input
+                                value={activeProfile.name}
+                                onInput={(event) =>
+                                    updateActiveProfileName(
+                                        (event.currentTarget as HTMLInputElement).value,
+                                    )
+                                }
+                            />
+                        </label>
+                        <label>
+                            Provider
+                            <select
+                                value={activeProfile.provider}
+                                disabled={isBusy}
+                                onInput={(event) =>
+                                    changeActiveProvider(
+                                        (event.currentTarget as HTMLSelectElement).value,
+                                    )
+                                }
+                            >
+                                <option value="openai-compatible">
+                                    OpenAI compatible
+                                </option>
+                                {pluginProviders.map((provider) => (
+                                    <option key={provider.id} value={provider.id}>
+                                        {provider.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    </div>
+
+                    {isOpenAICompatibleProfile(activeProfile) ? (
+                        <OpenAICompatibleConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            models={activeModels}
+                            onChange={(config) => updateActiveProfileConfig(config)}
+                            onClearApiKey={clearApiKey}
+                            onLoadModels={loadModels}
+                            onSave={() => void saveSettings()}
+                            onTest={testConnection}
+                        />
+                    ) : activePluginProvider?.renderSettings ? (
+                        activePluginProvider.renderSettings({
+                            profile: activeProfile,
+                            disabled: isBusy,
+                            onChange: updateActiveProfileConfig,
+                            onSave: () => void saveSettings(),
+                            onTest: testConnection,
+                        })
+                    ) : (
+                        <div className="connection-card">
+                            <p>
+                                {activePluginProvider
+                                    ? `${activePluginProvider.label} is registered by a plugin, but it does not provide a settings panel.`
+                                    : "This plugin provider is not currently loaded."}
+                            </p>
+                            <div className="button-row">
+                                <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => void saveSettings()}
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => void testConnection()}
+                                >
+                                    Test connection
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {pluginProviders.length > 0 && (
+                <div className="button-row">
+                    {pluginProviders.map((provider) => (
+                        <button
+                            key={provider.id}
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => addPluginProfile(provider.id)}
+                        >
+                            <Plus size={16} />
+                            {provider.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {statusMessage && (
+                <p className={`connection-status ${requestState}`}>{statusMessage}</p>
+            )}
+        </section>
+    );
+}
+
+function updateProfile(
+    settings: ConnectionSettings,
+    profileId: string,
+    patch: Partial<ConnectionProfile>,
+): ConnectionSettings {
+    return {
+        ...settings,
+        profiles: settings.profiles.map((profile) =>
+            profile.id === profileId
+                ? {
+                      ...profile,
+                      ...patch,
+                      updatedAt: new Date().toISOString(),
+                  }
+                : profile,
+        ),
+    };
+}
+
+function updateProfileConfig(
+    settings: ConnectionSettings,
+    profileId: string,
+    config: Record<string, unknown>,
+): ConnectionSettings {
+    return updateProfile(settings, profileId, { config });
+}

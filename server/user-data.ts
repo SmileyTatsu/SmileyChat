@@ -1,0 +1,40 @@
+import { existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import {
+    characterImportsDir,
+    characterLibraryDir,
+    chatOrphanedDir,
+    chatSessionsDir,
+    personaCardsDir,
+    personaAssetsDir,
+    personaOrphanedDir,
+    pluginsDir,
+    userDataDir,
+} from "./paths";
+
+export function ensureUserData() {
+    const folders = ["characters", "chats", "personas", "presets", "settings", "plugins"];
+
+    for (const folder of folders) {
+        const target = join(userDataDir, folder);
+
+        if (!existsSync(target)) {
+            mkdirSync(target, { recursive: true });
+        }
+    }
+
+    for (const folder of [
+        characterImportsDir,
+        characterLibraryDir,
+        chatSessionsDir,
+        chatOrphanedDir,
+        personaCardsDir,
+        personaAssetsDir,
+        personaOrphanedDir,
+        pluginsDir,
+    ]) {
+        if (!existsSync(folder)) {
+            mkdirSync(folder, { recursive: true });
+        }
+    }
+}
