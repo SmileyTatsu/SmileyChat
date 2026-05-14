@@ -26,6 +26,7 @@ SmileyChat is a local-first frontend application for chatting, roleplay, and sto
     ```
 3. Start the application:
     - On Windows: Run `SmileyChat.cmd` to automatically build and start the server.
+    - On Windows, update first: Run `SmileyChat.UpdateStart.cmd` to pull the latest Git changes, install dependencies, build, and start the server.
     - Manually:
         ```bash
         bun run build
