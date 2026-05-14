@@ -6,11 +6,6 @@ export function chatFilePath(chatId: string) {
     return join(chatSessionsDir, `${safeFileStem(chatId)}.json`);
 }
 
-export function chatIdFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/chats\/([^/]+)$/);
-    return match ? decodeURIComponent(match[1]) : "";
-}
-
 export function safeFileStem(value: string) {
     return safeEntityFileStem(value, "chat");
 }

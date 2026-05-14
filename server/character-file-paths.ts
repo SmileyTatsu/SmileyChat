@@ -39,39 +39,6 @@ export function characterFolderName(name: string, characterId: string) {
     return `${slug}-${shortCharacterId(characterId)}`;
 }
 
-export function characterIdFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/characters\/([^/]+)$/);
-
-    if (!match) {
-        return "";
-    }
-
-    return decodeURIComponent(match[1]);
-}
-
-export function characterAvatarIdFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/characters\/([^/]+)\/avatar$/);
-
-    if (!match) {
-        return "";
-    }
-
-    return decodeURIComponent(match[1]);
-}
-
-export function characterExportFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/characters\/([^/]+)\/export\.(json|png)$/);
-
-    if (!match) {
-        return undefined;
-    }
-
-    return {
-        characterId: decodeURIComponent(match[1]),
-        format: match[2] as "json" | "png",
-    };
-}
-
 export function safeFileStem(value: string) {
     return value.replace(/[^a-zA-Z0-9_.-]/g, "_") || "character";
 }

@@ -187,31 +187,6 @@ export async function deletePluginStorage(pluginId: string, key: string) {
     return json({ ok: true });
 }
 
-export function pluginStorageTargetFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/plugins\/([^/]+)\/storage\/([^/]+)$/);
-
-    if (!match) {
-        return undefined;
-    }
-
-    return {
-        pluginId: decodeURIComponent(match[1]),
-        key: decodeURIComponent(match[2]),
-    };
-}
-
-export function pluginSettingsTargetFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/plugins\/([^/]+)$/);
-
-    if (!match) {
-        return undefined;
-    }
-
-    return {
-        pluginId: decodeURIComponent(match[1]),
-    };
-}
-
 async function findPluginById(pluginId: string) {
     if (corePluginIds.has(pluginId)) {
         return {

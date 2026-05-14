@@ -7,16 +7,6 @@ export function personaFilePath(personaId: string) {
     return join(personaCardsDir, `${personaId}.json`);
 }
 
-export function personaIdFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/personas\/([^/]+)$/);
-    return match ? decodeURIComponent(match[1]) : "";
-}
-
-export function personaAvatarIdFromPath(pathname: string) {
-    const match = pathname.match(/^\/api\/personas\/([^/]+)\/avatar$/);
-    return match ? decodeURIComponent(match[1]) : "";
-}
-
 export function safeFileStem(value: string) {
     return value.replace(/[^a-zA-Z0-9_.-]/g, "_") || "persona";
 }

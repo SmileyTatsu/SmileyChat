@@ -1,7 +1,6 @@
 import { HttpError, json, parsePort, readJsonBody } from "./http";
 import { userDataDir } from "./paths";
 import { serveStatic } from "./static";
-import { chatIdFromPath } from "./chat-file-paths";
 import {
     createChat,
     deleteChatById,
@@ -12,9 +11,6 @@ import {
     writeChatById,
 } from "./chat-store";
 import {
-    characterAvatarIdFromPath,
-    characterExportFromPath,
-    characterIdFromPath,
     createCharacter,
     deleteCharacterById,
     exportCharacterCard,
@@ -46,20 +42,31 @@ import {
     updatePersonaIndex,
     writePersonaById,
 } from "./persona-store";
-import { personaAvatarIdFromPath, personaIdFromPath } from "./persona-file-paths";
 import { writePersonaAvatar } from "./persona-avatar";
 import { servePersonaAsset } from "./persona-images";
 import { ensureUserData } from "./user-data";
 import {
     deletePluginStorage,
-    pluginSettingsTargetFromPath,
-    pluginStorageTargetFromPath,
     readPluginManifests,
     readPluginStorage,
     servePluginAsset,
     updatePluginEnabled,
     writePluginStorage,
 } from "./plugins";
+
+type RouteRequest<Params extends Record<string, string> = Record<string, string>> =
+    Request & {
+        params: Params;
+    };
+
+type RouteServer = {
+    timeout(request: Request, seconds: number): void;
+};
+
+type ApiHandler<Params extends Record<string, string> = Record<string, string>> = (
+    request: RouteRequest<Params>,
+    server: RouteServer,
+) => Response | Promise<Response>;
 
 const port = parsePort(process.env.SMILEYCHAT_PORT);
 
@@ -69,12 +76,284 @@ await importDroppedCharacterFiles();
 const server = Bun.serve({
     hostname: "127.0.0.1",
     port,
+    routes: {
+        "/api/health": {
+            GET: api(() => json({ ok: true, userDataDir })),
+        },
+
+        "/api/plugins": {
+            GET: api(async () => json({ plugins: await readPluginManifests() })),
+        },
+
+        "/api/plugins/:pluginId": {
+            PUT: api<{ pluginId: string }>(async (request) => {
+                const body = await readJsonBody(request);
+                const enabled =
+                    body && typeof body === "object" && "enabled" in body
+                        ? body.enabled
+                        : undefined;
+
+                return updatePluginEnabled(request.params.pluginId, enabled);
+            }),
+        },
+
+        "/api/plugins/:pluginId/storage/:key": {
+            GET: api<{ pluginId: string; key: string }>((request) =>
+                readPluginStorage(request.params.pluginId, request.params.key),
+            ),
+            PUT: api<{ pluginId: string; key: string }>(async (request) =>
+                writePluginStorage(
+                    request.params.pluginId,
+                    request.params.key,
+                    await readJsonBody(request),
+                ),
+            ),
+            DELETE: api<{ pluginId: string; key: string }>((request) =>
+                deletePluginStorage(request.params.pluginId, request.params.key),
+            ),
+        },
+
+        "/api/connections": {
+            GET: api(async () => json(await readConnectionSettings())),
+            PUT: api(async (request) => {
+                const settings = await writeConnectionSettings(await readJsonBody(request));
+                return json({ ok: true, settings });
+            }),
+        },
+
+        "/api/connections/secrets": {
+            GET: api(async () => json(await readConnectionSecrets())),
+            PUT: api(async (request) => {
+                const secrets = await writeConnectionSecrets(await readJsonBody(request));
+                return json({ ok: true, secrets });
+            }),
+        },
+
+        "/api/presets": {
+            GET: api(async () => json(await readPresetCollection())),
+            PUT: api(async (request) => {
+                const presets = await writePresetCollection(await readJsonBody(request));
+                return json({ ok: true, presets });
+            }),
+        },
+
+        "/api/preferences": {
+            GET: api(async () => json(await readAppPreferences())),
+            PUT: api(async (request) => {
+                const preferences = await writeAppPreferences(await readJsonBody(request));
+                return json({ ok: true, preferences });
+            }),
+        },
+
+        "/api/chats": {
+            GET: api(async () => json(await readChatSummaryCollection())),
+            POST: api(async (request) => {
+                const result = await createChat(await readJsonBody(request));
+                return json({ ok: true, ...result });
+            }),
+        },
+
+        "/api/chats/index": {
+            PUT: api(async (request) => {
+                const index = await updateChatIndex(await readJsonBody(request));
+                return json({ ok: true, index, chats: await readChatSummaryCollection() });
+            }),
+        },
+
+        "/api/chats/:chatId": {
+            GET: api<{ chatId: string }>(async (request) => {
+                const chat = await readChatById(request.params.chatId);
+                return chat ? json(chat) : json({ error: "Chat not found." }, 404);
+            }),
+            PUT: api<{ chatId: string }>(async (request) => {
+                const chat = await writeChatById(
+                    request.params.chatId,
+                    await readJsonBody(request),
+                );
+                return json({
+                    ok: true,
+                    chat,
+                    chats: await readChatSummaryCollection(),
+                });
+            }),
+            DELETE: api<{ chatId: string }>(async (request) => {
+                const result = await deleteChatById(request.params.chatId);
+                return result
+                    ? json({ ok: true, ...result })
+                    : json({ error: "Chat not found." }, 404);
+            }),
+        },
+
+        "/api/personas": {
+            GET: api(async () => json(await readPersonaSummaryCollection())),
+            POST: api(async (request) => {
+                const result = await createPersona(await readJsonBody(request));
+                return json({ ok: true, ...result });
+            }),
+        },
+
+        "/api/personas/index": {
+            PUT: api(async (request) => {
+                const index = await updatePersonaIndex(await readJsonBody(request));
+                return json({
+                    ok: true,
+                    index,
+                    personas: await readPersonaSummaryCollection(),
+                });
+            }),
+        },
+
+        "/api/personas/assets/:file": {
+            GET: api((request) => servePersonaAsset(new URL(request.url))),
+        },
+
+        "/api/personas/:personaId/avatar": {
+            POST: api<{ personaId: string }>((request, routeServer) => {
+                routeServer.timeout(request, 60);
+                return writePersonaAvatar(request.params.personaId, request).then(
+                    (result) => json({ ok: true, ...result }),
+                );
+            }),
+        },
+
+        "/api/personas/:personaId": {
+            GET: api<{ personaId: string }>(async (request) => {
+                const persona = await readPersonaById(request.params.personaId);
+                return persona
+                    ? json(persona)
+                    : json({ error: "Persona not found." }, 404);
+            }),
+            PUT: api<{ personaId: string }>(async (request) => {
+                const persona = await writePersonaById(
+                    request.params.personaId,
+                    await readJsonBody(request),
+                );
+                return json({
+                    ok: true,
+                    persona,
+                    personas: await readPersonaSummaryCollection(),
+                });
+            }),
+            DELETE: api<{ personaId: string }>(async (request) => {
+                const result = await deletePersonaById(request.params.personaId);
+                return result
+                    ? json({ ok: true, ...result })
+                    : json({ error: "Persona not found." }, 404);
+            }),
+        },
+
+        "/api/characters": {
+            GET: api(async () => json(await readCharacterSummaryCollection())),
+            POST: api(async (request) => {
+                const result = await createCharacter(await readJsonBody(request));
+                return json({ ok: true, ...result });
+            }),
+        },
+
+        "/api/characters/index": {
+            PUT: api(async (request) => {
+                const index = await updateCharacterIndex(await readJsonBody(request));
+                return json({
+                    ok: true,
+                    index,
+                    characters: await readCharacterSummaryCollection(),
+                });
+            }),
+        },
+
+        "/api/characters/import-dropped": {
+            POST: api((request, routeServer) => {
+                routeServer.timeout(request, 60);
+                return importDroppedCharacterFiles().then((result) => json(result));
+            }),
+        },
+
+        "/api/characters/import": {
+            POST: api((request, routeServer) => {
+                routeServer.timeout(request, 60);
+                return importUploadedCharacterFiles(request).then((result) =>
+                    json(result),
+                );
+            }),
+        },
+
+        "/api/characters/:characterId/avatar": {
+            GET: api<{ characterId: string }>(async (request) => {
+                const character = await readCharacterById(request.params.characterId);
+                return character
+                    ? serveCharacterAvatar(character)
+                    : json({ error: "Character not found." }, 404);
+            }),
+            POST: api<{ characterId: string }>((request, routeServer) => {
+                routeServer.timeout(request, 60);
+                return writeCharacterAvatar(request.params.characterId, request).then(
+                    (result) => json({ ok: true, ...result }),
+                );
+            }),
+        },
+
+        "/api/characters/:characterId/export.json": {
+            GET: api<{ characterId: string }>((request) =>
+                exportCharacterCard(request.params.characterId, "json"),
+            ),
+        },
+
+        "/api/characters/:characterId/export.png": {
+            GET: api<{ characterId: string }>((request, routeServer) => {
+                routeServer.timeout(request, 60);
+                return exportCharacterCard(request.params.characterId, "png");
+            }),
+        },
+
+        "/api/characters/:characterId": {
+            GET: api<{ characterId: string }>(async (request) => {
+                const character = await readCharacterById(request.params.characterId);
+                return character
+                    ? json(character)
+                    : json({ error: "Character not found." }, 404);
+            }),
+            PUT: api<{ characterId: string }>(async (request) => {
+                const character = await writeCharacterById(
+                    request.params.characterId,
+                    await readJsonBody(request),
+                );
+                return json({
+                    ok: true,
+                    character,
+                    summary: characterToSummary(character),
+                    characters: await readCharacterSummaryCollection(),
+                });
+            }),
+            DELETE: api<{ characterId: string }>(async (request) => {
+                const url = new URL(request.url);
+                const deleteChats = url.searchParams.get("deleteChats") === "true";
+                const result = await deleteCharacterById(request.params.characterId);
+
+                const chatDeleteResult =
+                    result && deleteChats
+                        ? await deleteChatsByCharacterId(request.params.characterId)
+                        : undefined;
+
+                if (result && deleteChats) {
+                    return json({
+                        ok: true,
+                        ...result,
+                        chats:
+                            chatDeleteResult?.chats ??
+                            (await readChatSummaryCollection()),
+                    });
+                }
+
+                return result
+                    ? json({ ok: true, ...result })
+                    : json({ error: "Character not found." }, 404);
+            }),
+        },
+
+        "/api/*": json({ error: "Not found." }, 404),
+    },
     async fetch(request) {
         const url = new URL(request.url);
-
-        if (url.pathname.startsWith("/api/")) {
-            return handleApi(request, url);
-        }
 
         if (url.pathname.startsWith("/plugins/")) {
             return servePluginAsset(url);
@@ -84,309 +363,52 @@ const server = Bun.serve({
     },
 });
 
-console.log(`SmileyChat running at http://${server.hostname}:${server.port}`);
+console.log(`SmileyChat running at ${server.url}`);
 
-async function handleApi(request: Request, url: URL) {
-    try {
-        return (
-            (await handleCoreApi(request, url)) ??
-            (await handlePluginApi(request, url)) ??
-            (await handleSettingsApi(request, url)) ??
-            (await handleChatApi(request, url)) ??
-            (await handlePersonaApi(request, url)) ??
-            (await handleCharacterApi(request, url)) ??
-            json({ error: "Not found." }, 404)
-        );
-    } catch (error) {
-        return apiErrorResponse(error);
-    }
-}
-
-async function handleCoreApi(request: Request, url: URL) {
-    if (request.method === "GET" && url.pathname === "/api/health") {
-        return json({ ok: true, userDataDir });
-    }
-
-    return undefined;
-}
-
-async function handlePluginApi(request: Request, url: URL) {
-    if (request.method === "GET" && url.pathname === "/api/plugins") {
-        return json({ plugins: await readPluginManifests() });
-    }
-
-    const pluginSettingsTarget = pluginSettingsTargetFromPath(url.pathname);
-
-    if (pluginSettingsTarget && request.method === "PUT") {
-        const body = await readJsonBody(request);
-        const enabled =
-            body && typeof body === "object" && "enabled" in body
-                ? body.enabled
-                : undefined;
-
-        return updatePluginEnabled(pluginSettingsTarget.pluginId, enabled);
-    }
-
-    const pluginStorageTarget = pluginStorageTargetFromPath(url.pathname);
-
-    if (!pluginStorageTarget) {
-        return undefined;
-    }
-
-    if (request.method === "GET") {
-        return readPluginStorage(pluginStorageTarget.pluginId, pluginStorageTarget.key);
-    }
-
-    if (request.method === "PUT") {
-        return writePluginStorage(
-            pluginStorageTarget.pluginId,
-            pluginStorageTarget.key,
-            await readJsonBody(request),
-        );
-    }
-
-    if (request.method === "DELETE") {
-        return deletePluginStorage(pluginStorageTarget.pluginId, pluginStorageTarget.key);
-    }
-
-    return undefined;
-}
-
-async function handleSettingsApi(request: Request, url: URL) {
-    if (request.method === "GET" && url.pathname === "/api/connections") {
-        return json(await readConnectionSettings());
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/connections") {
-        const settings = await writeConnectionSettings(await readJsonBody(request));
-        return json({ ok: true, settings });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/connections/secrets") {
-        return json(await readConnectionSecrets());
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/connections/secrets") {
-        const secrets = await writeConnectionSecrets(await readJsonBody(request));
-        return json({ ok: true, secrets });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/presets") {
-        return json(await readPresetCollection());
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/presets") {
-        const presets = await writePresetCollection(await readJsonBody(request));
-        return json({ ok: true, presets });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/preferences") {
-        return json(await readAppPreferences());
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/preferences") {
-        const preferences = await writeAppPreferences(await readJsonBody(request));
-        return json({ ok: true, preferences });
-    }
-
-    return undefined;
-}
-
-async function handleChatApi(request: Request, url: URL) {
-    if (request.method === "GET" && url.pathname === "/api/chats") {
-        return json(await readChatSummaryCollection());
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/chats") {
-        const result = await createChat(await readJsonBody(request));
-        return json({ ok: true, ...result });
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/chats/index") {
-        const index = await updateChatIndex(await readJsonBody(request));
-        return json({ ok: true, index, chats: await readChatSummaryCollection() });
-    }
-
-    const chatId = chatIdFromPath(url.pathname);
-
-    if (!chatId) {
-        return undefined;
-    }
-
-    if (request.method === "GET") {
-        const chat = await readChatById(chatId);
-        return chat ? json(chat) : json({ error: "Chat not found." }, 404);
-    }
-
-    if (request.method === "PUT") {
-        const chat = await writeChatById(chatId, await readJsonBody(request));
-        return json({
-            ok: true,
-            chat,
-            chats: await readChatSummaryCollection(),
-        });
-    }
-
-    if (request.method === "DELETE") {
-        const result = await deleteChatById(chatId);
-        return result
-            ? json({ ok: true, ...result })
-            : json({ error: "Chat not found." }, 404);
-    }
-
-    return undefined;
-}
-
-async function handlePersonaApi(request: Request, url: URL) {
-    if (request.method === "GET" && url.pathname === "/api/personas") {
-        return json(await readPersonaSummaryCollection());
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/personas") {
-        const result = await createPersona(await readJsonBody(request));
-        return json({ ok: true, ...result });
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/personas/index") {
-        const index = await updatePersonaIndex(await readJsonBody(request));
-        return json({ ok: true, index, personas: await readPersonaSummaryCollection() });
-    }
-
-    if (request.method === "GET" && url.pathname.startsWith("/api/personas/assets/")) {
-        return servePersonaAsset(url);
-    }
-
-    const avatarPersonaId = personaAvatarIdFromPath(url.pathname);
-
-    if (avatarPersonaId && request.method === "POST") {
-        const result = await writePersonaAvatar(avatarPersonaId, request);
-        return json({ ok: true, ...result });
-    }
-
-    const personaId = personaIdFromPath(url.pathname);
-
-    if (!personaId) {
-        return undefined;
-    }
-
-    if (request.method === "GET") {
-        const persona = await readPersonaById(personaId);
-        return persona ? json(persona) : json({ error: "Persona not found." }, 404);
-    }
-
-    if (request.method === "PUT") {
-        const persona = await writePersonaById(personaId, await readJsonBody(request));
-        return json({
-            ok: true,
-            persona,
-            personas: await readPersonaSummaryCollection(),
-        });
-    }
-
-    if (request.method === "DELETE") {
-        const result = await deletePersonaById(personaId);
-        return result
-            ? json({ ok: true, ...result })
-            : json({ error: "Persona not found." }, 404);
-    }
-
-    return undefined;
-}
-
-async function handleCharacterApi(request: Request, url: URL) {
-    if (request.method === "GET" && url.pathname === "/api/characters") {
-        return json(await readCharacterSummaryCollection());
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/characters") {
-        const result = await createCharacter(await readJsonBody(request));
-        return json({ ok: true, ...result });
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/characters/index") {
-        const index = await updateCharacterIndex(await readJsonBody(request));
-        return json({
-            ok: true,
-            index,
-            characters: await readCharacterSummaryCollection(),
-        });
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/characters/import-dropped") {
-        return json(await importDroppedCharacterFiles());
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/characters/import") {
-        return json(await importUploadedCharacterFiles(request));
-    }
-
-    const avatarCharacterId = characterAvatarIdFromPath(url.pathname);
-
-    if (avatarCharacterId && request.method === "POST") {
-        const result = await writeCharacterAvatar(avatarCharacterId, request);
-        return json({ ok: true, ...result });
-    }
-
-    if (avatarCharacterId && request.method === "GET") {
-        const character = await readCharacterById(avatarCharacterId);
-        return character
-            ? serveCharacterAvatar(character)
-            : json({ error: "Character not found." }, 404);
-    }
-
-    const exportTarget = characterExportFromPath(url.pathname);
-
-    if (exportTarget && request.method === "GET") {
-        return exportCharacterCard(exportTarget.characterId, exportTarget.format);
-    }
-
-    const characterId = characterIdFromPath(url.pathname);
-
-    if (!characterId) {
-        return undefined;
-    }
-
-    if (request.method === "GET") {
-        const character = await readCharacterById(characterId);
-        return character ? json(character) : json({ error: "Character not found." }, 404);
-    }
-
-    if (request.method === "PUT") {
-        const character = await writeCharacterById(
-            characterId,
-            await readJsonBody(request),
-        );
-        return json({
-            ok: true,
-            character,
-            summary: characterToSummary(character),
-            characters: await readCharacterSummaryCollection(),
-        });
-    }
-
-    if (request.method === "DELETE") {
-        const deleteChats = url.searchParams.get("deleteChats") === "true";
-        const result = await deleteCharacterById(characterId);
-
-        const chatDeleteResult =
-            result && deleteChats
-                ? await deleteChatsByCharacterId(characterId)
-                : undefined;
-
-        if (result && deleteChats) {
-            return json({
-                ok: true,
-                ...result,
-                chats: chatDeleteResult?.chats ?? (await readChatSummaryCollection()),
-            });
+function api<Params extends Record<string, string> = Record<string, string>>(
+    handler: ApiHandler<Params>,
+) {
+    return async (request: Request, routeServer: RouteServer) => {
+        try {
+            return await handler(routeRequest(request), routeServer);
+        } catch (error) {
+            return apiErrorResponse(error);
         }
+    };
+}
 
-        return result
-            ? json({ ok: true, ...result })
-            : json({ error: "Character not found." }, 404);
+function routeRequest<Params extends Record<string, string> = Record<string, string>>(
+    request: Request,
+) {
+    const params = decodeRouteParams(
+        (request as Request & { params?: Record<string, string> }).params,
+    ) as Params;
+
+    return new Proxy(request, {
+        get(target, property, receiver) {
+            if (property === "params") {
+                return params;
+            }
+
+            const value = Reflect.get(target, property, receiver);
+
+            return typeof value === "function" ? value.bind(target) : value;
+        },
+    }) as RouteRequest<Params>;
+}
+
+function decodeRouteParams(params: Record<string, string> = {}) {
+    return Object.fromEntries(
+        Object.entries(params).map(([key, value]) => [key, decodeRouteParam(value)]),
+    );
+}
+
+function decodeRouteParam(value: string) {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
     }
-
-    return undefined;
 }
 
 function apiErrorResponse(error: unknown) {
