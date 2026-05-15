@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 export const rootDir = resolve(import.meta.dir, "..");
 export const distDir = join(rootDir, "dist");
 export const userDataDir = join(rootDir, "userData");
+export const envFilePath = join(rootDir, ".env");
 export const defaultCharacterSeedsDir = join(
     rootDir,
     "src",

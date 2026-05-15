@@ -2,13 +2,33 @@ import { randomBytes } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
+import { getCsrfTrustedOrigins, getFrontendPort } from "./config/runtime-config";
 import { HttpError, writeJsonAtomic } from "./http";
 import { csrfSecretPath } from "./paths";
 import { isPrivateNetworkHostname } from "./private-network";
 
-const csrfHeaderName = "x-smileychat-csrf";
+const csrfTokenHeader = "x-smileychat-csrf";
+// Magic header that confirms a request was issued by code aware of the
+// SmileyChat API (i.e. our frontend or a script that read the docs). Stops
+// the simplest "anyone can forge a same-origin POST from a script tag"
+// class of CSRF without depending only on Origin/Referer parsing.
+const csrfMagicHeader = "x-smileychat-csrf-magic";
+const csrfMagicValue = "1";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const defaultTrustedOriginHosts = ["localhost", "127.0.0.1", "[::1]"];
+
+const MAX_ANNOUNCED_REJECTED_ORIGINS = 2048;
+const announcedRejectedOrigins = new Set<string>();
+function announceRejectedOrigin(kind: "Origin" | "Referer", value: string, hint: string) {
+    const key = `${kind}:${value}`;
+    if (announcedRejectedOrigins.has(key)) return;
+    if (announcedRejectedOrigins.size >= MAX_ANNOUNCED_REJECTED_ORIGINS) {
+        const oldest = announcedRejectedOrigins.values().next().value;
+        if (oldest !== undefined) announcedRejectedOrigins.delete(oldest);
+    }
+    announcedRejectedOrigins.add(key);
+    console.warn(`[csrf] Rejected request: ${kind} '${value}' is not in the trusted list. ${hint}`);
+}
 
 type CsrfSecretFile = {
     version: number;
@@ -37,18 +57,30 @@ export async function verifyCsrfRequest(request: Request) {
     }
 
     verifyRequestOrigin(request);
+    verifyMagicHeader(request);
 
-    const token = request.headers.get(csrfHeaderName);
+    const token = request.headers.get(csrfTokenHeader);
 
     if (!token || !Bun.CSRF.verify(token, { secret: await readCsrfSecret() })) {
         throw new CsrfError("csrf_token_invalid", "Invalid CSRF token.");
     }
 }
 
+function verifyMagicHeader(request: Request) {
+    const provided = request.headers.get(csrfMagicHeader);
+    if (provided === csrfMagicValue) return;
+    throw new CsrfError(
+        "csrf_magic_header_missing",
+        `Missing ${csrfMagicHeader} header. SmileyChat's frontend sends this automatically; scripts should set ${csrfMagicHeader}: ${csrfMagicValue}.`,
+    );
+}
+
 function verifyRequestOrigin(request: Request) {
+    const originHeader = request.headers.get("origin");
+    const refererHeader = request.headers.get("referer");
+
     const provenanceOrigin =
-        normalizeOrigin(request.headers.get("origin")) ??
-        normalizeRefererOrigin(request.headers.get("referer"));
+        normalizeOrigin(originHeader) ?? normalizeRefererOrigin(refererHeader);
 
     if (!provenanceOrigin) {
         throw new CsrfError(
@@ -59,6 +91,13 @@ function verifyRequestOrigin(request: Request) {
 
     const allowedOriginsSet = getAllowedOrigins(request);
     if (!allowedOriginsSet.has(provenanceOrigin)) {
+        const sourceHeader = originHeader ? "Origin" : "Referer";
+        const sourceValue = originHeader ?? refererHeader ?? provenanceOrigin;
+        announceRejectedOrigin(
+            sourceHeader,
+            sourceValue,
+            `Add '${provenanceOrigin}' to SMILEYCHAT_TRUSTED_ORIGINS in your .env (comma-separated). No restart needed; takes effect within ~2s.`,
+        );
         throw new CsrfError(
             "csrf_origin_untrusted",
             `Request origin "${provenanceOrigin}" is not trusted.`,
@@ -117,13 +156,8 @@ function forwardedRequestOrigins(request: Request) {
 }
 
 function trustedOriginsFromEnv() {
-    const configuredOrigins = process.env.SMILEYCHAT_TRUSTED_ORIGINS?.split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
-
-    const origins = configuredOrigins?.length
-        ? configuredOrigins
-        : defaultTrustedOrigins();
+    const configuredOrigins = getCsrfTrustedOrigins();
+    const origins = configuredOrigins.length ? configuredOrigins : defaultTrustedOrigins();
 
     return origins
         .map((value) => normalizeOrigin(value))
@@ -131,7 +165,7 @@ function trustedOriginsFromEnv() {
 }
 
 function defaultTrustedOrigins() {
-    const frontendPort = process.env.SMILEYCHAT_FRONTEND_PORT ?? "5173";
+    const frontendPort = getFrontendPort();
     return defaultTrustedOriginHosts.map((host) => `http://${host}:${frontendPort}`);
 }
 
