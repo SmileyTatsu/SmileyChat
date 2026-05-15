@@ -411,7 +411,14 @@ function api<Path extends string>(handler: ApiHandler<Path>) {
     return async (request: Bun.BunRequest<Path>, routeServer: RouteServer) => {
         try {
             await verifyCsrfRequest(request);
-            return await handler(routeRequest(request), routeServer);
+
+            const wrappedServer: RouteServer = {
+                timeout(_request, seconds) {
+                    routeServer.timeout(request, seconds);
+                },
+            };
+
+            return await handler(routeRequest(request), wrappedServer);
         } catch (error) {
             return apiErrorResponse(error);
         }
