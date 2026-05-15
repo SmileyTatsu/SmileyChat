@@ -23,8 +23,11 @@ import {
     updateChatIndex,
     writeChatById,
 } from "./chat-store";
+import { ensureEnvFileExists, loadRuntimeEnv } from "./config/env-loader";
+import { startEnvWatcher } from "./config/env-watcher";
+import { getHost, getPort } from "./config/runtime-config";
 import { createCsrfToken, verifyCsrfRequest } from "./csrf";
-import { HttpError, json, parsePort, readJsonBody } from "./http";
+import { HttpError, json, readJsonBody } from "./http";
 import { userDataDir } from "./paths";
 import { writePersonaAvatar } from "./persona-avatar";
 import { servePersonaAsset } from "./persona-images";
@@ -44,6 +47,7 @@ import {
     updatePluginEnabled,
     writePluginStorage,
 } from "./plugins";
+import { finalize, runSecurityPipeline } from "./security/pipeline";
 import {
     readAppPreferences,
     readConnectionSecrets,
@@ -57,18 +61,36 @@ import {
 import { serveStatic } from "./static";
 import { ensureUserData } from "./user-data";
 
+import type { SecurityContext } from "./security/pipeline";
+
 type ApiHandler<Path extends string, WebSocketData = undefined> = (
     request: Bun.BunRequest<Path>,
     server: Bun.Server<WebSocketData>,
+    context: SecurityContext,
 ) => Response | Promise<Response>;
 
-const port = parsePort(process.env.SMILEYCHAT_API_PORT);
+ensureEnvFileExists();
+loadRuntimeEnv();
+
+const port = getPort();
+const hostname = getHost();
 
 ensureUserData();
 await importDroppedCharacterFiles();
 
+const envWatcher = startEnvWatcher();
+
+const shutdown = (signal: string) => {
+    console.log(`Received ${signal}; shutting down SmileyChat.`);
+    envWatcher.stop();
+    process.exit(0);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
 const server = Bun.serve({
-    hostname: "127.0.0.1",
+    hostname,
     port,
     routes: {
         "/api/health": {
@@ -401,28 +423,40 @@ const server = Bun.serve({
         "/api/*": json({ error: "Not found." }, 404),
     },
 
-    async fetch(request) {
-        const url = new URL(request.url);
+    async fetch(request, server) {
+        const pipeline = runSecurityPipeline(request, server);
+        if (pipeline instanceof Response) return pipeline;
 
-        if (url.pathname.startsWith("/plugins/")) {
-            return servePluginAsset(url);
+        if (pipeline.url.pathname.startsWith("/plugins/")) {
+            return finalize(await servePluginAsset(pipeline.url), pipeline.url, pipeline.rateLimit);
         }
 
-        return serveStatic(url);
+        return finalize(await serveStatic(pipeline.url), pipeline.url, pipeline.rateLimit);
     },
 });
 
-console.log(`SmileyChat running at ${server.url}`);
+console.log(`SmileyChat running at http://${hostname}:${port}`);
+if (hostname === "0.0.0.0" || hostname === "::") {
+    console.log(
+        `[server] Reachable from LAN, Tailscale, and Docker. Loopback (127.0.0.1) is always allowed; ` +
+            `remote requests see the access-setup page until you set SMILEYCHAT_BASIC_AUTH_USER/PASS or ` +
+            `SMILEYCHAT_IP_ALLOWLIST in .env (changes hot-reload, no restart).`,
+    );
+}
 
 function api<Path extends string, WebSocketData = undefined>(
     handler: ApiHandler<Path, WebSocketData>,
 ) {
     return async (request: Bun.BunRequest<Path>, server: Bun.Server<WebSocketData>) => {
+        const pipeline = runSecurityPipeline(request, server);
+        if (pipeline instanceof Response) return pipeline;
+
         try {
             await verifyCsrfRequest(request);
-            return await handler(routeRequest(request), server);
+            const response = await handler(routeRequest(request), server, pipeline);
+            return finalize(response, pipeline.url, pipeline.rateLimit);
         } catch (error) {
-            return apiErrorResponse(error);
+            return finalize(apiErrorResponse(error), pipeline.url, pipeline.rateLimit);
         }
     };
 }

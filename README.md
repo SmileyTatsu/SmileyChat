@@ -91,23 +91,49 @@ bun run start
 
 ## Server Configuration
 
-SmileyChat protects local data APIs with CSRF tokens and browser origin checks.
-For normal local use, no extra configuration is needed. If you run SmileyChat
-behind a reverse proxy or through a LAN hostname, add the public browser origins
-that should be allowed to save data:
+SmileyChat binds to **`0.0.0.0` by default** so LAN devices, Tailscale
+peers, and Docker containers can reach it out of the box. The
+safe-by-default lockdown keeps that safe: any non-loopback request gets
+a friendly "set up access" page until you configure Basic Auth or an IP
+allowlist below. Edit `.env` (auto-created from `.env.example` on first
+boot). Most settings hot-reload within ~2 seconds, no restart needed.
+
+The headline knobs:
+
+```bash
+# Interface the server binds to. 0.0.0.0 = all interfaces (default).
+# Set 127.0.0.1 to refuse every connection except loopback.
+SMILEYCHAT_HOST=0.0.0.0
+
+# Require a username/password from every non-loopback caller.
+SMILEYCHAT_BASIC_AUTH_USER=
+SMILEYCHAT_BASIC_AUTH_PASS=
+
+# Or, restrict by IP/CIDR instead of (or alongside) Basic Auth.
+SMILEYCHAT_IP_ALLOWLIST=192.168.1.0/24,10.0.0.5
+
+# When neither of the above is set, SmileyChat refuses non-loopback
+# requests with a friendly "set up access" page. Opt back in with these
+# only when you understand what they mean:
+SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK=false
+SMILEYCHAT_ALLOW_UNAUTHENTICATED_REMOTE=false
+```
+
+When running behind a reverse proxy or under a DNS name, list the public
+browser origins that may make state-changing requests:
 
 ```bash
 SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
 ```
 
-Use origins only: scheme, host, and optional port. Do not include paths such as
-`/api/chats`.
+Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`) traffic
+is auto-trusted by default. Those clients skip both the IP allowlist
+and Basic Auth, the same way loopback does. Toggle with
+`SMILEYCHAT_BYPASS_AUTH_TAILSCALE` / `_DOCKER`.
 
-Private-network origins are auto-trusted without any env entry: when the browser
-hits SmileyChat at a private-LAN address (RFC 1918), a Tailscale CGNAT address
-(100.64.0.0/10), an IPv6 unique-local or link-local address, the matching origin
-is allowed automatically as long as the request's Host header agrees. Public IPs
-and DNS-named hosts still require an explicit `SMILEYCHAT_TRUSTED_ORIGINS` entry.
+See [docs/security.md](docs/security.md) for the full security model:
+every layer, every env var, what it protects against, and recommended
+recipes for local / LAN / Tailscale / public-internet deployments.
 
 ## Development
 

@@ -13,6 +13,8 @@ import type { AppPreferences } from "../preferences/types";
 import type { PresetCollection } from "../presets/types";
 
 const csrfHeaderName = "x-smileychat-csrf";
+const csrfMagicHeaderName = "x-smileychat-csrf-magic";
+const csrfMagicValue = "1";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export const localApiErrorEventName = "smileychat:local-api-error";
@@ -25,6 +27,7 @@ export async function localApiFetch(path: string, init: RequestInit = {}) {
 
     if (unsafeMethods.has(method)) {
         headers.set(csrfHeaderName, await getCsrfToken());
+        headers.set(csrfMagicHeaderName, csrfMagicValue);
     }
 
     let response = await fetch(path, {
@@ -36,6 +39,7 @@ export async function localApiFetch(path: string, init: RequestInit = {}) {
         csrfToken = undefined;
 
         headers.set(csrfHeaderName, await getCsrfToken());
+        headers.set(csrfMagicHeaderName, csrfMagicValue);
         response = await fetch(path, {
             ...init,
             headers,
