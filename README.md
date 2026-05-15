@@ -9,7 +9,7 @@ SmileyChat is a local-first frontend application for chatting, roleplay, and sto
 
 - **Dual Visual Modes**: Seamlessly switch between a casual "Chatting" mode (like Discord) and a "Roleplaying / Storytelling" mode designed for reading and writing long scenes.
 - **Local Persistence**: All your characters, chats, and personas are saved entirely locally in standard JSON files. No cloud lock-in.
-- **OpenAI-Compatible Providers**: Connect your favorite local models (LMStudio, Ollama, text-generation-webui) or cloud providers (OpenRouter, Groq, OpenAI).
+- **Providers**: Connect your favorite local models (LMStudio, Ollama, text-generation-webui) or cloud providers via dedicated adapters (OpenRouter, Google AI / Gemini, OpenAI-Compatible).
 - **Character Card Support**: Import Tavern-style V1/V2/V3 JSON and PNG character cards easily via drag & drop or file selection.
 - **Extensible Plugin System**: Extend the core functionality using local ESM plugins.
 

@@ -9,7 +9,7 @@ SmileyChat is built to be lightweight, modern, and easily maintainable.
 
 ## Project Structure
 
-- `src/app/`: The core application shell (`App.tsx`), layout, and high-level hooks (`useChatSession.ts`, `useCharacterChats.ts`).
+- `src/app/`: The core application shell (`App.tsx`), layout, and high-level hooks (`useChatSession.ts`, `useCharacterChats.ts`, `usePersonaLibrary.ts`).
 - `src/features/`: UI components organized by domain (`chat`, `characters`, `personas`, `settings`, `sidebar`).
 - `src/lib/`: Core logic that doesn't depend directly on UI. Includes API client, normalizers, preset compilation, and plugin registries.
 - `src/core-extensions/`: Built-in features using the plugin API format (e.g., chat formatters).

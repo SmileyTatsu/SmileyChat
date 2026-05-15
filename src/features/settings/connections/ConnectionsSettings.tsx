@@ -524,7 +524,7 @@ export function ConnectionsSettings({
                 ? "OpenRouter"
                 : providerId === "google-ai"
                   ? "Google AI"
-                : (provider?.label ?? "OpenAI compatible"),
+                  : (provider?.label ?? "OpenAI compatible"),
             config,
         );
 

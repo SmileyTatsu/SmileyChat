@@ -334,7 +334,7 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                   ? normalizeOpenRouterConfig(profile.config)
                   : provider === "google-ai"
                     ? normalizeGoogleAIConfig(profile.config)
-                  : normalizePluginConfig(profile.config),
+                    : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;
@@ -457,10 +457,7 @@ function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
         apiKey: stringOrUndefined(config.apiKey),
         model: {
             source: modelSource,
-            id:
-                typeof model.id === "string"
-                    ? model.id
-                    : defaultGoogleAIConfig.model.id,
+            id: typeof model.id === "string" ? model.id : defaultGoogleAIConfig.model.id,
         },
     };
 }

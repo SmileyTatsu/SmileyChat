@@ -1,6 +1,6 @@
 # AI Providers & Connections
 
-SmileyChat uses a generalized "Connection Adapter" system to communicate with various AI backends. The built-in providers are **OpenAI-Compatible** for local and compatible APIs, and **OpenRouter** for OpenRouter-specific model routing.
+SmileyChat uses a generalized "Connection Adapter" system to communicate with various AI backends. The built-in providers are **OpenAI-Compatible** for local and compatible APIs, **OpenRouter** for OpenRouter-specific model routing, and **Google AI** for Gemini API direct browser calls.
 
 ## Supported Configurations
 
@@ -36,7 +36,20 @@ SmileyChat sends fixed OpenRouter app attribution headers:
 - `X-OpenRouter-Title`: `SmileyChat`
 - `X-OpenRouter-Categories`: `roleplay,creative-writing,general-chat`
 
-OpenAI-compatible and OpenRouter chat requests stream by default. Users can disable streaming globally in Options -> Settings; the preference is app-level, not per provider.
+OpenAI-compatible, OpenRouter, and Google AI chat requests stream by default. Users can disable streaming globally in Options -> Settings; the preference is app-level, not per provider.
+
+### 4. Google AI (Gemini)
+
+Use the **Google AI** provider to access Google's Gemini models directly via the browser.
+
+The Google AI provider:
+
+- Defaults to `https://generativelanguage.googleapis.com/v1beta`.
+- Uses `gemini-3.1-flash-lite` as the default model.
+- Loads models from `GET {baseUrl}/models?key={apiKey}`.
+- Sends generation requests to `POST {baseUrl}/models/{model}:generateContent?key={apiKey}` or `:streamGenerateContent?alt=sse&key={apiKey}`.
+- Maps system and developer prompts to `systemInstruction`.
+- Converts user and assistant history to Google `contents` with `user` / `model` roles, merging consecutive same-role turns.
 
 ## Profile System
 

@@ -281,9 +281,7 @@ export function App() {
             setPreferences(loadedPreferences);
             setMode(loadedPreferences.chat.defaultMode);
 
-            setDesktopCharacterOpen(
-                loadedPreferences.layout.characterPanelOpenByDefault,
-            );
+            setDesktopCharacterOpen(loadedPreferences.layout.characterPanelOpenByDefault);
             setMobileCharacterOpen(false);
             setMobileSidebarOpen(false);
 

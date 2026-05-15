@@ -36,7 +36,9 @@ export function createGoogleAIGenerateBody(
     );
 
     if (contents.length === 0) {
-        throw new Error("Google AI request needs at least one user or assistant message.");
+        throw new Error(
+            "Google AI request needs at least one user or assistant message.",
+        );
     }
 
     return {
@@ -55,7 +57,9 @@ export function normalizeGoogleAIResponse(
     response: GoogleAIGenerateContentResponse,
 ): ChatGenerationResult {
     if (response.promptFeedback?.blockReason) {
-        throw new Error(`Google AI prompt blocked: ${response.promptFeedback.blockReason}`);
+        throw new Error(
+            `Google AI prompt blocked: ${response.promptFeedback.blockReason}`,
+        );
     }
 
     const candidate = response.candidates?.[0];
