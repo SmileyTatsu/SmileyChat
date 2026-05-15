@@ -1,4 +1,4 @@
-import type { Message } from "../../types";
+import type { Message } from "#frontend/types";
 
 export type ChatGenerationMessage = {
     role: "developer" | "system" | "user" | "assistant";

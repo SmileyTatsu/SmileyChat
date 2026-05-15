@@ -1,3 +1,5 @@
+import { characterToSummary } from "#frontend/lib/characters/normalize";
+
 import {
     avatarTypeForContentType,
     deleteCharacterAvatarAsset,
@@ -12,7 +14,6 @@ import {
 } from "./character-store";
 import { BadRequestError, NotFoundError } from "./http";
 import { maxAvatarBytes } from "./paths";
-import { characterToSummary } from "../src/lib/characters/normalize";
 
 export async function writeCharacterAvatar(characterId: string, request: Request) {
     const contentType = request.headers.get("Content-Type")?.split(";")[0].trim() ?? "";

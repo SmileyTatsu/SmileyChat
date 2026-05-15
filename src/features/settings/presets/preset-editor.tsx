@@ -1,12 +1,13 @@
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-preact";
+
 import type {
     PresetInjectionPosition,
     PresetPrompt,
     PresetPromptOrderEntry,
     PresetPromptRole,
-} from "../../../lib/presets/types";
+} from "#frontend/lib/presets/types";
 
 export type OrderedPrompt = {
     entry: PresetPromptOrderEntry;

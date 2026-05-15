@@ -7,18 +7,19 @@ import {
     X,
 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
-import { uploadCharacterAvatar } from "../../lib/api/client";
-import { characterInitialAvatar } from "../../lib/characters/avatar";
+
+import { uploadCharacterAvatar } from "#frontend/lib/api/client";
+import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import {
     getCharacterTagline,
     getEditableCharacterTagline,
     setCharacterTagline,
-} from "../../lib/characters/normalize";
+} from "#frontend/lib/characters/normalize";
 import type {
     CharacterSummaryCollection,
     SmileyCharacter,
     TavernCardDataV2,
-} from "../../types";
+} from "#frontend/types";
 
 type CharacterPanelProps = {
     character: SmileyCharacter;

@@ -1,9 +1,10 @@
-import type { Message } from "../../../types";
 import {
     getMessageContent,
     getMessageReasoning,
     getMessageReasoningDetails,
-} from "../../messages";
+} from "#frontend/lib/messages";
+import type { Message } from "#frontend/types";
+
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,

@@ -1,4 +1,4 @@
-import type { PluginManifest } from "../../lib/plugins/types";
+import type { PluginManifest } from "#frontend/lib/plugins/types";
 
 export const smileyChatFormatterManifest: PluginManifest = {
     id: "smiley-chat-formatter",

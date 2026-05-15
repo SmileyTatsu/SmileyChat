@@ -1,5 +1,6 @@
-import type { ChatGenerationMessage } from "../../../lib/connections/types";
-import type { RequestState } from "./usePresetAutosave";
+import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
+
+import type { RequestState } from "./use-preset-autosave";
 
 type PresetPreviewProps = {
     compiledContextPreview: string;

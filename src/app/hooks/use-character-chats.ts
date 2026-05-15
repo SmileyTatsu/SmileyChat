@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+
 import {
     createCharacter as createCharacterRequest,
     createChat as createChatRequest,
-    deleteChat as deleteChatRequest,
     deleteCharacter as deleteCharacterRequest,
+    deleteChat as deleteChatRequest,
     exportCharacterCard,
     importChatFile as importChatFileRequest,
     importCharacterFiles as importCharacterFilesRequest,
@@ -11,28 +12,28 @@ import {
     loadCharacterSummaries,
     loadChat,
     loadChatSummaries,
-    saveChat,
-    saveChatIndex,
     saveCharacter,
     saveCharacterIndex,
-} from "../lib/api/client";
-import { createChatSession } from "../lib/chats/defaults";
-import {
-    chatDisplayTitle,
-    chatToSummary,
-    normalizeChat,
-    normalizeChatSummaryCollection,
-} from "../lib/chats/normalize";
-import { defaultCharacter } from "../lib/characters/defaults";
+    saveChat,
+    saveChatIndex,
+} from "#frontend/lib/api/client";
+import { defaultCharacter } from "#frontend/lib/characters/defaults";
 import {
     characterToSummary,
     createBlankCharacter,
     normalizeCharacter,
     normalizeCharacterSummaryCollection,
-} from "../lib/characters/normalize";
-import { messageFromError } from "../lib/common/errors";
-import { createCharacterGreetingMessage } from "../lib/messages";
-import { resolvePresetMacros } from "../lib/presets/macros";
+} from "#frontend/lib/characters/normalize";
+import { createChatSession } from "#frontend/lib/chats/defaults";
+import {
+    chatDisplayTitle,
+    chatToSummary,
+    normalizeChat,
+    normalizeChatSummaryCollection,
+} from "#frontend/lib/chats/normalize";
+import { messageFromError } from "#frontend/lib/common/errors";
+import { createCharacterGreetingMessage } from "#frontend/lib/messages";
+import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type {
     CharacterSummaryCollection,
     ChatMode,
@@ -42,7 +43,7 @@ import type {
     SmileyCharacter,
     SmileyPersona,
     UserStatus,
-} from "../types";
+} from "#frontend/types";
 
 type UseCharacterChatsOptions = {
     defaultNewChatMode: ChatMode;

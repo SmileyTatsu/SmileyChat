@@ -1,11 +1,12 @@
 import { Send } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+
 import {
     getPluginComposerActions,
     subscribeToPluginRegistry,
-} from "../../lib/plugins/registry";
-import type { PluginAppSnapshot } from "../../lib/plugins/types";
-import type { ChatMode } from "../../types";
+} from "#frontend/lib/plugins/registry";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type { ChatMode } from "#frontend/types";
 
 type MessageComposerProps = {
     characterName: string;

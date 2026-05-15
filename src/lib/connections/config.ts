@@ -1,6 +1,8 @@
-import defaultGoogleAIModels from "../../data/defaultGoogleAIModels.json";
-import defaultOpenAIModels from "../../data/defaultOpenAIModels.json";
+import defaultGoogleAIModels from "#frontend/data/default-google-ai-models.json";
+import defaultOpenAIModels from "#frontend/data/default-openai-models.json";
+
 import { isRecord } from "../common/guards";
+
 import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./google-ai/types";
 import type {
     OpenAICompatibleConnectionConfig,

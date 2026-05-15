@@ -1,13 +1,14 @@
 import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
+
 import { defaultCharacterData } from "./defaults";
 import type {
     CharacterBook,
     CharacterBookEntry,
     CharacterCollection,
+    CharacterImportFormat,
     CharacterSummary,
     CharacterSummaryCollection,
-    CharacterImportFormat,
     SmileyCharacter,
     TavernCardDataV2,
 } from "./types";

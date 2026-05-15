@@ -1,23 +1,25 @@
 import { Glob } from "bun";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { BadRequestError, writeJsonAtomic } from "./http";
-import { moveToUniquePath } from "./character-file-utils";
-import { deletePersonaAvatarAsset } from "./persona-images";
-import { personaFilePath } from "./persona-file-paths";
-import { personaCardsDir, personaIndexPath, personaOrphanedDir } from "./paths";
-import { defaultPersona, personaToSummary } from "../src/lib/personas/defaults";
+
+import { isRecord } from "#frontend/lib/common/guards";
+import { defaultPersona, personaToSummary } from "#frontend/lib/personas/defaults";
 import {
     normalizePersona,
     normalizePersonaIndex,
     normalizePersonaSummaryCollection,
-} from "../src/lib/personas/normalize";
+} from "#frontend/lib/personas/normalize";
 import type {
     PersonaIndex,
     PersonaSummaryCollection,
     SmileyPersona,
-} from "../src/lib/personas/types";
-import { isRecord } from "../src/lib/common/guards";
+} from "#frontend/lib/personas/types";
+
+import { moveToUniquePath } from "./character-file-utils";
+import { BadRequestError, writeJsonAtomic } from "./http";
+import { personaCardsDir, personaIndexPath, personaOrphanedDir } from "./paths";
+import { personaFilePath } from "./persona-file-paths";
+import { deletePersonaAvatarAsset } from "./persona-images";
 
 export async function readPersonaSummaryCollection(): Promise<PersonaSummaryCollection> {
     const index = await readPersonaIndex();

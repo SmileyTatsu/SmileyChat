@@ -1,13 +1,22 @@
 import { Glob } from "bun";
 import { cp, mkdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { BadRequestError, writeJsonAtomic } from "./http";
+
 import {
-    characterIndexPath,
-    characterLibraryDir,
-    characterOrphanedDir,
-    defaultCharacterSeedsDir,
-} from "./paths";
+    characterToSummary,
+    normalizeCharacter,
+    normalizeCharacterCollection,
+} from "#frontend/lib/characters/normalize";
+import type {
+    CharacterCollection,
+    CharacterIndex,
+    CharacterIndexEntry,
+    CharacterSummaryCollection,
+    SmileyCharacter,
+} from "#frontend/lib/characters/types";
+import { isRecord } from "#frontend/lib/common/guards";
+
+import { archiveCharacterIdentity } from "./character-archive";
 import {
     characterBaseDirectoryPath,
     characterBasePath,
@@ -16,20 +25,13 @@ import {
     characterFolderName,
 } from "./character-file-paths";
 import { moveToUniquePath } from "./character-file-utils";
-import { archiveCharacterIdentity } from "./character-archive";
+import { BadRequestError, writeJsonAtomic } from "./http";
 import {
-    characterToSummary,
-    normalizeCharacter,
-    normalizeCharacterCollection,
-} from "../src/lib/characters/normalize";
-import type {
-    CharacterCollection,
-    CharacterIndex,
-    CharacterIndexEntry,
-    CharacterSummaryCollection,
-    SmileyCharacter,
-} from "../src/lib/characters/types";
-import { isRecord } from "../src/lib/common/guards";
+    characterIndexPath,
+    characterLibraryDir,
+    characterOrphanedDir,
+    defaultCharacterSeedsDir,
+} from "./paths";
 
 type StoredCharacter = {
     character: SmileyCharacter;

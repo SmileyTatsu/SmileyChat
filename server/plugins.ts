@@ -1,9 +1,11 @@
 import { Glob } from "bun";
 import { mkdir, rm } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, normalize, relative } from "node:path";
+
+import type { PluginManifest } from "#frontend/lib/plugins/types";
+
 import { BadRequestError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
-import type { PluginManifest } from "../src/lib/plugins/types";
 
 const corePluginIds = new Set(["smiley-chat-formatter"]);
 const legacyCorePluginFolders: Record<string, string[]> = {

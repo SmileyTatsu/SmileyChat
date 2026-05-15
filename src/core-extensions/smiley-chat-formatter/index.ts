@@ -1,14 +1,15 @@
 import styles from "./styles.css?raw";
+
 import { renderFormatted, renderPlain } from "./formatting";
 import { smileyChatFormatterManifest } from "./manifest";
-import { renderSettingsPanel } from "./settingsPanel";
+import type { FormatterApi } from "./nodes";
 import {
     defaultFormatterSettings,
     getFormatterSettings,
     normalizeFormatterSettings,
     setFormatterSettings,
 } from "./settings";
-import type { FormatterApi } from "./nodes";
+import { renderSettingsPanel } from "./settings-panel";
 
 export { smileyChatFormatterManifest };
 

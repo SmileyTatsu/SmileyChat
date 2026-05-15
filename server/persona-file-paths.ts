@@ -1,4 +1,5 @@
 import { join } from "node:path";
+
 import { assertSafeEntityId } from "./entity-id";
 import { personaCardsDir } from "./paths";
 

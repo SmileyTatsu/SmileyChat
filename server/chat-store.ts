@@ -1,22 +1,24 @@
 import { Glob } from "bun";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { BadRequestError, writeJsonAtomic } from "./http";
-import { chatFilePath } from "./chat-file-paths";
-import { moveToUniquePath } from "./character-file-utils";
-import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
+
 import {
     chatLastMessageAt,
     chatToSummary,
     normalizeChat,
     normalizeChatSummaryCollection,
-} from "../src/lib/chats/normalize";
+} from "#frontend/lib/chats/normalize";
 import type {
     ChatIndex,
     ChatSession,
     ChatSummaryCollection,
-} from "../src/lib/chats/types";
-import { isRecord } from "../src/lib/common/guards";
+} from "#frontend/lib/chats/types";
+import { isRecord } from "#frontend/lib/common/guards";
+
+import { moveToUniquePath } from "./character-file-utils";
+import { chatFilePath } from "./chat-file-paths";
+import { BadRequestError, writeJsonAtomic } from "./http";
+import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
 
 export async function readChatSummaryCollection(): Promise<ChatSummaryCollection> {
     const index = await readChatIndex();

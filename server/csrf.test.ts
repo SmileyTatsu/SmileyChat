@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 
 const csrfSecret = "test-csrf-secret-that-is-long-enough-for-smileychat";

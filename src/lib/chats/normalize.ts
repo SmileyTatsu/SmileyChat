@@ -1,7 +1,9 @@
-import type { ChatMode, Message, MessageSwipe } from "../../types";
-import { isRecord } from "../common/guards";
-import { createId } from "../common/ids";
-import { getMessageCreatedAt } from "../messages";
+import { isRecord } from "#frontend/lib/common/guards";
+import { createId } from "#frontend/lib/common/ids";
+import { getMessageCreatedAt } from "#frontend/lib/messages";
+
+import type { ChatMode, Message, MessageSwipe } from "#frontend/types";
+
 import type { ChatSession, ChatSummary, ChatSummaryCollection } from "./types";
 
 export function normalizeChat(value: unknown): ChatSession | undefined {

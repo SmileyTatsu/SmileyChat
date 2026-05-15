@@ -1,4 +1,5 @@
-import type { Message, MessageSwipe } from "../../types";
+import type { Message, MessageSwipe } from "#frontend/types";
+
 import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
 import type { ChatSession } from "./types";
@@ -107,8 +108,7 @@ function normalizeSillyTavernMessage(
 
     const swipes: MessageSwipe[] = sourceSwipes.map((content, index) => {
         const info = isRecord(swipeInfos[index]) ? swipeInfos[index] : undefined;
-        const createdAt =
-            (info && asIsoString(info.send_date)) || messageCreatedAt;
+        const createdAt = (info && asIsoString(info.send_date)) || messageCreatedAt;
 
         return {
             id: createId("swipe"),

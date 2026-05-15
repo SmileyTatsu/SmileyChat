@@ -1,4 +1,4 @@
-import type { UserStatus } from "../../types";
+import type { UserStatus } from "#frontend/types";
 
 export function formatStatus(status: UserStatus) {
     if (status === "away") {
