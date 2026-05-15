@@ -7,6 +7,7 @@ import type {
     OpenRouterConnectionConfig,
     OpenRouterModel,
     OpenRouterProviderPreferences,
+    OpenRouterReasoningConfig,
     OpenRouterSort,
 } from "../../../../lib/connections/openrouter/types";
 
@@ -20,6 +21,8 @@ type OpenRouterConnectionProps = {
     onSave: () => void;
     onTest: () => void;
 };
+
+type ReasoningStrategy = "none" | "effort" | "max-tokens";
 
 export function OpenRouterConnection({
     config,
@@ -48,6 +51,40 @@ export function OpenRouterConnection({
         });
     }
 
+    function updateReasoning(nextReasoning: OpenRouterReasoningConfig | undefined) {
+        updateConfig({ reasoning: nextReasoning });
+    }
+
+    function updateReasoningPatch(nextReasoning: Partial<OpenRouterReasoningConfig>) {
+        updateReasoning({
+            ...(config.reasoning ?? {}),
+            ...nextReasoning,
+        });
+    }
+
+    function updateReasoningStrategy(strategy: ReasoningStrategy) {
+        if (strategy === "none") {
+            updateReasoning(undefined);
+            return;
+        }
+
+        if (strategy === "effort") {
+            updateReasoning({
+                effort:
+                    config.reasoning?.effort && config.reasoning.effort !== "none"
+                        ? config.reasoning.effort
+                        : "medium",
+                exclude: config.reasoning?.exclude,
+            });
+            return;
+        }
+
+        updateReasoning({
+            max_tokens: config.reasoning?.max_tokens ?? 1024,
+            exclude: config.reasoning?.exclude,
+        });
+    }
+
     function updateSelectedModel(value: string) {
         const separatorIndex = value.indexOf(":");
         const source = value.slice(0, separatorIndex);
@@ -66,6 +103,12 @@ export function OpenRouterConnection({
 
     const selectedModelValue = config.model.id ? `api:${config.model.id}` : "api:";
     const preferences = config.providerPreferences;
+    const reasoning = config.reasoning;
+    const reasoningStrategy = reasoning?.max_tokens
+        ? "max-tokens"
+        : reasoning?.effort && reasoning.effort !== "none"
+          ? "effort"
+          : "none";
     const selectedModel = models.find((model) => model.id === config.model.id);
     const filteredModels = filterModels(models, modelSearch);
     const selectedModelIsLoaded = models.some((model) => model.id === config.model.id);
@@ -303,6 +346,91 @@ export function OpenRouterConnection({
                                 })
                             }
                         />
+                    </label>
+                </div>
+            </div>
+            <div className="connection-card">
+                <h4>Reasoning / Thinking Tokens</h4>
+                <label>
+                    Strategy
+                    <select
+                        value={reasoningStrategy}
+                        onInput={(event) =>
+                            updateReasoningStrategy(
+                                (event.currentTarget as HTMLSelectElement)
+                                    .value as ReasoningStrategy,
+                            )
+                        }
+                    >
+                        <option value="none">None</option>
+                        <option value="effort">Effort-based</option>
+                        <option value="max-tokens">Max-tokens based</option>
+                    </select>
+                </label>
+                <div className="connection-field-grid">
+                    <label>
+                        Effort level
+                        <select
+                            value={
+                                reasoning?.effort && reasoning.effort !== "none"
+                                    ? reasoning.effort
+                                    : "medium"
+                            }
+                            disabled={reasoningStrategy !== "effort"}
+                            onInput={(event) =>
+                                updateReasoningPatch({
+                                    effort: (event.currentTarget as HTMLSelectElement)
+                                        .value as OpenRouterReasoningConfig["effort"],
+                                    max_tokens: undefined,
+                                })
+                            }
+                        >
+                            <option value="xhigh">Extra high</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="minimal">Minimal</option>
+                        </select>
+                    </label>
+                    <label>
+                        Max tokens
+                        <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={reasoning?.max_tokens ?? 1024}
+                            disabled={reasoningStrategy !== "max-tokens"}
+                            onInput={(event) =>
+                                updateReasoningPatch({
+                                    effort: undefined,
+                                    max_tokens: Math.max(
+                                        1,
+                                        Math.floor(
+                                            Number(
+                                                (event.currentTarget as HTMLInputElement)
+                                                    .value,
+                                            ) || 1,
+                                        ),
+                                    ),
+                                })
+                            }
+                        />
+                    </label>
+                </div>
+                <div className="preset-toggle-row">
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={reasoning?.exclude === true}
+                            disabled={reasoningStrategy === "none"}
+                            onInput={(event) =>
+                                updateReasoningPatch({
+                                    exclude: (event.currentTarget as HTMLInputElement)
+                                        .checked,
+                                })
+                            }
+                        />
+                        Exclude thinking tokens from response
                     </label>
                 </div>
             </div>

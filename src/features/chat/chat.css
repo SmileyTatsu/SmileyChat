@@ -240,6 +240,44 @@
     white-space: pre-wrap;
 }
 
+.message-reasoning {
+    margin: 6px 0 12px;
+    border: 1px solid rgba(151, 164, 196, 0.16);
+    border-radius: 8px;
+    background: rgba(24, 27, 36, 0.4);
+    color: #9ea7bd;
+    font-size: 0.86rem;
+    overflow: hidden;
+}
+
+.message-reasoning summary {
+    cursor: pointer;
+    padding: 8px 12px;
+    color: #b0b8cc;
+    user-select: none;
+    font-weight: 500;
+    transition:
+        background-color 150ms ease,
+        color 150ms ease;
+}
+
+.message-reasoning summary:hover {
+    background: rgba(151, 164, 196, 0.08);
+    color: #c9d0e2;
+}
+
+.message-reasoning p {
+    border-top: 1px solid rgba(151, 164, 196, 0.12);
+    margin: 0;
+    padding: 10px 12px;
+    color: #9ea7bd;
+    font-size: 0.86rem;
+    font-style: italic;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: rgba(18, 20, 26, 0.3);
+}
+
 .message-overlay-actions {
     position: absolute;
     z-index: 3;
@@ -652,6 +690,11 @@
 .rp .message p {
     color: #e4e1d9;
     font-size: calc(var(--message-font-size) * 1.02);
+}
+
+.rp .message-reasoning p {
+    color: #9ea7bd;
+    font-size: 0.86rem;
 }
 
 .rp .message-overlay-actions {

@@ -183,6 +183,10 @@ function normalizeSwipe(value: unknown): MessageSwipe | undefined {
         id: asString(value.id) || createId("swipe"),
         content: asString(value.content),
         createdAt: asIsoString(value.createdAt) || new Date().toISOString(),
+        ...(asString(value.reasoning) ? { reasoning: asString(value.reasoning) } : {}),
+        ...("reasoningDetails" in value
+            ? { reasoningDetails: value.reasoningDetails }
+            : {}),
         ...(value.status === "error" ? { status: "error" as const } : {}),
     };
 }

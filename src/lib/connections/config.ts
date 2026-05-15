@@ -6,6 +6,7 @@ import type { OpenAICompatibleConnectionConfig } from "./openai-compatible/types
 import type {
     OpenRouterConnectionConfig,
     OpenRouterProviderPreferences,
+    OpenRouterReasoningConfig,
     OpenRouterSort,
 } from "./openrouter/types";
 
@@ -353,6 +354,32 @@ function normalizeOpenRouterConfig(value: unknown): OpenRouterConnectionConfig {
         providerPreferences: normalizeOpenRouterProviderPreferences(
             config.providerPreferences,
         ),
+        reasoning: normalizeOpenRouterReasoningConfig(config.reasoning),
+    };
+}
+
+function normalizeOpenRouterReasoningConfig(
+    value: unknown,
+): OpenRouterReasoningConfig | undefined {
+    const reasoning = isRecord(value) ? value : {};
+    const effort = normalizeOpenRouterReasoningEffort(reasoning.effort);
+    const maxTokens =
+        typeof reasoning.max_tokens === "number" &&
+        Number.isInteger(reasoning.max_tokens) &&
+        reasoning.max_tokens > 0
+            ? reasoning.max_tokens
+            : undefined;
+    const exclude =
+        typeof reasoning.exclude === "boolean" ? reasoning.exclude : undefined;
+
+    if (!effort && !maxTokens && exclude === undefined) {
+        return undefined;
+    }
+
+    return {
+        ...(effort ? { effort } : {}),
+        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        ...(exclude !== undefined ? { exclude } : {}),
     };
 }
 
@@ -383,6 +410,19 @@ function normalizeOpenRouterProviderPreferences(
 
 function normalizeOpenRouterSort(value: unknown): OpenRouterSort | undefined {
     return value === "price" || value === "throughput" || value === "latency"
+        ? value
+        : undefined;
+}
+
+function normalizeOpenRouterReasoningEffort(
+    value: unknown,
+): OpenRouterReasoningConfig["effort"] | undefined {
+    return value === "xhigh" ||
+        value === "high" ||
+        value === "medium" ||
+        value === "low" ||
+        value === "minimal" ||
+        value === "none"
         ? value
         : undefined;
 }

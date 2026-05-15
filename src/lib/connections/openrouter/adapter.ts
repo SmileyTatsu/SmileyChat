@@ -40,6 +40,8 @@ export function createOpenRouterConnection(
             if (body.stream) {
                 let message = "";
                 let model: string | undefined;
+                let reasoning = "";
+                let reasoningDetails: unknown;
 
                 await readChatCompletionStream(response, (chunk) => {
                     if (chunk.error?.message) {
@@ -51,6 +53,21 @@ export function createOpenRouterConnection(
                     model = chunk.model ?? model;
 
                     const token = chunk.choices?.[0]?.delta?.content;
+                    const reasoningToken = chunk.choices?.[0]?.delta?.reasoning;
+                    const nextReasoningDetails =
+                        chunk.choices?.[0]?.delta?.reasoning_details;
+
+                    if (reasoningToken) {
+                        reasoning += reasoningToken;
+                        request.onReasoningToken?.(reasoningToken);
+                    }
+
+                    if (nextReasoningDetails !== undefined) {
+                        reasoningDetails = mergeReasoningDetails(
+                            reasoningDetails,
+                            nextReasoningDetails,
+                        );
+                    }
 
                     if (token) {
                         message += token;
@@ -66,6 +83,8 @@ export function createOpenRouterConnection(
                     message: message.trim(),
                     provider: "openrouter",
                     model,
+                    ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
+                    ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                 };
             }
 
@@ -103,4 +122,24 @@ async function openRouterErrorText(response: Response) {
     } catch {
         return text;
     }
+}
+
+function mergeReasoningDetails(current: unknown, next: unknown) {
+    if (Array.isArray(current) && Array.isArray(next)) {
+        return [...current, ...next];
+    }
+
+    if (Array.isArray(current)) {
+        return [...current, next];
+    }
+
+    if (current !== undefined && Array.isArray(next)) {
+        return [current, ...next];
+    }
+
+    if (current !== undefined) {
+        return [current, next];
+    }
+
+    return next;
 }

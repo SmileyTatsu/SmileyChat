@@ -2,6 +2,7 @@ export type OpenRouterConnectionConfig = {
     apiKey?: string;
     model: OpenRouterModelSelection;
     providerPreferences: OpenRouterProviderPreferences;
+    reasoning?: OpenRouterReasoningConfig;
 };
 
 export type OpenRouterRuntimeConfig = OpenRouterConnectionConfig;
@@ -24,9 +25,17 @@ export type OpenRouterProviderPreferences = {
 
 export type OpenRouterSort = "price" | "throughput" | "latency";
 
+export type OpenRouterReasoningConfig = {
+    effort?: "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
+    max_tokens?: number;
+    exclude?: boolean;
+};
+
 export type OpenRouterChatMessage = {
     role: "system" | "user" | "assistant";
     content: string;
+    reasoning?: string;
+    reasoning_details?: unknown;
 };
 
 export type OpenRouterChatCompletionRequest = {
@@ -34,6 +43,7 @@ export type OpenRouterChatCompletionRequest = {
     messages: OpenRouterChatMessage[];
     stream: boolean;
     provider?: OpenRouterProviderPreferences;
+    reasoning?: OpenRouterReasoningConfig;
 };
 
 export type OpenRouterChatCompletionResponse = {
@@ -46,6 +56,8 @@ export type OpenRouterChatCompletionResponse = {
         message?: {
             role?: string;
             content: string | null;
+            reasoning?: string | null;
+            reasoning_details?: unknown;
         };
         finish_reason: string | null;
         native_finish_reason?: string | null;

@@ -15,6 +15,7 @@ import { formatShortTime } from "../../lib/common/time";
 import {
     getMessageContent,
     getMessageCreatedAt,
+    getMessageReasoning,
     isActiveSwipeError,
 } from "../../lib/messages";
 import {
@@ -81,7 +82,7 @@ export function MessageList({
                 message.swipes[message.activeSwipeIndex] ?? message.swipes[0];
             return `${message.id}:${message.activeSwipeIndex}:${activeSwipe?.id ?? ""}:${
                 activeSwipe?.content ?? ""
-            }`;
+            }:${activeSwipe?.reasoning ?? ""}`;
         })
         .join("|");
 
@@ -163,6 +164,7 @@ export function MessageList({
         >
             {messages.map((message) => {
                 const content = getMessageContent(message);
+                const reasoning = getMessageReasoning(message);
                 const isEditing = editingMessageId === message.id;
                 const canPagePrevious = message.activeSwipeIndex > 0;
                 const canPageForward = message.role === "character";
@@ -326,13 +328,21 @@ export function MessageList({
                                     </div>
                                 </div>
                             ) : (
-                                (messageRenderers[0]?.render({
-                                    characterAvatarPath,
-                                    characterName,
-                                    content,
-                                    message,
-                                    mode,
-                                }) ?? <p>{content}</p>)
+                                <>
+                                    {reasoning && (
+                                        <details className="message-reasoning">
+                                            <summary>Thought Process</summary>
+                                            <p>{reasoning}</p>
+                                        </details>
+                                    )}
+                                    {messageRenderers[0]?.render({
+                                        characterAvatarPath,
+                                        characterName,
+                                        content,
+                                        message,
+                                        mode,
+                                    }) ?? <p>{content}</p>}
+                                </>
                             )}
                         </div>
                     </article>

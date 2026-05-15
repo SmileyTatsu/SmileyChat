@@ -25,6 +25,8 @@ export type MessageSwipe = {
     id: string;
     content: string;
     createdAt: string;
+    reasoning?: string;
+    reasoningDetails?: unknown;
     status?: "error";
 };
 

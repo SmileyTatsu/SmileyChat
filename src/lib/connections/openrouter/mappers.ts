@@ -1,5 +1,9 @@
 import type { Message } from "../../../types";
-import { getMessageContent } from "../../messages";
+import {
+    getMessageContent,
+    getMessageReasoning,
+    getMessageReasoningDetails,
+} from "../../messages";
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
@@ -11,6 +15,7 @@ import type {
     OpenRouterChatMessage,
     OpenRouterConnectionConfig,
     OpenRouterProviderPreferences,
+    OpenRouterReasoningConfig,
 } from "./types";
 
 export function createOpenRouterChatCompletionBody(
@@ -21,12 +26,14 @@ export function createOpenRouterChatCompletionBody(
         ? request.promptMessages.map(toOpenRouterPromptMessage)
         : legacyMessages(request);
     const provider = cleanProviderPreferences(config.providerPreferences);
+    const reasoning = cleanReasoningConfig(config.reasoning);
 
     return {
         model: config.model.id,
         messages,
         stream: request.stream === true,
         ...(provider ? { provider } : {}),
+        ...(reasoning ? { reasoning } : {}),
     };
 }
 
@@ -39,7 +46,8 @@ export function normalizeOpenRouterChatCompletion(
         throw new Error(`OpenRouter provider error: ${firstChoice.error.message}`);
     }
 
-    const message = firstChoice?.message?.content?.trim();
+    const responseMessage = firstChoice?.message;
+    const message = responseMessage?.content?.trim();
 
     if (!message) {
         throw new Error("OpenRouter response did not include message content.");
@@ -49,8 +57,46 @@ export function normalizeOpenRouterChatCompletion(
         message,
         provider: "openrouter",
         model: response.model,
+        ...(responseMessage?.reasoning?.trim()
+            ? { reasoning: responseMessage.reasoning.trim() }
+            : {}),
+        ...(responseMessage?.reasoning_details !== undefined
+            ? { reasoningDetails: responseMessage.reasoning_details }
+            : {}),
         raw: response,
     };
+}
+
+export function cleanReasoningConfig(
+    reasoning: OpenRouterReasoningConfig | undefined,
+): OpenRouterReasoningConfig | undefined {
+    if (!reasoning) {
+        return undefined;
+    }
+
+    const clean: OpenRouterReasoningConfig = {};
+
+    if (
+        typeof reasoning.max_tokens === "number" &&
+        Number.isInteger(reasoning.max_tokens) &&
+        reasoning.max_tokens > 0
+    ) {
+        clean.max_tokens = reasoning.max_tokens;
+    } else if (
+        reasoning.effort &&
+        reasoning.effort !== "none" &&
+        ["xhigh", "high", "medium", "low", "minimal"].includes(reasoning.effort)
+    ) {
+        clean.effort = reasoning.effort;
+    }
+
+    if (typeof reasoning.exclude === "boolean") {
+        clean.exclude = reasoning.exclude;
+    }
+
+    return clean.effort || clean.max_tokens || clean.exclude !== undefined
+        ? clean
+        : undefined;
 }
 
 export function cleanProviderPreferences(
@@ -115,13 +161,24 @@ function toOpenRouterPromptMessage(
     return {
         role: message.role === "developer" ? "system" : message.role,
         content: message.content,
+        ...(message.reasoning ? { reasoning: message.reasoning } : {}),
+        ...(message.reasoningDetails !== undefined
+            ? { reasoning_details: message.reasoningDetails }
+            : {}),
     };
 }
 
 function toOpenRouterMessage(message: Message): OpenRouterChatMessage {
+    const reasoning = getMessageReasoning(message);
+    const reasoningDetails = getMessageReasoningDetails(message);
+
     return {
         role: message.role === "user" ? "user" : "assistant",
         content: getMessageContent(message),
+        ...(reasoning ? { reasoning } : {}),
+        ...(reasoningDetails !== undefined
+            ? { reasoning_details: reasoningDetails }
+            : {}),
     };
 }
 

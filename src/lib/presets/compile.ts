@@ -1,7 +1,11 @@
 import type { ChatMode, Message, SmileyCharacter, UserStatus } from "../../types";
 import { getCharacterTagline } from "../characters/normalize";
 import type { ChatGenerationMessage } from "../connections/types";
-import { getMessageContent } from "../messages";
+import {
+    getMessageContent,
+    getMessageReasoning,
+    getMessageReasoningDetails,
+} from "../messages";
 import { dynamicPromptIds } from "./defaults";
 import { formatCharacterBook, resolvePresetMacros } from "./macros";
 import type { PresetPrompt, SmileyPreset } from "./types";
@@ -269,9 +273,14 @@ function toGenerationMessage(
     message: Message,
     context: CompilePresetContext,
 ): ChatGenerationMessage {
+    const reasoning = getMessageReasoning(message);
+    const reasoningDetails = getMessageReasoningDetails(message);
+
     return {
         role: message.role === "user" ? "user" : "assistant",
         content: messageContentForPrompt(message, context),
+        ...(reasoning ? { reasoning } : {}),
+        ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
     };
 }
 

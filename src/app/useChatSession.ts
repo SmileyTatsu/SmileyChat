@@ -16,6 +16,7 @@ import {
     createUserMessage,
     isActiveSwipeError,
     updateActiveSwipeContent,
+    updateActiveSwipeReasoning,
 } from "../lib/messages";
 import { messageFromError } from "../lib/common/errors";
 import type { ConnectionSettings } from "../lib/connections/config";
@@ -144,6 +145,7 @@ export function useChatSession({
             }
 
             let streamedContent = "";
+            let streamedReasoning = "";
             const result = await generateWithPreset(
                 nextMessages,
                 generationCharacter,
@@ -158,15 +160,31 @@ export function useChatSession({
                               updateMessageContent(streamingReply.id, streamedContent);
                           }
                         : undefined,
+                    onReasoningToken: streamingReply
+                        ? (token) => {
+                              streamedReasoning += token;
+                              updateMessageReasoning(
+                                  streamingReply.id,
+                                  streamedReasoning,
+                              );
+                          }
+                        : undefined,
                 },
             );
 
             if (streamingReply) {
-                updateMessageContent(streamingReply.id, result);
+                updateMessageContent(
+                    streamingReply.id,
+                    result.message,
+                    undefined,
+                    result.reasoning,
+                    result.reasoningDetails,
+                );
             } else {
-                const reply = createCharacterMessage(
-                    generationCharacter.data.name,
-                    result,
+                const reply = withMessageReasoning(
+                    createCharacterMessage(generationCharacter.data.name, result.message),
+                    result.reasoning,
+                    result.reasoningDetails,
                 );
 
                 updateChatMessages(
@@ -236,6 +254,8 @@ export function useChatSession({
                               content,
                               sourceChat.messages.filter((item) => item.id !== messageId),
                           ),
+                          undefined,
+                          "",
                       )
                     : message,
             ),
@@ -327,6 +347,7 @@ export function useChatSession({
             }
 
             let streamedContent = "";
+            let streamedReasoning = "";
             const result = await generateWithPreset(
                 historyBeforeTarget,
                 generationCharacter,
@@ -341,17 +362,35 @@ export function useChatSession({
                               updateMessageContent(messageId, streamedContent);
                           }
                         : undefined,
+                    onReasoningToken: preferences.chat.streaming
+                        ? (token) => {
+                              streamedReasoning += token;
+                              updateMessageReasoning(messageId, streamedReasoning);
+                          }
+                        : undefined,
                 },
             );
 
             const targetChat = currentOrSourceChat(sourceChat);
             if (preferences.chat.streaming) {
-                updateMessageContent(messageId, result);
+                updateMessageContent(
+                    messageId,
+                    result.message,
+                    undefined,
+                    result.reasoning,
+                    result.reasoningDetails,
+                );
             } else {
                 updateChatMessages(
                     targetChat.messages.map((message) =>
                         message.id === messageId
-                            ? appendMessageSwipe(message, result)
+                            ? appendMessageSwipe(
+                                  message,
+                                  result.message,
+                                  undefined,
+                                  result.reasoning,
+                                  result.reasoningDetails,
+                              )
                             : message,
                     ),
                     targetChat,
@@ -408,6 +447,8 @@ export function useChatSession({
         messageId: string,
         content: string,
         status?: Message["swipes"][number]["status"],
+        reasoning?: string,
+        reasoningDetails?: unknown,
     ) {
         const sourceChat = latestChatRef.current;
 
@@ -418,7 +459,34 @@ export function useChatSession({
         updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId
-                    ? updateActiveSwipeContent(message, content, status)
+                    ? updateActiveSwipeContent(
+                          message,
+                          content,
+                          status,
+                          reasoning,
+                          reasoningDetails,
+                      )
+                    : message,
+            ),
+            sourceChat,
+        );
+    }
+
+    function updateMessageReasoning(
+        messageId: string,
+        reasoning: string,
+        reasoningDetails?: unknown,
+    ) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? updateActiveSwipeReasoning(message, reasoning, reasoningDetails)
                     : message,
             ),
             sourceChat,
@@ -482,6 +550,7 @@ export function useChatSession({
         sourceUserStatus: UserStatus,
         sourceConnectionSettings: ConnectionSettings,
         options: {
+            onReasoningToken?: (token: string) => void;
             onToken?: (token: string) => void;
             stream?: boolean;
         } = {},
@@ -507,12 +576,12 @@ export function useChatSession({
         );
         const result = await connection.generate({
             messages: generationMessages,
+            onReasoningToken: options.onReasoningToken,
             onToken: options.onToken,
             promptMessages,
             stream: options.stream,
         });
-
-        return applyOutputMiddlewares(
+        const message = await applyOutputMiddlewares(
             result.message,
             generationMessages,
             sourceCharacter,
@@ -520,6 +589,8 @@ export function useChatSession({
             sourceUserStatus,
             result,
         );
+
+        return { ...result, message };
     }
 
     async function applyInputMiddlewares(
@@ -610,6 +681,24 @@ export function useChatSession({
 
 function generationErrorMessage(error: unknown) {
     return `Generation failed: ${messageFromError(error)}`;
+}
+
+function withMessageReasoning(
+    message: Message,
+    reasoning?: string,
+    reasoningDetails?: unknown,
+) {
+    if (!reasoning && reasoningDetails === undefined) {
+        return message;
+    }
+
+    return updateActiveSwipeContent(
+        message,
+        message.swipes[message.activeSwipeIndex]?.content ?? "",
+        undefined,
+        reasoning,
+        reasoningDetails,
+    );
 }
 
 function latestChatValue(

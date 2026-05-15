@@ -64,6 +64,14 @@ export function getMessageContent(message: Message) {
     return getActiveSwipe(message)?.content ?? "";
 }
 
+export function getMessageReasoning(message: Message) {
+    return getActiveSwipe(message)?.reasoning ?? "";
+}
+
+export function getMessageReasoningDetails(message: Message) {
+    return getActiveSwipe(message)?.reasoningDetails;
+}
+
 export function getMessageCreatedAt(message: Message) {
     return getActiveSwipe(message)?.createdAt ?? message.createdAt;
 }
@@ -76,11 +84,21 @@ export function updateActiveSwipeContent(
     message: Message,
     content: string,
     status?: MessageSwipe["status"],
+    reasoning?: string,
+    reasoningDetails?: unknown,
 ): Message {
     if (message.swipes.length === 0) {
+        const swipe = createMessageSwipe(content, status);
+
         return {
             ...message,
-            swipes: [createMessageSwipe(content, status)],
+            swipes: [
+                {
+                    ...swipe,
+                    ...(reasoning ? { reasoning } : {}),
+                    ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+                },
+            ],
             activeSwipeIndex: 0,
         };
     }
@@ -92,7 +110,44 @@ export function updateActiveSwipeContent(
                 ? {
                       ...swipe,
                       content,
+                      ...(reasoning !== undefined ? { reasoning } : {}),
+                      ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                       ...(status ? { status } : {}),
+                  }
+                : swipe,
+        ),
+    };
+}
+
+export function updateActiveSwipeReasoning(
+    message: Message,
+    reasoning: string,
+    reasoningDetails?: unknown,
+): Message {
+    if (message.swipes.length === 0) {
+        const swipe = createMessageSwipe("");
+
+        return {
+            ...message,
+            swipes: [
+                {
+                    ...swipe,
+                    ...(reasoning ? { reasoning } : {}),
+                    ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+                },
+            ],
+            activeSwipeIndex: 0,
+        };
+    }
+
+    return {
+        ...message,
+        swipes: message.swipes.map((swipe, index) =>
+            index === message.activeSwipeIndex
+                ? {
+                      ...swipe,
+                      reasoning,
+                      ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                   }
                 : swipe,
         ),
@@ -103,8 +158,18 @@ export function appendMessageSwipe(
     message: Message,
     content: string,
     status?: MessageSwipe["status"],
+    reasoning?: string,
+    reasoningDetails?: unknown,
 ): Message {
-    const swipes = [...message.swipes, createMessageSwipe(content, status)];
+    const swipe = createMessageSwipe(content, status);
+    const swipes = [
+        ...message.swipes,
+        {
+            ...swipe,
+            ...(reasoning ? { reasoning } : {}),
+            ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+        },
+    ];
 
     return {
         ...message,
