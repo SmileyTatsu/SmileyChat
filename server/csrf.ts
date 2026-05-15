@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { HttpError, writeJsonAtomic } from "./http";
 import { csrfSecretPath } from "./paths";
+import { isPrivateNetworkHostname } from "./private-network";
 
 const csrfHeaderName = "x-smileychat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -68,8 +69,36 @@ function getAllowedOrigins(request: Request) {
     return new Set([
         new URL(request.url).origin,
         ...forwardedRequestOrigins(request),
+        ...privateNetworkRequestOrigins(request),
         ...trustedOriginsFromEnv(),
     ]);
+}
+
+function privateNetworkRequestOrigins(request: Request) {
+    const proto = firstHeaderValue(request.headers.get("x-forwarded-proto")) ?? "http";
+    const host =
+        firstHeaderValue(request.headers.get("x-forwarded-host")) ??
+        firstHeaderValue(request.headers.get("host"));
+
+    if (!host) {
+        return [];
+    }
+
+    const hostname = hostnameFromAuthority(host);
+    if (!hostname || !isPrivateNetworkHostname(hostname)) {
+        return [];
+    }
+
+    const origin = normalizeOrigin(`${proto}://${host}`);
+    return origin ? [origin] : [];
+}
+
+function hostnameFromAuthority(authority: string) {
+    try {
+        return new URL(`http://${authority}`).hostname;
+    } catch {
+        return undefined;
+    }
 }
 
 function forwardedRequestOrigins(request: Request) {

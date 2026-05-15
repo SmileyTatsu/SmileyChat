@@ -183,6 +183,122 @@ describe("CSRF request verification", () => {
             status: 403,
         });
     });
+
+    test("trusts RFC 1918 LAN origins when the Host header matches", async () => {
+        const token = await createCsrfToken();
+
+        for (const lanHost of ["192.168.1.5", "10.0.0.42", "172.17.0.2"]) {
+            const authority = `${lanHost}:${API_PORT}`;
+            await expect(
+                verifyCsrfRequest(
+                    new Request(`http://localhost:${API_PORT}/api/chats`, {
+                        method: "POST",
+                        headers: {
+                            Host: authority,
+                            Origin: `http://${authority}`,
+                            "x-smileychat-csrf": token,
+                        },
+                    }),
+                ),
+            ).resolves.toBeUndefined();
+        }
+    });
+
+    test("trusts Tailscale CGNAT origins when the Host header matches", async () => {
+        const token = await createCsrfToken();
+        const tailscaleAuthority = `100.92.13.7:${API_PORT}`;
+
+        await expect(
+            verifyCsrfRequest(
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
+                    method: "PUT",
+                    headers: {
+                        Host: tailscaleAuthority,
+                        Origin: `http://${tailscaleAuthority}`,
+                        "x-smileychat-csrf": token,
+                    },
+                }),
+            ),
+        ).resolves.toBeUndefined();
+    });
+
+    test("trusts IPv6 unique-local origins when the Host header matches", async () => {
+        const token = await createCsrfToken();
+        const ulaAuthority = `[fd00::1]:${API_PORT}`;
+
+        await expect(
+            verifyCsrfRequest(
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
+                    method: "PUT",
+                    headers: {
+                        Host: ulaAuthority,
+                        Origin: `http://${ulaAuthority}`,
+                        "x-smileychat-csrf": token,
+                    },
+                }),
+            ),
+        ).resolves.toBeUndefined();
+    });
+
+    test("does not trust private-network Origin when Host does not match", async () => {
+        const token = await createCsrfToken();
+
+        await expect(
+            verifyCsrfRequest(
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
+                    method: "POST",
+                    headers: {
+                        Host: "evil.example",
+                        Origin: `http://192.168.1.5:${API_PORT}`,
+                        "x-smileychat-csrf": token,
+                    },
+                }),
+            ),
+        ).rejects.toMatchObject({
+            code: "csrf_origin_untrusted",
+            status: 403,
+        });
+    });
+
+    test("does not trust public IPs disguised by a private-network Origin", async () => {
+        const token = await createCsrfToken();
+
+        await expect(
+            verifyCsrfRequest(
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
+                    method: "POST",
+                    headers: {
+                        Host: `203.0.113.7:${API_PORT}`,
+                        Origin: `http://203.0.113.7:${API_PORT}`,
+                        "x-smileychat-csrf": token,
+                    },
+                }),
+            ),
+        ).rejects.toMatchObject({
+            code: "csrf_origin_untrusted",
+            status: 403,
+        });
+    });
+
+    test("honors x-forwarded-host when it points at a private-network address", async () => {
+        const token = await createCsrfToken();
+        const lanAuthority = `192.168.1.5:${API_PORT}`;
+
+        await expect(
+            verifyCsrfRequest(
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
+                    method: "PUT",
+                    headers: {
+                        Host: `localhost:${API_PORT}`,
+                        Origin: `http://${lanAuthority}`,
+                        "x-forwarded-host": lanAuthority,
+                        "x-forwarded-proto": "http",
+                        "x-smileychat-csrf": token,
+                    },
+                }),
+            ),
+        ).resolves.toBeUndefined();
+    });
 });
 
 function restoreEnv(key: string, value: string | undefined) {
