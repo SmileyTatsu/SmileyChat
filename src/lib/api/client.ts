@@ -150,7 +150,7 @@ async function responseErrorMessage(response: Response) {
 
 function apiErrorMessage(code: string, message: string) {
     if (code === "csrf_origin_untrusted") {
-        return `${message} Add this browser origin to SMILEYCHAT_TRUSTED_ORIGINS if you are using a reverse proxy or LAN address.`;
+        return `${message} Add this browser origin to 'SMILEYCHAT_TRUSTED_ORIGINS', if you are using a reverse proxy or LAN address.`;
     }
 
     if (code === "csrf_origin_missing") {

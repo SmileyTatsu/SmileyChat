@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 
-const csrfSecret =
-    "test-csrf-secret-that-is-long-enough-for-smileychat";
+const csrfSecret = "test-csrf-secret-that-is-long-enough-for-smileychat";
 const originalSecret = process.env.SMILEYCHAT_CSRF_SECRET;
 const originalTrustedOrigins = process.env.SMILEYCHAT_TRUSTED_ORIGINS;
+const API_PORT = process.env.SMILEYCHAT_API_PORT ?? "4173";
 
 describe("CSRF request verification", () => {
     beforeEach(() => {
@@ -19,18 +19,16 @@ describe("CSRF request verification", () => {
 
     test("allows safe methods without provenance or token headers", async () => {
         await expect(
-            verifyCsrfRequest(new Request("http://localhost:4173/api/chats")),
+            verifyCsrfRequest(new Request(`http://localhost:${API_PORT}/api/chats`)),
         ).resolves.toBeUndefined();
     });
 
     test("rejects unsafe requests without a CSRF token", async () => {
         await expect(
             verifyCsrfRequest(
-                new Request("http://localhost:4173/api/chats", {
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "POST",
-                    headers: {
-                        Origin: "http://localhost:4173",
-                    },
+                    headers: { Origin: `http://localhost:${API_PORT}` },
                 }),
             ),
         ).rejects.toMatchObject({
@@ -42,10 +40,10 @@ describe("CSRF request verification", () => {
     test("rejects unsafe requests with a forged CSRF token", async () => {
         await expect(
             verifyCsrfRequest(
-                new Request("http://localhost:4173/api/chats", {
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "POST",
                     headers: {
-                        Origin: "http://localhost:4173",
+                        Origin: `http://localhost:${API_PORT}`,
                         "x-smileychat-csrf": "not-a-real-token",
                     },
                 }),
@@ -61,7 +59,7 @@ describe("CSRF request verification", () => {
 
         await expect(
             verifyCsrfRequest(
-                new Request("http://localhost:4173/api/chats", {
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "POST",
                     headers: {
                         Origin: "https://evil.example",
@@ -81,7 +79,7 @@ describe("CSRF request verification", () => {
 
         await expect(
             verifyCsrfRequest(
-                new Request("http://localhost:4173/api/chats", {
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "PUT",
                     headers: {
                         Origin: "https://chat.example.com",
@@ -97,10 +95,10 @@ describe("CSRF request verification", () => {
 
         await expect(
             verifyCsrfRequest(
-                new Request("http://localhost:4173/api/chats", {
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "PUT",
                     headers: {
-                        Host: "localhost:4173",
+                        Host: `localhost:${API_PORT}`,
                         Origin: "https://chat.example.com",
                         "x-forwarded-host": "chat.example.com",
                         "x-forwarded-proto": "https",
@@ -116,10 +114,10 @@ describe("CSRF request verification", () => {
 
         await expect(
             verifyCsrfRequest(
-                new Request("http://localhost:4173/api/chats", {
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "DELETE",
                     headers: {
-                        Referer: "http://localhost:4173/chats/demo",
+                        Referer: `http://localhost:${API_PORT}/chats/demo`,
                         "x-smileychat-csrf": token,
                     },
                 }),
@@ -132,7 +130,7 @@ describe("CSRF request verification", () => {
 
         await expect(
             verifyCsrfRequest(
-                new Request("http://localhost:4173/api/chats", {
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "DELETE",
                     headers: {
                         "x-smileychat-csrf": token,
