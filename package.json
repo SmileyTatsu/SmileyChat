@@ -5,12 +5,13 @@
     "type": "module",
     "scripts": {
         "dev": "vite --host 127.0.0.1",
-        "dev:api": "bun server/index.ts",
+        "dev:api": "bun --watch --no-clear-screen server/index.ts",
         "build": "tsc && vite build",
         "format": "prettier --write .",
         "test": "bun test",
         "start": "bun server/index.ts",
-        "preview": "vite preview --host 127.0.0.1"
+        "preview": "vite preview --host 127.0.0.1",
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "@preact/preset-vite": "^2.10.5",
