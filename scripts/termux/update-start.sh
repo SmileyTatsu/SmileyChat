@@ -9,7 +9,8 @@
 
 set -e
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR/../.."
 
 if ! command -v git >/dev/null 2>&1; then
     echo "Git is required. Run: pkg install git"

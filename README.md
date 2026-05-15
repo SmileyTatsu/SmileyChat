@@ -13,27 +13,81 @@ SmileyChat is a local-first frontend application for chatting, roleplay, and sto
 - **Character Card Support**: Import Tavern-style V1/V2/V3 JSON and PNG character cards easily via drag & drop or file selection.
 - **Extensible Plugin System**: Extend the core functionality using local ESM plugins.
 
-## Requirements
-
-- [Bun](https://bun.sh/) (JavaScript runtime)
-
 ## Installation & Usage
 
-1. Clone the repository.
-2. Install dependencies:
-    ```bash
-    bun install
-    ```
-3. Start the application:
-    - On Windows: Run `SmileyChat.cmd` to automatically build and start the server.
-    - On Windows, update first: Run `SmileyChat.UpdateStart.cmd` to pull the latest Git changes, install dependencies, build, and start the server.
-    - On Android via Termux: see [`docs/android-termux.md`](docs/android-termux.md) for the full install walkthrough. Once installed, `./SmileyChat.UpdateStart.Termux.sh` is the update-and-start launcher.
-    - Manually:
-        ```bash
-        bun run build
-        bun run start
-        ```
-4. Open the displayed URL in your browser (default: `http://127.0.0.1:4173`).
+SmileyChat runs locally. After it starts, open the displayed URL in your browser, usually `http://127.0.0.1:4173`.
+
+### Windows
+
+Install [Git](https://git-scm.com/) and [Bun](https://bun.sh/), clone the repository, then run:
+
+```cmd
+SmileyChat.Windows.cmd
+```
+
+To update before starting:
+
+```cmd
+scripts\windows\update-start.cmd
+```
+
+### Ubuntu / Debian
+
+Install Git, curl, and unzip if they are not already available:
+
+```bash
+sudo apt update
+sudo apt install -y git curl unzip
+```
+
+Install Bun:
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+source ~/.bashrc
+```
+
+Clone and start SmileyChat:
+
+```bash
+git clone https://github.com/SmileyTatsu/SmileyChat.git
+cd SmileyChat
+bun install
+bun run build
+bun run start
+```
+
+### Linux
+
+For other Linux distributions, install Git, curl, and unzip with your system package manager, install [Bun](https://bun.sh/), then run:
+
+```bash
+git clone https://github.com/SmileyTatsu/SmileyChat.git
+cd SmileyChat
+bun install
+bun run build
+bun run start
+```
+
+### Android / Termux
+
+Android support uses Termux and a Bun compatibility shim. See [`docs/android-termux.md`](docs/android-termux.md) for the full walkthrough.
+
+After setup, start or update SmileyChat with:
+
+```sh
+sh ./SmileyChat.Termux.sh
+```
+
+### Manual Start
+
+From an existing checkout with Bun installed:
+
+```bash
+bun install
+bun run build
+bun run start
+```
 
 ## Server Configuration
 

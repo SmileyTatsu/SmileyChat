@@ -1,75 +1,129 @@
 # Running SmileyChat on Android via Termux
 
-SmileyChat runs on Android phones through **Termux** plus a community-built Bun compatibility shim called **bun-termux**. This is a power-user install — there is no Play Store APK yet — but if you have used a terminal before you can be running in 15–20 minutes. Updates after the first install take under a minute.
+SmileyChat can run on Android phones through Termux plus a community-built Bun compatibility shim called `bun-termux`.
 
-The install is non-trivial because Bun has no native Android target. Bun's official binary is built against glibc, which Termux's Bionic libc does not provide. The `bun-termux` project ([Happ1ness-dev/bun-termux](https://github.com/Happ1ness-dev/bun-termux)) bridges that gap with an `LD_PRELOAD` shim plus the `glibc-runner` Termux package. It is currently the only documented Bun-on-Termux install path that works end-to-end.
+This is a power-user install. The easy installer is the recommended path, and the manual path is documented for people who want to understand or debug each step.
 
-## What you need
+## What You Need
 
-- An Android phone running Android 7 (Nougat) or newer.
-- **An aarch64 (real ARM) device.** Any phone made after 2017 is fine. This walkthrough does **not** work on x86_64 Termux — Android emulators (BlueStacks, NoxPlayer, Windows Subsystem for Android, Android-x86, Genymotion, etc.) ship x86_64 Termux, and the `bun-termux` shim's Makefile is hardcoded to the `aarch64-linux-android` / `aarch64-linux-gnu` targets. Compilation of the shim will fail on x86_64 with `cannot open .../aarch64-unknown-linux-android/libclang_rt.builtins.a`.
-- About 1 GB of free storage (Termux + glibc + Bun + SmileyChat).
-- 15–20 minutes for the first install. Updates after that take under a minute.
+- Android 7 or newer.
+- Termux from F-Droid, not the Google Play Store.
+- An aarch64 Android device.
+- About 1 GB of free storage.
+- 15 to 20 minutes for the first install.
 
-After Step 1 below, verify your Termux is on aarch64 before going further:
+This does not work on x86_64 Termux. Android emulators such as BlueStacks, NoxPlayer, Windows Subsystem for Android, Android-x86, and Genymotion usually provide x86_64 Termux. The `bun-termux` shim build expects aarch64 targets.
+
+After installing Termux, check your architecture:
 
 ```sh
 dpkg --print-architecture
 ```
 
-It must print `aarch64`. If it prints `x86_64`, stop here — this install path doesn't apply to your setup.
+It must print:
 
-## Step 1 — Install Termux from F-Droid
+```text
+aarch64
+```
 
-**Do not install Termux from the Google Play Store.** The Play Store version has been unmaintained since 2020 and will fail in confusing ways on modern Android. Use F-Droid.
+If it prints `x86_64`, stop here. This install path does not apply to your setup.
 
-1. Phone browser → https://f-droid.org/ → tap "Download F-Droid".
-2. Install the F-Droid APK (allow installs from unknown sources when prompted).
-3. Open F-Droid, search for **Termux**, install it.
-4. Open Termux — you should see a terminal prompt.
+## Install Termux
 
-## Step 2 — Install Termux packages
+Do not install Termux from the Google Play Store. That version has been unmaintained since 2020 and can fail in confusing ways on modern Android.
 
-`glibc-runner` lives in a separate repo that `glibc-repo` enables. apt resolves a whole install transaction against the current index *before* installing anything, so it has to be done in two passes: install `glibc-repo` first, refresh the index, then install everything else.
+1. Open your phone browser.
+2. Go to `https://f-droid.org/`.
+3. Download and install F-Droid.
+4. Open F-Droid.
+5. Search for Termux and install it.
+6. Open Termux.
+
+## Method 1: Easy Installer
+
+This is the recommended method. It fetches and runs SmileyChat's Termux installer from GitHub:
 
 ```sh
-pkg update -y && pkg upgrade -y
+curl -fsSL https://raw.githubusercontent.com/SmileyTatsu/SmileyChat/main/scripts/termux/install.sh | bash
+```
+
+The installer does the following:
+
+1. Verifies that Termux is running on aarch64.
+2. Updates Termux packages.
+3. Installs the glibc repository and required build dependencies.
+4. Installs Bun.
+5. Builds and installs the `bun-termux` shim.
+6. Clones SmileyChat into `~/SmileyChat` if needed.
+7. Builds and starts SmileyChat.
+
+When the server starts, open this URL in your Android browser:
+
+```text
+http://127.0.0.1:4173
+```
+
+After the first install, start or update SmileyChat with:
+
+```sh
+cd ~/SmileyChat
+sh ./SmileyChat.Termux.sh
+```
+
+## Method 2: Manual Install
+
+Use this method if you want to do every step yourself or debug the installer.
+
+### Step 1: Install Termux packages
+
+`glibc-runner` lives in a separate package repository enabled by `glibc-repo`. Install `glibc-repo` first, refresh package indexes, then install the remaining packages.
+
+```sh
+pkg update -y
+pkg upgrade -y
 pkg install -y glibc-repo
-pkg update
+pkg update -y
 pkg install -y git curl clang make python resolv-conf glibc-runner compiler-rt-glibc libunwind-glibc-static
 ```
 
-This pulls in:
+These packages are used for:
 
-- **git, curl** — for cloning and downloads
-- **clang, make, python** — for building the bun-termux shim from source
-- **resolv-conf** — provides `/etc/resolv.conf` so DNS works for the glibc side
-- **glibc-repo** — enables the glibc package repository (separate pass so the next install can see it)
-- **glibc-runner** — provides a glibc shim layer that lets glibc binaries run under Termux's Bionic environment
-- **compiler-rt-glibc** — clang's runtime for the `aarch64-linux-gnu` target the bun-termux shim build uses (clang defaults to Termux's Bionic compiler-rt, which is the wrong runtime for shim compilation)
-- **libunwind-glibc-static** — static unwinder for the same target; the shim needs it at link time
+- `git` and `curl`: cloning and downloads.
+- `clang`, `make`, and `python`: building the `bun-termux` shim.
+- `resolv-conf`: DNS configuration for the glibc side.
+- `glibc-repo`: enabling Termux glibc packages.
+- `glibc-runner`: running glibc binaries in Termux.
+- `compiler-rt-glibc`: clang runtime for the glibc target.
+- `libunwind-glibc-static`: static unwinder required by the shim build.
 
-## Step 3 — Fix DNS for the glibc side
+### Step 2: Fix DNS for glibc
 
 ```sh
+mkdir -p "$PREFIX/glibc/etc"
 ln -sf "$PREFIX/etc/resolv.conf" "$PREFIX/glibc/etc/resolv.conf"
 ```
 
-The glibc shim has its own filesystem layout. Without a working DNS config, any process that tries to resolve a hostname (like `bun install` fetching from npm) fails with `Connection refused`. Symlinking Termux's `resolv.conf` into the glibc tree fixes that.
+Without this symlink, `bun install` can fail with connection or DNS errors when fetching packages.
 
-## Step 4 — Install Bun (the standard way)
+### Step 3: Install Bun
+
+Pin Bun to the known-good version validated with this setup:
 
 ```sh
-curl -fsSL https://bun.sh/install | bash
-echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.14"
 ```
 
-This runs Bun's official installer, then writes the Bun PATH entry into `~/.bashrc` (the `>>` redirect also creates the file if it doesn't exist yet — a fresh Termux home has no `~/.bashrc`, which would otherwise make `source` fail). `source ~/.bashrc` reloads the shell so the new PATH is active.
+Add Bun to your shell path:
 
-**Do not run `bun --version` yet.** The binary is glibc-linked and will not execute on Termux directly until the next step installs the shim.
+```sh
+touch ~/.bashrc
+grep -q 'export PATH="$HOME/.bun/bin:$PATH"' ~/.bashrc || echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc
+export PATH="$HOME/.bun/bin:$PATH"
+```
 
-## Step 5 — Install the bun-termux shim
+Do not run `bun --version` yet. The Bun binary needs the `bun-termux` shim before it can run correctly in Termux.
+
+### Step 4: Install the bun-termux shim
 
 ```sh
 git clone https://github.com/Happ1ness-dev/bun-termux.git ~/bun-termux
@@ -78,24 +132,17 @@ make
 make install
 ```
 
-This is the key step. `bun-termux` builds a small native shim (`bun-shim.so`) that, via `LD_PRELOAD`, intercepts a handful of syscalls Bun makes and translates between glibc expectations and Termux's Bionic environment. After `make install`, the `bun` command on your PATH transparently runs through the shim.
+After `make install`, the `bun` command on your path should run through the shim.
 
-If `make` fails complaining about Bun's version, the shim's compatibility script may be lagging Bun's latest release. Pin Bun to a known-good version (`1.3.14` is validated):
-
-```sh
-curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.14"
-cd ~/bun-termux && make && make install
-```
-
-## Step 6 — Verify Bun works
+### Step 5: Verify Bun
 
 ```sh
 bun --version
 ```
 
-You should see a version number like `1.3.x`. **That's the success signal.** Bun is now running natively in Termux.
+You should see a version number like `1.3.x`.
 
-## Step 7 — Clone SmileyChat
+### Step 6: Clone SmileyChat
 
 ```sh
 cd ~
@@ -103,53 +150,45 @@ git clone https://github.com/SmileyTatsu/SmileyChat.git
 cd SmileyChat
 ```
 
-## Step 8 — Build and run
-
-The `SmileyChat.UpdateStart.Termux.sh` script in the repo is the single command you'll run from here on out:
+### Step 7: Build and run
 
 ```sh
-./SmileyChat.UpdateStart.Termux.sh
+sh ./SmileyChat.Termux.sh
 ```
 
-It does, in order:
+The launcher does the following:
 
-1. `git pull --ff-only` — pulls the latest changes (no-op on a fresh clone).
-2. `BUN_OPTIONS="--backend=copyfile --os=linux" bun install` — installs dependencies. `--backend=copyfile` prevents hardlink failures on Termux's filesystem; `--os=linux` tells Bun to fetch the Linux-target native binaries for deps like rolldown and esbuild (the bun-termux shim makes `process.platform` report `linux` at runtime, so Linux builds are what actually get loaded).
-3. `BUN_OPTIONS="--os=linux" bun run build` — typechecks and bundles the frontend.
-4. `BUN_OPTIONS="--os=linux" bun run start` — starts the server.
+1. Runs `git pull --ff-only`.
+2. Runs `BUN_OPTIONS="--backend=copyfile --os=linux" bun install`.
+3. Runs `BUN_OPTIONS="--os=linux" bun run build`.
+4. Runs `BUN_OPTIONS="--os=linux" bun run start`.
 
-First-time install takes 1–3 minutes on a phone (most of that is `bun install`). Subsequent runs are much faster.
+When the server starts, open this URL in your Android browser:
 
-When the server is up, you'll see:
-
-```
-SmileyChat running at http://127.0.0.1:4173
+```text
+http://127.0.0.1:4173
 ```
 
-## Step 9 — Browse to it
+## Keeping the Server Alive
 
-**Don't close Termux.** Switch apps (recents button) and open your phone's browser. Go to **http://127.0.0.1:4173**. SmileyChat loads.
-
-## Keep the server alive in the background
-
-While the Termux session is open, the server is up. To stop Android from suspending it:
+Do not close Termux while using SmileyChat. To reduce the chance that Android suspends the process:
 
 1. Swipe down the notification shade.
-2. Find the Termux notification, tap **Acquire wakelock**.
-3. The phone won't suspend Termux until you manually release it.
+2. Find the Termux notification.
+3. Tap `Acquire wakelock`.
 
 ## Updating
 
 ```sh
 cd ~/SmileyChat
-./SmileyChat.UpdateStart.Termux.sh
+sh ./SmileyChat.Termux.sh
 ```
 
-The script pulls the latest commits, reinstalls dependencies (no-op if nothing changed), rebuilds (incremental), and restarts the server.
+This pulls the latest commits, installs dependencies if needed, rebuilds the app, and starts the server.
 
-## Optional — one-tap launcher from your home screen
+## Optional Home Screen Launcher
 
-If you don't want to open Termux and type the command every time, install **Termux:Widget** from F-Droid (same source as Termux). It pairs with Termux to expose home-screen shortcuts.
+If you do not want to open Termux and type the command every time, install Termux:Widget from F-Droid.
 
 In Termux:
 
@@ -158,60 +197,121 @@ mkdir -p ~/.shortcuts
 cat > ~/.shortcuts/SmileyChat << 'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
 cd ~/SmileyChat
-./SmileyChat.UpdateStart.Termux.sh
+sh ./SmileyChat.Termux.sh
 EOF
 chmod +x ~/.shortcuts/SmileyChat
 ```
 
-Then on your home screen, long-press → **Widgets** → drag the **Termux:Widget** shortcut to the screen. When it asks which script, pick **SmileyChat**. Tapping the icon now opens Termux, runs the update-and-start script, and you switch to your browser to use the app.
+Then long-press your Android home screen, open Widgets, add the Termux:Widget shortcut, and choose `SmileyChat`.
 
-## Stop the server
+## Stop the Server
 
-Switch back to Termux, press **Volume-down + C** (Termux's Ctrl-C). The server stops and you get a normal prompt back.
+Switch back to Termux and press `Volume-down + C`. The server stops and you get a normal prompt back.
 
-## Where your data lives
+## Where Your Data Lives
 
-`~/SmileyChat/userData/` contains characters, chats, personas, plugin storage. That directory is gitignored, so `SmileyChat.UpdateStart.Termux.sh` will never overwrite it. To back up everything, copy that folder somewhere safe.
+SmileyChat stores local user data here:
 
-To move data between devices, copy `~/SmileyChat/userData/` between them.
+```text
+~/SmileyChat/userData/
+```
+
+That folder contains characters, chats, personas, plugin storage, and settings. It is gitignored, so updating SmileyChat will not overwrite it.
+
+To move data between devices, copy `~/SmileyChat/userData/`.
 
 ## Troubleshooting
 
-**`make` in Step 5 fails with `cannot open .../aarch64-unknown-linux-android/libclang_rt.builtins.a` or `unable to find library -l:libunwind.a`:** your Termux is x86_64, not aarch64. `bun-termux`'s Makefile hardcodes the aarch64 target. Run `dpkg --print-architecture` — if it prints `x86_64`, you're on an Android emulator (BlueStacks, NoxPlayer, WSA, Android-x86, etc.) and this install path does not apply. There is no fix on the SmileyChat side; the limitation is upstream in `bun-termux`. To test SmileyChat, use a real ARM phone or an aarch64 Android emulator.
+### `dpkg --print-architecture` prints `x86_64`
 
-**`source: /root/.bashrc: No such file or directory` (or similar) at Step 4:** a fresh Termux home has no `~/.bashrc`. The updated Step 4 uses `echo '...' >> ~/.bashrc`, which both creates the file (if missing) and writes the Bun PATH entry. If you ran the older version of Step 4, fix it now: `echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc`.
+This setup requires aarch64 Termux. Use a real ARM Android device or an aarch64 Android environment.
 
-**`make` fails in Step 5 with errors mentioning `compiler-rt` or `libunwind`:** Step 2's package list was missing `compiler-rt-glibc` and `libunwind-glibc-static`. The updated Step 2 includes both. If you installed earlier without them: `pkg install -y compiler-rt-glibc libunwind-glibc-static`, then re-run `make` in `~/bun-termux`.
+### `E: Unable to locate package glibc-runner`
 
-**`E: Unable to locate package glibc-runner` during Step 2:** you ran `pkg install glibc-repo glibc-runner` in one command instead of the two-pass form. apt resolves the whole transaction against the current index before installing, so glibc-runner isn't visible until glibc-repo is installed and the index is refreshed. Re-run Step 2's commands in order (`pkg install -y glibc-repo` → `pkg update` → `pkg install -y git curl clang make python resolv-conf glibc-runner`).
+You probably tried to install `glibc-repo` and `glibc-runner` in the same command. Run the package commands in the documented order:
 
-**`bun --version` says "cannot execute: required file not found":** the `bun-termux` shim isn't loaded. Make sure Step 5 finished without errors and that you're using bash (not sh). If you opened a new Termux window after Step 4, run `source ~/.bashrc` again.
+```sh
+pkg install -y glibc-repo
+pkg update -y
+pkg install -y glibc-runner
+```
 
-**`bun install` says "Connection refused" or hangs forever on the package list step:** the `resolv.conf` symlink from Step 3 didn't take. Re-run that command (`ln -sf "$PREFIX/etc/resolv.conf" "$PREFIX/glibc/etc/resolv.conf"`) and try again.
+### `make` fails with compiler-rt or libunwind errors
 
-**`bun install` fails with `EACCES` or hardlink errors:** make sure the script (or your environment) sets `BUN_OPTIONS="--backend=copyfile --os=linux"`. The `SmileyChat.UpdateStart.Termux.sh` does this automatically when Termux is detected — if you're running `bun install` by hand, set it yourself.
+Install the missing glibc build packages:
 
-**Rolldown/rollup says "Cannot find native binding" or "could not load @rolldown/binding-..." :** you didn't include `--os=linux` in `BUN_OPTIONS` on install. Without that flag, Bun fetches binaries that match the host's "real" platform (Android), but the bun-termux shim makes `process.platform` report `linux` at runtime, so the binary loader looks for the Linux build instead. Wipe and reinstall: `rm -rf node_modules bun.lock dist && BUN_OPTIONS="--backend=copyfile --os=linux" bun install`.
+```sh
+pkg install -y compiler-rt-glibc libunwind-glibc-static
+```
 
-**`make` in the bun-termux step fails:** the shim's compat script may need a Bun version older than `latest`. Try installing `bun-v1.3.14` explicitly (see the pinned-version block in Step 5).
+Then rerun:
 
-**Browser shows "site can't be reached":** the Termux server isn't running. Switch to Termux and confirm you still see `SmileyChat running at ...`. If you see a `$` prompt instead, the server stopped — re-run `./SmileyChat.UpdateStart.Termux.sh`.
+```sh
+cd ~/bun-termux
+make
+make install
+```
 
-**Port 4173 already in use:** set a different port before starting:
+### `bun --version` says `cannot execute: required file not found`
+
+The `bun-termux` shim is not installed or is not being used. Make sure `make install` completed successfully in `~/bun-termux`, then reopen Termux or reload your path.
+
+### `bun install` says `Connection refused` or hangs
+
+The glibc DNS symlink may be missing. Re-run:
+
+```sh
+mkdir -p "$PREFIX/glibc/etc"
+ln -sf "$PREFIX/etc/resolv.conf" "$PREFIX/glibc/etc/resolv.conf"
+```
+
+### `bun install` fails with hardlink or EACCES errors
+
+Use the copyfile backend:
+
+```sh
+BUN_OPTIONS="--backend=copyfile --os=linux" bun install
+```
+
+### Native binding errors from rolldown or rollup
+
+The dependencies were probably installed without `--os=linux`. Reinstall them:
+
+```sh
+rm -rf node_modules
+BUN_OPTIONS="--backend=copyfile --os=linux" bun install
+```
+
+### Browser shows `site can't be reached`
+
+The server is not running. Switch back to Termux. If you see a shell prompt instead of the server log, restart SmileyChat:
+
+```sh
+cd ~/SmileyChat
+sh ./SmileyChat.Termux.sh
+```
+
+### Port 4173 is already in use
+
+Set another port before starting:
+
 ```sh
 export SMILEYCHAT_PORT=4180
-./SmileyChat.UpdateStart.Termux.sh
+sh ./SmileyChat.Termux.sh
 ```
-Then browse to `http://127.0.0.1:4180`.
 
-**Phone gets warm during long sessions:** normal for any long-running CPU workload. Plug in the phone for multi-hour use. Thin phones may throttle after 30–60 minutes unplugged.
+Then open:
 
-## Why this is more involved than a regular Linux install
+```text
+http://127.0.0.1:4180
+```
 
-A regular Linux box has a real glibc dynamic linker at `/lib/ld-linux-aarch64.so.1`, native symlink support, and a consistent `/proc/version`. Termux is Bionic-based and lacks all of that. The combination of `glibc-runner` (a glibc shim) and `bun-termux` (an `LD_PRELOAD` syscall translator) lets Bun and its npm ecosystem think they're running on a normal Linux machine.
+## Why This Is More Involved Than Regular Linux
 
-It's not magic. Edge cases exist — a few npm packages with native binaries may fail at install time, and a Bun upgrade can briefly break compatibility with the shim until the `bun-termux` project ships a matching update. SmileyChat's current dependency set has been validated to work with this setup.
+Bun does not currently ship a native Android target. Its official binary is built for glibc Linux, while Termux normally uses Android's Bionic libc.
+
+The `glibc-runner` package and the `bun-termux` shim make Bun and its npm dependencies behave like they are running on regular Linux. This is why the install needs glibc packages, a compatibility shim, and `BUN_OPTIONS="--os=linux"` for native dependencies.
 
 ## Credit
 
-This walkthrough leans entirely on [Happ1ness-dev/bun-termux](https://github.com/Happ1ness-dev/bun-termux) for solving the hard part. SmileyChat just runs on top of their work.
+This walkthrough depends on [Happ1ness-dev/bun-termux](https://github.com/Happ1ness-dev/bun-termux) for the Bun compatibility layer. SmileyChat runs on top of that work.
