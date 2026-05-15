@@ -21,7 +21,7 @@ import type {
     CharacterSummary,
     ChatSummary,
     PersonaSummary,
-    SmileyPersona,
+    ScyllaPersona,
     UserStatus,
 } from "#frontend/types";
 
@@ -40,7 +40,7 @@ type SidebarProps = {
     characterLoadError?: string;
     hasCharacters: boolean;
     isOpen: boolean;
-    persona: SmileyPersona;
+    persona: ScyllaPersona;
     personas: PersonaSummary[];
     userStatus: UserStatus;
     onCreateCharacter: () => void;
@@ -297,7 +297,7 @@ export function Sidebar({
                         <Sparkles size={18} />
                     </div>
                     <div>
-                        <strong>SmileyChat</strong>
+                        <strong>ScyllaChat</strong>
                         <span>Local app</span>
                     </div>
                 </div>
@@ -715,7 +715,7 @@ export function Sidebar({
                         ) && (
                             <p>
                                 Keep chats to archive them under this character ID. If you
-                                import the character again later, SmileyChat will
+                                import the character again later, ScyllaChat will
                                 reconnect matching archived chats when it can restore the
                                 same ID.
                             </p>

@@ -7,9 +7,9 @@ import type { PluginManifest } from "#frontend/lib/plugins/types";
 import { BadRequestError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
 
-const corePluginIds = new Set(["smiley-chat-formatter"]);
+const corePluginIds = new Set(["scylla-chat-formatter"]);
 const legacyCorePluginFolders: Record<string, string[]> = {
-    "smiley-chat-formatter": ["chat-formatter", "smiley-chat-formatter"],
+    "scylla-chat-formatter": ["chat-formatter", "scylla-chat-formatter"],
 };
 
 export async function readPluginManifests(): Promise<PluginManifest[]> {

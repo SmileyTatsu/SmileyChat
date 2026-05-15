@@ -89,7 +89,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 `${plugin.name} ${nextEnabled ? "enabled" : "disabled"}.${
                     plugin.source === "core" || nextEnabled || loadedState(plugin)
                         ? ""
-                        : " Restart SmileyChat to load this plugin into the current session."
+                        : " Restart ScyllaChat to load this plugin into the current session."
                 }`,
             );
             setRequestState("success");
@@ -296,12 +296,12 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                         </p>
                                     ) : enabled ? (
                                         <p>
-                                            Restart SmileyChat to load this plugin's
+                                            Restart ScyllaChat to load this plugin's
                                             configuration UI.
                                         </p>
                                     ) : (
                                         <p>
-                                            Enable this plugin and restart SmileyChat to
+                                            Enable this plugin and restart ScyllaChat to
                                             configure it.
                                         </p>
                                     )}

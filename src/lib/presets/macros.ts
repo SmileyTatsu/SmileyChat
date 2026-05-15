@@ -1,4 +1,4 @@
-import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
+import type { ChatMode, Message, ScyllaCharacter, UserStatus } from "#frontend/types";
 
 import { getCharacterTagline } from "../characters/normalize";
 import { formatDate, formatDateTime, formatShortTime } from "../common/time";
@@ -6,7 +6,7 @@ import { getMessageContent } from "../messages";
 import { getPluginMacroValue } from "../plugins/registry";
 
 export type MacroContext = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     messages: Message[];
     mode: ChatMode;
     personaName: string;
@@ -165,7 +165,7 @@ function chatHistory(messages: Message[]) {
 }
 
 // Formats enabled character-book entries for prompt insertion macros.
-export function formatCharacterBook(character: SmileyCharacter) {
+export function formatCharacterBook(character: ScyllaCharacter) {
     const book = character.data.character_book;
 
     if (!book) {

@@ -1,6 +1,6 @@
 # Development Guide
 
-SmileyChat is built to be lightweight, modern, and easily maintainable.
+ScyllaChat is built to be lightweight, modern, and easily maintainable.
 
 ## Tech Stack
 

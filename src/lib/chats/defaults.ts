@@ -1,10 +1,10 @@
-import type { ChatMode, Message, SmileyCharacter } from "#frontend/types";
+import type { ChatMode, Message, ScyllaCharacter } from "#frontend/types";
 
 import { createId } from "../common/ids";
 import type { ChatSession } from "./types";
 
 type CreateChatOptions = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     messages: Message[];
     mode: ChatMode;
 };

@@ -1,9 +1,9 @@
-# SmileyChat
+# ScyllaChat
 
 > ⚠️ **Project Status: Early Pre-Alpha**
-> SmileyChat is currently in a very early stage of development. Please keep in mind that performance is not yet fully optimized, features are still being added, and you may encounter bugs. The core architecture is actively evolving!
+> ScyllaChat is currently in a very early stage of development. Please keep in mind that performance is not yet fully optimized, features are still being added, and you may encounter bugs. The core architecture is actively evolving!
 
-SmileyChat is a local-first frontend application for chatting, roleplay, and storytelling with AI chatbots. Designed to be clean, accessible, and friendly to both casual users and writers.
+ScyllaChat is a local-first frontend application for chatting, roleplay, and storytelling with AI chatbots. Designed to be clean, accessible, and friendly to both casual users and writers.
 
 ## Features
 
@@ -25,8 +25,8 @@ SmileyChat is a local-first frontend application for chatting, roleplay, and sto
     bun install
     ```
 3. Start the application:
-    - On Windows: Run `SmileyChat.cmd` to automatically build and start the server.
-    - On Windows, update first: Run `SmileyChat.UpdateStart.cmd` to pull the latest Git changes, install dependencies, build, and start the server.
+    - On Windows: Run `ScyllaChat.cmd` to automatically build and start the server.
+    - On Windows, update first: Run `ScyllaChat.UpdateStart.cmd` to pull the latest Git changes, install dependencies, build, and start the server.
     - Manually:
         ```bash
         bun run build
@@ -36,23 +36,23 @@ SmileyChat is a local-first frontend application for chatting, roleplay, and sto
 
 ## Server Configuration
 
-SmileyChat protects local data APIs with CSRF tokens and browser origin checks.
-For normal local use, no extra configuration is needed. If you run SmileyChat
+ScyllaChat protects local data APIs with CSRF tokens and browser origin checks.
+For normal local use, no extra configuration is needed. If you run ScyllaChat
 behind a reverse proxy or through a LAN hostname, add the public browser origins
 that should be allowed to save data:
 
 ```bash
-SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
+SCYLLACHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
 ```
 
 Use origins only: scheme, host, and optional port. Do not include paths such as
 `/api/chats`.
 
 Private-network origins are auto-trusted without any env entry: when the browser
-hits SmileyChat at a private-LAN address (RFC 1918), a Tailscale CGNAT address
+hits ScyllaChat at a private-LAN address (RFC 1918), a Tailscale CGNAT address
 (100.64.0.0/10), an IPv6 unique-local or link-local address, the matching origin
 is allowed automatically as long as the request's Host header agrees. Public IPs
-and DNS-named hosts still require an explicit `SMILEYCHAT_TRUSTED_ORIGINS` entry.
+and DNS-named hosts still require an explicit `SCYLLACHAT_TRUSTED_ORIGINS` entry.
 
 ## Development
 
@@ -84,5 +84,5 @@ This project was built with the assistance of AI. Please note:
 
 ## Contact
 
-- **Support Server:** [SmileyCord](https://discord.gg/PTWXzugDXG)
-- **Non-support Inquiries:** SmileyTatsu@waifu.club
+- **Support Server:** [ScyllaCord](https://discord.gg/PTWXzugDXG)
+- **Non-support Inquiries:** ScyllaTatsu@waifu.club

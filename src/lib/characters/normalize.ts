@@ -9,7 +9,7 @@ import type {
     CharacterImportFormat,
     CharacterSummary,
     CharacterSummaryCollection,
-    SmileyCharacter,
+    ScyllaCharacter,
     TavernCardDataV2,
 } from "./types";
 
@@ -48,7 +48,7 @@ export function normalizeCharacterCollection(value: unknown): CharacterCollectio
     const characters = Array.isArray(value.characters)
         ? value.characters
               .map(normalizeCharacter)
-              .filter((character): character is SmileyCharacter => Boolean(character))
+              .filter((character): character is ScyllaCharacter => Boolean(character))
         : [];
     const safeCharacters = characters;
     const requestedActiveId = asString(value.activeCharacterId);
@@ -96,7 +96,7 @@ export function normalizeCharacterSummaryCollection(
     };
 }
 
-export function normalizeCharacter(value: unknown): SmileyCharacter | undefined {
+export function normalizeCharacter(value: unknown): ScyllaCharacter | undefined {
     if (!isRecord(value)) {
         return undefined;
     }
@@ -152,22 +152,22 @@ export function normalizeTavernCardData(
     const unknownDataFields = collectUnknownDataFields(source);
 
     if (importedTagline) {
-        const smileychat = isRecord(extensions.smileychat) ? extensions.smileychat : {};
-        const existingTagline = cleanString(smileychat.tagline, repairText).trim();
+        const scyllachat = isRecord(extensions.scyllachat) ? extensions.scyllachat : {};
+        const existingTagline = cleanString(scyllachat.tagline, repairText).trim();
 
-        extensions.smileychat = {
-            ...smileychat,
+        extensions.scyllachat = {
+            ...scyllachat,
             tagline: existingTagline || importedTagline,
         };
     }
 
     if (Object.keys(unknownDataFields).length > 0) {
-        const smileychat = isRecord(extensions.smileychat) ? extensions.smileychat : {};
-        extensions.smileychat = {
-            ...smileychat,
+        const scyllachat = isRecord(extensions.scyllachat) ? extensions.scyllachat : {};
+        extensions.scyllachat = {
+            ...scyllachat,
             unknownDataFields: {
-                ...(isRecord(smileychat.unknownDataFields)
-                    ? smileychat.unknownDataFields
+                ...(isRecord(scyllachat.unknownDataFields)
+                    ? scyllachat.unknownDataFields
                     : {}),
                 ...unknownDataFields,
             },
@@ -198,9 +198,9 @@ export function normalizeTavernCardData(
     };
 }
 
-export function getCharacterTagline(character: SmileyCharacter) {
-    const smileychat = getSmileychatExtension(character.data.extensions);
-    const tagline = asString(smileychat.tagline).trim();
+export function getCharacterTagline(character: ScyllaCharacter) {
+    const scyllachat = getScyllachatExtension(character.data.extensions);
+    const tagline = asString(scyllachat.tagline).trim();
 
     if (tagline) {
         return tagline;
@@ -209,17 +209,17 @@ export function getCharacterTagline(character: SmileyCharacter) {
     return character.data.description.trim().split(/\r?\n/)[0]?.slice(0, 90) ?? "";
 }
 
-export function getEditableCharacterTagline(character: SmileyCharacter) {
-    const smileychat = getSmileychatExtension(character.data.extensions);
+export function getEditableCharacterTagline(character: ScyllaCharacter) {
+    const scyllachat = getScyllachatExtension(character.data.extensions);
 
-    if (typeof smileychat.tagline === "string") {
-        return smileychat.tagline;
+    if (typeof scyllachat.tagline === "string") {
+        return scyllachat.tagline;
     }
 
     return character.data.description.trim().split(/\r?\n/)[0]?.slice(0, 90) ?? "";
 }
 
-export function characterToSummary(character: SmileyCharacter): CharacterSummary {
+export function characterToSummary(character: ScyllaCharacter): CharacterSummary {
     return {
         id: character.id,
         name: character.data.name,
@@ -234,21 +234,21 @@ export function setCharacterTagline(
     data: TavernCardDataV2,
     tagline: string,
 ): TavernCardDataV2 {
-    const smileychat = getSmileychatExtension(data.extensions);
+    const scyllachat = getScyllachatExtension(data.extensions);
 
     return {
         ...data,
         extensions: {
             ...data.extensions,
-            smileychat: {
-                ...smileychat,
+            scyllachat: {
+                ...scyllachat,
                 tagline,
             },
         },
     };
 }
 
-export function createBlankCharacter(name = "New character"): SmileyCharacter {
+export function createBlankCharacter(name = "New character"): ScyllaCharacter {
     const now = new Date().toISOString();
 
     return {
@@ -270,7 +270,7 @@ export function createBlankCharacter(name = "New character"): SmileyCharacter {
             creator: "",
             character_version: "",
             extensions: {
-                smileychat: {
+                scyllachat: {
                     tagline: "",
                 },
             },
@@ -284,7 +284,7 @@ export function createBlankCharacter(name = "New character"): SmileyCharacter {
     };
 }
 
-function normalizeAvatar(value: unknown): SmileyCharacter["avatar"] | undefined {
+function normalizeAvatar(value: unknown): ScyllaCharacter["avatar"] | undefined {
     if (
         !isRecord(value) ||
         (value.type !== "png" && value.type !== "jpeg" && value.type !== "webp")
@@ -299,7 +299,7 @@ function normalizeAvatar(value: unknown): SmileyCharacter["avatar"] | undefined 
 
 function normalizeImportedFrom(
     value: unknown,
-): SmileyCharacter["importedFrom"] | undefined {
+): ScyllaCharacter["importedFrom"] | undefined {
     if (!isRecord(value)) {
         return undefined;
     }
@@ -399,8 +399,8 @@ function collectUnknownDataFields(source: Record<string, unknown>) {
     return output;
 }
 
-function getSmileychatExtension(extensions: Record<string, unknown>) {
-    return isRecord(extensions.smileychat) ? extensions.smileychat : {};
+function getScyllachatExtension(extensions: Record<string, unknown>) {
+    return isRecord(extensions.scyllachat) ? extensions.scyllachat : {};
 }
 
 function asString(value: unknown) {

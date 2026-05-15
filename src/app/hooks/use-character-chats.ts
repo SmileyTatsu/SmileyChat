@@ -40,14 +40,14 @@ import type {
     ChatSession,
     ChatSummary,
     ChatSummaryCollection,
-    SmileyCharacter,
-    SmileyPersona,
+    ScyllaCharacter,
+    ScyllaPersona,
     UserStatus,
 } from "#frontend/types";
 
 type UseCharacterChatsOptions = {
     defaultNewChatMode: ChatMode;
-    latestPersonaRef: { current: SmileyPersona };
+    latestPersonaRef: { current: ScyllaPersona };
     setMode: (mode: ChatMode) => void;
     userStatus: UserStatus;
 };
@@ -69,7 +69,7 @@ export function useCharacterChats({
         activeChatIdsByCharacter: {},
         chats: [],
     });
-    const [character, setCharacter] = useState<SmileyCharacter>(defaultCharacter);
+    const [character, setCharacter] = useState<ScyllaCharacter>(defaultCharacter);
     const [activeChat, setActiveChat] = useState<ChatSession | undefined>();
     const [characterLoadError, setCharacterLoadError] = useState("");
     const [chatLoadError, setChatLoadError] = useState("");
@@ -193,7 +193,7 @@ export function useCharacterChats({
         return normalizeCharacter(await loadCharacter(characterId)) ?? defaultCharacter;
     }
 
-    async function activateChatForCharacter(nextCharacter: SmileyCharacter) {
+    async function activateChatForCharacter(nextCharacter: ScyllaCharacter) {
         const summaries = normalizeChatSummaryCollection(await loadChatSummaries());
         setChatSummaries(summaries);
         latestChatSummariesRef.current = summaries;
@@ -244,7 +244,7 @@ export function useCharacterChats({
     }
 
     async function createChatForCharacter(
-        sourceCharacter: SmileyCharacter,
+        sourceCharacter: ScyllaCharacter,
         chatMode: ChatMode,
     ) {
         const chat = createChatSession({
@@ -280,7 +280,7 @@ export function useCharacterChats({
         }
     }
 
-    function createGreetingMessage(sourceCharacter: SmileyCharacter, chatMode: ChatMode) {
+    function createGreetingMessage(sourceCharacter: ScyllaCharacter, chatMode: ChatMode) {
         return createCharacterGreetingMessage(sourceCharacter, (content) =>
             resolvePresetMacros(content, {
                 character: sourceCharacter,
@@ -293,7 +293,7 @@ export function useCharacterChats({
         );
     }
 
-    function queueCharacterSave(nextCharacter: SmileyCharacter) {
+    function queueCharacterSave(nextCharacter: ScyllaCharacter) {
         const safeCharacter = normalizeCharacter(nextCharacter) ?? defaultCharacter;
         setCharacter(safeCharacter);
         latestCharacterRef.current = safeCharacter;
@@ -410,7 +410,7 @@ export function useCharacterChats({
         }
     }
 
-    async function persistCharacter(nextCharacter: SmileyCharacter, updateState = true) {
+    async function persistCharacter(nextCharacter: ScyllaCharacter, updateState = true) {
         const safeCharacter = normalizeCharacter(nextCharacter) ?? defaultCharacter;
         const requestId = characterSaveRequestIdRef.current + 1;
         characterSaveRequestIdRef.current = requestId;
@@ -423,7 +423,7 @@ export function useCharacterChats({
 
         try {
             const result = (await saveCharacter(safeCharacter)) as {
-                character: SmileyCharacter;
+                character: ScyllaCharacter;
                 characters?: CharacterSummaryCollection;
             };
             const savedCharacter = normalizeCharacter(result.character) ?? safeCharacter;
@@ -449,7 +449,7 @@ export function useCharacterChats({
         }
     }
 
-    function updateActiveCharacter(nextCharacter: SmileyCharacter) {
+    function updateActiveCharacter(nextCharacter: ScyllaCharacter) {
         queueCharacterSave({
             ...nextCharacter,
             updatedAt: new Date().toISOString(),
@@ -500,7 +500,7 @@ export function useCharacterChats({
 
         try {
             const result = (await createCharacterRequest(nextCharacter)) as {
-                character: SmileyCharacter;
+                character: ScyllaCharacter;
                 characters?: CharacterSummaryCollection;
             };
             const createdCharacter =
@@ -909,7 +909,7 @@ export function useCharacterChats({
     }
 
     function applySavedCharacter(
-        savedCharacter: SmileyCharacter,
+        savedCharacter: ScyllaCharacter,
         summaries?: CharacterSummaryCollection,
     ) {
         const safeCharacter = normalizeCharacter(savedCharacter) ?? defaultCharacter;

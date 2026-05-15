@@ -1,4 +1,4 @@
-// CIDR membership checks for the IPv4 / IPv6 ranges SmileyChat auto-trusts as
+// CIDR membership checks for the IPv4 / IPv6 ranges ScyllaChat auto-trusts as
 // CSRF origins when the request's Host header matches. Kept narrow so the
 // auto-trust applies to genuinely private network deployments (LAN, Tailscale,
 // Docker bridge, IPv6 ULA / link-local) and nothing else. Loopback is handled

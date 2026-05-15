@@ -18,7 +18,7 @@ import {
     normalizePersona,
     normalizePersonaSummaryCollection,
 } from "#frontend/lib/personas/normalize";
-import type { PersonaSummaryCollection, SmileyPersona } from "#frontend/types";
+import type { PersonaSummaryCollection, ScyllaPersona } from "#frontend/types";
 
 export function usePersonaLibrary() {
     const [personaSummaries, setPersonaSummaries] = useState<PersonaSummaryCollection>({
@@ -26,9 +26,9 @@ export function usePersonaLibrary() {
         activePersonaId: defaultPersona.id,
         personas: [personaToSummary(defaultPersona)],
     });
-    const [persona, setPersona] = useState<SmileyPersona>(defaultPersona);
+    const [persona, setPersona] = useState<ScyllaPersona>(defaultPersona);
     const [personaEditorPersona, setPersonaEditorPersona] =
-        useState<SmileyPersona>(defaultPersona);
+        useState<ScyllaPersona>(defaultPersona);
     const [personaLoadError, setPersonaLoadError] = useState("");
     const latestPersonaRef = useRef(persona);
     const latestPersonaEditorRef = useRef(personaEditorPersona);
@@ -80,7 +80,7 @@ export function usePersonaLibrary() {
         return normalizePersona(await loadPersona(personaId)) ?? defaultPersona;
     }
 
-    function queuePersonaSave(nextPersona: SmileyPersona) {
+    function queuePersonaSave(nextPersona: ScyllaPersona) {
         const safePersona =
             normalizePersona({
                 ...nextPersona,
@@ -125,7 +125,7 @@ export function usePersonaLibrary() {
         personaSaveRequestIdRef.current += 1;
     }
 
-    async function persistPersona(nextPersona: SmileyPersona, updateState = true) {
+    async function persistPersona(nextPersona: ScyllaPersona, updateState = true) {
         const safePersona = normalizePersona(nextPersona) ?? defaultPersona;
         const requestId = personaSaveRequestIdRef.current + 1;
         personaSaveRequestIdRef.current = requestId;
@@ -142,7 +142,7 @@ export function usePersonaLibrary() {
 
         try {
             const result = (await savePersona(safePersona)) as {
-                persona: SmileyPersona;
+                persona: ScyllaPersona;
                 personas?: PersonaSummaryCollection;
             };
             const savedPersona = normalizePersona(result.persona) ?? safePersona;
@@ -218,7 +218,7 @@ export function usePersonaLibrary() {
 
         try {
             const result = (await createPersonaRequest(nextPersona)) as {
-                persona: SmileyPersona;
+                persona: ScyllaPersona;
                 personas?: PersonaSummaryCollection;
             };
             const createdPersona = normalizePersona(result.persona) ?? nextPersona;
@@ -240,12 +240,12 @@ export function usePersonaLibrary() {
         }
     }
 
-    function updatePersona(nextPersona: SmileyPersona) {
+    function updatePersona(nextPersona: ScyllaPersona) {
         queuePersonaSave(nextPersona);
     }
 
     function applySavedPersona(
-        savedPersona: SmileyPersona,
+        savedPersona: ScyllaPersona,
         summaries?: PersonaSummaryCollection,
     ) {
         const safePersona = normalizePersona(savedPersona) ?? defaultPersona;

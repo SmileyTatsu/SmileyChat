@@ -1,4 +1,4 @@
-import type { SmileyCharacter } from "#frontend/lib/characters/types";
+import type { ScyllaCharacter } from "#frontend/lib/characters/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
 import { writeJsonAtomic } from "./http";
@@ -9,7 +9,7 @@ type CharacterArchive = {
     identities: Record<string, { characterId: string; name: string; archivedAt: string }>;
 };
 
-export async function archiveCharacterIdentity(character: SmileyCharacter) {
+export async function archiveCharacterIdentity(character: ScyllaCharacter) {
     const fingerprint = character.importedFrom?.fingerprint;
 
     if (!fingerprint) {

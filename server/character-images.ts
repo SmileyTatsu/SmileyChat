@@ -1,6 +1,6 @@
 import { mkdir, rm } from "node:fs/promises";
 
-import type { SmileyCharacter } from "#frontend/lib/characters/types";
+import type { ScyllaCharacter } from "#frontend/lib/characters/types";
 
 import {
     characterAvatarPath,
@@ -12,9 +12,9 @@ import { characterBasePathById } from "./character-store";
 import { BadRequestError } from "./http";
 import { maxAvatarBytes } from "./paths";
 
-export type AvatarType = NonNullable<SmileyCharacter["avatar"]>["type"];
+export type AvatarType = NonNullable<ScyllaCharacter["avatar"]>["type"];
 
-export async function deleteCharacterAvatarAsset(character: SmileyCharacter) {
+export async function deleteCharacterAvatarAsset(character: ScyllaCharacter) {
     if (!character.avatar) {
         return;
     }
@@ -28,7 +28,7 @@ export async function deleteCharacterAvatarAsset(character: SmileyCharacter) {
     await rm(characterAvatarPath(basePath, character.avatar.type), { force: true });
 }
 
-export async function characterAvatarFilePath(character: SmileyCharacter) {
+export async function characterAvatarFilePath(character: ScyllaCharacter) {
     if (!character.avatar) {
         return "";
     }
@@ -46,7 +46,7 @@ export async function characterAvatarFilePath(character: SmileyCharacter) {
 }
 
 export async function writeAvatarAssetBytes(
-    character: Pick<SmileyCharacter, "id" | "data">,
+    character: Pick<ScyllaCharacter, "id" | "data">,
     bytes: Uint8Array,
     avatarType: AvatarType,
     basePath = "",
@@ -77,7 +77,7 @@ export async function writeAvatarAssetBytes(
     };
 }
 
-export async function serveCharacterAvatar(character: SmileyCharacter) {
+export async function serveCharacterAvatar(character: ScyllaCharacter) {
     const path = await characterAvatarFilePath(character);
 
     if (!path) {

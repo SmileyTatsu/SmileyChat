@@ -1,12 +1,12 @@
 import { Settings, UserRound, Users } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import type { PersonaSummary, SmileyPersona, UserStatus } from "#frontend/types";
+import type { PersonaSummary, ScyllaPersona, UserStatus } from "#frontend/types";
 
 import { formatStatus } from "./persona-status";
 
 type PersonaBarProps = {
-    persona: SmileyPersona;
+    persona: ScyllaPersona;
     personas: PersonaSummary[];
     status: UserStatus;
     onOpenSettings: () => void;

@@ -1,10 +1,10 @@
 import { createId } from "../common/ids";
 
-import type { PersonaSummaryCollection, SmileyPersona } from "./types";
+import type { PersonaSummaryCollection, ScyllaPersona } from "./types";
 
 const now = new Date().toISOString();
 
-export const defaultPersona: SmileyPersona = {
+export const defaultPersona: ScyllaPersona = {
     id: createId("persona"),
     version: 1,
     name: "Anon",
@@ -19,7 +19,7 @@ export const defaultPersonaSummaryCollection: PersonaSummaryCollection = {
     personas: [personaToSummary(defaultPersona)],
 };
 
-export function createBlankPersona(name = "New persona"): SmileyPersona {
+export function createBlankPersona(name = "New persona"): ScyllaPersona {
     const createdAt = new Date().toISOString();
 
     return {
@@ -32,7 +32,7 @@ export function createBlankPersona(name = "New persona"): SmileyPersona {
     };
 }
 
-export function personaToSummary(persona: SmileyPersona) {
+export function personaToSummary(persona: ScyllaPersona) {
     return {
         id: persona.id,
         name: persona.name,

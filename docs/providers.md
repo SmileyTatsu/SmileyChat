@@ -1,6 +1,6 @@
 # AI Providers & Connections
 
-SmileyChat uses a generalized "Connection Adapter" system to communicate with various AI backends. The built-in providers are **OpenAI-Compatible** for local and compatible APIs, **OpenRouter** for OpenRouter-specific model routing, and **Google AI** for Gemini API direct browser calls.
+ScyllaChat uses a generalized "Connection Adapter" system to communicate with various AI backends. The built-in providers are **OpenAI-Compatible** for local and compatible APIs, **OpenRouter** for OpenRouter-specific model routing, and **Google AI** for Gemini API direct browser calls.
 
 ## Supported Configurations
 
@@ -8,7 +8,7 @@ By using the **OpenAI-Compatible** provider connection, you can connect to:
 
 ### 1. Local AI Tools
 
-- **LMStudio**: Start the local server in LMStudio. Set your base URL in SmileyChat to `http://localhost:1234/v1`.
+- **LMStudio**: Start the local server in LMStudio. Set your base URL in ScyllaChat to `http://localhost:1234/v1`.
 - **Ollama**: Start Ollama. Set your base URL to `http://localhost:11434/v1` (Note: Ensure Ollama is configured to accept cross-origin requests or OpenAI compat layer).
 - **text-generation-webui (Oobabooga)**: Enable the `openai` extension. Set the base URL to `http://127.0.0.1:5000/v1`.
 - **KoboldCpp**: Run with `--openai` flag and set base URL to `http://localhost:5001/v1`.
@@ -30,10 +30,10 @@ The OpenRouter provider stores:
 
 OpenRouter requests are sent directly from the frontend to `https://openrouter.ai/api/v1/chat/completions`. Model loading uses `https://openrouter.ai/api/v1/models`.
 
-SmileyChat sends fixed OpenRouter app attribution headers:
+ScyllaChat sends fixed OpenRouter app attribution headers:
 
-- `HTTP-Referer`: `https://github.com/SmileyTatsu/SmileyChat`
-- `X-OpenRouter-Title`: `SmileyChat`
+- `HTTP-Referer`: `https://github.com/ScyllaTatsu/ScyllaChat`
+- `X-OpenRouter-Title`: `ScyllaChat`
 - `X-OpenRouter-Categories`: `roleplay,creative-writing,general-chat`
 
 OpenAI-compatible, OpenRouter, and Google AI chat requests stream by default. Users can disable streaming globally in Options -> Settings; the preference is app-level, not per provider.

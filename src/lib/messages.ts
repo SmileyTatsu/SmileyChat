@@ -1,8 +1,8 @@
-import type { Message, MessageSwipe, SmileyCharacter, SmileyPersona } from "../types";
+import type { Message, MessageSwipe, ScyllaCharacter, ScyllaPersona } from "../types";
 
 import { createId } from "./common/ids";
 
-export function createUserMessage(content: string, persona: SmileyPersona): Message {
+export function createUserMessage(content: string, persona: ScyllaPersona): Message {
     return createMessage("user", persona.name.trim() || "Anon", content, {
         authorAvatarPath: persona.avatar?.path,
         authorPersonaId: persona.id,
@@ -18,7 +18,7 @@ export function createCharacterErrorMessage(author: string, content: string): Me
 }
 
 export function createCharacterGreetingMessage(
-    character: SmileyCharacter,
+    character: ScyllaCharacter,
     resolveContent: (content: string) => string = (content) => content,
 ): Message {
     const greetings = [

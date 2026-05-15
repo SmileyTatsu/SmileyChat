@@ -1,6 +1,6 @@
-# SmileyChat Docs
+# ScyllaChat Docs
 
-This folder contains developer-facing documentation and architectural insights for SmileyChat.
+This folder contains developer-facing documentation and architectural insights for ScyllaChat.
 
 ## Core Documentation
 

@@ -1,8 +1,8 @@
 import { dynamicPromptIds } from "#frontend/lib/presets/defaults";
-import type { PresetPrompt, SmileyPreset } from "#frontend/lib/presets/types";
+import type { PresetPrompt, ScyllaPreset } from "#frontend/lib/presets/types";
 
 export function collectPresetWarnings(
-    preset: SmileyPreset | undefined,
+    preset: ScyllaPreset | undefined,
     selectedPrompt: PresetPrompt | undefined,
 ) {
     if (!preset) {
@@ -42,14 +42,14 @@ export function collectPresetWarnings(
 
     if (historyMacroPrompts.length > 1) {
         warnings.push(
-            `Multiple enabled prompts contain {{chat_history}}. SmileyChat uses "${historyMacroPrompts[0].title}" as the insertion point, but later history macros can duplicate the conversation in the provider context.`,
+            `Multiple enabled prompts contain {{chat_history}}. ScyllaChat uses "${historyMacroPrompts[0].title}" as the insertion point, but later history macros can duplicate the conversation in the provider context.`,
         );
     }
 
     if (!hasHistoryMacro) {
         if (activeHistoryPrompt) {
             warnings.push(
-                `SmileyChat is using the internal prompt called "${activeHistoryPrompt.title}" as the chat history fallback because its ID is "${dynamicPromptIds.chatHistory}". Add {{chat_history}} to a prompt if you want the preset file to choose the insertion point explicitly.`,
+                `ScyllaChat is using the internal prompt called "${activeHistoryPrompt.title}" as the chat history fallback because its ID is "${dynamicPromptIds.chatHistory}". Add {{chat_history}} to a prompt if you want the preset file to choose the insertion point explicitly.`,
             );
         } else {
             warnings.push(

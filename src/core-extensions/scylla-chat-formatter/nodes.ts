@@ -1,13 +1,13 @@
 import type { ComponentChild } from "preact";
 
-import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
+import type { ScyllaPluginApi } from "#frontend/lib/plugins/types";
 
 export type FormatterBreak = {
     type: "break";
 };
 
 export type FormatterNode = ComponentChild | FormatterBreak;
-export type FormatterApi = SmileyPluginApi;
+export type FormatterApi = ScyllaPluginApi;
 
 export function isFormatterBreak(node: FormatterNode): node is FormatterBreak {
     return Boolean(

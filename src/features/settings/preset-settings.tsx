@@ -26,13 +26,13 @@ import {
 import type {
     PresetCollection,
     PresetPrompt,
-    SmileyPreset,
+    ScyllaPreset,
 } from "#frontend/lib/presets/types";
 import type {
     ChatMode,
     Message,
-    SmileyCharacter,
-    SmileyPersona,
+    ScyllaCharacter,
+    ScyllaPersona,
     UserStatus,
 } from "#frontend/types";
 
@@ -49,13 +49,13 @@ import {
 import { usePresetAutosave } from "./presets/use-preset-autosave";
 
 type PresetSettingsProps = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     collection: PresetCollection;
     loadError?: string;
     messages: Message[];
     mode: ChatMode;
     onCollectionChange: (collection: PresetCollection) => void;
-    persona: SmileyPersona;
+    persona: ScyllaPersona;
     userStatus: UserStatus;
 };
 
@@ -155,8 +155,8 @@ export function PresetSettings({
 
         try {
             const raw = JSON.parse(await file.text()) as unknown;
-            const isSmileyPreset = isRecord(raw) && Array.isArray(raw.promptOrder);
-            const imported = isSmileyPreset
+            const isScyllaPreset = isRecord(raw) && Array.isArray(raw.promptOrder);
+            const imported = isScyllaPreset
                 ? (() => {
                       const preset = normalizePreset(raw);
 
@@ -165,7 +165,7 @@ export function PresetSettings({
                               ...preset,
                               id: createId("preset"),
                           },
-                          status: "Imported SmileyChat preset.",
+                          status: "Imported ScyllaChat preset.",
                       };
                   })()
                 : (() => {
@@ -209,7 +209,7 @@ export function PresetSettings({
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `${activePreset.title || "preset"}.smiley-preset.json`;
+        link.download = `${activePreset.title || "preset"}.scylla-preset.json`;
         link.click();
         URL.revokeObjectURL(url);
     }
@@ -218,7 +218,7 @@ export function PresetSettings({
         onCollectionChange(normalizePresetCollection(nextCollection));
     }
 
-    function updateActivePreset(updater: (preset: SmileyPreset) => SmileyPreset) {
+    function updateActivePreset(updater: (preset: ScyllaPreset) => ScyllaPreset) {
         if (!activePreset) {
             return;
         }
@@ -289,7 +289,7 @@ export function PresetSettings({
             details:
                 collection.presets.length <= 1
                     ? [
-                          "This is the last preset, so SmileyChat will recreate the default preset after deletion.",
+                          "This is the last preset, so ScyllaChat will recreate the default preset after deletion.",
                       ]
                     : undefined,
             confirmLabel: "Delete",

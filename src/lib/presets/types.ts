@@ -19,7 +19,7 @@ export type PresetPromptOrderEntry = {
     enabled: boolean;
 };
 
-export type SmileyPreset = {
+export type ScyllaPreset = {
     id: string;
     title: string;
     prompts: PresetPrompt[];
@@ -30,7 +30,7 @@ export type SmileyPreset = {
 
 export type PresetCollection = {
     activePresetId: string;
-    presets: SmileyPreset[];
+    presets: ScyllaPreset[];
 };
 
 export type SillyTavernImportSummary = {

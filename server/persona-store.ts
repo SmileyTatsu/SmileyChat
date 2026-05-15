@@ -12,7 +12,7 @@ import {
 import type {
     PersonaIndex,
     PersonaSummaryCollection,
-    SmileyPersona,
+    ScyllaPersona,
 } from "#frontend/lib/personas/types";
 
 import { moveToUniquePath } from "./character-file-utils";
@@ -222,7 +222,7 @@ async function repairPersonaIndex(index: PersonaIndex): Promise<PersonaIndex> {
 }
 
 async function rebuildPersonaIndexFromCards(): Promise<PersonaIndex> {
-    const personas: SmileyPersona[] = [];
+    const personas: ScyllaPersona[] = [];
     const glob = new Glob("*.json");
 
     for await (const fileName of glob.scan(personaCardsDir)) {
@@ -260,7 +260,7 @@ async function rebuildPersonaIndexFromCards(): Promise<PersonaIndex> {
 }
 
 async function readPersonasFromIndex(index: PersonaIndex) {
-    const personas: SmileyPersona[] = [];
+    const personas: ScyllaPersona[] = [];
 
     for (const personaId of index.personaIds) {
         const persona = await readPersonaById(personaId);
@@ -286,7 +286,7 @@ async function writeDefaultPersonaCollection() {
     );
 }
 
-function collectionToIndex(personas: SmileyPersona[], activePersonaId: string) {
+function collectionToIndex(personas: ScyllaPersona[], activePersonaId: string) {
     return {
         version: 1 as const,
         activePersonaId,

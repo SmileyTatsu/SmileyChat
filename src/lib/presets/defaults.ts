@@ -1,4 +1,4 @@
-import type { PresetCollection, PresetPrompt, SmileyPreset } from "./types";
+import type { PresetCollection, PresetPrompt, ScyllaPreset } from "./types";
 
 export const dynamicPromptIds = {
     character: "charDescription",
@@ -6,7 +6,7 @@ export const dynamicPromptIds = {
     chatHistory: "chatHistory",
 } as const;
 
-export function createDefaultPreset(now = new Date().toISOString()): SmileyPreset {
+export function createDefaultPreset(now = new Date().toISOString()): ScyllaPreset {
     const prompts: PresetPrompt[] = [
         {
             id: "69994633-aef6-4892-85d6-a47ddb7d03d6",

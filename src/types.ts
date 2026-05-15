@@ -36,7 +36,7 @@ export type {
     CharacterCollection,
     CharacterSummary,
     CharacterSummaryCollection,
-    SmileyCharacter,
+    ScyllaCharacter,
     TavernCardDataV2,
 } from "./lib/characters/types";
 
@@ -44,5 +44,5 @@ export type {
     PersonaIndex,
     PersonaSummary,
     PersonaSummaryCollection,
-    SmileyPersona,
+    ScyllaPersona,
 } from "./lib/personas/types";

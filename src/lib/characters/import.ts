@@ -2,7 +2,7 @@ import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
 
 import { normalizeTavernCardData } from "./normalize";
-import type { CharacterImportFormat, SmileyCharacter, TavernCardDataV2 } from "./types";
+import type { CharacterImportFormat, ScyllaCharacter, TavernCardDataV2 } from "./types";
 
 type ImportCharacterOptions = {
     format: CharacterImportFormat;
@@ -15,12 +15,12 @@ type ImportCharacterOptions = {
 export function importCharacterCard(
     raw: unknown,
     options: ImportCharacterOptions,
-): SmileyCharacter {
+): ScyllaCharacter {
     const now = new Date().toISOString();
     const data = normalizeImportedCardData(raw);
     const characterId =
         safeImportedCharacterId(options.characterId) ??
-        safeImportedCharacterId(smileychatCharacterIdFromRaw(raw)) ??
+        safeImportedCharacterId(scyllachatCharacterIdFromRaw(raw)) ??
         createId("character");
 
     return {
@@ -46,14 +46,14 @@ export function importCharacterCard(
     };
 }
 
-export function smileychatCharacterIdFromRaw(raw: unknown) {
+export function scyllachatCharacterIdFromRaw(raw: unknown) {
     const data = rawCardData(raw);
     const extensions = isRecord(data?.extensions) ? data.extensions : undefined;
-    const smileychat = isRecord(extensions?.smileychat)
-        ? extensions.smileychat
+    const scyllachat = isRecord(extensions?.scyllachat)
+        ? extensions.scyllachat
         : undefined;
 
-    return typeof smileychat?.characterId === "string" ? smileychat.characterId : "";
+    return typeof scyllachat?.characterId === "string" ? scyllachat.characterId : "";
 }
 
 export function normalizeImportedCardData(raw: unknown): TavernCardDataV2 {
@@ -167,16 +167,16 @@ function preserveV3Fields(data: Record<string, unknown>) {
         ...sharedData
     } = data;
     const existingExtensions = isRecord(extensions) ? extensions : {};
-    const smileychat = isRecord(existingExtensions.smileychat)
-        ? existingExtensions.smileychat
+    const scyllachat = isRecord(existingExtensions.scyllachat)
+        ? existingExtensions.scyllachat
         : {};
 
     return {
         ...sharedData,
         extensions: {
             ...existingExtensions,
-            smileychat: {
-                ...smileychat,
+            scyllachat: {
+                ...scyllachat,
                 importedV3: {
                     assets,
                     nickname,

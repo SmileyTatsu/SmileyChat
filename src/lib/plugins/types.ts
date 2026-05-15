@@ -4,8 +4,8 @@ import type {
     ChatMode,
     ChatSession,
     Message,
-    SmileyCharacter,
-    SmileyPersona,
+    ScyllaCharacter,
+    ScyllaPersona,
     UserStatus,
 } from "#frontend/types";
 
@@ -42,8 +42,8 @@ export type PluginAppSnapshot = {
     mode: ChatMode;
     activeChat?: ChatSession;
     messages: Message[];
-    character: SmileyCharacter;
-    persona: SmileyPersona;
+    character: ScyllaCharacter;
+    persona: ScyllaPersona;
     userStatus: UserStatus;
     connectionSettings: ConnectionSettings;
     presetCollection: PresetCollection;
@@ -104,9 +104,9 @@ export type PluginComposerAction = {
 };
 
 export type ChatPipelineContext = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     mode: ChatMode;
-    persona: SmileyPersona;
+    persona: ScyllaPersona;
     userStatus: UserStatus;
     messages: Message[];
 };
@@ -163,7 +163,7 @@ export type PluginEventsApi = {
     emit(eventName: string, payload?: unknown): void;
 };
 
-export type SmileyPluginApi = {
+export type ScyllaPluginApi = {
     plugin: PluginManifest;
     state: {
         getSnapshot(): PluginAppSnapshot | undefined;
@@ -192,8 +192,8 @@ export type SmileyPluginApi = {
     events: PluginEventsApi;
 };
 
-export type SmileyPluginModule = {
+export type ScyllaPluginModule = {
     activate: (
-        api: SmileyPluginApi,
+        api: ScyllaPluginApi,
     ) => void | (() => void) | Promise<void | (() => void)>;
 };

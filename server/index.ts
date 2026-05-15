@@ -62,7 +62,7 @@ type ApiHandler<Path extends string, WebSocketData = undefined> = (
     server: Bun.Server<WebSocketData>,
 ) => Response | Promise<Response>;
 
-const port = parsePort(process.env.SMILEYCHAT_API_PORT);
+const port = parsePort(process.env.SCYLLACHAT_API_PORT);
 
 ensureUserData();
 await importDroppedCharacterFiles();
@@ -412,7 +412,7 @@ const server = Bun.serve({
     },
 });
 
-console.log(`SmileyChat running at ${server.url}`);
+console.log(`ScyllaChat running at ${server.url}`);
 
 function api<Path extends string, WebSocketData = undefined>(
     handler: ApiHandler<Path, WebSocketData>,

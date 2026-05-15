@@ -13,7 +13,7 @@ userData/plugins/
       style.css
 ```
 
-SmileyChat discovers plugins through `plugin.json`. The plugin entry file must be browser-ready ESM. CSS files are optional.
+ScyllaChat discovers plugins through `plugin.json`. The plugin entry file must be browser-ready ESM. CSS files are optional.
 
 ## Minimal Manifest
 
@@ -39,7 +39,7 @@ export function activate(api) {
 }
 ```
 
-Restart SmileyChat after adding a new plugin, or open **Options > Plugins** and press **Refresh** to make the server list newly added plugin folders. If a newly discovered enabled plugin is still marked pending, disable and re-enable it or restart the app.
+Restart ScyllaChat after adding a new plugin, or open **Options > Plugins** and press **Refresh** to make the server list newly added plugin folders. If a newly discovered enabled plugin is still marked pending, disable and re-enable it or restart the app.
 
 ## Enable And Disable
 

@@ -10,10 +10,10 @@ import type {
     PersonaIndex,
     PersonaSummary,
     PersonaSummaryCollection,
-    SmileyPersona,
+    ScyllaPersona,
 } from "./types";
 
-export function normalizePersona(value: unknown): SmileyPersona | undefined {
+export function normalizePersona(value: unknown): ScyllaPersona | undefined {
     if (!isRecord(value)) {
         return undefined;
     }
@@ -112,7 +112,7 @@ export function normalizePersonaIndex(value: unknown): PersonaIndex {
     };
 }
 
-function normalizeAvatar(value: unknown): SmileyPersona["avatar"] | undefined {
+function normalizeAvatar(value: unknown): ScyllaPersona["avatar"] | undefined {
     if (
         !isRecord(value) ||
         (value.type !== "png" && value.type !== "jpeg" && value.type !== "webp")

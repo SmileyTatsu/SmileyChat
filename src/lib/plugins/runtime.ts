@@ -14,7 +14,7 @@ import {
     recordLoadedPlugin,
     recordPluginDisposer,
 } from "./registry";
-import type { PluginManifest, PluginStorageApi, SmileyPluginModule } from "./types";
+import type { PluginManifest, PluginStorageApi, ScyllaPluginModule } from "./types";
 
 export async function loadRuntimePlugins(manifests: PluginManifest[]) {
     const runtimeManifests = mergeCoreAndUserPluginManifests(manifests);
@@ -51,7 +51,7 @@ export async function loadRuntimePlugins(manifests: PluginManifest[]) {
 
 async function loadBundledRuntimePlugin(
     manifest: PluginManifest,
-    module: SmileyPluginModule,
+    module: ScyllaPluginModule,
 ) {
     try {
         deactivatePlugin(manifest.id);
@@ -104,7 +104,7 @@ export async function loadRuntimePlugin(manifest: PluginManifest) {
 
         const module = (await import(
             /* @vite-ignore */ manifest.entryUrl
-        )) as Partial<SmileyPluginModule>;
+        )) as Partial<ScyllaPluginModule>;
 
         if (typeof module.activate !== "function") {
             throw new Error(`${manifest.name} does not export activate(api).`);

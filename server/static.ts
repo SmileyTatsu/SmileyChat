@@ -25,7 +25,7 @@ export async function serveStatic(url: URL) {
     const indexFile = Bun.file(join(distDir, "index.html"));
 
     if (!(await indexFile.exists())) {
-        return new Response("SmileyChat build not found. Run bun run build first.", {
+        return new Response("ScyllaChat build not found. Run bun run build first.", {
             status: 500,
             headers: {
                 "Content-Type": "text/plain; charset=utf-8",

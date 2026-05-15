@@ -18,8 +18,8 @@ import type {
     Message,
     PersonaSummaryCollection,
     SettingsCategory,
-    SmileyCharacter,
-    SmileyPersona,
+    ScyllaCharacter,
+    ScyllaPersona,
     UserStatus,
 } from "#frontend/types";
 
@@ -35,7 +35,7 @@ type OptionsModalProps = {
     activeCategory: SettingsCategory;
     connectionLoadError?: string;
     connectionSettings: ConnectionSettings;
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     messages: Message[];
     mode: ChatMode;
     onCategoryChange: (category: SettingsCategory) => void;
@@ -43,13 +43,13 @@ type OptionsModalProps = {
     onConnectionSettingsChange: (settings: ConnectionSettings) => void;
     onCreatePersona: () => void;
     onDeletePersona: (personaId: string) => void;
-    onPersonaChange: (persona: SmileyPersona) => void;
-    onPersonaSaved: (persona: SmileyPersona, personas?: PersonaSummaryCollection) => void;
+    onPersonaChange: (persona: ScyllaPersona) => void;
+    onPersonaSaved: (persona: ScyllaPersona, personas?: PersonaSummaryCollection) => void;
     onPersonaSelect: (personaId: string) => void;
     onSetActivePersona: (personaId: string) => void;
     onPreferencesChange: (preferences: AppPreferences) => void;
     onPresetCollectionChange: (collection: PresetCollection) => void;
-    persona: SmileyPersona;
+    persona: ScyllaPersona;
     personaCollection: PersonaSummaryCollection;
     personaLoadError?: string;
     preferences: AppPreferences;

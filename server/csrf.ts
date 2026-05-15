@@ -6,7 +6,7 @@ import { HttpError, writeJsonAtomic } from "./http";
 import { csrfSecretPath } from "./paths";
 import { isPrivateNetworkHostname } from "./private-network";
 
-const csrfHeaderName = "x-smileychat-csrf";
+const csrfHeaderName = "x-scyllachat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const defaultTrustedOriginHosts = ["localhost", "127.0.0.1", "[::1]"];
 
@@ -117,7 +117,7 @@ function forwardedRequestOrigins(request: Request) {
 }
 
 function trustedOriginsFromEnv() {
-    const configuredOrigins = process.env.SMILEYCHAT_TRUSTED_ORIGINS?.split(",")
+    const configuredOrigins = process.env.SCYLLACHAT_TRUSTED_ORIGINS?.split(",")
         .map((value) => value.trim())
         .filter(Boolean);
 
@@ -131,7 +131,7 @@ function trustedOriginsFromEnv() {
 }
 
 function defaultTrustedOrigins() {
-    const frontendPort = process.env.SMILEYCHAT_FRONTEND_PORT ?? "5173";
+    const frontendPort = process.env.SCYLLACHAT_FRONTEND_PORT ?? "5173";
     return defaultTrustedOriginHosts.map((host) => `http://${host}:${frontendPort}`);
 }
 
@@ -160,8 +160,8 @@ function firstHeaderValue(value: string | null) {
 }
 
 async function readCsrfSecret() {
-    if (process.env.SMILEYCHAT_CSRF_SECRET) {
-        return process.env.SMILEYCHAT_CSRF_SECRET;
+    if (process.env.SCYLLACHAT_CSRF_SECRET) {
+        return process.env.SCYLLACHAT_CSRF_SECRET;
     }
 
     secretPromise ??= readOrCreateCsrfSecret();

@@ -12,7 +12,7 @@ import type {
     CharacterIndex,
     CharacterIndexEntry,
     CharacterSummaryCollection,
-    SmileyCharacter,
+    ScyllaCharacter,
 } from "#frontend/lib/characters/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
@@ -34,13 +34,13 @@ import {
 } from "./paths";
 
 type StoredCharacter = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     basePath: string;
 };
 
 export async function readCharacterCollection(): Promise<CharacterCollection> {
     const index = await readCharacterIndex();
-    const characters: SmileyCharacter[] = [];
+    const characters: ScyllaCharacter[] = [];
 
     for (const entry of index.characters) {
         const character = await readCharacterFromEntry(entry);
@@ -243,7 +243,7 @@ export async function characterDataPathById(characterId: string) {
 }
 
 export async function writeCharacterWithBasePath(
-    character: SmileyCharacter,
+    character: ScyllaCharacter,
     basePath: string,
 ) {
     const stored = await writeCharacterToLibrary(character, basePath);
@@ -453,7 +453,7 @@ async function readCharacterAtBasePath(basePath: string, expectedId?: string) {
 }
 
 async function writeCharacterToLibrary(
-    sourceCharacter: SmileyCharacter,
+    sourceCharacter: ScyllaCharacter,
     existingBasePath?: string,
 ): Promise<StoredCharacter> {
     const desiredBasePath = await uniqueBasePathForCharacter(
@@ -487,9 +487,9 @@ async function writeCharacterToLibrary(
 }
 
 async function normalizeStoredAvatar(
-    character: SmileyCharacter,
+    character: ScyllaCharacter,
     basePath: string,
-): Promise<SmileyCharacter> {
+): Promise<ScyllaCharacter> {
     if (!character.avatar) {
         return character;
     }
@@ -504,7 +504,7 @@ async function normalizeStoredAvatar(
 }
 
 async function uniqueBasePathForCharacter(
-    character: SmileyCharacter,
+    character: ScyllaCharacter,
     existingBasePath?: string,
 ) {
     const folderName = characterFolderName(character.data.name, character.id);
@@ -536,7 +536,7 @@ async function uniqueBasePathForCharacter(
 }
 
 async function upsertCharacterIndexEntry(
-    character: SmileyCharacter,
+    character: ScyllaCharacter,
     basePath: string,
     options: { activeCharacterId?: string } = {},
 ) {
@@ -617,10 +617,10 @@ function normalizeCharacterIndexEntry(value: unknown): CharacterIndexEntry | und
         tagline: typeof value.tagline === "string" ? value.tagline : "",
         basePath,
         ...(isRecord(value.avatar)
-            ? { avatar: value.avatar as SmileyCharacter["avatar"] }
+            ? { avatar: value.avatar as ScyllaCharacter["avatar"] }
             : {}),
         ...(isRecord(value.importedFrom)
-            ? { importedFrom: value.importedFrom as SmileyCharacter["importedFrom"] }
+            ? { importedFrom: value.importedFrom as ScyllaCharacter["importedFrom"] }
             : {}),
         updatedAt,
     };
@@ -643,7 +643,7 @@ function uniqueEntriesById(entries: CharacterIndexEntry[]) {
 }
 
 function characterToIndexEntry(
-    character: SmileyCharacter,
+    character: ScyllaCharacter,
     basePath: string,
 ): CharacterIndexEntry {
     return {

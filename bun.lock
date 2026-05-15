@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "smileychat",
+      "name": "scyllachat",
       "dependencies": {
         "@preact/preset-vite": "^2.10.5",
         "lucide-preact": "^1.14.0",

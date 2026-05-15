@@ -1,4 +1,4 @@
-export type SmileyPersona = {
+export type ScyllaPersona = {
     id: string;
     version: 1;
     name: string;
@@ -14,7 +14,7 @@ export type SmileyPersona = {
 export type PersonaSummary = {
     id: string;
     name: string;
-    avatar?: SmileyPersona["avatar"];
+    avatar?: ScyllaPersona["avatar"];
     updatedAt: string;
 };
 

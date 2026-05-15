@@ -8,7 +8,7 @@ export function activate(api) {
 }
 ```
 
-`activate` may return a cleanup function. SmileyChat calls it when the plugin is deactivated or reloaded in the current browser session.
+`activate` may return a cleanup function. ScyllaChat calls it when the plugin is deactivated or reloaded in the current browser session.
 
 ```js
 export function activate(api) {
@@ -111,7 +111,7 @@ api.ui.registerMessageRenderer({
 });
 ```
 
-Higher priority renderers run first. SmileyChat currently uses the highest-priority renderer.
+Higher priority renderers run first. ScyllaChat currently uses the highest-priority renderer.
 The bundled Chat Formatter core extension has priority `20`, so a local plugin must use a priority above `20` to replace the default formatted message renderer.
 
 Requires `ui:messages`.
@@ -245,7 +245,7 @@ Users can then write:
 
 ## `api.connections.registerProvider`
 
-Adds a connection provider without editing SmileyChat source.
+Adds a connection provider without editing ScyllaChat source.
 
 ```js
 api.connections.registerProvider({

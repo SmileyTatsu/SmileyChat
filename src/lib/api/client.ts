@@ -3,8 +3,8 @@ import type {
     ChatSession,
     ChatSummaryCollection,
     PersonaSummaryCollection,
-    SmileyCharacter,
-    SmileyPersona,
+    ScyllaCharacter,
+    ScyllaPersona,
 } from "#frontend/types";
 
 import type { ConnectionSecrets, ConnectionSettings } from "../connections/config";
@@ -12,10 +12,10 @@ import type { PluginManifest } from "../plugins/types";
 import type { AppPreferences } from "../preferences/types";
 import type { PresetCollection } from "../presets/types";
 
-const csrfHeaderName = "x-smileychat-csrf";
+const csrfHeaderName = "x-scyllachat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-export const localApiErrorEventName = "smileychat:local-api-error";
+export const localApiErrorEventName = "scyllachat:local-api-error";
 
 let csrfToken: string | undefined;
 
@@ -151,7 +151,7 @@ async function responseErrorMessage(response: Response) {
 
 function apiErrorMessage(code: string, message: string) {
     if (code === "csrf_origin_untrusted") {
-        return `${message} Add this browser origin to 'SMILEYCHAT_TRUSTED_ORIGINS', if you are using a reverse proxy or LAN address.`;
+        return `${message} Add this browser origin to 'SCYLLACHAT_TRUSTED_ORIGINS', if you are using a reverse proxy or LAN address.`;
     }
 
     if (code === "csrf_origin_missing") {
@@ -303,21 +303,21 @@ export function loadPersonaSummaries() {
 }
 
 export function loadPersona(personaId: string) {
-    return requestJson<SmileyPersona>(`/api/personas/${encodeURIComponent(personaId)}`);
+    return requestJson<ScyllaPersona>(`/api/personas/${encodeURIComponent(personaId)}`);
 }
 
-export function createPersona(persona: SmileyPersona) {
+export function createPersona(persona: ScyllaPersona) {
     return requestJson<{
         ok: true;
-        persona: SmileyPersona;
+        persona: ScyllaPersona;
         personas?: PersonaSummaryCollection;
     }>("/api/personas", jsonInit("POST", persona));
 }
 
-export function savePersona(persona: SmileyPersona) {
+export function savePersona(persona: ScyllaPersona) {
     return requestJson<{
         ok: true;
-        persona: SmileyPersona;
+        persona: ScyllaPersona;
         personas?: PersonaSummaryCollection;
     }>(`/api/personas/${encodeURIComponent(persona.id)}`, jsonInit("PUT", persona));
 }
@@ -325,8 +325,8 @@ export function savePersona(persona: SmileyPersona) {
 export function uploadPersonaAvatar(personaId: string, file: File) {
     return requestJson<{
         ok: true;
-        avatar?: SmileyPersona["avatar"];
-        persona?: SmileyPersona;
+        avatar?: ScyllaPersona["avatar"];
+        persona?: ScyllaPersona;
         personas?: PersonaSummaryCollection;
     }>(`/api/personas/${encodeURIComponent(personaId)}/avatar`, {
         method: "POST",
@@ -364,23 +364,23 @@ export function loadCharacterSummaries() {
 }
 
 export function loadCharacter(characterId: string) {
-    return requestJson<SmileyCharacter>(
+    return requestJson<ScyllaCharacter>(
         `/api/characters/${encodeURIComponent(characterId)}`,
     );
 }
 
-export function createCharacter(character: SmileyCharacter) {
+export function createCharacter(character: ScyllaCharacter) {
     return requestJson<{
         ok: true;
-        character: SmileyCharacter;
+        character: ScyllaCharacter;
         characters?: CharacterSummaryCollection;
     }>("/api/characters", jsonInit("POST", character));
 }
 
-export function saveCharacter(character: SmileyCharacter) {
+export function saveCharacter(character: ScyllaCharacter) {
     return requestJson<{
         ok: true;
-        character: SmileyCharacter;
+        character: ScyllaCharacter;
         characters?: CharacterSummaryCollection;
     }>(`/api/characters/${encodeURIComponent(character.id)}`, jsonInit("PUT", character));
 }
@@ -429,8 +429,8 @@ export function importCharacterFiles(formData: FormData) {
 export function uploadCharacterAvatar(characterId: string, file: File) {
     return requestJson<{
         ok: true;
-        avatar?: SmileyCharacter["avatar"];
-        character?: SmileyCharacter;
+        avatar?: ScyllaCharacter["avatar"];
+        character?: ScyllaCharacter;
         characters?: CharacterSummaryCollection;
     }>(`/api/characters/${encodeURIComponent(characterId)}/avatar`, {
         method: "POST",

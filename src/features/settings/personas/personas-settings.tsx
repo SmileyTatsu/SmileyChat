@@ -2,16 +2,16 @@ import { ImageOff, ImagePlus, Plus, Trash2 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
 
 import { uploadPersonaAvatar } from "#frontend/lib/api/client";
-import type { PersonaSummaryCollection, SmileyPersona } from "#frontend/types";
+import type { PersonaSummaryCollection, ScyllaPersona } from "#frontend/types";
 
 type PersonasSettingsProps = {
     collection: PersonaSummaryCollection;
     loadError?: string;
-    persona: SmileyPersona;
+    persona: ScyllaPersona;
     onCreatePersona: () => void;
     onDeletePersona: (personaId: string) => void;
-    onPersonaChange: (persona: SmileyPersona) => void;
-    onPersonaSaved: (persona: SmileyPersona, personas?: PersonaSummaryCollection) => void;
+    onPersonaChange: (persona: ScyllaPersona) => void;
+    onPersonaSaved: (persona: ScyllaPersona, personas?: PersonaSummaryCollection) => void;
     onPersonaSelect: (personaId: string) => void;
     onSetActivePersona: (personaId: string) => void;
 };
@@ -36,7 +36,7 @@ export function PersonasSettings({
         (item) => item.id === deleteCandidateId,
     );
 
-    function updatePersona(nextPersona: Partial<SmileyPersona>) {
+    function updatePersona(nextPersona: Partial<ScyllaPersona>) {
         onPersonaChange({
             ...persona,
             ...nextPersona,

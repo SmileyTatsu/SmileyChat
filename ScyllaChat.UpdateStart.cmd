@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 where git >nul 2>nul
 if errorlevel 1 (
-  echo Git is required to update SmileyChat.
+  echo Git is required to update ScyllaChat.
   echo Install Git, then run this file again.
   pause
   exit /b 1
@@ -12,7 +12,7 @@ if errorlevel 1 (
 
 where bun >nul 2>nul
 if errorlevel 1 (
-  echo Bun is required to run SmileyChat.
+  echo Bun is required to run ScyllaChat.
   echo Install Bun, then run this file again.
   pause
   exit /b 1
@@ -20,12 +20,12 @@ if errorlevel 1 (
 
 if not exist .git (
   echo This folder is not a Git checkout.
-  echo Clone SmileyChat with Git before using this update script.
+  echo Clone ScyllaChat with Git before using this update script.
   pause
   exit /b 1
 )
 
-echo Updating SmileyChat...
+echo Updating ScyllaChat...
 git pull --ff-only
 if errorlevel 1 (
   echo.
@@ -41,14 +41,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Building SmileyChat...
+echo Building ScyllaChat...
 bun run build
 if errorlevel 1 (
   pause
   exit /b 1
 )
 
-echo Starting SmileyChat...
+echo Starting ScyllaChat...
 echo Open http://127.0.0.1:4173 in your browser.
 bun run start
 

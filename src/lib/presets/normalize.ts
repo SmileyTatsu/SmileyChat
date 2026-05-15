@@ -9,7 +9,7 @@ import type {
     PresetPromptOrderEntry,
     PresetPromptRole,
     SillyTavernImportSummary,
-    SmileyPreset,
+    ScyllaPreset,
 } from "./types";
 
 type NormalizedPromptEntry = {
@@ -78,7 +78,7 @@ export function normalizePresetCollection(value: unknown): PresetCollection {
     };
 }
 
-export function normalizePreset(value: unknown): SmileyPreset {
+export function normalizePreset(value: unknown): ScyllaPreset {
     const now = new Date().toISOString();
     const preset = isRecord(value) ? value : {};
     const sourcePrompts = Array.isArray(preset.prompts) ? preset.prompts : [];
@@ -141,7 +141,7 @@ export function normalizePreset(value: unknown): SmileyPreset {
 export function importSillyTavernPreset(
     value: unknown,
     fallbackTitle: string,
-): { preset: SmileyPreset; summary: SillyTavernImportSummary } {
+): { preset: ScyllaPreset; summary: SillyTavernImportSummary } {
     const now = new Date().toISOString();
     const source = isRecord(value) ? value : {};
     const sourcePrompts = Array.isArray(source.prompts) ? source.prompts : [];
@@ -217,7 +217,7 @@ export function createBlankPrompt(): PresetPrompt {
     };
 }
 
-export function createPresetFromDefault(title = "New preset"): SmileyPreset {
+export function createPresetFromDefault(title = "New preset"): ScyllaPreset {
     const now = new Date().toISOString();
     const basePreset = createDefaultPreset(now);
 

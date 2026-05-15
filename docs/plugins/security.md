@@ -1,6 +1,6 @@
 # Plugin Security And Limitations
 
-SmileyChat plugins are trusted local code. A plugin's JavaScript runs in the app page with normal browser privileges for that page.
+ScyllaChat plugins are trusted local code. A plugin's JavaScript runs in the app page with normal browser privileges for that page.
 
 Only install plugins from sources you trust.
 
@@ -19,7 +19,7 @@ Plugins can:
 
 Plugins should not:
 
-- Patch SmileyChat internals directly.
+- Patch ScyllaChat internals directly.
 - Depend on private DOM structure or CSS class names unless intentionally documented.
 - Store API keys in plugin storage unless the plugin clearly explains the risk.
 - Modify global prototypes.

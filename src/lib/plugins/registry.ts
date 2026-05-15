@@ -17,7 +17,7 @@ import type {
     PluginSettingsPanel,
     PluginStorageApi,
     PromptMiddleware,
-    SmileyPluginApi,
+    ScyllaPluginApi,
 } from "./types";
 
 type Listener = () => void;
@@ -216,7 +216,7 @@ export function createPluginApi(
     manifest: PluginManifest,
     storage: PluginStorageApi,
     preactH: typeof h,
-): SmileyPluginApi {
+): ScyllaPluginApi {
     return {
         plugin: manifest,
         state: {

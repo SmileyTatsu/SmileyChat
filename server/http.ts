@@ -59,6 +59,6 @@ export function parsePort(value: string | undefined) {
         return portNumber;
     }
 
-    console.warn(`Invalid 'SMILEYCHAT_API_PORT' "${value}". Falling back to 4173.`);
+    console.warn(`Invalid 'SCYLLACHAT_API_PORT' "${value}". Falling back to 4173.`);
     return 4173;
 }

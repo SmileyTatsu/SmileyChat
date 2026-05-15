@@ -1,6 +1,6 @@
 # Core Architecture
 
-SmileyChat's architecture separates the UI, the state orchestration, the text generation, and the file persistence.
+ScyllaChat's architecture separates the UI, the state orchestration, the text generation, and the file persistence.
 
 ## Flow of a Chat Message
 
@@ -20,4 +20,4 @@ The adapter normalizes the generation request and returns a standardized respons
 
 ## Plugins
 
-SmileyChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are executed securely as local ESM browser modules. For more information, see the [Plugins Docs](plugins/README.md).
+ScyllaChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are executed securely as local ESM browser modules. For more information, see the [Plugins Docs](plugins/README.md).

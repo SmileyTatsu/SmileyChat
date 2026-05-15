@@ -12,8 +12,8 @@ import type {
 } from "./types";
 
 const openRouterBaseUrl = "https://openrouter.ai/api/v1";
-const appReferer = "https://github.com/SmileyTatsu/SmileyChat";
-const appTitle = "SmileyChat";
+const appReferer = "https://github.com/ScyllaTatsu/ScyllaChat";
+const appTitle = "ScyllaChat";
 const appCategories = "roleplay,creative-writing,general-chat";
 
 export function createOpenRouterConnection(

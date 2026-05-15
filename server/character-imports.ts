@@ -9,7 +9,7 @@ import {
 } from "#frontend/lib/characters/import";
 import type {
     DroppedCharacterImportResult,
-    SmileyCharacter,
+    ScyllaCharacter,
 } from "#frontend/lib/characters/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
@@ -31,7 +31,7 @@ import { BadRequestError } from "./http";
 import { characterImportsDir } from "./paths";
 
 type CharacterImportCandidate = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     raw: unknown;
     avatarBytes?: Uint8Array;
     avatarType?: AvatarType;
@@ -247,9 +247,9 @@ async function importCharacterFileFromUpload(
 }
 
 async function attachImportedAvatar(
-    character: SmileyCharacter,
+    character: ScyllaCharacter,
     candidate: CharacterImportCandidate,
-): Promise<SmileyCharacter> {
+): Promise<ScyllaCharacter> {
     if (!candidate.avatarBytes || !candidate.avatarType) {
         return character;
     }

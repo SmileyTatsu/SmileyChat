@@ -2,22 +2,22 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 
-const csrfSecret = "test-csrf-secret-that-is-long-enough-for-smileychat";
-const originalSecret = process.env.SMILEYCHAT_CSRF_SECRET;
-const originalTrustedOrigins = process.env.SMILEYCHAT_TRUSTED_ORIGINS;
+const csrfSecret = "test-csrf-secret-that-is-long-enough-for-scyllachat";
+const originalSecret = process.env.SCYLLACHAT_CSRF_SECRET;
+const originalTrustedOrigins = process.env.SCYLLACHAT_TRUSTED_ORIGINS;
 
-const FRONTEND_PORT = process.env.SMILEYCHAT_FRONTEND_PORT ?? "5173";
-const API_PORT = process.env.SMILEYCHAT_API_PORT ?? "4173";
+const FRONTEND_PORT = process.env.SCYLLACHAT_FRONTEND_PORT ?? "5173";
+const API_PORT = process.env.SCYLLACHAT_API_PORT ?? "4173";
 
 describe("CSRF request verification", () => {
     beforeEach(() => {
-        process.env.SMILEYCHAT_CSRF_SECRET = csrfSecret;
-        delete process.env.SMILEYCHAT_TRUSTED_ORIGINS;
+        process.env.SCYLLACHAT_CSRF_SECRET = csrfSecret;
+        delete process.env.SCYLLACHAT_TRUSTED_ORIGINS;
     });
 
     afterEach(() => {
-        restoreEnv("SMILEYCHAT_CSRF_SECRET", originalSecret);
-        restoreEnv("SMILEYCHAT_TRUSTED_ORIGINS", originalTrustedOrigins);
+        restoreEnv("SCYLLACHAT_CSRF_SECRET", originalSecret);
+        restoreEnv("SCYLLACHAT_TRUSTED_ORIGINS", originalTrustedOrigins);
     });
 
     test("allows safe methods without provenance or token headers", async () => {
@@ -47,7 +47,7 @@ describe("CSRF request verification", () => {
                     method: "POST",
                     headers: {
                         Origin: `http://localhost:${API_PORT}`,
-                        "x-smileychat-csrf": "not-a-real-token",
+                        "x-scyllachat-csrf": "not-a-real-token",
                     },
                 }),
             ),
@@ -66,7 +66,7 @@ describe("CSRF request verification", () => {
                     method: "POST",
                     headers: {
                         Origin: "https://evil.example",
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -77,7 +77,7 @@ describe("CSRF request verification", () => {
     });
 
     test("allows configured trusted origins", async () => {
-        process.env.SMILEYCHAT_TRUSTED_ORIGINS = "https://chat.example.com";
+        process.env.SCYLLACHAT_TRUSTED_ORIGINS = "https://chat.example.com";
         const token = await createCsrfToken();
 
         await expect(
@@ -86,7 +86,7 @@ describe("CSRF request verification", () => {
                     method: "PUT",
                     headers: {
                         Origin: "https://chat.example.com",
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -107,7 +107,7 @@ describe("CSRF request verification", () => {
                         method: "PUT",
                         headers: {
                             Origin: origin,
-                            "x-smileychat-csrf": token,
+                            "x-scyllachat-csrf": token,
                         },
                     }),
                 ),
@@ -116,7 +116,7 @@ describe("CSRF request verification", () => {
     });
 
     test("treats blank trusted origins as unset", async () => {
-        process.env.SMILEYCHAT_TRUSTED_ORIGINS = "";
+        process.env.SCYLLACHAT_TRUSTED_ORIGINS = "";
         const token = await createCsrfToken();
 
         await expect(
@@ -125,7 +125,7 @@ describe("CSRF request verification", () => {
                     method: "PUT",
                     headers: {
                         Origin: `http://localhost:${FRONTEND_PORT}`,
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -144,7 +144,7 @@ describe("CSRF request verification", () => {
                         Origin: "https://chat.example.com",
                         "x-forwarded-host": "chat.example.com",
                         "x-forwarded-proto": "https",
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -160,7 +160,7 @@ describe("CSRF request verification", () => {
                     method: "DELETE",
                     headers: {
                         Referer: `http://localhost:${API_PORT}/chats/demo`,
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -175,7 +175,7 @@ describe("CSRF request verification", () => {
                 new Request(`http://localhost:${API_PORT}/api/chats`, {
                     method: "DELETE",
                     headers: {
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -197,7 +197,7 @@ describe("CSRF request verification", () => {
                         headers: {
                             Host: authority,
                             Origin: `http://${authority}`,
-                            "x-smileychat-csrf": token,
+                            "x-scyllachat-csrf": token,
                         },
                     }),
                 ),
@@ -216,7 +216,7 @@ describe("CSRF request verification", () => {
                     headers: {
                         Host: tailscaleAuthority,
                         Origin: `http://${tailscaleAuthority}`,
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -234,7 +234,7 @@ describe("CSRF request verification", () => {
                     headers: {
                         Host: ulaAuthority,
                         Origin: `http://${ulaAuthority}`,
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -251,7 +251,7 @@ describe("CSRF request verification", () => {
                     headers: {
                         Host: "evil.example",
                         Origin: `http://192.168.1.5:${API_PORT}`,
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -271,7 +271,7 @@ describe("CSRF request verification", () => {
                     headers: {
                         Host: `203.0.113.7:${API_PORT}`,
                         Origin: `http://203.0.113.7:${API_PORT}`,
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),
@@ -294,7 +294,7 @@ describe("CSRF request verification", () => {
                         Origin: `http://${lanAuthority}`,
                         "x-forwarded-host": lanAuthority,
                         "x-forwarded-proto": "http",
-                        "x-smileychat-csrf": token,
+                        "x-scyllachat-csrf": token,
                     },
                 }),
             ),

@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 where bun >nul 2>nul
 if errorlevel 1 (
-  echo Bun is required to run SmileyChat.
+  echo Bun is required to run ScyllaChat.
   echo Install Bun, then run this file again.
   pause
   exit /b 1
@@ -19,14 +19,14 @@ if not exist node_modules (
   )
 )
 
-echo Building SmileyChat...
+echo Building ScyllaChat...
 bun run build
 if errorlevel 1 (
   pause
   exit /b 1
 )
 
-echo Starting SmileyChat...
+echo Starting ScyllaChat...
 echo Open http://127.0.0.1:4173 in your browser.
 bun run start
 

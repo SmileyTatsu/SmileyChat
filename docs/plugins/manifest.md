@@ -27,7 +27,7 @@ User-facing plugin name.
 
 `version`
 
-User-facing version string. SmileyChat displays it but does not enforce semver yet.
+User-facing version string. ScyllaChat displays it but does not enforce semver yet.
 
 `description`
 
@@ -39,7 +39,7 @@ Path to the browser ESM entry file, relative to the plugin folder.
 
 `styles`
 
-Optional list of CSS files, relative to the plugin folder. SmileyChat injects them before activating the plugin.
+Optional list of CSS files, relative to the plugin folder. ScyllaChat injects them before activating the plugin.
 Plugins that define `styles` must include the `ui:styles` permission.
 
 `permissions`

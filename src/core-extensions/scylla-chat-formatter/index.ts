@@ -1,7 +1,7 @@
 import styles from "./styles.css?raw";
 
 import { renderFormatted, renderPlain } from "./formatting";
-import { smileyChatFormatterManifest } from "./manifest";
+import { scyllaChatFormatterManifest } from "./manifest";
 import type { FormatterApi } from "./nodes";
 import {
     defaultFormatterSettings,
@@ -11,7 +11,7 @@ import {
 } from "./settings";
 import { renderSettingsPanel } from "./settings-panel";
 
-export { smileyChatFormatterManifest };
+export { scyllaChatFormatterManifest };
 
 export async function activate(api: FormatterApi) {
     setFormatterSettings(
@@ -49,7 +49,7 @@ function registerFormatterRenderer(api: FormatterApi) {
     });
 }
 
-export const smileyChatFormatterPlugin = {
-    manifest: smileyChatFormatterManifest,
+export const scyllaChatFormatterPlugin = {
+    manifest: scyllaChatFormatterManifest,
     module: { activate },
 };

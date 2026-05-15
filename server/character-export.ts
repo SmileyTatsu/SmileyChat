@@ -17,9 +17,9 @@ export async function exportCharacterCard(characterId: string, format: "json" | 
             ...character.data,
             extensions: {
                 ...character.data.extensions,
-                smileychat: {
-                    ...(isRecord(character.data.extensions.smileychat)
-                        ? character.data.extensions.smileychat
+                scyllachat: {
+                    ...(isRecord(character.data.extensions.scyllachat)
+                        ? character.data.extensions.scyllachat
                         : {}),
                     characterId: character.id,
                 },

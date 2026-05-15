@@ -1,4 +1,4 @@
-import type { CharacterCollection, SmileyCharacter, TavernCardDataV2 } from "./types";
+import type { CharacterCollection, ScyllaCharacter, TavernCardDataV2 } from "./types";
 
 export const defaultCharacterData: TavernCardDataV2 = {
     name: "New character",
@@ -15,13 +15,13 @@ export const defaultCharacterData: TavernCardDataV2 = {
     creator: "",
     character_version: "",
     extensions: {
-        smileychat: {
+        scyllachat: {
             tagline: "",
         },
     },
 };
 
-export const defaultCharacter: SmileyCharacter = {
+export const defaultCharacter: ScyllaCharacter = {
     id: "character-default",
     version: 1,
     data: defaultCharacterData,

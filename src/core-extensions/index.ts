@@ -1,7 +1,7 @@
 import type { PluginManifest } from "../lib/plugins/types";
-import { smileyChatFormatterPlugin } from "./smiley-chat-formatter";
+import { scyllaChatFormatterPlugin } from "./scylla-chat-formatter";
 
-export const corePlugins = [smileyChatFormatterPlugin];
+export const corePlugins = [scyllaChatFormatterPlugin];
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
 
 export function getCorePluginManifests() {

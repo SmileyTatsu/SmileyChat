@@ -81,7 +81,7 @@ export type TavernCardDataV3 = TavernCardDataV2 & {
 
 export type CharacterImportFormat = "json" | "png" | "seed" | "manual";
 
-export type SmileyCharacter = {
+export type ScyllaCharacter = {
     id: string;
     version: 1;
     data: TavernCardDataV2;
@@ -103,8 +103,8 @@ export type CharacterSummary = {
     id: string;
     name: string;
     tagline: string;
-    avatar?: SmileyCharacter["avatar"];
-    importedFrom?: SmileyCharacter["importedFrom"];
+    avatar?: ScyllaCharacter["avatar"];
+    importedFrom?: ScyllaCharacter["importedFrom"];
     updatedAt: string;
 };
 
@@ -113,8 +113,8 @@ export type CharacterIndexEntry = {
     name: string;
     tagline: string;
     basePath: string;
-    avatar?: SmileyCharacter["avatar"];
-    importedFrom?: SmileyCharacter["importedFrom"];
+    avatar?: ScyllaCharacter["avatar"];
+    importedFrom?: ScyllaCharacter["importedFrom"];
     updatedAt: string;
 };
 
@@ -133,7 +133,7 @@ export type CharacterSummaryCollection = {
 export type CharacterCollection = {
     version: 1;
     activeCharacterId: string;
-    characters: SmileyCharacter[];
+    characters: ScyllaCharacter[];
 };
 
 export type DroppedCharacterImportResult = {

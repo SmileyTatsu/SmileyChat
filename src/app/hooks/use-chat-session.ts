@@ -25,18 +25,18 @@ import type {
     ChatMode,
     ChatSession,
     Message,
-    SmileyCharacter,
-    SmileyPersona,
+    ScyllaCharacter,
+    ScyllaPersona,
     UserStatus,
 } from "#frontend/types";
 
 type UseChatSessionOptions = {
     chat?: ChatSession;
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     connectionSettings: ConnectionSettings;
     mode: ChatMode;
     onChatChange: (chat: ChatSession) => void;
-    persona: SmileyPersona;
+    persona: ScyllaPersona;
     preferences: AppPreferences;
     presetCollection: PresetCollection;
     userStatus: UserStatus;
@@ -546,7 +546,7 @@ export function useChatSession({
 
     async function generateWithPreset(
         sourceMessages: Message[],
-        sourceCharacter: SmileyCharacter,
+        sourceCharacter: ScyllaCharacter,
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
         sourceConnectionSettings: ConnectionSettings,
@@ -597,7 +597,7 @@ export function useChatSession({
     async function applyInputMiddlewares(
         content: string,
         messages: Message[],
-        sourceCharacter: SmileyCharacter,
+        sourceCharacter: ScyllaCharacter,
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
     ) {
@@ -619,7 +619,7 @@ export function useChatSession({
     async function applyPromptMiddlewares(
         promptMessages: ReturnType<typeof compilePresetMessages>,
         messages: Message[],
-        sourceCharacter: SmileyCharacter,
+        sourceCharacter: ScyllaCharacter,
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
     ) {
@@ -642,7 +642,7 @@ export function useChatSession({
     async function applyOutputMiddlewares(
         content: string,
         messages: Message[],
-        sourceCharacter: SmileyCharacter,
+        sourceCharacter: ScyllaCharacter,
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
         result: Awaited<ReturnType<ReturnType<typeof getAdapterForSettings>["generate"]>>,

@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { extname, isAbsolute, join, normalize, relative } from "node:path";
 
-import type { SmileyPersona } from "#frontend/lib/personas/types";
+import type { ScyllaPersona } from "#frontend/lib/personas/types";
 
 import {
     avatarTypeForContentType,
@@ -60,7 +60,7 @@ export async function writePersonaAvatarAssetBytes(
     };
 }
 
-export async function deletePersonaAvatarAsset(persona: SmileyPersona) {
+export async function deletePersonaAvatarAsset(persona: ScyllaPersona) {
     const avatarPath = persona.avatar?.path;
 
     if (!avatarPath?.startsWith("/api/personas/assets/")) {

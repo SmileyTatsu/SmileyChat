@@ -1,6 +1,6 @@
 # User Data Persistence
 
-SmileyChat is a local-first application. It does not use `localStorage` or `IndexedDB` for core persistence. Instead, all user-generated content is saved to the local file system inside the `userData/` directory.
+ScyllaChat is a local-first application. It does not use `localStorage` or `IndexedDB` for core persistence. Instead, all user-generated content is saved to the local file system inside the `userData/` directory.
 
 This ensures that data is easy to inspect, back up, edit manually, and move between installations.
 
@@ -29,4 +29,4 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
 
 ## File Formats
 
-SmileyChat uses its own internal normalized formats, heavily inspired by existing V2 card formats for maximum compatibility. When importing SillyTavern or Tavern cards, unsupported fields are safely preserved inside an `extensions.smileychat` object to ensure no data loss during export.
+ScyllaChat uses its own internal normalized formats, heavily inspired by existing V2 card formats for maximum compatibility. When importing SillyTavern or Tavern cards, unsupported fields are safely preserved inside an `extensions.scyllachat` object to ensure no data loss during export.

@@ -17,18 +17,18 @@ import {
 } from "#frontend/lib/characters/normalize";
 import type {
     CharacterSummaryCollection,
-    SmileyCharacter,
+    ScyllaCharacter,
     TavernCardDataV2,
 } from "#frontend/types";
 
 type CharacterPanelProps = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     isOpen: boolean;
     onBeforeAvatarUpload?: () => void | Promise<void>;
-    onChange: (character: SmileyCharacter) => void;
+    onChange: (character: ScyllaCharacter) => void;
     onOpenChange: (isOpen: boolean) => void;
     onSavedCharacter?: (
-        character: SmileyCharacter,
+        character: ScyllaCharacter,
         summaries?: CharacterSummaryCollection,
     ) => void;
 };

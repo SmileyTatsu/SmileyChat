@@ -1,4 +1,4 @@
-import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
+import type { ChatMode, Message, ScyllaCharacter, UserStatus } from "#frontend/types";
 
 import { getCharacterTagline } from "../characters/normalize";
 import type { ChatGenerationMessage } from "../connections/types";
@@ -9,10 +9,10 @@ import {
 } from "../messages";
 import { dynamicPromptIds } from "./defaults";
 import { formatCharacterBook, resolvePresetMacros } from "./macros";
-import type { PresetPrompt, SmileyPreset } from "./types";
+import type { PresetPrompt, ScyllaPreset } from "./types";
 
 type CompilePresetContext = {
-    character: SmileyCharacter;
+    character: ScyllaCharacter;
     messages: Message[];
     mode: ChatMode;
     personaDescription: string;
@@ -21,7 +21,7 @@ type CompilePresetContext = {
 };
 
 export function compilePresetContext(
-    preset: SmileyPreset | undefined,
+    preset: ScyllaPreset | undefined,
     context: CompilePresetContext,
 ) {
     if (!preset) {
@@ -34,7 +34,7 @@ export function compilePresetContext(
 }
 
 export function compilePresetMessages(
-    preset: SmileyPreset | undefined,
+    preset: ScyllaPreset | undefined,
     context: CompilePresetContext,
 ): ChatGenerationMessage[] {
     if (!preset) {
@@ -129,7 +129,7 @@ function contentForPrompt(
     return resolvedContent;
 }
 
-function compileFallbackContext(character: SmileyCharacter) {
+function compileFallbackContext(character: ScyllaCharacter) {
     return [
         `Character: ${character.data.name}`,
         `Short description: ${getCharacterTagline(character)}`,

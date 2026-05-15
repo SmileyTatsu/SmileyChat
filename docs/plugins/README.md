@@ -1,7 +1,7 @@
-# SmileyChat Plugins
+# ScyllaChat Plugins
 
-SmileyChat plugins are trusted local browser ESM modules loaded from `userData/plugins`.
-Core extensions are bundled with the app and use the same runtime API. Both extend the app without patching SmileyChat source files.
+ScyllaChat plugins are trusted local browser ESM modules loaded from `userData/plugins`.
+Core extensions are bundled with the app and use the same runtime API. Both extend the app without patching ScyllaChat source files.
 
 Start here:
 
