@@ -7,9 +7,17 @@ The install is non-trivial because Bun has no native Android target. Bun's offic
 ## What you need
 
 - An Android phone running Android 7 (Nougat) or newer.
-- An aarch64 device — any phone made after 2017.
+- **An aarch64 (real ARM) device.** Any phone made after 2017 is fine. This walkthrough does **not** work on x86_64 Termux — Android emulators (BlueStacks, NoxPlayer, Windows Subsystem for Android, Android-x86, Genymotion, etc.) ship x86_64 Termux, and the `bun-termux` shim's Makefile is hardcoded to the `aarch64-linux-android` / `aarch64-linux-gnu` targets. Compilation of the shim will fail on x86_64 with `cannot open .../aarch64-unknown-linux-android/libclang_rt.builtins.a`.
 - About 1 GB of free storage (Termux + glibc + Bun + SmileyChat).
 - 15–20 minutes for the first install. Updates after that take under a minute.
+
+After Step 1 below, verify your Termux is on aarch64 before going further:
+
+```sh
+dpkg --print-architecture
+```
+
+It must print `aarch64`. If it prints `x86_64`, stop here — this install path doesn't apply to your setup.
 
 ## Step 1 — Install Termux from F-Droid
 
@@ -168,6 +176,8 @@ Switch back to Termux, press **Volume-down + C** (Termux's Ctrl-C). The server s
 To move data between devices, copy `~/SmileyChat/userData/` between them.
 
 ## Troubleshooting
+
+**`make` in Step 5 fails with `cannot open .../aarch64-unknown-linux-android/libclang_rt.builtins.a` or `unable to find library -l:libunwind.a`:** your Termux is x86_64, not aarch64. `bun-termux`'s Makefile hardcodes the aarch64 target. Run `dpkg --print-architecture` — if it prints `x86_64`, you're on an Android emulator (BlueStacks, NoxPlayer, WSA, Android-x86, etc.) and this install path does not apply. There is no fix on the SmileyChat side; the limitation is upstream in `bun-termux`. To test SmileyChat, use a real ARM phone or an aarch64 Android emulator.
 
 **`source: /root/.bashrc: No such file or directory` (or similar) at Step 4:** a fresh Termux home has no `~/.bashrc`. The updated Step 4 uses `echo '...' >> ~/.bashrc`, which both creates the file (if missing) and writes the Bun PATH entry. If you ran the older version of Step 4, fix it now: `echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc`.
 
