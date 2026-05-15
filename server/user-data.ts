@@ -1,12 +1,13 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+
 import {
     characterImportsDir,
     characterLibraryDir,
     chatOrphanedDir,
     chatSessionsDir,
-    personaCardsDir,
     personaAssetsDir,
+    personaCardsDir,
     personaOrphanedDir,
     pluginsDir,
     userDataDir,

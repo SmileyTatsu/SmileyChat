@@ -1,6 +1,19 @@
 import { Glob } from "bun";
 import { rm } from "node:fs/promises";
 import { extname, join } from "node:path";
+
+import {
+    importCharacterCard,
+    parseCharacterJson,
+    readPngCharacterJson,
+} from "#frontend/lib/characters/import";
+import type {
+    DroppedCharacterImportResult,
+    SmileyCharacter,
+} from "#frontend/lib/characters/types";
+import { isRecord } from "#frontend/lib/common/guards";
+
+import { archivedCharacterIdForFingerprint } from "./character-archive";
 import { stableStringify } from "./character-file-utils";
 import {
     avatarTypeForContentType,
@@ -10,23 +23,12 @@ import {
 } from "./character-images";
 import {
     createCharacter,
-    readCharacterCollection,
     readCharacterById,
+    readCharacterCollection,
     readCharacterSummaryCollection,
 } from "./character-store";
-import { archivedCharacterIdForFingerprint } from "./character-archive";
 import { BadRequestError } from "./http";
 import { characterImportsDir } from "./paths";
-import {
-    importCharacterCard,
-    parseCharacterJson,
-    readPngCharacterJson,
-} from "../src/lib/characters/import";
-import type {
-    DroppedCharacterImportResult,
-    SmileyCharacter,
-} from "../src/lib/characters/types";
-import { isRecord } from "../src/lib/common/guards";
 
 type CharacterImportCandidate = {
     character: SmileyCharacter;

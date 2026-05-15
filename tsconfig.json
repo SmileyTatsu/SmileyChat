@@ -16,7 +16,12 @@
         "noEmit": true,
         "types": ["node", "bun-types"],
         "jsx": "react-jsx",
-        "jsxImportSource": "preact"
+        "jsxImportSource": "preact",
+
+        "paths": {
+            "#server/*": ["./server/*"],
+            "#frontend/*": ["./src/*"]
+        }
     },
     "include": ["src", "server"],
     "references": []

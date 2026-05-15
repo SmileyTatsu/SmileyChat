@@ -1,3 +1,5 @@
+import { personaToSummary } from "#frontend/lib/personas/defaults";
+
 import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
 import { personaFilePath } from "./persona-file-paths";
 import {
@@ -6,7 +8,6 @@ import {
     writePersonaAvatarAssetBytes,
 } from "./persona-images";
 import { readPersonaById, readPersonaSummaryCollection } from "./persona-store";
-import { personaToSummary } from "../src/lib/personas/defaults";
 
 export async function writePersonaAvatar(personaId: string, request: Request) {
     const contentType = request.headers.get("Content-Type")?.split(";")[0].trim() ?? "";

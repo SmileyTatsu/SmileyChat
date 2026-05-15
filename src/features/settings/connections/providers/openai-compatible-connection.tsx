@@ -1,9 +1,9 @@
-import defaultModelCategories from "../../../../data/defaultOpenAIModels.json";
+import defaultModelCategories from "#frontend/data/default-openai-models.json";
 import type {
     OpenAICompatibleConnectionConfig,
     OpenAICompatibleModel,
     OpenAICompatibleReasoningConfig,
-} from "../../../../lib/connections/openai-compatible/types";
+} from "#frontend/lib/connections/openai-compatible/types";
 
 type OpenAICompatibleConnectionProps = {
     config: OpenAICompatibleConnectionConfig;

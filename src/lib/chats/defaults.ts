@@ -1,4 +1,5 @@
-import type { ChatMode, Message, SmileyCharacter } from "../../types";
+import type { ChatMode, Message, SmileyCharacter } from "#frontend/types";
+
 import { createId } from "../common/ids";
 import type { ChatSession } from "./types";
 

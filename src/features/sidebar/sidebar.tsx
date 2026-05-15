@@ -14,16 +14,18 @@ import {
     UploadCloud,
 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
-import { chatDisplayTitle } from "../../lib/chats/normalize";
-import { characterInitialAvatar } from "../../lib/characters/avatar";
+
+import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
+import { chatDisplayTitle } from "#frontend/lib/chats/normalize";
 import type {
     CharacterSummary,
     ChatSummary,
     PersonaSummary,
     SmileyPersona,
     UserStatus,
-} from "../../types";
-import { PersonaBar } from "../personas/PersonaBar";
+} from "#frontend/types";
+
+import { PersonaBar } from "../personas/persona-bar";
 
 type SidebarProps = {
     activeChatId: string;

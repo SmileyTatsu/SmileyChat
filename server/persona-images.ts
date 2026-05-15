@@ -1,14 +1,16 @@
 import { rm } from "node:fs/promises";
 import { extname, isAbsolute, join, normalize, relative } from "node:path";
-import { BadRequestError } from "./http";
-import { safeFileStem } from "./persona-file-paths";
-import { maxAvatarBytes, personaAssetsDir } from "./paths";
+
+import type { SmileyPersona } from "#frontend/lib/personas/types";
+
 import {
     avatarTypeForContentType,
     detectImageType,
     type AvatarType,
 } from "./character-images";
-import type { SmileyPersona } from "../src/lib/personas/types";
+import { BadRequestError } from "./http";
+import { maxAvatarBytes, personaAssetsDir } from "./paths";
+import { safeFileStem } from "./persona-file-paths";
 
 export async function servePersonaAsset(url: URL) {
     const fileName = decodeURIComponent(url.pathname.split("/").pop() ?? "");

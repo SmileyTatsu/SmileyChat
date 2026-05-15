@@ -1,4 +1,5 @@
 import type { Message, MessageSwipe, SmileyCharacter, SmileyPersona } from "../types";
+
 import { createId } from "./common/ids";
 
 export function createUserMessage(content: string, persona: SmileyPersona): Message {

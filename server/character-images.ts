@@ -1,6 +1,7 @@
 import { mkdir, rm } from "node:fs/promises";
-import { BadRequestError } from "./http";
-import { maxAvatarBytes } from "./paths";
+
+import type { SmileyCharacter } from "#frontend/lib/characters/types";
+
 import {
     characterAvatarPath,
     characterBaseDirectoryPath,
@@ -8,7 +9,8 @@ import {
     characterFolderName,
 } from "./character-file-paths";
 import { characterBasePathById } from "./character-store";
-import type { SmileyCharacter } from "../src/lib/characters/types";
+import { BadRequestError } from "./http";
+import { maxAvatarBytes } from "./paths";
 
 export type AvatarType = NonNullable<SmileyCharacter["avatar"]>["type"];
 

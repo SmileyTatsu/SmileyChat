@@ -1,4 +1,5 @@
 import { isAbsolute, join, normalize, relative } from "node:path";
+
 import { assertSafeEntityId } from "./entity-id";
 import { BadRequestError } from "./http";
 import { userDataDir } from "./paths";

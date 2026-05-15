@@ -1,18 +1,23 @@
+import "./App.css";
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import { CharacterPanel } from "../features/characters/CharacterPanel";
-import { ChatWorkspace } from "../features/chat/ChatWorkspace";
-import { OptionsModal } from "../features/settings/OptionsModal";
-import { Sidebar } from "../features/sidebar/Sidebar";
+
+import { CharacterPanel } from "#frontend/features/characters/character-panel";
+import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
+import { OptionsModal } from "#frontend/features/settings/options-modal";
+import { Sidebar } from "#frontend/features/sidebar/sidebar";
+
 import {
-    localApiErrorEventName,
+    loadAppPreferences,
     loadConnectionSecrets,
     loadConnectionSettings as loadConnectionSettingsRequest,
-    loadAppPreferences,
     loadPluginManifests,
     loadPresetCollection as loadPresetCollectionRequest,
+    localApiErrorEventName,
     saveAppPreferences,
-} from "../lib/api/client";
-import { characterInitialAvatar } from "../lib/characters/avatar";
+} from "#frontend/lib/api/client";
+import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
+import { messageFromError } from "#frontend/lib/common/errors";
 import {
     applyConnectionSecrets,
     defaultConnectionSettings,
@@ -20,24 +25,29 @@ import {
     normalizeConnectionSettings,
     sanitizeConnectionSettings,
     type ConnectionSettings,
-} from "../lib/connections/config";
-import { messageFromError } from "../lib/common/errors";
-import { defaultPresetCollection } from "../lib/presets/defaults";
-import { normalizePresetCollection } from "../lib/presets/normalize";
-import type { PresetCollection } from "../lib/presets/types";
+} from "#frontend/lib/connections/config";
 import {
     defaultAppPreferences,
     normalizeAppPreferences,
     type AppPreferences,
-} from "../lib/preferences/types";
-import { setPluginSnapshot, subscribeToPluginRegistry } from "../lib/plugins/registry";
-import { loadRuntimePlugins } from "../lib/plugins/runtime";
-import type { PluginAppSnapshot } from "../lib/plugins/types";
-import type { ChatMode, SettingsCategory, UserStatus } from "../types";
-import { useCharacterChats } from "./useCharacterChats";
-import { useChatSession } from "./useChatSession";
-import { usePersonaLibrary } from "./usePersonaLibrary";
-import "./App.css";
+} from "#frontend/lib/preferences/types";
+
+import {
+    setPluginSnapshot,
+    subscribeToPluginRegistry,
+} from "#frontend/lib/plugins/registry";
+import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+
+import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
+import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
+import type { PresetCollection } from "#frontend/lib/presets/types";
+
+import type { ChatMode, SettingsCategory, UserStatus } from "#frontend/types";
+
+import { useCharacterChats } from "./hooks/use-character-chats";
+import { useChatSession } from "./hooks/use-chat-session";
+import { usePersonaLibrary } from "./hooks/use-persona-library";
 
 const MOBILE_SIDEBAR_BREAKPOINT = 820;
 const CHARACTER_DRAWER_BREAKPOINT = 1120;
@@ -296,7 +306,7 @@ export function App() {
     function updatePreferences(nextPreferences: AppPreferences) {
         const normalizedPreferences = normalizeAppPreferences(nextPreferences);
         setPreferences(normalizedPreferences);
-        setPreferencesSaveStatus("Saving...");
+        setPreferencesSaveStatus("Saving#frontend.");
         void saveAppPreferences(normalizedPreferences)
             .then((response) => {
                 const savedPreferences = normalizeAppPreferences(response.preferences);

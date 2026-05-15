@@ -1,6 +1,6 @@
-import type { ConnectionAdapter } from "../types";
 import { safeResponseText } from "../http";
 import { readChatCompletionStream } from "../streaming";
+import type { ConnectionAdapter } from "../types";
 import {
     createOpenRouterChatCompletionBody,
     normalizeOpenRouterChatCompletion,

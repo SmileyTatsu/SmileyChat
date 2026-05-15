@@ -8,40 +8,45 @@ import {
     Upload,
 } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { messageFromError } from "../../lib/common/errors";
-import { isRecord } from "../../lib/common/guards";
-import { createId } from "../../lib/common/ids";
-import { compilePresetContext, compilePresetMessages } from "../../lib/presets/compile";
+
+import { messageFromError } from "#frontend/lib/common/errors";
+import { isRecord } from "#frontend/lib/common/guards";
+import { createId } from "#frontend/lib/common/ids";
+import {
+    compilePresetContext,
+    compilePresetMessages,
+} from "#frontend/lib/presets/compile";
 import {
     createBlankPrompt,
     createPresetFromDefault,
     importSillyTavernPreset,
     normalizePreset,
     normalizePresetCollection,
-} from "../../lib/presets/normalize";
+} from "#frontend/lib/presets/normalize";
 import type {
     PresetCollection,
     PresetPrompt,
     SmileyPreset,
-} from "../../lib/presets/types";
+} from "#frontend/lib/presets/types";
 import type {
     ChatMode,
     Message,
-    SmileyPersona,
     SmileyCharacter,
+    SmileyPersona,
     UserStatus,
-} from "../../types";
+} from "#frontend/types";
+
 import {
     PresetConfirmDialog,
     type PresetConfirmAction,
-} from "./presets/PresetConfirmDialog";
-import { PresetEditor, type OrderedPrompt } from "./presets/PresetEditor";
-import { PresetPreview } from "./presets/PresetPreview";
+} from "./presets/preset-confirm-dialog";
+import { PresetEditor, type OrderedPrompt } from "./presets/preset-editor";
+import { PresetPreview } from "./presets/preset-preview";
 import {
     collectPresetWarnings,
     warningsForPromptDeletion,
-} from "./presets/presetWarnings";
-import { usePresetAutosave } from "./presets/usePresetAutosave";
+} from "./presets/preset-warnings";
+import { usePresetAutosave } from "./presets/use-preset-autosave";
 
 type PresetSettingsProps = {
     character: SmileyCharacter;

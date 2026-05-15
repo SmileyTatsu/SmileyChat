@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { savePresetCollection } from "../../../lib/api/client";
-import { messageFromError } from "../../../lib/common/errors";
-import { normalizePresetCollection } from "../../../lib/presets/normalize";
-import type { PresetCollection } from "../../../lib/presets/types";
+
+import { savePresetCollection } from "#frontend/lib/api/client";
+import { messageFromError } from "#frontend/lib/common/errors";
+import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
+import type { PresetCollection } from "#frontend/lib/presets/types";
 
 export type RequestState = "idle" | "loading" | "success" | "error";
 

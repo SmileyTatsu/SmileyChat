@@ -1,6 +1,6 @@
-import { getFormatterSettings } from "./settings";
-import { safeColor, safeSize } from "./safety";
 import { FormatterApi, FormatterNode, withInlineLineBreaks } from "./nodes";
+import { safeColor, safeSize } from "./safety";
+import { getFormatterSettings } from "./settings";
 
 type TagFrame = {
     name: string;

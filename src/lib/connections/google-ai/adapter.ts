@@ -1,5 +1,6 @@
-import type { ConnectionAdapter } from "../types";
 import { safeResponseText, trimTrailingSlash } from "../http";
+import type { ConnectionAdapter } from "../types";
+
 import { createGoogleAIGenerateBody, normalizeGoogleAIResponse } from "./mappers";
 import { readGoogleAIStream } from "./streaming";
 import type { GoogleAIGenerateContentResponse, GoogleAIRuntimeConfig } from "./types";

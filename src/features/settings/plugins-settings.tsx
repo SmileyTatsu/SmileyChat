@@ -1,21 +1,22 @@
 import { Boxes, CheckCircle2, Power, RefreshCw, Settings, XCircle } from "lucide-preact";
 import { useEffect, useState } from "preact/hooks";
-import { loadPluginManifests, savePluginEnabled } from "../../lib/api/client";
-import { mergeCoreAndUserPluginManifests } from "../../core-extensions";
-import { messageFromError } from "../../lib/common/errors";
+
+import { mergeCoreAndUserPluginManifests } from "#frontend/core-extensions";
+import { loadPluginManifests, savePluginEnabled } from "#frontend/lib/api/client";
+import { messageFromError } from "#frontend/lib/common/errors";
 import {
     deactivatePlugin,
     getLoadedPlugins,
     getPluginSettingsPanels,
     setPluginEnabledState,
     subscribeToPluginRegistry,
-} from "../../lib/plugins/registry";
+} from "#frontend/lib/plugins/registry";
 import {
     createPluginStorage,
     loadCoreRuntimePlugin,
     loadRuntimePlugin,
-} from "../../lib/plugins/runtime";
-import type { PluginAppSnapshot, PluginManifest } from "../../lib/plugins/types";
+} from "#frontend/lib/plugins/runtime";
+import type { PluginAppSnapshot, PluginManifest } from "#frontend/lib/plugins/types";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 

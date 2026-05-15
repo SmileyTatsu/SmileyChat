@@ -1,10 +1,3 @@
-import { writeJsonAtomic } from "./http";
-import {
-    connectionSecretsPath,
-    connectionSettingsPath,
-    preferencesPath,
-    presetsPath,
-} from "./paths";
 import {
     defaultConnectionSecrets,
     defaultConnectionSettings,
@@ -14,15 +7,23 @@ import {
     sanitizeConnectionSettings,
     type ConnectionSecrets,
     type ConnectionSettings,
-} from "../src/lib/connections/config";
-import { defaultPresetCollection } from "../src/lib/presets/defaults";
-import { normalizePresetCollection } from "../src/lib/presets/normalize";
-import type { PresetCollection } from "../src/lib/presets/types";
+} from "#frontend/lib/connections/config";
 import {
     defaultAppPreferences,
     normalizeAppPreferences,
     type AppPreferences,
-} from "../src/lib/preferences/types";
+} from "#frontend/lib/preferences/types";
+import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
+import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
+import type { PresetCollection } from "#frontend/lib/presets/types";
+
+import { writeJsonAtomic } from "./http";
+import {
+    connectionSecretsPath,
+    connectionSettingsPath,
+    preferencesPath,
+    presetsPath,
+} from "./paths";
 
 export async function readConnectionSettings(): Promise<ConnectionSettings> {
     if (!(await Bun.file(connectionSettingsPath).exists())) {

@@ -1,16 +1,5 @@
-import { HttpError, json, parsePort, readJsonBody } from "./http";
-import { createCsrfToken, verifyCsrfRequest } from "./csrf";
-import { userDataDir } from "./paths";
-import { serveStatic } from "./static";
-import {
-    createChat,
-    deleteChatById,
-    deleteChatsByCharacterId,
-    readChatById,
-    readChatSummaryCollection,
-    updateChatIndex,
-    writeChatById,
-} from "./chat-store";
+import { characterToSummary } from "#frontend/lib/characters/normalize";
+
 import {
     createCharacter,
     deleteCharacterById,
@@ -24,17 +13,20 @@ import {
     writeCharacterAvatar,
     writeCharacterById,
 } from "./characters";
-import { characterToSummary } from "../src/lib/characters/normalize";
 import {
-    readConnectionSecrets,
-    readConnectionSettings,
-    readAppPreferences,
-    readPresetCollection,
-    writeConnectionSecrets,
-    writeConnectionSettings,
-    writeAppPreferences,
-    writePresetCollection,
-} from "./settings";
+    createChat,
+    deleteChatById,
+    deleteChatsByCharacterId,
+    readChatById,
+    readChatSummaryCollection,
+    updateChatIndex,
+    writeChatById,
+} from "./chat-store";
+import { createCsrfToken, verifyCsrfRequest } from "./csrf";
+import { HttpError, json, parsePort, readJsonBody } from "./http";
+import { userDataDir } from "./paths";
+import { writePersonaAvatar } from "./persona-avatar";
+import { servePersonaAsset } from "./persona-images";
 import {
     createPersona,
     deletePersonaById,
@@ -43,9 +35,6 @@ import {
     updatePersonaIndex,
     writePersonaById,
 } from "./persona-store";
-import { writePersonaAvatar } from "./persona-avatar";
-import { servePersonaAsset } from "./persona-images";
-import { ensureUserData } from "./user-data";
 import {
     deletePluginStorage,
     readPluginManifests,
@@ -54,6 +43,18 @@ import {
     updatePluginEnabled,
     writePluginStorage,
 } from "./plugins";
+import {
+    readAppPreferences,
+    readConnectionSecrets,
+    readConnectionSettings,
+    readPresetCollection,
+    writeAppPreferences,
+    writeConnectionSecrets,
+    writeConnectionSettings,
+    writePresetCollection,
+} from "./settings";
+import { serveStatic } from "./static";
+import { ensureUserData } from "./user-data";
 
 type ApiHandler<Path extends string, WebSocketData = undefined> = (
     request: Bun.BunRequest<Path>,

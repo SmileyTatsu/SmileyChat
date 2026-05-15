@@ -1,18 +1,12 @@
+import type { SmileyCharacter } from "#frontend/lib/characters/types";
+import { isRecord } from "#frontend/lib/common/guards";
+
 import { writeJsonAtomic } from "./http";
 import { characterArchivePath } from "./paths";
-import type { SmileyCharacter } from "../src/lib/characters/types";
-import { isRecord } from "../src/lib/common/guards";
 
 type CharacterArchive = {
     version: 1;
-    identities: Record<
-        string,
-        {
-            characterId: string;
-            name: string;
-            archivedAt: string;
-        }
-    >;
+    identities: Record<string, { characterId: string; name: string; archivedAt: string }>;
 };
 
 export async function archiveCharacterIdentity(character: SmileyCharacter) {

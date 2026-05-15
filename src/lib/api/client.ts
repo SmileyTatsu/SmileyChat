@@ -3,13 +3,14 @@ import type {
     ChatSession,
     ChatSummaryCollection,
     PersonaSummaryCollection,
-    SmileyPersona,
     SmileyCharacter,
-} from "../../types";
+    SmileyPersona,
+} from "#frontend/types";
+
 import type { ConnectionSecrets, ConnectionSettings } from "../connections/config";
-import type { PresetCollection } from "../presets/types";
-import type { AppPreferences } from "../preferences/types";
 import type { PluginManifest } from "../plugins/types";
+import type { AppPreferences } from "../preferences/types";
+import type { PresetCollection } from "../presets/types";
 
 const csrfHeaderName = "x-smileychat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);

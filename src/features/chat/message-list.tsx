@@ -11,20 +11,21 @@ import {
     X,
 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { formatShortTime } from "../../lib/common/time";
+
+import { formatShortTime } from "#frontend/lib/common/time";
 import {
     getMessageContent,
     getMessageCreatedAt,
     getMessageReasoning,
     isActiveSwipeError,
-} from "../../lib/messages";
+} from "#frontend/lib/messages";
 import {
     getMessageRenderers,
     getPluginMessageActions,
     subscribeToPluginRegistry,
-} from "../../lib/plugins/registry";
-import type { PluginAppSnapshot } from "../../lib/plugins/types";
-import type { ChatMode, Message } from "../../types";
+} from "#frontend/lib/plugins/registry";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type { ChatMode, Message } from "#frontend/types";
 
 type MessageListProps = {
     autoScroll: boolean;

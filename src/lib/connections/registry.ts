@@ -1,3 +1,5 @@
+import { createAdapterFromPluginProvider } from "../plugins/registry";
+
 import {
     getActiveConnectionProfile,
     isGoogleAIProfile,
@@ -8,7 +10,6 @@ import {
 import { createGoogleAIConnection } from "./google-ai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
-import { createAdapterFromPluginProvider } from "../plugins/registry";
 
 export function getAdapterForSettings(settings: ConnectionSettings) {
     const profile = getActiveConnectionProfile(settings);

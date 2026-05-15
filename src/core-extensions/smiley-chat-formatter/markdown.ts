@@ -1,7 +1,8 @@
 import type { ComponentChild } from "preact";
-import { getFormatterSettings } from "./settings";
-import { safeImageUrl, safeUrl } from "./safety";
+
 import { FormatterApi, FormatterNode, withInlineLineBreaks } from "./nodes";
+import { safeImageUrl, safeUrl } from "./safety";
+import { getFormatterSettings } from "./settings";
 
 type InlineRenderer = (content: string) => FormatterNode[];
 

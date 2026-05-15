@@ -1,5 +1,5 @@
-import { dynamicPromptIds } from "../../../lib/presets/defaults";
-import type { PresetPrompt, SmileyPreset } from "../../../lib/presets/types";
+import { dynamicPromptIds } from "#frontend/lib/presets/defaults";
+import type { PresetPrompt, SmileyPreset } from "#frontend/lib/presets/types";
 
 export function collectPresetWarnings(
     preset: SmileyPreset | undefined,

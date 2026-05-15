@@ -1,6 +1,7 @@
-import type { ChatMode, Message, SmileyCharacter, UserStatus } from "../../types";
-import { formatDate, formatDateTime, formatShortTime } from "../common/time";
+import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
+
 import { getCharacterTagline } from "../characters/normalize";
+import { formatDate, formatDateTime, formatShortTime } from "../common/time";
 import { getMessageContent } from "../messages";
 import { getPluginMacroValue } from "../plugins/registry";
 

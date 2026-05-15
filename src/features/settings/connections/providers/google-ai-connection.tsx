@@ -1,8 +1,8 @@
-import defaultModelCategories from "../../../../data/defaultGoogleAIModels.json";
+import defaultModelCategories from "#frontend/data/default-google-ai-models.json";
 import type {
     GoogleAIConnectionConfig,
     GoogleAIModel,
-} from "../../../../lib/connections/google-ai/types";
+} from "#frontend/lib/connections/google-ai/types";
 
 type GoogleAIConnectionProps = {
     config: GoogleAIConnectionConfig;
