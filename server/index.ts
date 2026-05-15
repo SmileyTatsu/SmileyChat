@@ -55,17 +55,12 @@ import {
     writePluginStorage,
 } from "./plugins";
 
-type RouteRequest<Params extends Record<string, string> = Record<string, string>> =
-    Request & {
-        params: Params;
-    };
-
 type RouteServer = {
     timeout(request: Request, seconds: number): void;
 };
 
-type ApiHandler<Params extends Record<string, string> = Record<string, string>> = (
-    request: RouteRequest<Params>,
+type ApiHandler<Path extends string> = (
+    request: Bun.BunRequest<Path>,
     server: RouteServer,
 ) => Response | Promise<Response>;
 
@@ -79,19 +74,25 @@ const server = Bun.serve({
     port,
     routes: {
         "/api/health": {
-            GET: api(() => json({ ok: true, userDataDir })),
+            GET: api(async () => {
+                return json({ ok: true, userDataDir });
+            }),
         },
 
         "/api/csrf": {
-            GET: api(async () => json({ token: await createCsrfToken() })),
+            GET: api(async () => {
+                return json({ token: await createCsrfToken() });
+            }),
         },
 
         "/api/plugins": {
-            GET: api(async () => json({ plugins: await readPluginManifests() })),
+            GET: api(async () => {
+                return json({ plugins: await readPluginManifests() });
+            }),
         },
 
         "/api/plugins/:pluginId": {
-            PUT: api<{ pluginId: string }>(async (request) => {
+            PUT: api(async (request) => {
                 const body = await readJsonBody(request);
                 const enabled =
                     body && typeof body === "object" && "enabled" in body
@@ -103,23 +104,30 @@ const server = Bun.serve({
         },
 
         "/api/plugins/:pluginId/storage/:key": {
-            GET: api<{ pluginId: string; key: string }>((request) =>
-                readPluginStorage(request.params.pluginId, request.params.key),
-            ),
-            PUT: api<{ pluginId: string; key: string }>(async (request) =>
-                writePluginStorage(
+            GET: api(async (request) => {
+                return readPluginStorage(request.params.pluginId, request.params.key);
+            }),
+
+            PUT: api(async (request) => {
+                const value = await readJsonBody(request);
+
+                return writePluginStorage(
                     request.params.pluginId,
                     request.params.key,
-                    await readJsonBody(request),
-                ),
-            ),
-            DELETE: api<{ pluginId: string; key: string }>((request) =>
-                deletePluginStorage(request.params.pluginId, request.params.key),
-            ),
+                    value,
+                );
+            }),
+
+            DELETE: api(async (request) => {
+                return deletePluginStorage(request.params.pluginId, request.params.key);
+            }),
         },
 
         "/api/connections": {
-            GET: api(async () => json(await readConnectionSettings())),
+            GET: api(async () => {
+                return json(await readConnectionSettings());
+            }),
+
             PUT: api(async (request) => {
                 const settings = await writeConnectionSettings(
                     await readJsonBody(request),
@@ -129,7 +137,10 @@ const server = Bun.serve({
         },
 
         "/api/connections/secrets": {
-            GET: api(async () => json(await readConnectionSecrets())),
+            GET: api(async () => {
+                return json(await readConnectionSecrets());
+            }),
+
             PUT: api(async (request) => {
                 const secrets = await writeConnectionSecrets(await readJsonBody(request));
                 return json({ ok: true, secrets });
@@ -137,7 +148,10 @@ const server = Bun.serve({
         },
 
         "/api/presets": {
-            GET: api(async () => json(await readPresetCollection())),
+            GET: api(async () => {
+                return json(await readPresetCollection());
+            }),
+
             PUT: api(async (request) => {
                 const presets = await writePresetCollection(await readJsonBody(request));
                 return json({ ok: true, presets });
@@ -145,7 +159,10 @@ const server = Bun.serve({
         },
 
         "/api/preferences": {
-            GET: api(async () => json(await readAppPreferences())),
+            GET: api(async () => {
+                return json(await readAppPreferences());
+            }),
+
             PUT: api(async (request) => {
                 const preferences = await writeAppPreferences(
                     await readJsonBody(request),
@@ -155,7 +172,10 @@ const server = Bun.serve({
         },
 
         "/api/chats": {
-            GET: api(async () => json(await readChatSummaryCollection())),
+            GET: api(async () => {
+                return json(await readChatSummaryCollection());
+            }),
+
             POST: api(async (request) => {
                 const result = await createChat(await readJsonBody(request));
                 return json({ ok: true, ...result });
@@ -165,31 +185,29 @@ const server = Bun.serve({
         "/api/chats/index": {
             PUT: api(async (request) => {
                 const index = await updateChatIndex(await readJsonBody(request));
-                return json({
-                    ok: true,
-                    index,
-                    chats: await readChatSummaryCollection(),
-                });
+                const chats = await readChatSummaryCollection();
+
+                return json({ ok: true, index, chats });
             }),
         },
 
         "/api/chats/:chatId": {
-            GET: api<{ chatId: string }>(async (request) => {
+            GET: api(async (request) => {
                 const chat = await readChatById(request.params.chatId);
                 return chat ? json(chat) : json({ error: "Chat not found." }, 404);
             }),
-            PUT: api<{ chatId: string }>(async (request) => {
+
+            PUT: api(async (request) => {
                 const chat = await writeChatById(
                     request.params.chatId,
                     await readJsonBody(request),
                 );
-                return json({
-                    ok: true,
-                    chat,
-                    chats: await readChatSummaryCollection(),
-                });
+                const chats = await readChatSummaryCollection();
+
+                return json({ ok: true, chat, chats });
             }),
-            DELETE: api<{ chatId: string }>(async (request) => {
+
+            DELETE: api(async (request) => {
                 const result = await deleteChatById(request.params.chatId);
                 return result
                     ? json({ ok: true, ...result })
@@ -198,7 +216,10 @@ const server = Bun.serve({
         },
 
         "/api/personas": {
-            GET: api(async () => json(await readPersonaSummaryCollection())),
+            GET: api(async () => {
+                return json(await readPersonaSummaryCollection());
+            }),
+
             POST: api(async (request) => {
                 const result = await createPersona(await readJsonBody(request));
                 return json({ ok: true, ...result });
@@ -208,46 +229,49 @@ const server = Bun.serve({
         "/api/personas/index": {
             PUT: api(async (request) => {
                 const index = await updatePersonaIndex(await readJsonBody(request));
-                return json({
-                    ok: true,
-                    index,
-                    personas: await readPersonaSummaryCollection(),
-                });
+                const personas = await readPersonaSummaryCollection();
+
+                return json({ ok: true, index, personas });
             }),
         },
 
         "/api/personas/assets/:file": {
-            GET: api((request) => servePersonaAsset(new URL(request.url))),
+            GET: api(async (request) => {
+                return servePersonaAsset(new URL(request.url));
+            }),
         },
 
         "/api/personas/:personaId/avatar": {
-            POST: api<{ personaId: string }>((request, routeServer) => {
+            POST: api(async (request, routeServer) => {
                 routeServer.timeout(request, 60);
-                return writePersonaAvatar(request.params.personaId, request).then(
-                    (result) => json({ ok: true, ...result }),
+                const result = await writePersonaAvatar(
+                    request.params.personaId,
+                    request,
                 );
+
+                return json({ ok: true, ...result });
             }),
         },
 
         "/api/personas/:personaId": {
-            GET: api<{ personaId: string }>(async (request) => {
+            GET: api(async (request) => {
                 const persona = await readPersonaById(request.params.personaId);
                 return persona
                     ? json(persona)
                     : json({ error: "Persona not found." }, 404);
             }),
-            PUT: api<{ personaId: string }>(async (request) => {
+
+            PUT: api(async (request) => {
                 const persona = await writePersonaById(
                     request.params.personaId,
                     await readJsonBody(request),
                 );
-                return json({
-                    ok: true,
-                    persona,
-                    personas: await readPersonaSummaryCollection(),
-                });
+                const personas = await readPersonaSummaryCollection();
+
+                return json({ ok: true, persona, personas });
             }),
-            DELETE: api<{ personaId: string }>(async (request) => {
+
+            DELETE: api(async (request) => {
                 const result = await deletePersonaById(request.params.personaId);
                 return result
                     ? json({ ok: true, ...result })
@@ -256,7 +280,10 @@ const server = Bun.serve({
         },
 
         "/api/characters": {
-            GET: api(async () => json(await readCharacterSummaryCollection())),
+            GET: api(async () => {
+                return json(await readCharacterSummaryCollection());
+            }),
+
             POST: api(async (request) => {
                 const result = await createCharacter(await readJsonBody(request));
                 return json({ ok: true, ...result });
@@ -266,78 +293,82 @@ const server = Bun.serve({
         "/api/characters/index": {
             PUT: api(async (request) => {
                 const index = await updateCharacterIndex(await readJsonBody(request));
-                return json({
-                    ok: true,
-                    index,
-                    characters: await readCharacterSummaryCollection(),
-                });
+                const characters = await readCharacterSummaryCollection();
+
+                return json({ ok: true, index, characters });
             }),
         },
 
         "/api/characters/import-dropped": {
-            POST: api((request, routeServer) => {
+            POST: api(async (request, routeServer) => {
                 routeServer.timeout(request, 60);
-                return importDroppedCharacterFiles().then((result) => json(result));
+                const result = await importDroppedCharacterFiles();
+
+                return json(result);
             }),
         },
 
         "/api/characters/import": {
-            POST: api((request, routeServer) => {
+            POST: api(async (request, routeServer) => {
                 routeServer.timeout(request, 60);
-                return importUploadedCharacterFiles(request).then((result) =>
-                    json(result),
-                );
+                const result = await importUploadedCharacterFiles(request);
+
+                return json(result);
             }),
         },
 
         "/api/characters/:characterId/avatar": {
-            GET: api<{ characterId: string }>(async (request) => {
+            GET: api(async (request) => {
                 const character = await readCharacterById(request.params.characterId);
                 return character
                     ? serveCharacterAvatar(character)
                     : json({ error: "Character not found." }, 404);
             }),
-            POST: api<{ characterId: string }>((request, routeServer) => {
+
+            POST: api(async (request, routeServer) => {
                 routeServer.timeout(request, 60);
-                return writeCharacterAvatar(request.params.characterId, request).then(
-                    (result) => json({ ok: true, ...result }),
+                const result = await writeCharacterAvatar(
+                    request.params.characterId,
+                    request,
                 );
+
+                return json({ ok: true, ...result });
             }),
         },
 
         "/api/characters/:characterId/export.json": {
-            GET: api<{ characterId: string }>((request) =>
-                exportCharacterCard(request.params.characterId, "json"),
-            ),
+            GET: api(async (request) => {
+                return exportCharacterCard(request.params.characterId, "json");
+            }),
         },
 
         "/api/characters/:characterId/export.png": {
-            GET: api<{ characterId: string }>((request, routeServer) => {
+            GET: api(async (request, routeServer) => {
                 routeServer.timeout(request, 60);
                 return exportCharacterCard(request.params.characterId, "png");
             }),
         },
 
         "/api/characters/:characterId": {
-            GET: api<{ characterId: string }>(async (request) => {
+            GET: api(async (request) => {
                 const character = await readCharacterById(request.params.characterId);
                 return character
                     ? json(character)
                     : json({ error: "Character not found." }, 404);
             }),
-            PUT: api<{ characterId: string }>(async (request) => {
+
+            PUT: api(async (request) => {
                 const character = await writeCharacterById(
                     request.params.characterId,
                     await readJsonBody(request),
                 );
-                return json({
-                    ok: true,
-                    character,
-                    summary: characterToSummary(character),
-                    characters: await readCharacterSummaryCollection(),
-                });
+                const characters = await readCharacterSummaryCollection();
+                const summary = characterToSummary(character);
+
+                return json({ ok: true, character, summary, characters });
             }),
-            DELETE: api<{ characterId: string }>(async (request) => {
+
+            DELETE: api(async (request) => {
                 const url = new URL(request.url);
                 const deleteChats = url.searchParams.get("deleteChats") === "true";
                 const result = await deleteCharacterById(request.params.characterId);
@@ -348,13 +379,10 @@ const server = Bun.serve({
                         : undefined;
 
                 if (result && deleteChats) {
-                    return json({
-                        ok: true,
-                        ...result,
-                        chats:
-                            chatDeleteResult?.chats ??
-                            (await readChatSummaryCollection()),
-                    });
+                    const chats =
+                        chatDeleteResult?.chats ?? (await readChatSummaryCollection());
+
+                    return json({ ok: true, ...result, chats });
                 }
 
                 return result
@@ -365,6 +393,7 @@ const server = Bun.serve({
 
         "/api/*": json({ error: "Not found." }, 404),
     },
+
     async fetch(request) {
         const url = new URL(request.url);
 
@@ -378,10 +407,8 @@ const server = Bun.serve({
 
 console.log(`SmileyChat running at ${server.url}`);
 
-function api<Params extends Record<string, string> = Record<string, string>>(
-    handler: ApiHandler<Params>,
-) {
-    return async (request: Request, routeServer: RouteServer) => {
+function api<Path extends string>(handler: ApiHandler<Path>) {
+    return async (request: Bun.BunRequest<Path>, routeServer: RouteServer) => {
         try {
             await verifyCsrfRequest(request);
             return await handler(routeRequest(request), routeServer);
@@ -391,12 +418,8 @@ function api<Params extends Record<string, string> = Record<string, string>>(
     };
 }
 
-function routeRequest<Params extends Record<string, string> = Record<string, string>>(
-    request: Request,
-) {
-    const params = decodeRouteParams(
-        (request as Request & { params?: Record<string, string> }).params,
-    ) as Params;
+function routeRequest<Path extends string>(request: Bun.BunRequest<Path>) {
+    const params = decodeRouteParams(request.params);
 
     return new Proxy(request, {
         get(target, property, receiver) {
@@ -405,21 +428,20 @@ function routeRequest<Params extends Record<string, string> = Record<string, str
             }
 
             const value = Reflect.get(target, property, receiver);
-
             return typeof value === "function" ? value.bind(target) : value;
         },
-    }) as RouteRequest<Params>;
+    });
 }
 
-function decodeRouteParams(params: Record<string, string> = {}) {
+function decodeRouteParams<Path extends string>(params: Bun.BunRequest<Path>["params"]) {
     return Object.fromEntries(
         Object.entries(params).map(([key, value]) => [key, decodeRouteParam(value)]),
     );
 }
 
-function decodeRouteParam(value: string) {
+function decodeRouteParam(value: unknown) {
     try {
-        return decodeURIComponent(value);
+        return decodeURIComponent(String(value));
     } catch {
         return value;
     }
