@@ -55,13 +55,9 @@ import {
     writePluginStorage,
 } from "./plugins";
 
-type RouteServer = {
-    timeout(request: Request, seconds: number): void;
-};
-
 type ApiHandler<Path extends string> = (
     request: Bun.BunRequest<Path>,
-    server: RouteServer,
+    server: Bun.Server<undefined>,
 ) => Response | Promise<Response>;
 
 const port = parsePort(process.env.SMILEYCHAT_API_PORT);
@@ -408,15 +404,16 @@ const server = Bun.serve({
 console.log(`SmileyChat running at ${server.url}`);
 
 function api<Path extends string>(handler: ApiHandler<Path>) {
-    return async (request: Bun.BunRequest<Path>, routeServer: RouteServer) => {
+    return async (request: Bun.BunRequest<Path>, routeServer: Bun.Server<undefined>) => {
         try {
             await verifyCsrfRequest(request);
 
-            const wrappedServer: RouteServer = {
-                timeout(_request, seconds) {
-                    routeServer.timeout(request, seconds);
-                },
-            };
+            // Handlers receive a proxy request for decoded params, but Bun timeout()
+            // requires the original request object. Otherwise it will throw error
+            const timeout = routeServer.timeout.bind(routeServer);
+
+            const wrappedServer = Object.create(routeServer) as Bun.Server<undefined>;
+            wrappedServer.timeout = (_request, seconds) => timeout(request, seconds);
 
             return await handler(routeRequest(request), wrappedServer);
         } catch (error) {
