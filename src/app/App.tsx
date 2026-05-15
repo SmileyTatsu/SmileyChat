@@ -103,12 +103,15 @@ export function App() {
         characterImportStatus,
         characterLoadError,
         characterSummaries,
+        chatImportStatus,
+        chatImportStatusFading,
         chatLoadError,
         createCharacter,
         deleteCharacter,
         deleteChat,
         exportCharacter,
         importCharacterFiles,
+        importChatFile,
         loadCharacterCollection,
         prepareCharacterAvatarUpload,
         queueChatSave,
@@ -380,6 +383,8 @@ export function App() {
                 activeChatId={activeChat?.id ?? ""}
                 activeCharacterId={character.id}
                 chats={activeCharacterChats}
+                chatImportStatus={chatImportStatus}
+                chatImportStatusFading={chatImportStatusFading}
                 chatLoadError={chatLoadError}
                 characters={characterSummaries.characters}
                 characterImportStatus={characterImportStatus}
@@ -391,6 +396,7 @@ export function App() {
                 isOpen={sidebarOpen}
                 onCreateCharacter={() => void createCharacter()}
                 onImportCharacterFiles={(files) => void importCharacterFiles(files)}
+                onImportChatFile={(file) => void importChatFile(file)}
                 onNewChat={() => {
                     startNewChat();
                     if (isMobileLayout) {

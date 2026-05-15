@@ -13,6 +13,7 @@ import {
     writeCharacterAvatar,
     writeCharacterById,
 } from "./characters";
+import { importUploadedChatFile } from "./chat-imports";
 import {
     createChat,
     deleteChatById,
@@ -185,6 +186,15 @@ const server = Bun.serve({
                 const chats = await readChatSummaryCollection();
 
                 return json({ ok: true, index, chats });
+            }),
+        },
+
+        "/api/chats/import": {
+            POST: api(async (request, routeServer) => {
+                routeServer.timeout(request, 60);
+                const result = await importUploadedChatFile(request);
+
+                return json({ ok: true, ...result });
             }),
         },
 

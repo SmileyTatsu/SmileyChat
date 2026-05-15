@@ -274,6 +274,17 @@ export function deleteChat(chatId: string) {
     });
 }
 
+export function importChatFile(formData: FormData) {
+    return requestJson<{
+        ok: true;
+        chat: ChatSession;
+        chats?: ChatSummaryCollection;
+    }>("/api/chats/import", {
+        method: "POST",
+        body: formData,
+    });
+}
+
 export function saveChatIndex(chats: ChatSummaryCollection) {
     return requestJson<{
         ok: true;

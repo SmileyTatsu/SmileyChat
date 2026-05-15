@@ -2,6 +2,7 @@ import defaultModelCategories from "#frontend/data/default-google-ai-models.json
 import type {
     GoogleAIConnectionConfig,
     GoogleAIModel,
+    GoogleAIThinkingConfig,
 } from "#frontend/lib/connections/google-ai/types";
 
 type GoogleAIConnectionProps = {
@@ -27,6 +28,15 @@ export function GoogleAIConnection({
 }: GoogleAIConnectionProps) {
     function updateConfig(nextConfig: Partial<GoogleAIConnectionConfig>) {
         onChange({ ...config, ...nextConfig });
+    }
+
+    function updateThinking(nextThinking: Partial<GoogleAIThinkingConfig>) {
+        updateConfig({
+            thinking: {
+                ...(config.thinking ?? {}),
+                ...nextThinking,
+            },
+        });
     }
 
     function updateSelectedModel(value: string) {
@@ -181,6 +191,77 @@ export function GoogleAIConnection({
                     }
                 />
             </label>
+            <fieldset className="connection-fieldset">
+                <legend>Thinking</legend>
+                <label className="checkbox-field">
+                    <input
+                        type="checkbox"
+                        checked={config.thinking?.includeThoughts === true}
+                        onInput={(event) =>
+                            updateThinking({
+                                includeThoughts: (event.currentTarget as HTMLInputElement)
+                                    .checked,
+                            })
+                        }
+                    />
+                    Show thought summaries
+                </label>
+                <label>
+                    Strategy
+                    <select
+                        value={config.thinking?.mode ?? "auto"}
+                        onInput={(event) =>
+                            updateThinking({
+                                mode: (event.currentTarget as HTMLSelectElement)
+                                    .value as GoogleAIThinkingConfig["mode"],
+                            })
+                        }
+                    >
+                        <option value="auto">Auto</option>
+                        <option value="level">Gemini 3 level</option>
+                        <option value="budget">Gemini 2.5 budget</option>
+                    </select>
+                </label>
+                <label>
+                    Thinking level
+                    <select
+                        value={config.thinking?.thinkingLevel ?? "low"}
+                        disabled={(config.thinking?.mode ?? "auto") !== "level"}
+                        onInput={(event) =>
+                            updateThinking({
+                                thinkingLevel: (event.currentTarget as HTMLSelectElement)
+                                    .value as GoogleAIThinkingConfig["thinkingLevel"],
+                            })
+                        }
+                    >
+                        <option value="minimal">Minimal</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </label>
+                <label>
+                    Thinking budget
+                    <input
+                        type="number"
+                        step="1"
+                        value={config.thinking?.thinkingBudget ?? -1}
+                        disabled={(config.thinking?.mode ?? "auto") !== "budget"}
+                        onInput={(event) => {
+                            const value = Number(
+                                (event.currentTarget as HTMLInputElement).value,
+                            );
+                            updateThinking({
+                                thinkingBudget:
+                                    Number.isInteger(value) &&
+                                    (value === -1 || value >= 0)
+                                        ? value
+                                        : undefined,
+                            });
+                        }}
+                    />
+                </label>
+            </fieldset>
             <div className="connection-actions">
                 <button type="button" disabled={disabled} onClick={onSave}>
                     Save

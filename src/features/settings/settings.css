@@ -47,6 +47,34 @@
     background: #2c313d;
 }
 
+.connection-fieldset {
+    display: grid;
+    gap: 10px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    margin: 0;
+    padding: 12px;
+}
+
+.connection-fieldset legend {
+    color: #ececf1;
+    font-size: 0.86rem;
+    font-weight: 700;
+    padding: 0 5px;
+}
+
+.checkbox-field {
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkbox-field input {
+    width: auto;
+}
+
 .inline-field-row button:disabled,
 .connection-actions button:disabled,
 .button-row button:disabled {
