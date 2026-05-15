@@ -1,5 +1,7 @@
+import defaultGoogleAIModels from "../../data/defaultGoogleAIModels.json";
 import defaultOpenAIModels from "../../data/defaultOpenAIModels.json";
 import { isRecord } from "../common/guards";
+import type { GoogleAIConnectionConfig } from "./google-ai/types";
 import type { OpenAICompatibleConnectionConfig } from "./openai-compatible/types";
 import type {
     OpenRouterConnectionConfig,
@@ -7,7 +9,11 @@ import type {
     OpenRouterSort,
 } from "./openrouter/types";
 
-export type ConnectionProviderId = "openai-compatible" | "openrouter" | (string & {});
+export type ConnectionProviderId =
+    | "openai-compatible"
+    | "openrouter"
+    | "google-ai"
+    | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
     id: string;
@@ -27,10 +33,22 @@ export type OpenRouterConnectionProfile = {
     updatedAt: string;
 };
 
+export type GoogleAIConnectionProfile = {
+    id: string;
+    name: string;
+    provider: "google-ai";
+    config: GoogleAIConnectionConfig;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type PluginConnectionProfile = {
     id: string;
     name: string;
-    provider: Exclude<ConnectionProviderId, "openai-compatible" | "openrouter">;
+    provider: Exclude<
+        ConnectionProviderId,
+        "openai-compatible" | "openrouter" | "google-ai"
+    >;
     config: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
@@ -39,6 +57,7 @@ export type PluginConnectionProfile = {
 export type ConnectionProfile =
     | OpenAICompatibleConnectionProfile
     | OpenRouterConnectionProfile
+    | GoogleAIConnectionProfile
     | PluginConnectionProfile;
 
 export type ConnectionSettings = {
@@ -75,6 +94,14 @@ export const defaultOpenRouterConfig: OpenRouterConnectionConfig = {
     providerPreferences: {
         allow_fallbacks: true,
         data_collection: "allow",
+    },
+};
+
+export const defaultGoogleAIConfig: GoogleAIConnectionConfig = {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    model: {
+        source: "default",
+        id: defaultGoogleAIModels[0]?.models[1]?.id ?? "gemini-3.1-flash-lite",
     },
 };
 
@@ -204,6 +231,17 @@ export function createConnectionProfile(
         };
     }
 
+    if (provider === "google-ai") {
+        return {
+            id: createConnectionProfileId(),
+            name,
+            provider,
+            config: normalizeGoogleAIConfig(defaultConfig ?? defaultGoogleAIConfig),
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
     if (provider !== "openai-compatible") {
         return {
             id: createConnectionProfileId(),
@@ -244,6 +282,12 @@ export function isOpenRouterProfile(
     profile: ConnectionProfile | undefined,
 ): profile is OpenRouterConnectionProfile {
     return profile?.provider === "openrouter";
+}
+
+export function isGoogleAIProfile(
+    profile: ConnectionProfile | undefined,
+): profile is GoogleAIConnectionProfile {
+    return profile?.provider === "google-ai";
 }
 
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {
@@ -288,6 +332,8 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                 ? normalizeOpenAICompatibleConfig(profile.config)
                 : provider === "openrouter"
                   ? normalizeOpenRouterConfig(profile.config)
+                  : provider === "google-ai"
+                    ? normalizeGoogleAIConfig(profile.config)
                   : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
@@ -393,6 +439,28 @@ function normalizeOpenAICompatibleConfig(
                 typeof model.id === "string"
                     ? model.id
                     : defaultOpenAICompatibleConfig.model.id,
+        },
+    };
+}
+
+function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
+    const config = isRecord(value) ? value : {};
+    const model = isRecord(config.model) ? config.model : {};
+    const modelSource =
+        model.source === "api" || model.source === "custom" ? model.source : "default";
+
+    return {
+        baseUrl:
+            typeof config.baseUrl === "string" && config.baseUrl.trim()
+                ? config.baseUrl
+                : defaultGoogleAIConfig.baseUrl,
+        apiKey: stringOrUndefined(config.apiKey),
+        model: {
+            source: modelSource,
+            id:
+                typeof model.id === "string"
+                    ? model.id
+                    : defaultGoogleAIConfig.model.id,
         },
     };
 }

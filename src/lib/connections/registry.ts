@@ -1,9 +1,11 @@
 import {
     getActiveConnectionProfile,
+    isGoogleAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
     type ConnectionSettings,
 } from "./config";
+import { createGoogleAIConnection } from "./google-ai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
 import { createAdapterFromPluginProvider } from "../plugins/registry";
@@ -32,6 +34,17 @@ export function getAdapterForSettings(settings: ConnectionSettings) {
         }
 
         return createOpenRouterConnection({
+            ...profile.config,
+            apiKey: profile.config.apiKey?.trim() || undefined,
+        });
+    }
+
+    if (isGoogleAIProfile(profile)) {
+        if (!profile.config.model.id.trim()) {
+            throw new Error(`${profile.name} needs a model.`);
+        }
+
+        return createGoogleAIConnection({
             ...profile.config,
             apiKey: profile.config.apiKey?.trim() || undefined,
         });

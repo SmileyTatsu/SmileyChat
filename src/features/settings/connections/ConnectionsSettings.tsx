@@ -6,6 +6,7 @@ import {
     createConnectionProfile,
     extractConnectionSecrets,
     getActiveConnectionProfile,
+    isGoogleAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
     sanitizeConnectionSecrets,
@@ -13,6 +14,11 @@ import {
     type ConnectionProfile,
     type ConnectionSettings,
 } from "../../../lib/connections/config";
+import {
+    createGoogleAIConnection,
+    createGoogleAIGenerateUrl,
+} from "../../../lib/connections/google-ai/adapter";
+import { listGoogleAIModels } from "../../../lib/connections/google-ai/models";
 import { trimTrailingSlash } from "../../../lib/connections/http";
 import { createOpenAICompatibleConnection } from "../../../lib/connections/openai-compatible/adapter";
 import { listOpenAICompatibleModels } from "../../../lib/connections/openai-compatible/models";
@@ -25,8 +31,10 @@ import {
     getPluginConnectionProviders,
     subscribeToPluginRegistry,
 } from "../../../lib/plugins/registry";
+import type { GoogleAIModel } from "../../../lib/connections/google-ai/types";
 import type { OpenAICompatibleModel } from "../../../lib/connections/openai-compatible/types";
 import type { OpenRouterModel } from "../../../lib/connections/openrouter/types";
+import { GoogleAIConnection } from "./providers/GoogleAIConnection";
 import { OpenAICompatibleConnection } from "./providers/OpenAICompatibleConnection";
 import { OpenRouterConnection } from "./providers/OpenRouterConnection";
 
@@ -49,6 +57,9 @@ export function ConnectionsSettings({
     const [openRouterModelsByProfileId, setOpenRouterModelsByProfileId] = useState<
         Record<string, OpenRouterModel[]>
     >({});
+    const [googleAIModelsByProfileId, setGoogleAIModelsByProfileId] = useState<
+        Record<string, GoogleAIModel[]>
+    >({});
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
     const [, setRegistryRevision] = useState(0);
@@ -58,6 +69,9 @@ export function ConnectionsSettings({
     const activeModels = activeProfile ? (modelsByProfileId[activeProfile.id] ?? []) : [];
     const activeOpenRouterModels = activeProfile
         ? (openRouterModelsByProfileId[activeProfile.id] ?? [])
+        : [];
+    const activeGoogleAIModels = activeProfile
+        ? (googleAIModelsByProfileId[activeProfile.id] ?? [])
         : [];
     const pluginProviders = getPluginConnectionProviders();
     const activePluginProvider = activeProfile
@@ -92,6 +106,10 @@ export function ConnectionsSettings({
             ...current,
             [activeProfile.id]: [],
         }));
+        setGoogleAIModelsByProfileId((current) => ({
+            ...current,
+            [activeProfile.id]: [],
+        }));
     }, [
         activeProfile?.id,
         isOpenAICompatibleProfile(activeProfile)
@@ -101,6 +119,8 @@ export function ConnectionsSettings({
             ? activeProfile.config.apiKey
             : undefined,
         isOpenRouterProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
+        isGoogleAIProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
+        isGoogleAIProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
     ]);
 
     useEffect(() => {
@@ -116,6 +136,14 @@ export function ConnectionsSettings({
         if (
             isOpenRouterProfile(activeProfile) &&
             activeProfile.config.model.source === "api"
+        ) {
+            void loadModels();
+            return;
+        }
+        if (
+            isGoogleAIProfile(activeProfile) &&
+            activeProfile.config.model.source === "api" &&
+            activeProfile.config.baseUrl.trim().length > 0
         ) {
             void loadModels();
         }
@@ -191,6 +219,42 @@ export function ConnectionsSettings({
 
                     setStatusMessage(
                         `OpenRouter connection test succeeded: ${result.message}`,
+                    );
+                    setRequestState("success");
+                } catch (error) {
+                    setStatusMessage(
+                        messageFromError(error, "Unexpected connection error."),
+                    );
+                    setRequestState("error");
+                }
+
+                return;
+            }
+
+            if (isGoogleAIProfile(activeProfile)) {
+                const targetUrl = createGoogleAIGenerateUrl(
+                    {
+                        ...activeProfile.config,
+                        apiKey: undefined,
+                    },
+                    false,
+                );
+
+                setRequestState("loading");
+                setStatusMessage(`Testing POST ${targetUrl}`);
+
+                try {
+                    const adapter = createGoogleAIConnection({
+                        ...activeProfile.config,
+                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    });
+                    const result = await adapter.generate({
+                        context: "Reply briefly to confirm the connection works.",
+                        messages: [createUserMessage("hello", defaultPersona)],
+                    });
+
+                    setStatusMessage(
+                        `Google AI connection test succeeded: ${result.message}`,
                     );
                     setRequestState("success");
                 } catch (error) {
@@ -283,6 +347,54 @@ export function ConnectionsSettings({
                 }
 
                 setStatusMessage(`Loaded ${nextModels.length} OpenRouter model(s).`);
+                setRequestState("success");
+            } catch (error) {
+                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setRequestState("error");
+            }
+
+            return;
+        }
+
+        if (isGoogleAIProfile(activeProfile)) {
+            setRequestState("loading");
+            setStatusMessage(
+                `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
+            );
+
+            try {
+                const nextModels = await listGoogleAIModels({
+                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    baseUrl: activeProfile.config.baseUrl,
+                });
+
+                setGoogleAIModelsByProfileId((current) => ({
+                    ...current,
+                    [activeProfile.id]: nextModels,
+                }));
+
+                if (nextModels[0] && activeProfile.config.model.source !== "custom") {
+                    const currentId = activeProfile.config.model.id;
+                    const currentIsLoaded =
+                        activeProfile.config.model.source === "api" &&
+                        nextModels.some(
+                            (model) =>
+                                model.name === currentId ||
+                                model.baseModelId === currentId,
+                        );
+
+                    if (!currentIsLoaded) {
+                        updateActiveProfileConfig({
+                            ...activeProfile.config,
+                            model: {
+                                source: "api",
+                                id: nextModels[0].baseModelId ?? nextModels[0].name,
+                            },
+                        });
+                    }
+                }
+
+                setStatusMessage(`Loaded ${nextModels.length} Google AI model(s).`);
                 setRequestState("success");
             } catch (error) {
                 setStatusMessage(messageFromError(error, "Unexpected connection error."));
@@ -401,13 +513,17 @@ export function ConnectionsSettings({
 
         const provider = getPluginConnectionProvider(providerId);
         const config =
-            providerId === "openai-compatible" || providerId === "openrouter"
+            providerId === "openai-compatible" ||
+            providerId === "openrouter" ||
+            providerId === "google-ai"
                 ? undefined
                 : (provider?.defaultConfig ?? {});
         const nextProfile = createConnectionProfile(
             providerId,
             providerId === "openrouter"
                 ? "OpenRouter"
+                : providerId === "google-ai"
+                  ? "Google AI"
                 : (provider?.label ?? "OpenAI compatible"),
             config,
         );
@@ -472,6 +588,11 @@ export function ConnectionsSettings({
             return next;
         });
         setOpenRouterModelsByProfileId((current) => {
+            const next = { ...current };
+            delete next[activeProfile.id];
+            return next;
+        });
+        setGoogleAIModelsByProfileId((current) => {
             const next = { ...current };
             delete next[activeProfile.id];
             return next;
@@ -559,6 +680,7 @@ export function ConnectionsSettings({
                                     OpenAI compatible
                                 </option>
                                 <option value="openrouter">OpenRouter</option>
+                                <option value="google-ai">Google AI</option>
                                 {pluginProviders.map((provider) => (
                                     <option key={provider.id} value={provider.id}>
                                         {provider.label}
@@ -584,6 +706,17 @@ export function ConnectionsSettings({
                             config={activeProfile.config}
                             disabled={isBusy}
                             models={activeOpenRouterModels}
+                            onChange={(config) => updateActiveProfileConfig(config)}
+                            onClearApiKey={clearApiKey}
+                            onLoadModels={loadModels}
+                            onSave={() => void saveSettings()}
+                            onTest={testConnection}
+                        />
+                    ) : isGoogleAIProfile(activeProfile) ? (
+                        <GoogleAIConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            models={activeGoogleAIModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}

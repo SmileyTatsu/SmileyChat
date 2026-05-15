@@ -1,0 +1,30 @@
+[
+    {
+        "id": "gemini-3.1",
+        "label": "Gemini 3.1",
+        "models": [
+            {
+                "id": "gemini-3.1-pro-preview",
+                "label": "gemini-3.1-pro-preview"
+            },
+            {
+                "id": "gemini-3.1-flash-lite",
+                "label": "gemini-3.1-flash-lite"
+            },
+            {
+                "id": "gemini-3.1-flash-lite-preview",
+                "label": "gemini-3.1-flash-lite-preview"
+            }
+        ]
+    },
+    {
+        "id": "gemini-3",
+        "label": "Gemini 3",
+        "models": [
+            {
+                "id": "gemini-3-flash-preview",
+                "label": "gemini-3-flash-preview"
+            }
+        ]
+    }
+]
