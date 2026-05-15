@@ -309,7 +309,7 @@ export function App() {
     function updatePreferences(nextPreferences: AppPreferences) {
         const normalizedPreferences = normalizeAppPreferences(nextPreferences);
         setPreferences(normalizedPreferences);
-        setPreferencesSaveStatus("Saving#frontend.");
+        setPreferencesSaveStatus("Saving...");
         void saveAppPreferences(normalizedPreferences)
             .then((response) => {
                 const savedPreferences = normalizeAppPreferences(response.preferences);
