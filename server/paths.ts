@@ -16,6 +16,7 @@ export const connectionSecretsPath = join(
     "settings",
     "connection-secrets.json",
 );
+export const csrfSecretPath = join(userDataDir, "settings", "csrf-secret.json");
 export const presetsPath = join(userDataDir, "presets", "presets.json");
 export const preferencesPath = join(userDataDir, "settings", "preferences.json");
 export const characterIndexPath = join(userDataDir, "characters", "index.json");

@@ -11,8 +11,39 @@ import type { PresetCollection } from "../presets/types";
 import type { AppPreferences } from "../preferences/types";
 import type { PluginManifest } from "../plugins/types";
 
+const csrfHeaderName = "x-smileychat-csrf";
+const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+let csrfToken: string | undefined;
+
+export async function localApiFetch(path: string, init: RequestInit = {}) {
+    const method = (init.method ?? "GET").toUpperCase();
+    const headers = new Headers(init.headers);
+
+    if (unsafeMethods.has(method)) {
+        headers.set(csrfHeaderName, await getCsrfToken());
+    }
+
+    let response = await fetch(path, {
+        ...init,
+        headers,
+    });
+
+    if (response.status === 403 && unsafeMethods.has(method)) {
+        csrfToken = undefined;
+
+        headers.set(csrfHeaderName, await getCsrfToken());
+        response = await fetch(path, {
+            ...init,
+            headers,
+        });
+    }
+
+    return response;
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(path, init);
+    const response = await localApiFetch(path, init);
 
     if (!response.ok) {
         throw new Error(
@@ -21,6 +52,29 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     }
 
     return (await response.json()) as T;
+}
+
+async function getCsrfToken() {
+    if (csrfToken) {
+        return csrfToken;
+    }
+
+    const response = await fetch("/api/csrf");
+
+    if (!response.ok) {
+        throw new Error(
+            `Load CSRF token failed: ${response.status}${await responseErrorSuffix(response)}`,
+        );
+    }
+
+    const body = (await response.json()) as { token?: unknown };
+
+    if (typeof body.token !== "string") {
+        throw new Error("Load CSRF token failed: missing token.");
+    }
+
+    csrfToken = body.token;
+    return csrfToken;
 }
 
 async function responseErrorSuffix(response: Response) {
@@ -322,7 +376,7 @@ export function uploadCharacterAvatar(characterId: string, file: File) {
 }
 
 export async function exportCharacterCard(characterId: string, format: "json" | "png") {
-    const response = await fetch(
+    const response = await localApiFetch(
         `/api/characters/${encodeURIComponent(characterId)}/export.${format}`,
     );
 

@@ -1,4 +1,5 @@
 import { HttpError, json, parsePort, readJsonBody } from "./http";
+import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 import { userDataDir } from "./paths";
 import { serveStatic } from "./static";
 import {
@@ -79,6 +80,10 @@ const server = Bun.serve({
     routes: {
         "/api/health": {
             GET: api(() => json({ ok: true, userDataDir })),
+        },
+
+        "/api/csrf": {
+            GET: api(async () => json({ token: await createCsrfToken() })),
         },
 
         "/api/plugins": {
@@ -370,6 +375,7 @@ function api<Params extends Record<string, string> = Record<string, string>>(
 ) {
     return async (request: Request, routeServer: RouteServer) => {
         try {
+            await verifyCsrfRequest(request);
             return await handler(routeRequest(request), routeServer);
         } catch (error) {
             return apiErrorResponse(error);

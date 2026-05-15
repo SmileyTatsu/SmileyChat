@@ -11,6 +11,7 @@ import {
     recordPluginDisposer,
     recordLoadedPlugin,
 } from "./registry";
+import { localApiFetch } from "../api/client";
 import type { PluginManifest, PluginStorageApi, SmileyPluginModule } from "./types";
 
 export async function loadRuntimePlugins(manifests: PluginManifest[]) {
@@ -145,7 +146,7 @@ function attachPluginStylesheet(pluginId: string, href: string) {
 export function createPluginStorage(pluginId: string): PluginStorageApi {
     return {
         async getJson(key, fallback) {
-            const response = await fetch(pluginStorageUrl(pluginId, key));
+            const response = await localApiFetch(pluginStorageUrl(pluginId, key));
 
             if (response.status === 404) {
                 return fallback;
@@ -158,7 +159,7 @@ export function createPluginStorage(pluginId: string): PluginStorageApi {
             return (await response.json()) as typeof fallback;
         },
         async setJson(key, value) {
-            const response = await fetch(pluginStorageUrl(pluginId, key), {
+            const response = await localApiFetch(pluginStorageUrl(pluginId, key), {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -171,7 +172,7 @@ export function createPluginStorage(pluginId: string): PluginStorageApi {
             }
         },
         async remove(key) {
-            const response = await fetch(pluginStorageUrl(pluginId, key), {
+            const response = await localApiFetch(pluginStorageUrl(pluginId, key), {
                 method: "DELETE",
             });
 
