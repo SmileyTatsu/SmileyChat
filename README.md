@@ -27,6 +27,7 @@ SmileyChat is a local-first frontend application for chatting, roleplay, and sto
 3. Start the application:
     - On Windows: Run `SmileyChat.cmd` to automatically build and start the server.
     - On Windows, update first: Run `SmileyChat.UpdateStart.cmd` to pull the latest Git changes, install dependencies, build, and start the server.
+    - On Android via Termux: see [`docs/android-termux.md`](docs/android-termux.md) for the full install walkthrough. Once installed, `./SmileyChat.UpdateStart.Termux.sh` is the update-and-start launcher.
     - Manually:
         ```bash
         bun run build
