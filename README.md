@@ -32,7 +32,21 @@ SmileyChat is a local-first frontend application for chatting, roleplay, and sto
         bun run build
         bun run start
         ```
-4. Open the displayed URL in your browser (default: `http://127.0.0.1:3000`).
+4. Open the displayed URL in your browser (default: `http://127.0.0.1:4173`).
+
+## Server Configuration
+
+SmileyChat protects local data APIs with CSRF tokens and browser origin checks.
+For normal local use, no extra configuration is needed. If you run SmileyChat
+behind a reverse proxy or through a LAN hostname, add the public browser origins
+that should be allowed to save data:
+
+```bash
+SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
+```
+
+Use origins only: scheme, host, and optional port. Do not include paths such as
+`/api/chats`.
 
 ## Development
 

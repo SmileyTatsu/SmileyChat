@@ -14,6 +14,8 @@ import type { PluginManifest } from "../plugins/types";
 const csrfHeaderName = "x-smileychat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+export const localApiErrorEventName = "smileychat:local-api-error";
+
 let csrfToken: string | undefined;
 
 export async function localApiFetch(path: string, init: RequestInit = {}) {
@@ -37,6 +39,10 @@ export async function localApiFetch(path: string, init: RequestInit = {}) {
             ...init,
             headers,
         });
+    }
+
+    if (response.status === 403 && unsafeMethods.has(method)) {
+        void dispatchLocalApiError(response.clone());
     }
 
     return response;
@@ -96,6 +102,28 @@ async function responseErrorMessage(response: Response) {
             if (
                 body &&
                 typeof body === "object" &&
+                "code" in body &&
+                typeof body.code === "string" &&
+                "error" in body &&
+                typeof body.error === "string"
+            ) {
+                return apiErrorMessage(body.code, body.error);
+            }
+
+            if (
+                body &&
+                typeof body === "object" &&
+                "code" in body &&
+                typeof body.code === "string" &&
+                "message" in body &&
+                typeof body.message === "string"
+            ) {
+                return apiErrorMessage(body.code, body.message);
+            }
+
+            if (
+                body &&
+                typeof body === "object" &&
                 "error" in body &&
                 typeof body.error === "string"
             ) {
@@ -118,6 +146,32 @@ async function responseErrorMessage(response: Response) {
     } catch {
         return "";
     }
+}
+
+function apiErrorMessage(code: string, message: string) {
+    if (code === "csrf_origin_untrusted") {
+        return `${message} Add this browser origin to SMILEYCHAT_TRUSTED_ORIGINS if you are using a reverse proxy or LAN address.`;
+    }
+
+    if (code === "csrf_origin_missing") {
+        return `${message} Check browser privacy extensions or proxy settings that remove request provenance headers.`;
+    }
+
+    return message;
+}
+
+async function dispatchLocalApiError(response: Response) {
+    if (typeof window === "undefined") {
+        return;
+    }
+
+    window.dispatchEvent(
+        new CustomEvent(localApiErrorEventName, {
+            detail: {
+                message: await responseErrorMessage(response),
+            },
+        }),
+    );
 }
 
 function jsonInit(method: "POST" | "PUT", body: unknown): RequestInit {

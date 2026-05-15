@@ -427,8 +427,18 @@ function decodeRouteParam(value: string) {
 
 function apiErrorResponse(error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected server error.";
+    const code =
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        typeof error.code === "string"
+            ? error.code
+            : undefined;
 
-    return json({ error: message }, statusForApiError(error));
+    return json(
+        code ? { error: message, code } : { error: message },
+        statusForApiError(error),
+    );
 }
 
 function statusForApiError(error: unknown) {

@@ -8,6 +8,7 @@
         "dev:api": "bun server/index.ts",
         "build": "tsc && vite build",
         "format": "prettier --write .",
+        "test": "bun test",
         "start": "bun server/index.ts",
         "preview": "vite preview --host 127.0.0.1"
     },

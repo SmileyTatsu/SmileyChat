@@ -69,6 +69,41 @@
     --message-font-size: 1.1rem;
 }
 
+.app-warning-banner {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: min(720px, calc(100vw - 28px));
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid rgba(244, 185, 94, 0.45);
+    border-radius: 8px;
+    background: rgba(61, 43, 19, 0.96);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35);
+    color: #ffe0a8;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    transform: translateX(-50%);
+}
+
+.app-warning-banner span {
+    min-width: 0;
+    flex: 1;
+}
+
+.app-warning-banner button {
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 224, 168, 0.3);
+    border-radius: 7px;
+    background: rgba(255, 224, 168, 0.08);
+    color: #ffe0a8;
+}
+
 button,
 input,
 select,

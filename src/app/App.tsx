@@ -4,6 +4,7 @@ import { ChatWorkspace } from "../features/chat/ChatWorkspace";
 import { OptionsModal } from "../features/settings/OptionsModal";
 import { Sidebar } from "../features/sidebar/Sidebar";
 import {
+    localApiErrorEventName,
     loadConnectionSecrets,
     loadConnectionSettings as loadConnectionSettingsRequest,
     loadAppPreferences,
@@ -64,6 +65,7 @@ export function App() {
     const [presetLoadError, setPresetLoadError] = useState("");
     const [preferencesLoadError, setPreferencesLoadError] = useState("");
     const [preferencesSaveStatus, setPreferencesSaveStatus] = useState("");
+    const [localApiWarning, setLocalApiWarning] = useState("");
     const [preferencesInitialized, setPreferencesInitialized] = useState(false);
     const [, setPluginRegistryRevision] = useState(0);
     const {
@@ -147,6 +149,22 @@ export function App() {
 
         return () => {
             window.removeEventListener("resize", updateViewportWidth);
+        };
+    }, []);
+
+    useEffect(() => {
+        function handleLocalApiError(event: Event) {
+            const detail = (event as CustomEvent<{ message?: unknown }>).detail;
+
+            if (typeof detail?.message === "string" && detail.message.trim()) {
+                setLocalApiWarning(detail.message);
+            }
+        }
+
+        window.addEventListener(localApiErrorEventName, handleLocalApiError);
+
+        return () => {
+            window.removeEventListener(localApiErrorEventName, handleLocalApiError);
         };
     }, []);
 
@@ -341,6 +359,14 @@ export function App() {
                     role="presentation"
                     onClick={() => setMobileCharacterOpen(false)}
                 />
+            )}
+            {localApiWarning && (
+                <div className="app-warning-banner" role="alert">
+                    <span>{localApiWarning}</span>
+                    <button type="button" onClick={() => setLocalApiWarning("")}>
+                        Dismiss
+                    </button>
+                </div>
             )}
             <Sidebar
                 activeChatId={activeChat?.id ?? ""}

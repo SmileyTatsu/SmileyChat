@@ -6,6 +6,7 @@ import { csrfSecretPath } from "./paths";
 
 const csrfHeaderName = "x-smileychat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const trustedOriginsEnvName = "SMILEYCHAT_TRUSTED_ORIGINS";
 
 type CsrfSecretFile = {
     version: number;
@@ -13,6 +14,16 @@ type CsrfSecretFile = {
 };
 
 let secretPromise: Promise<string> | undefined;
+
+export class CsrfError extends HttpError {
+    constructor(
+        public code: string,
+        message: string,
+    ) {
+        super(403, message);
+        this.name = "CsrfError";
+    }
+}
 
 export async function createCsrfToken() {
     return Bun.CSRF.generate(await readCsrfSecret());
@@ -28,20 +39,82 @@ export async function verifyCsrfRequest(request: Request) {
     const token = request.headers.get(csrfHeaderName);
 
     if (!token || !Bun.CSRF.verify(token, { secret: await readCsrfSecret() })) {
-        throw new HttpError(403, "Invalid CSRF token.");
+        throw new CsrfError("csrf_token_invalid", "Invalid CSRF token.");
     }
 }
 
 function verifyRequestOrigin(request: Request) {
-    const origin = request.headers.get("origin");
+    const provenanceOrigin =
+        normalizeOrigin(request.headers.get("origin")) ??
+        normalizeRefererOrigin(request.headers.get("referer"));
 
-    if (!origin) {
-        return;
+    if (!provenanceOrigin) {
+        throw new CsrfError(
+            "csrf_origin_missing",
+            "Missing Origin or Referer header for unsafe request.",
+        );
     }
 
-    if (origin !== new URL(request.url).origin) {
-        throw new HttpError(403, "Invalid request origin.");
+    if (!allowedRequestOrigins(request).has(provenanceOrigin)) {
+        throw new CsrfError(
+            "csrf_origin_untrusted",
+            `Request origin "${provenanceOrigin}" is not trusted.`,
+        );
     }
+}
+
+function allowedRequestOrigins(request: Request) {
+    return new Set([
+        new URL(request.url).origin,
+        ...forwardedRequestOrigins(request),
+        ...trustedOriginsFromEnv(),
+    ]);
+}
+
+function forwardedRequestOrigins(request: Request) {
+    const proto = firstHeaderValue(request.headers.get("x-forwarded-proto"));
+    const host =
+        firstHeaderValue(request.headers.get("x-forwarded-host")) ??
+        firstHeaderValue(request.headers.get("host"));
+
+    if (!proto || !host) {
+        return [];
+    }
+
+    const forwardedOrigin = normalizeOrigin(`${proto}://${host}`);
+
+    return forwardedOrigin ? [forwardedOrigin] : [];
+}
+
+function trustedOriginsFromEnv() {
+    return (process.env[trustedOriginsEnvName] ?? "")
+        .split(",")
+        .map((value) => normalizeOrigin(value.trim()))
+        .filter((value): value is string => Boolean(value));
+}
+
+function normalizeRefererOrigin(value: string | null) {
+    try {
+        return value ? new URL(value).origin : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function normalizeOrigin(value: string | null) {
+    if (!value) {
+        return undefined;
+    }
+
+    try {
+        return new URL(value).origin;
+    } catch {
+        return undefined;
+    }
+}
+
+function firstHeaderValue(value: string | null) {
+    return value?.split(",")[0]?.trim() || undefined;
 }
 
 async function readCsrfSecret() {
