@@ -4,6 +4,8 @@ import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 const csrfSecret = "test-csrf-secret-that-is-long-enough-for-smileychat";
 const originalSecret = process.env.SMILEYCHAT_CSRF_SECRET;
 const originalTrustedOrigins = process.env.SMILEYCHAT_TRUSTED_ORIGINS;
+
+const FRONTEND_PORT = process.env.SMILEYCHAT_FRONTEND_PORT ?? "5173";
 const API_PORT = process.env.SMILEYCHAT_API_PORT ?? "4173";
 
 describe("CSRF request verification", () => {
@@ -83,6 +85,45 @@ describe("CSRF request verification", () => {
                     method: "PUT",
                     headers: {
                         Origin: "https://chat.example.com",
+                        "x-smileychat-csrf": token,
+                    },
+                }),
+            ),
+        ).resolves.toBeUndefined();
+    });
+
+    test("allows default loopback frontend origins", async () => {
+        const token = await createCsrfToken();
+
+        for (const origin of [
+            `http://localhost:${FRONTEND_PORT}`,
+            `http://127.0.0.1:${FRONTEND_PORT}`,
+            `http://[::1]:${FRONTEND_PORT}`,
+        ]) {
+            await expect(
+                verifyCsrfRequest(
+                    new Request(`http://localhost:${API_PORT}/api/chats`, {
+                        method: "PUT",
+                        headers: {
+                            Origin: origin,
+                            "x-smileychat-csrf": token,
+                        },
+                    }),
+                ),
+            ).resolves.toBeUndefined();
+        }
+    });
+
+    test("treats blank trusted origins as unset", async () => {
+        process.env.SMILEYCHAT_TRUSTED_ORIGINS = "";
+        const token = await createCsrfToken();
+
+        await expect(
+            verifyCsrfRequest(
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
+                    method: "PUT",
+                    headers: {
+                        Origin: `http://localhost:${FRONTEND_PORT}`,
                         "x-smileychat-csrf": token,
                     },
                 }),
