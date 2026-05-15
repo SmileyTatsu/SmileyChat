@@ -1,7 +1,12 @@
-import { BadRequestError } from "./http";
+import { importSillyTavernChat } from "#frontend/lib/chats/import";
+import type {
+    ChatSession,
+    ChatSummary,
+    ChatSummaryCollection,
+} from "#frontend/lib/chats/types";
+
 import { createChat } from "./chat-store";
-import { importSillyTavernChat } from "../src/lib/chats/import";
-import type { ChatSession, ChatSummary, ChatSummaryCollection } from "../src/lib/chats/types";
+import { BadRequestError } from "./http";
 
 export type ChatImportResult = {
     chat: ChatSession;
@@ -9,7 +14,9 @@ export type ChatImportResult = {
     chats: ChatSummaryCollection;
 };
 
-export async function importUploadedChatFile(request: Request): Promise<ChatImportResult> {
+export async function importUploadedChatFile(
+    request: Request,
+): Promise<ChatImportResult> {
     const formData = await request.formData();
 
     const characterIdValue = formData.get("characterId");
