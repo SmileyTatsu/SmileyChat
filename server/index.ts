@@ -80,7 +80,9 @@ const server = Bun.serve({
         },
 
         "/api/csrf": {
-            GET: api(async () => json({ token: await createCsrfToken() })),
+            GET: api(async () => {
+                return json({ token: await createCsrfToken() });
+            }),
         },
 
         "/api/plugins": {
