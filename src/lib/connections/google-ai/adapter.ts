@@ -1,6 +1,10 @@
 import type { ConnectionAdapter } from "../types";
 import { safeResponseText, trimTrailingSlash } from "../http";
-import { createGoogleAIGenerateBody, normalizeGoogleAIResponse } from "./mappers";
+import {
+    createGoogleAIGenerateBody,
+    createGoogleAIReasoningDetails,
+    normalizeGoogleAIResponse,
+} from "./mappers";
 import { readGoogleAIStream } from "./streaming";
 import type { GoogleAIGenerateContentResponse, GoogleAIRuntimeConfig } from "./types";
 
@@ -33,22 +37,37 @@ export function createGoogleAIConnection(
 
             if (request.stream) {
                 let message = "";
+                let reasoning = "";
                 let model: string | undefined;
+                let lastChunk: GoogleAIGenerateContentResponse | undefined;
 
-                await readGoogleAIStream(response, (token, chunk) => {
-                    message += token;
+                await readGoogleAIStream(response, (tokens, chunk) => {
+                    message += tokens.message;
+                    reasoning += tokens.reasoning;
                     model = chunk.modelVersion ?? model;
-                    request.onToken?.(token);
+                    lastChunk = chunk;
+                    if (tokens.reasoning) {
+                        request.onReasoningToken?.(tokens.reasoning);
+                    }
+                    if (tokens.message) {
+                        request.onToken?.(tokens.message);
+                    }
                 });
 
                 if (!message.trim()) {
                     throw new Error("Google AI stream did not include message content.");
                 }
 
+                const reasoningDetails = lastChunk
+                    ? createGoogleAIReasoningDetails(lastChunk, message.trim())
+                    : undefined;
+
                 return {
                     message: message.trim(),
                     provider: "google-ai",
                     model,
+                    ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
+                    ...(reasoningDetails ? { reasoningDetails } : {}),
                 };
             }
 

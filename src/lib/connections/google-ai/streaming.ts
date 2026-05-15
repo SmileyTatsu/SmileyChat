@@ -1,9 +1,15 @@
-import { extractGoogleAIText } from "./mappers";
+import { extractGoogleAIText, extractGoogleAIThoughtText } from "./mappers";
 import type { GoogleAIGenerateContentStreamChunk } from "./types";
 
 export async function readGoogleAIStream(
     response: Response,
-    onToken: (token: string, chunk: GoogleAIGenerateContentStreamChunk) => void,
+    onChunk: (
+        tokens: {
+            message: string;
+            reasoning: string;
+        },
+        chunk: GoogleAIGenerateContentStreamChunk,
+    ) => void,
 ) {
     if (!response.body) {
         throw new Error("Streaming response did not include a readable body.");
@@ -26,14 +32,14 @@ export async function readGoogleAIStream(
             buffer = events.pop() ?? "";
 
             for (const event of events) {
-                parseGoogleAIEvent(event, onToken);
+                parseGoogleAIEvent(event, onChunk);
             }
         }
 
         buffer += decoder.decode();
 
         if (buffer.trim()) {
-            parseGoogleAIEvent(buffer, onToken);
+            parseGoogleAIEvent(buffer, onChunk);
         }
     } finally {
         reader.releaseLock();
@@ -42,7 +48,13 @@ export async function readGoogleAIStream(
 
 function parseGoogleAIEvent(
     event: string,
-    onToken: (token: string, chunk: GoogleAIGenerateContentStreamChunk) => void,
+    onChunk: (
+        tokens: {
+            message: string;
+            reasoning: string;
+        },
+        chunk: GoogleAIGenerateContentStreamChunk,
+    ) => void,
 ) {
     const dataLines = event
         .split(/\r?\n/)
@@ -61,9 +73,10 @@ function parseGoogleAIEvent(
     }
 
     const chunk = JSON.parse(data) as GoogleAIGenerateContentStreamChunk;
-    const token = extractGoogleAIText(chunk);
+    const message = extractGoogleAIText(chunk);
+    const reasoning = extractGoogleAIThoughtText(chunk);
 
-    if (token) {
-        onToken(token, chunk);
+    if (message || reasoning) {
+        onChunk({ message, reasoning }, chunk);
     }
 }
