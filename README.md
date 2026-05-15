@@ -48,6 +48,12 @@ SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
 Use origins only: scheme, host, and optional port. Do not include paths such as
 `/api/chats`.
 
+Private-network origins are auto-trusted without any env entry: when the browser
+hits SmileyChat at a private-LAN address (RFC 1918), a Tailscale CGNAT address
+(100.64.0.0/10), an IPv6 unique-local or link-local address, the matching origin
+is allowed automatically as long as the request's Host header agrees. Public IPs
+and DNS-named hosts still require an explicit `SMILEYCHAT_TRUSTED_ORIGINS` entry.
+
 ## Development
 
 To run the app in development mode with Hot Module Replacement (HMR):
