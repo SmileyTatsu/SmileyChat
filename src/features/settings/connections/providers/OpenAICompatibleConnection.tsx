@@ -68,9 +68,7 @@ export function OpenAICompatibleConnection({
             : `${config.model.source}:${config.model.id}`;
     const hasLoadedApiModels = models.length > 0;
     const savedApiModelId =
-        !hasLoadedApiModels &&
-        config.model.source === "api" &&
-        config.model.id.length > 0
+        !hasLoadedApiModels && config.model.source === "api" && config.model.id.length > 0
             ? config.model.id
             : null;
 

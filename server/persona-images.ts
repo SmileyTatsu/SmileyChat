@@ -45,10 +45,7 @@ export async function writePersonaAvatarAssetBytes(
     }
 
     const extension = avatarType === "jpeg" ? "jpg" : avatarType;
-    const hash = new Bun.CryptoHasher("sha256")
-        .update(bytes)
-        .digest("hex")
-        .slice(0, 12);
+    const hash = new Bun.CryptoHasher("sha256").update(bytes).digest("hex").slice(0, 12);
     const fileName = await uniquePersonaAvatarFileName(
         `${safeFileStem(personaId)}-${Date.now()}-${hash}.${extension}`,
     );

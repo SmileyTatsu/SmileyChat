@@ -121,7 +121,9 @@ const server = Bun.serve({
         "/api/connections": {
             GET: api(async () => json(await readConnectionSettings())),
             PUT: api(async (request) => {
-                const settings = await writeConnectionSettings(await readJsonBody(request));
+                const settings = await writeConnectionSettings(
+                    await readJsonBody(request),
+                );
                 return json({ ok: true, settings });
             }),
         },
@@ -145,7 +147,9 @@ const server = Bun.serve({
         "/api/preferences": {
             GET: api(async () => json(await readAppPreferences())),
             PUT: api(async (request) => {
-                const preferences = await writeAppPreferences(await readJsonBody(request));
+                const preferences = await writeAppPreferences(
+                    await readJsonBody(request),
+                );
                 return json({ ok: true, preferences });
             }),
         },
@@ -161,7 +165,11 @@ const server = Bun.serve({
         "/api/chats/index": {
             PUT: api(async (request) => {
                 const index = await updateChatIndex(await readJsonBody(request));
-                return json({ ok: true, index, chats: await readChatSummaryCollection() });
+                return json({
+                    ok: true,
+                    index,
+                    chats: await readChatSummaryCollection(),
+                });
             }),
         },
 
