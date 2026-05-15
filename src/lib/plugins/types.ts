@@ -1,4 +1,5 @@
 import type { ComponentChildren, VNode } from "preact";
+
 import type {
     ChatMode,
     ChatSession,
@@ -6,13 +7,14 @@ import type {
     SmileyCharacter,
     SmileyPersona,
     UserStatus,
-} from "../../types";
+} from "#frontend/types";
+
+import type { ConnectionProfile, ConnectionSettings } from "../connections/config";
 import type {
     ChatGenerationMessage,
     ChatGenerationResult,
     ConnectionAdapter,
 } from "../connections/types";
-import type { ConnectionProfile, ConnectionSettings } from "../connections/config";
 import type { MacroContext } from "../presets/macros";
 import type { PresetCollection } from "../presets/types";
 

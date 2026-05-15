@@ -1,5 +1,6 @@
 import { Menu, User } from "lucide-preact";
-import type { ChatMode } from "../../types";
+
+import type { ChatMode } from "#frontend/types";
 
 type ChatHeaderProps = {
     characterAvatarPath?: string;

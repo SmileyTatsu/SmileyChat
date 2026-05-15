@@ -1,21 +1,22 @@
-import defaultModelCategories from "../../../../data/defaultGoogleAIModels.json";
+import defaultModelCategories from "#frontend/data/default-openai-models.json";
 import type {
-    GoogleAIConnectionConfig,
-    GoogleAIModel,
-} from "../../../../lib/connections/google-ai/types";
+    OpenAICompatibleConnectionConfig,
+    OpenAICompatibleModel,
+    OpenAICompatibleReasoningConfig,
+} from "#frontend/lib/connections/openai-compatible/types";
 
-type GoogleAIConnectionProps = {
-    config: GoogleAIConnectionConfig;
+type OpenAICompatibleConnectionProps = {
+    config: OpenAICompatibleConnectionConfig;
     disabled?: boolean;
-    models: GoogleAIModel[];
-    onChange: (config: GoogleAIConnectionConfig) => void;
+    models: OpenAICompatibleModel[];
+    onChange: (config: OpenAICompatibleConnectionConfig) => void;
     onClearApiKey: () => void;
     onLoadModels: () => void;
     onSave: () => void;
     onTest: () => void;
 };
 
-export function GoogleAIConnection({
+export function OpenAICompatibleConnection({
     config,
     disabled,
     models,
@@ -24,9 +25,37 @@ export function GoogleAIConnection({
     onLoadModels,
     onSave,
     onTest,
-}: GoogleAIConnectionProps) {
-    function updateConfig(nextConfig: Partial<GoogleAIConnectionConfig>) {
+}: OpenAICompatibleConnectionProps) {
+    function updateConfig(nextConfig: Partial<OpenAICompatibleConnectionConfig>) {
         onChange({ ...config, ...nextConfig });
+    }
+
+    function updateReasoning(nextReasoning: OpenAICompatibleReasoningConfig | undefined) {
+        updateConfig({ reasoning: nextReasoning });
+    }
+
+    function setReasoningEnabled(enabled: boolean) {
+        if (!enabled) {
+            updateReasoning(undefined);
+            return;
+        }
+
+        updateReasoning({
+            enabled: true,
+            effort: config.reasoning?.effort ?? "medium",
+            wireFormat: config.reasoning?.wireFormat ?? "chat-reasoning-effort",
+        });
+    }
+
+    function updateReasoningPatch(
+        nextReasoning: Partial<OpenAICompatibleReasoningConfig>,
+    ) {
+        updateReasoning({
+            enabled: true,
+            effort: config.reasoning?.effort ?? "medium",
+            wireFormat: config.reasoning?.wireFormat ?? "chat-reasoning-effort",
+            ...nextReasoning,
+        });
     }
 
     function updateSelectedModel(value: string) {
@@ -67,6 +96,8 @@ export function GoogleAIConnection({
             ? "custom:"
             : `${config.model.source}:${config.model.id}`;
     const hasLoadedApiModels = models.length > 0;
+    const reasoning = config.reasoning;
+    const reasoningEnabled = reasoning?.enabled === true;
     const savedApiModelId =
         !hasLoadedApiModels && config.model.source === "api" && config.model.id.length > 0
             ? config.model.id
@@ -74,12 +105,12 @@ export function GoogleAIConnection({
 
     return (
         <section className="connection-provider-panel">
-            <h3>Google AI</h3>
+            <h3>OpenAI compatible</h3>
             <label>
                 Base URL
                 <input
                     value={config.baseUrl}
-                    placeholder="https://generativelanguage.googleapis.com/v1beta"
+                    placeholder="https://api.openai.com/v1"
                     onInput={(event) =>
                         updateConfig({
                             baseUrl: (event.currentTarget as HTMLInputElement).value,
@@ -123,11 +154,8 @@ export function GoogleAIConnection({
                         {hasLoadedApiModels ? (
                             <optgroup label="Loaded from API">
                                 {models.map((model) => (
-                                    <option
-                                        key={model.name}
-                                        value={`api:${model.baseModelId ?? model.name}`}
-                                    >
-                                        {modelLabel(model)}
+                                    <option key={model.id} value={`api:${model.id}`}>
+                                        {model.id}
                                     </option>
                                 ))}
                             </optgroup>
@@ -181,6 +209,65 @@ export function GoogleAIConnection({
                     }
                 />
             </label>
+            <div className="connection-card">
+                <h4>Reasoning / Thinking Tokens</h4>
+                <div className="preset-toggle-row">
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={reasoningEnabled}
+                            onInput={(event) =>
+                                setReasoningEnabled(
+                                    (event.currentTarget as HTMLInputElement).checked,
+                                )
+                            }
+                        />
+                        Enable reasoning controls
+                    </label>
+                </div>
+                <div className="connection-field-grid">
+                    <label>
+                        Wire format
+                        <select
+                            value={reasoning?.wireFormat ?? "chat-reasoning-effort"}
+                            disabled={!reasoningEnabled}
+                            onInput={(event) =>
+                                updateReasoningPatch({
+                                    wireFormat: (event.currentTarget as HTMLSelectElement)
+                                        .value as OpenAICompatibleReasoningConfig["wireFormat"],
+                                })
+                            }
+                        >
+                            <option value="chat-reasoning-effort">
+                                Chat Completions: reasoning_effort
+                            </option>
+                            <option value="chat-reasoning-object">
+                                Chat Completions: reasoning object
+                            </option>
+                        </select>
+                    </label>
+                    <label>
+                        Effort level
+                        <select
+                            value={reasoning?.effort ?? "medium"}
+                            disabled={!reasoningEnabled}
+                            onInput={(event) =>
+                                updateReasoningPatch({
+                                    effort: (event.currentTarget as HTMLSelectElement)
+                                        .value as OpenAICompatibleReasoningConfig["effort"],
+                                })
+                            }
+                        >
+                            <option value="none">None</option>
+                            <option value="minimal">Minimal</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="xhigh">Extra high</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
             <div className="connection-actions">
                 <button type="button" disabled={disabled} onClick={onSave}>
                     Save
@@ -191,9 +278,4 @@ export function GoogleAIConnection({
             </div>
         </section>
     );
-}
-
-function modelLabel(model: GoogleAIModel) {
-    const id = model.baseModelId ?? model.name;
-    return model.displayName ? `${model.displayName} (${id})` : id;
 }

@@ -1,4 +1,5 @@
 import { extname, isAbsolute, join, normalize, relative } from "node:path";
+
 import { distDir } from "./paths";
 
 export async function serveStatic(url: URL) {

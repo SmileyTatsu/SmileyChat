@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { createGoogleAIGenerateBody, normalizeGoogleAIResponse } from "./mappers";
 
 describe("Google AI connection mappers", () => {
@@ -80,6 +81,211 @@ describe("Google AI connection mappers", () => {
             message: "Hello there",
             provider: "google-ai",
             model: "gemini-test",
+        });
+    });
+
+    test("adds includeThoughts request config", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [{ role: "user", content: "Think aloud" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+                thinking: {
+                    includeThoughts: true,
+                    mode: "auto",
+                },
+            },
+        );
+
+        expect(body.generationConfig?.thinkingConfig).toEqual({
+            includeThoughts: true,
+        });
+    });
+
+    test("adds thinkingLevel request config", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [{ role: "user", content: "Use light reasoning" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+                thinking: {
+                    mode: "level",
+                    thinkingLevel: "low",
+                },
+            },
+        );
+
+        expect(body.generationConfig?.thinkingConfig).toEqual({
+            thinkingLevel: "low",
+        });
+    });
+
+    test("adds thinkingBudget request config", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [{ role: "user", content: "Use a token budget" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-2.5-flash" },
+                thinking: {
+                    mode: "budget",
+                    thinkingBudget: 1024,
+                },
+            },
+        );
+
+        expect(body.generationConfig?.thinkingConfig).toEqual({
+            thinkingBudget: 1024,
+        });
+    });
+
+    test("separates thought summary from visible answer", () => {
+        const result = normalizeGoogleAIResponse({
+            modelVersion: "gemini-test",
+            candidates: [
+                {
+                    content: {
+                        role: "model",
+                        parts: [
+                            { text: "I should reason first.", thought: true },
+                            { text: "Final answer." },
+                        ],
+                    },
+                },
+            ],
+        });
+
+        expect(result).toMatchObject({
+            message: "Final answer.",
+            reasoning: "I should reason first.",
+        });
+    });
+
+    test("preserves signed response parts in reasoning details", () => {
+        const result = normalizeGoogleAIResponse({
+            modelVersion: "gemini-test",
+            candidates: [
+                {
+                    content: {
+                        role: "model",
+                        parts: [
+                            {
+                                text: "Final answer.",
+                                thoughtSignature: "signature-a",
+                            },
+                        ],
+                    },
+                },
+            ],
+            usageMetadata: {
+                thoughtsTokenCount: 12,
+            },
+        });
+
+        expect(result.reasoningDetails).toEqual({
+            googleAI: {
+                parts: [
+                    {
+                        text: "Final answer.",
+                        thoughtSignature: "signature-a",
+                    },
+                ],
+                usageMetadata: {
+                    thoughtsTokenCount: 12,
+                },
+                visibleText: "Final answer.",
+            },
+        });
+    });
+
+    test("replays signed parts when assistant history still matches", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [
+                    {
+                        role: "assistant",
+                        content: "Final answer.",
+                        reasoningDetails: {
+                            googleAI: {
+                                parts: [
+                                    {
+                                        text: "Thinking summary.",
+                                        thought: true,
+                                    },
+                                    {
+                                        text: "Final answer.",
+                                        thoughtSignature: "signature-a",
+                                    },
+                                ],
+                                visibleText: "Final answer.",
+                            },
+                        },
+                    },
+                    { role: "user", content: "Continue" },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.contents[0]).toEqual({
+            role: "model",
+            parts: [
+                {
+                    text: "Thinking summary.",
+                    thought: true,
+                },
+                {
+                    text: "Final answer.",
+                    thoughtSignature: "signature-a",
+                },
+            ],
+        });
+    });
+
+    test("does not replay signed parts when assistant history was edited", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [
+                    {
+                        role: "assistant",
+                        content: "Edited answer.",
+                        reasoningDetails: {
+                            googleAI: {
+                                parts: [
+                                    {
+                                        text: "Final answer.",
+                                        thoughtSignature: "signature-a",
+                                    },
+                                ],
+                                visibleText: "Final answer.",
+                            },
+                        },
+                    },
+                    { role: "user", content: "Continue" },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.contents[0]).toEqual({
+            role: "model",
+            parts: [{ text: "Edited answer." }],
         });
     });
 });

@@ -353,6 +353,12 @@
     padding: 8px;
     font-size: 0.78rem;
     line-height: 1.35;
+    opacity: 1;
+    transition: opacity 350ms ease;
+}
+
+.rail-status.fading {
+    opacity: 0;
 }
 
 .persona-bar {

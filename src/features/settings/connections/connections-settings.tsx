@@ -1,7 +1,8 @@
 import { Copy, Plus, Trash2 } from "lucide-preact";
 import { useEffect, useState } from "preact/hooks";
-import { saveConnectionSecrets, saveConnectionSettings } from "../../../lib/api/client";
-import { messageFromError } from "../../../lib/common/errors";
+
+import { saveConnectionSecrets, saveConnectionSettings } from "#frontend/lib/api/client";
+import { messageFromError } from "#frontend/lib/common/errors";
 import {
     createConnectionProfile,
     extractConnectionSecrets,
@@ -13,30 +14,31 @@ import {
     sanitizeConnectionSettings,
     type ConnectionProfile,
     type ConnectionSettings,
-} from "../../../lib/connections/config";
+} from "#frontend/lib/connections/config";
 import {
     createGoogleAIConnection,
     createGoogleAIGenerateUrl,
-} from "../../../lib/connections/google-ai/adapter";
-import { listGoogleAIModels } from "../../../lib/connections/google-ai/models";
-import { trimTrailingSlash } from "../../../lib/connections/http";
-import { createOpenAICompatibleConnection } from "../../../lib/connections/openai-compatible/adapter";
-import { listOpenAICompatibleModels } from "../../../lib/connections/openai-compatible/models";
-import { createOpenRouterConnection } from "../../../lib/connections/openrouter/adapter";
-import { listOpenRouterModels } from "../../../lib/connections/openrouter/models";
-import { createUserMessage } from "../../../lib/messages";
-import { defaultPersona } from "../../../lib/personas/defaults";
+} from "#frontend/lib/connections/google-ai/adapter";
+import { listGoogleAIModels } from "#frontend/lib/connections/google-ai/models";
+import type { GoogleAIModel } from "#frontend/lib/connections/google-ai/types";
+import { trimTrailingSlash } from "#frontend/lib/connections/http";
+import { createOpenAICompatibleConnection } from "#frontend/lib/connections/openai-compatible/adapter";
+import { listOpenAICompatibleModels } from "#frontend/lib/connections/openai-compatible/models";
+import type { OpenAICompatibleModel } from "#frontend/lib/connections/openai-compatible/types";
+import { createOpenRouterConnection } from "#frontend/lib/connections/openrouter/adapter";
+import { listOpenRouterModels } from "#frontend/lib/connections/openrouter/models";
+import type { OpenRouterModel } from "#frontend/lib/connections/openrouter/types";
+import { createUserMessage } from "#frontend/lib/messages";
+import { defaultPersona } from "#frontend/lib/personas/defaults";
 import {
     getPluginConnectionProvider,
     getPluginConnectionProviders,
     subscribeToPluginRegistry,
-} from "../../../lib/plugins/registry";
-import type { GoogleAIModel } from "../../../lib/connections/google-ai/types";
-import type { OpenAICompatibleModel } from "../../../lib/connections/openai-compatible/types";
-import type { OpenRouterModel } from "../../../lib/connections/openrouter/types";
-import { GoogleAIConnection } from "./providers/GoogleAIConnection";
-import { OpenAICompatibleConnection } from "./providers/OpenAICompatibleConnection";
-import { OpenRouterConnection } from "./providers/OpenRouterConnection";
+} from "#frontend/lib/plugins/registry";
+
+import { GoogleAIConnection } from "./providers/google-ai-connection";
+import { OpenAICompatibleConnection } from "./providers/openai-compatible-connection";
+import { OpenRouterConnection } from "./providers/openrouter-connection";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 

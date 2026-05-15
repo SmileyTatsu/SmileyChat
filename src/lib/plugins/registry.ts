@@ -1,4 +1,5 @@
 import type { h } from "preact";
+
 import type { ConnectionProfile } from "../connections/config";
 import type { ConnectionAdapter } from "../connections/types";
 import type {

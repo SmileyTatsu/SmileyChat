@@ -1,7 +1,9 @@
-import defaultGoogleAIModels from "../../data/defaultGoogleAIModels.json";
-import defaultOpenAIModels from "../../data/defaultOpenAIModels.json";
+import defaultGoogleAIModels from "#frontend/data/default-google-ai-models.json";
+import defaultOpenAIModels from "#frontend/data/default-openai-models.json";
+
 import { isRecord } from "../common/guards";
-import type { GoogleAIConnectionConfig } from "./google-ai/types";
+
+import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./google-ai/types";
 import type {
     OpenAICompatibleConnectionConfig,
     OpenAICompatibleReasoningConfig,
@@ -517,6 +519,7 @@ function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
     const model = isRecord(config.model) ? config.model : {};
     const modelSource =
         model.source === "api" || model.source === "custom" ? model.source : "default";
+    const thinking = normalizeGoogleAIThinkingConfig(config.thinking);
 
     return {
         baseUrl:
@@ -528,7 +531,64 @@ function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
             source: modelSource,
             id: typeof model.id === "string" ? model.id : defaultGoogleAIConfig.model.id,
         },
+        ...(thinking ? { thinking } : {}),
     };
+}
+
+function normalizeGoogleAIThinkingConfig(
+    value: unknown,
+): GoogleAIThinkingConfig | undefined {
+    const thinking = isRecord(value) ? value : {};
+    const includeThoughts =
+        typeof thinking.includeThoughts === "boolean"
+            ? thinking.includeThoughts
+            : undefined;
+    const mode = normalizeGoogleAIThinkingMode(thinking.mode);
+    const thinkingLevel = normalizeGoogleAIThinkingLevel(thinking.thinkingLevel);
+    const thinkingBudget = normalizeGoogleAIThinkingBudget(thinking.thinkingBudget);
+
+    if (
+        includeThoughts === undefined &&
+        !mode &&
+        !thinkingLevel &&
+        thinkingBudget === undefined
+    ) {
+        return undefined;
+    }
+
+    return {
+        ...(includeThoughts !== undefined ? { includeThoughts } : {}),
+        ...(mode ? { mode } : {}),
+        ...(thinkingLevel ? { thinkingLevel } : {}),
+        ...(thinkingBudget !== undefined ? { thinkingBudget } : {}),
+    };
+}
+
+function normalizeGoogleAIThinkingMode(
+    value: unknown,
+): GoogleAIThinkingConfig["mode"] | undefined {
+    return value === "level" || value === "budget" || value === "auto"
+        ? value
+        : undefined;
+}
+
+function normalizeGoogleAIThinkingLevel(
+    value: unknown,
+): GoogleAIThinkingConfig["thinkingLevel"] | undefined {
+    return value === "minimal" ||
+        value === "low" ||
+        value === "medium" ||
+        value === "high"
+        ? value
+        : undefined;
+}
+
+function normalizeGoogleAIThinkingBudget(value: unknown): number | undefined {
+    if (typeof value !== "number" || !Number.isInteger(value)) {
+        return undefined;
+    }
+
+    return value === -1 || value >= 0 ? value : undefined;
 }
 
 function normalizeProvider(value: unknown): ConnectionProviderId | undefined {

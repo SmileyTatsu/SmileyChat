@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+
 import {
     createPersona as createPersonaRequest,
     deletePersona as deletePersonaRequest,
@@ -6,18 +7,18 @@ import {
     loadPersonaSummaries,
     savePersona,
     savePersonaIndex,
-} from "../lib/api/client";
-import { messageFromError } from "../lib/common/errors";
+} from "#frontend/lib/api/client";
+import { messageFromError } from "#frontend/lib/common/errors";
 import {
     createBlankPersona,
     defaultPersona,
     personaToSummary,
-} from "../lib/personas/defaults";
+} from "#frontend/lib/personas/defaults";
 import {
     normalizePersona,
     normalizePersonaSummaryCollection,
-} from "../lib/personas/normalize";
-import type { PersonaSummaryCollection, SmileyPersona } from "../types";
+} from "#frontend/lib/personas/normalize";
+import type { PersonaSummaryCollection, SmileyPersona } from "#frontend/types";
 
 export function usePersonaLibrary() {
     const [personaSummaries, setPersonaSummaries] = useState<PersonaSummaryCollection>({

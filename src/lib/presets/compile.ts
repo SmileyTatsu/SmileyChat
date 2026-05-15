@@ -1,4 +1,5 @@
-import type { ChatMode, Message, SmileyCharacter, UserStatus } from "../../types";
+import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
+
 import { getCharacterTagline } from "../characters/normalize";
 import type { ChatGenerationMessage } from "../connections/types";
 import {

@@ -1,11 +1,12 @@
 import { MessageSquareText, PanelRight, Send, Type } from "lucide-preact";
 import type { ComponentChildren } from "preact";
+
 import type {
     AppPreferences,
     FontScale,
     MessageDensity,
-} from "../../lib/preferences/types";
-import type { ChatMode } from "../../types";
+} from "#frontend/lib/preferences/types";
+import type { ChatMode } from "#frontend/types";
 
 type GeneralSettingsProps = {
     loadError?: string;

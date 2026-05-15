@@ -8,6 +8,7 @@ export default defineConfig(function ({ mode }) {
     const FRONTEND_PORT = env.SMILEYCHAT_FRONTEND_PORT ?? "5173";
 
     return {
+        resolve: { tsconfigPaths: true },
         plugins: [preact()],
         server: {
             port: Number(FRONTEND_PORT),

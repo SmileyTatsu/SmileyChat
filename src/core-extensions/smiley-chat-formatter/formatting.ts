@@ -1,4 +1,4 @@
-import { renderMarkdownBlocks, parseInlineMarkdown } from "./markdown";
+import { parseInlineMarkdown, renderMarkdownBlocks } from "./markdown";
 import { FormatterApi, FormatterNode, paragraphize } from "./nodes";
 import { getFormatterSettings } from "./settings";
 import { parseXmlNodeList } from "./xml-tags";

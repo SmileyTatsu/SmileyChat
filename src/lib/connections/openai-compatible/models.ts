@@ -1,5 +1,6 @@
-import type { OpenAICompatibleListModelsResponse, OpenAICompatibleModel } from "./types";
 import { safeResponseText, trimTrailingSlash } from "../http";
+
+import type { OpenAICompatibleListModelsResponse, OpenAICompatibleModel } from "./types";
 
 export async function listOpenAICompatibleModels({
     apiKey,

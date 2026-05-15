@@ -1,5 +1,6 @@
-import { createId } from "../common/ids";
 import { isRecord } from "../common/guards";
+import { createId } from "../common/ids";
+
 import { createDefaultPreset, defaultPresetCollection } from "./defaults";
 import type {
     PresetCollection,

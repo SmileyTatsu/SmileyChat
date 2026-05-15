@@ -14,22 +14,26 @@ import {
     UploadCloud,
 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
-import { chatDisplayTitle } from "../../lib/chats/normalize";
-import { characterInitialAvatar } from "../../lib/characters/avatar";
+
+import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
+import { chatDisplayTitle } from "#frontend/lib/chats/normalize";
 import type {
     CharacterSummary,
     ChatSummary,
     PersonaSummary,
     SmileyPersona,
     UserStatus,
-} from "../../types";
-import { PersonaBar } from "../personas/PersonaBar";
+} from "#frontend/types";
+
+import { PersonaBar } from "../personas/persona-bar";
 
 type SidebarProps = {
     activeChatId: string;
     activeCharacterId: string;
     chats: ChatSummary[];
     chatCountsByCharacterId: Record<string, number>;
+    chatImportStatus?: string;
+    chatImportStatusFading?: boolean;
     chatLoadError?: string;
     characters: CharacterSummary[];
     characterImportStatus?: string;
@@ -41,6 +45,7 @@ type SidebarProps = {
     userStatus: UserStatus;
     onCreateCharacter: () => void;
     onImportCharacterFiles: (files: File[]) => void;
+    onImportChatFile: (file: File) => void;
     onNewChat: () => void;
     onOpenChange: (isOpen: boolean) => void;
     onOpenSettings: () => void;
@@ -60,6 +65,8 @@ export function Sidebar({
     activeChatId,
     activeCharacterId,
     chats,
+    chatImportStatus,
+    chatImportStatusFading,
     chatLoadError,
     chatCountsByCharacterId,
     characters,
@@ -72,6 +79,7 @@ export function Sidebar({
     userStatus,
     onCreateCharacter,
     onImportCharacterFiles,
+    onImportChatFile,
     onNewChat,
     onOpenChange,
     onOpenSettings,
@@ -87,6 +95,7 @@ export function Sidebar({
     onStatusChange,
 }: SidebarProps) {
     const importInputRef = useRef<HTMLInputElement>(null);
+    const chatImportInputRef = useRef<HTMLInputElement>(null);
     const dragDepthRef = useRef(0);
     const [isCharacterDropActive, setIsCharacterDropActive] = useState(false);
     const [contextMenu, setContextMenu] = useState<
@@ -431,6 +440,35 @@ export function Sidebar({
                         <button
                             className="rail-icon-button"
                             type="button"
+                            title={
+                                hasCharacters
+                                    ? "Import SillyTavern chat (.jsonl) for the active character"
+                                    : "Select a character before importing a chat"
+                            }
+                            disabled={!hasCharacters}
+                            onClick={() => chatImportInputRef.current?.click()}
+                        >
+                            <FileInput size={14} />
+                        </button>
+                        <input
+                            ref={chatImportInputRef}
+                            hidden
+                            type="file"
+                            accept=".jsonl,.json,application/json"
+                            onChange={(event) => {
+                                const input = event.currentTarget as HTMLInputElement;
+                                const file = input.files?.[0];
+
+                                if (file) {
+                                    onImportChatFile(file);
+                                }
+
+                                input.value = "";
+                            }}
+                        />
+                        <button
+                            className="rail-icon-button"
+                            type="button"
                             title="New chat"
                             disabled={!hasCharacters}
                             onClick={onNewChat}
@@ -466,6 +504,15 @@ export function Sidebar({
                         </div>
                     )}
                 </div>
+                {chatImportStatus && (
+                    <p
+                        className={`rail-status${
+                            chatImportStatusFading ? " fading" : ""
+                        }`}
+                    >
+                        {chatImportStatus}
+                    </p>
+                )}
                 {chatLoadError && <p className="rail-error">{chatLoadError}</p>}
             </section>
 

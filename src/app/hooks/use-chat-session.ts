@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { PresetCollection } from "../lib/presets/types";
-import type { AppPreferences } from "../lib/preferences/types";
-import type {
-    ChatSession,
-    ChatMode,
-    Message,
-    SmileyPersona,
-    SmileyCharacter,
-    UserStatus,
-} from "../types";
+
+import { messageFromError } from "#frontend/lib/common/errors";
+import type { ConnectionSettings } from "#frontend/lib/connections/config";
+import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import {
     appendMessageSwipe,
     createCharacterErrorMessage,
@@ -17,17 +11,24 @@ import {
     isActiveSwipeError,
     updateActiveSwipeContent,
     updateActiveSwipeReasoning,
-} from "../lib/messages";
-import { messageFromError } from "../lib/common/errors";
-import type { ConnectionSettings } from "../lib/connections/config";
-import { getAdapterForSettings } from "../lib/connections/registry";
-import { compilePresetMessages } from "../lib/presets/compile";
-import { resolvePresetMacros } from "../lib/presets/macros";
+} from "#frontend/lib/messages";
 import {
     getInputMiddlewares,
     getOutputMiddlewares,
     getPromptMiddlewares,
-} from "../lib/plugins/registry";
+} from "#frontend/lib/plugins/registry";
+import type { AppPreferences } from "#frontend/lib/preferences/types";
+import { compilePresetMessages } from "#frontend/lib/presets/compile";
+import { resolvePresetMacros } from "#frontend/lib/presets/macros";
+import type { PresetCollection } from "#frontend/lib/presets/types";
+import type {
+    ChatMode,
+    ChatSession,
+    Message,
+    SmileyCharacter,
+    SmileyPersona,
+    UserStatus,
+} from "#frontend/types";
 
 type UseChatSessionOptions = {
     chat?: ChatSession;

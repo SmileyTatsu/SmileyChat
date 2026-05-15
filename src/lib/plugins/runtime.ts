@@ -1,17 +1,19 @@
 import { h } from "preact";
+
 import {
     corePlugins,
     getCorePlugin,
     mergeCoreAndUserPluginManifests,
-} from "../../core-extensions";
+} from "#frontend/core-extensions";
+
+import { localApiFetch } from "../api/client";
 import {
     createPluginApi,
     deactivatePlugin,
     initializePluginEnabledStates,
-    recordPluginDisposer,
     recordLoadedPlugin,
+    recordPluginDisposer,
 } from "./registry";
-import { localApiFetch } from "../api/client";
 import type { PluginManifest, PluginStorageApi, SmileyPluginModule } from "./types";
 
 export async function loadRuntimePlugins(manifests: PluginManifest[]) {

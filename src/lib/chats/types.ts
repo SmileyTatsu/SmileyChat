@@ -1,4 +1,4 @@
-import type { ChatMode, Message } from "../../types";
+import type { ChatMode, Message } from "#frontend/types";
 
 export type ChatSession = {
     id: string;

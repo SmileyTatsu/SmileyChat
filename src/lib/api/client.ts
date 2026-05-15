@@ -3,13 +3,14 @@ import type {
     ChatSession,
     ChatSummaryCollection,
     PersonaSummaryCollection,
-    SmileyPersona,
     SmileyCharacter,
-} from "../../types";
+    SmileyPersona,
+} from "#frontend/types";
+
 import type { ConnectionSecrets, ConnectionSettings } from "../connections/config";
-import type { PresetCollection } from "../presets/types";
-import type { AppPreferences } from "../preferences/types";
 import type { PluginManifest } from "../plugins/types";
+import type { AppPreferences } from "../preferences/types";
+import type { PresetCollection } from "../presets/types";
 
 const csrfHeaderName = "x-smileychat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -270,6 +271,17 @@ export function deleteChat(chatId: string) {
         chats?: ChatSummaryCollection;
     }>(`/api/chats/${encodeURIComponent(chatId)}`, {
         method: "DELETE",
+    });
+}
+
+export function importChatFile(formData: FormData) {
+    return requestJson<{
+        ok: true;
+        chat: ChatSession;
+        chats?: ChatSummaryCollection;
+    }>("/api/chats/import", {
+        method: "POST",
+        body: formData,
     });
 }
 

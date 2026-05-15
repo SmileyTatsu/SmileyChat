@@ -1,5 +1,5 @@
-import { isRecord } from "../common/guards";
-import type { ChatMode } from "../../types";
+import { isRecord } from "#frontend/lib/common/guards";
+import type { ChatMode } from "#frontend/types";
 
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type FontScale = "small" | "default" | "large";

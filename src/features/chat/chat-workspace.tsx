@@ -1,9 +1,10 @@
-import type { ChatMode, Message } from "../../types";
-import type { AppPreferences } from "../../lib/preferences/types";
-import type { PluginAppSnapshot } from "../../lib/plugins/types";
-import { ChatHeader } from "./ChatHeader";
-import { MessageComposer } from "./MessageComposer";
-import { MessageList } from "./MessageList";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type { AppPreferences } from "#frontend/lib/preferences/types";
+import type { ChatMode, Message } from "#frontend/types";
+
+import { ChatHeader } from "./chat-header";
+import { MessageComposer } from "./message-composer";
+import { MessageList } from "./message-list";
 
 type ChatWorkspaceProps = {
     activeChatId: string;

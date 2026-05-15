@@ -9,24 +9,27 @@ import {
     X,
 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { ConnectionSettings } from "../../lib/connections/config";
-import type { AppPreferences } from "../../lib/preferences/types";
-import type { PresetCollection } from "../../lib/presets/types";
+
+import type { ConnectionSettings } from "#frontend/lib/connections/config";
+import type { AppPreferences } from "#frontend/lib/preferences/types";
+import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
     ChatMode,
     Message,
     PersonaSummaryCollection,
     SettingsCategory,
-    SmileyPersona,
     SmileyCharacter,
+    SmileyPersona,
     UserStatus,
-} from "../../types";
-import { ConnectionsSettings } from "./connections/ConnectionsSettings";
-import { GeneralSettings } from "./GeneralSettings";
-import { PersonasSettings } from "./personas/PersonasSettings";
-import { PluginsSettings } from "./PluginsSettings";
-import { PresetSettings } from "./PresetSettings";
-import type { PluginAppSnapshot } from "../../lib/plugins/types";
+} from "#frontend/types";
+
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+
+import { ConnectionsSettings } from "./connections/connections-settings";
+import { GeneralSettings } from "./general-settings";
+import { PersonasSettings } from "./personas/personas-settings";
+import { PluginsSettings } from "./plugins-settings";
+import { PresetSettings } from "./preset-settings";
 
 type OptionsModalProps = {
     activeCategory: SettingsCategory;

@@ -1,5 +1,6 @@
 import type { ComponentChild } from "preact";
-import type { SmileyPluginApi } from "../../lib/plugins/types";
+
+import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
 
 export type FormatterBreak = {
     type: "break";

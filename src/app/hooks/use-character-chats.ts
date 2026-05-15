@@ -1,37 +1,39 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+
 import {
     createCharacter as createCharacterRequest,
     createChat as createChatRequest,
-    deleteChat as deleteChatRequest,
     deleteCharacter as deleteCharacterRequest,
+    deleteChat as deleteChatRequest,
     exportCharacterCard,
+    importChatFile as importChatFileRequest,
     importCharacterFiles as importCharacterFilesRequest,
     loadCharacter,
     loadCharacterSummaries,
     loadChat,
     loadChatSummaries,
-    saveChat,
-    saveChatIndex,
     saveCharacter,
     saveCharacterIndex,
-} from "../lib/api/client";
-import { createChatSession } from "../lib/chats/defaults";
-import {
-    chatDisplayTitle,
-    chatToSummary,
-    normalizeChat,
-    normalizeChatSummaryCollection,
-} from "../lib/chats/normalize";
-import { defaultCharacter } from "../lib/characters/defaults";
+    saveChat,
+    saveChatIndex,
+} from "#frontend/lib/api/client";
+import { defaultCharacter } from "#frontend/lib/characters/defaults";
 import {
     characterToSummary,
     createBlankCharacter,
     normalizeCharacter,
     normalizeCharacterSummaryCollection,
-} from "../lib/characters/normalize";
-import { messageFromError } from "../lib/common/errors";
-import { createCharacterGreetingMessage } from "../lib/messages";
-import { resolvePresetMacros } from "../lib/presets/macros";
+} from "#frontend/lib/characters/normalize";
+import { createChatSession } from "#frontend/lib/chats/defaults";
+import {
+    chatDisplayTitle,
+    chatToSummary,
+    normalizeChat,
+    normalizeChatSummaryCollection,
+} from "#frontend/lib/chats/normalize";
+import { messageFromError } from "#frontend/lib/common/errors";
+import { createCharacterGreetingMessage } from "#frontend/lib/messages";
+import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type {
     CharacterSummaryCollection,
     ChatMode,
@@ -41,7 +43,7 @@ import type {
     SmileyCharacter,
     SmileyPersona,
     UserStatus,
-} from "../types";
+} from "#frontend/types";
 
 type UseCharacterChatsOptions = {
     defaultNewChatMode: ChatMode;
@@ -72,12 +74,16 @@ export function useCharacterChats({
     const [characterLoadError, setCharacterLoadError] = useState("");
     const [chatLoadError, setChatLoadError] = useState("");
     const [characterImportStatus, setCharacterImportStatus] = useState("");
+    const [chatImportStatus, setChatImportStatus] = useState("");
+    const [chatImportStatusFading, setChatImportStatusFading] = useState(false);
     const latestCharacterRef = useRef(character);
     const latestCharacterSummariesRef = useRef(characterSummaries);
     const latestChatRef = useRef(activeChat);
     const latestChatSummariesRef = useRef(chatSummaries);
     const characterAutosaveTimerRef = useRef<number | undefined>(undefined);
     const chatAutosaveTimerRef = useRef<number | undefined>(undefined);
+    const chatImportStatusTimerRef = useRef<number | undefined>(undefined);
+    const chatImportStatusFadeTimerRef = useRef<number | undefined>(undefined);
     const characterSaveRequestIdRef = useRef(0);
     const chatSaveRequestIdRef = useRef(0);
 
@@ -94,9 +100,58 @@ export function useCharacterChats({
             if (chatAutosaveTimerRef.current) {
                 window.clearTimeout(chatAutosaveTimerRef.current);
             }
+            if (chatImportStatusTimerRef.current) {
+                window.clearTimeout(chatImportStatusTimerRef.current);
+            }
+            if (chatImportStatusFadeTimerRef.current) {
+                window.clearTimeout(chatImportStatusFadeTimerRef.current);
+            }
         },
         [],
     );
+
+    function setChatImportStatusMessage(
+        message: string,
+        options: { autoDismiss?: boolean } = {},
+    ) {
+        const { autoDismiss = true } = options;
+
+        if (chatImportStatusTimerRef.current) {
+            window.clearTimeout(chatImportStatusTimerRef.current);
+            chatImportStatusTimerRef.current = undefined;
+        }
+        if (chatImportStatusFadeTimerRef.current) {
+            window.clearTimeout(chatImportStatusFadeTimerRef.current);
+            chatImportStatusFadeTimerRef.current = undefined;
+        }
+
+        setChatImportStatus(message);
+        setChatImportStatusFading(false);
+
+        if (autoDismiss && message) {
+            chatImportStatusTimerRef.current = window.setTimeout(() => {
+                chatImportStatusTimerRef.current = undefined;
+                beginChatImportStatusFade();
+            }, 3000);
+        }
+    }
+
+    function beginChatImportStatusFade() {
+        if (chatImportStatusFadeTimerRef.current) {
+            return;
+        }
+        if (chatImportStatusTimerRef.current) {
+            window.clearTimeout(chatImportStatusTimerRef.current);
+            chatImportStatusTimerRef.current = undefined;
+        }
+
+        setChatImportStatusFading(true);
+        chatImportStatusFadeTimerRef.current = window.setTimeout(() => {
+            setChatImportStatus("");
+            setChatImportStatusFading(false);
+            chatImportStatusFadeTimerRef.current = undefined;
+        }, 350);
+    }
 
     async function loadCharacterCollection() {
         try {
@@ -402,6 +457,7 @@ export function useCharacterChats({
     }
 
     async function selectCharacter(characterId: string) {
+        beginChatImportStatusFade();
         await flushPendingCharacterAutosaveWithoutStateUpdate();
         await flushPendingChatAutosaveWithoutStateUpdate();
 
@@ -485,6 +541,7 @@ export function useCharacterChats({
             return;
         }
 
+        beginChatImportStatusFade();
         await flushPendingChatAutosaveWithoutStateUpdate();
         await createChatForCharacter(latestCharacterRef.current, defaultNewChatMode);
     }
@@ -519,6 +576,62 @@ export function useCharacterChats({
             setCharacterLoadError("");
         } catch (error) {
             setCharacterLoadError(messageFromError(error));
+        }
+    }
+
+    async function importChatFile(file: File) {
+        const targetCharacterId = latestCharacterRef.current.id;
+
+        if (
+            !targetCharacterId ||
+            !latestCharacterSummariesRef.current.characters.some(
+                (item) => item.id === targetCharacterId,
+            )
+        ) {
+            setChatImportStatusMessage("Select a character before importing a chat.");
+            return;
+        }
+
+        await flushPendingChatAutosaveWithoutStateUpdate();
+
+        const formData = new FormData();
+        formData.append("characterId", targetCharacterId);
+        formData.append("file", file, file.name);
+
+        setChatImportStatusMessage(`Importing ${file.name}...`, { autoDismiss: false });
+
+        try {
+            const result = (await importChatFileRequest(formData)) as {
+                chat: ChatSession;
+                chats?: ChatSummaryCollection;
+            };
+            const importedChat = normalizeChat(result.chat);
+
+            if (!importedChat) {
+                throw new Error("Imported chat could not be normalized.");
+            }
+
+            if (result.chats) {
+                const summaries = normalizeChatSummaryCollection(result.chats);
+                setChatSummaries(summaries);
+                latestChatSummariesRef.current = summaries;
+            } else {
+                updateChatSummary(chatToSummary(importedChat));
+            }
+
+            setActiveChat(importedChat);
+            latestChatRef.current = importedChat;
+            setMode(importedChat.mode);
+            setChatLoadError("");
+            setChatImportStatusMessage(
+                `Imported ${importedChat.messages.length} message${
+                    importedChat.messages.length === 1 ? "" : "s"
+                } from ${file.name}.`,
+            );
+        } catch (error) {
+            const message = messageFromError(error);
+            setChatImportStatusMessage(`Import failed: ${message}`);
+            setChatLoadError(message);
         }
     }
 
@@ -665,6 +778,7 @@ export function useCharacterChats({
     }
 
     async function selectChat(chatId: string) {
+        beginChatImportStatusFade();
         await flushPendingChatAutosaveWithoutStateUpdate();
 
         try {
@@ -836,12 +950,15 @@ export function useCharacterChats({
         characterImportStatus,
         characterLoadError,
         characterSummaries,
+        chatImportStatus,
+        chatImportStatusFading,
         chatLoadError,
         createCharacter,
         deleteCharacter,
         deleteChat,
         exportCharacter,
         importCharacterFiles,
+        importChatFile,
         loadCharacterCollection,
         prepareCharacterAvatarUpload,
         queueChatSave,

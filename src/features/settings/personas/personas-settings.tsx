@@ -1,7 +1,8 @@
 import { ImageOff, ImagePlus, Plus, Trash2 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
-import { uploadPersonaAvatar } from "../../../lib/api/client";
-import type { PersonaSummaryCollection, SmileyPersona } from "../../../types";
+
+import { uploadPersonaAvatar } from "#frontend/lib/api/client";
+import type { PersonaSummaryCollection, SmileyPersona } from "#frontend/types";
 
 type PersonasSettingsProps = {
     collection: PersonaSummaryCollection;

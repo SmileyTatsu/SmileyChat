@@ -1,10 +1,10 @@
+import type { FormatterApi } from "./nodes";
 import type { FormatterSettings } from "./settings";
 import {
     getFormatterSettings,
     normalizeFormatterSettings,
     setFormatterSettings,
 } from "./settings";
-import type { FormatterApi } from "./nodes";
 
 export function renderSettingsPanel(
     api: FormatterApi,

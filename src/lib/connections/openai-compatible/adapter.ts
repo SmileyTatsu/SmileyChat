@@ -1,6 +1,7 @@
-import type { ConnectionAdapter } from "../types";
 import { safeResponseText, trimTrailingSlash } from "../http";
 import { readChatCompletionStream } from "../streaming";
+import type { ConnectionAdapter } from "../types";
+
 import { createChatCompletionBody, normalizeChatCompletion } from "./mappers";
 import type {
     OpenAICompatibleChatCompletionResponse,

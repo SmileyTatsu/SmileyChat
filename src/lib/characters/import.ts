@@ -1,5 +1,6 @@
 import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
+
 import { normalizeTavernCardData } from "./normalize";
 import type { CharacterImportFormat, SmileyCharacter, TavernCardDataV2 } from "./types";
 

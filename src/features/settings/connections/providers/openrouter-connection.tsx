@@ -1,15 +1,16 @@
 import { useState } from "preact/hooks";
+
 import {
     formatOpenRouterSlugList,
     parseOpenRouterSlugList,
-} from "../../../../lib/connections/openrouter/mappers";
+} from "#frontend/lib/connections/openrouter/mappers";
 import type {
     OpenRouterConnectionConfig,
     OpenRouterModel,
     OpenRouterProviderPreferences,
     OpenRouterReasoningConfig,
     OpenRouterSort,
-} from "../../../../lib/connections/openrouter/types";
+} from "#frontend/lib/connections/openrouter/types";
 
 type OpenRouterConnectionProps = {
     config: OpenRouterConnectionConfig;
