@@ -6,7 +6,6 @@ import { csrfSecretPath } from "./paths";
 
 const csrfHeaderName = "x-smileychat-csrf";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const trustedOriginsEnvName = "SMILEYCHAT_TRUSTED_ORIGINS";
 
 type CsrfSecretFile = {
     version: number;
@@ -55,7 +54,8 @@ function verifyRequestOrigin(request: Request) {
         );
     }
 
-    if (!allowedRequestOrigins(request).has(provenanceOrigin)) {
+    const allowedOriginSet = getAllowedOrigins(request);
+    if (!allowedOriginSet.has(provenanceOrigin)) {
         throw new CsrfError(
             "csrf_origin_untrusted",
             `Request origin "${provenanceOrigin}" is not trusted.`,
@@ -63,7 +63,7 @@ function verifyRequestOrigin(request: Request) {
     }
 }
 
-function allowedRequestOrigins(request: Request) {
+function getAllowedOrigins(request: Request) {
     return new Set([
         new URL(request.url).origin,
         ...forwardedRequestOrigins(request),
@@ -82,12 +82,14 @@ function forwardedRequestOrigins(request: Request) {
     }
 
     const forwardedOrigin = normalizeOrigin(`${proto}://${host}`);
-
     return forwardedOrigin ? [forwardedOrigin] : [];
 }
 
 function trustedOriginsFromEnv() {
-    return (process.env[trustedOriginsEnvName] ?? "")
+    const FRONTEND_PORT = process.env.SMILEYCHAT_FRONTEND_PORT ?? "5173";
+
+    // Fall back to default frontend origin
+    return (process.env.SMILEYCHAT_TRUSTED_ORIGINS ?? `http://127.0.0.1:${FRONTEND_PORT}`)
         .split(",")
         .map((value) => normalizeOrigin(value.trim()))
         .filter((value): value is string => Boolean(value));

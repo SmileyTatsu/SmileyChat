@@ -64,7 +64,7 @@ type ApiHandler<Path extends string> = (
     server: RouteServer,
 ) => Response | Promise<Response>;
 
-const port = parsePort(process.env.SMILEYCHAT_PORT);
+const port = parsePort(process.env.SMILEYCHAT_API_PORT);
 
 ensureUserData();
 await importDroppedCharacterFiles();
