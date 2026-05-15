@@ -75,3 +75,8 @@ This project was built with the assistance of AI. Please note:
 1. AI was primarily used for frontend development and UI structuring.
 2. All code written by AI has been strictly reviewed at least twice by a human.
 3. **For Contributors:** You are totally welcome to use AI tools for your PRs, but you are expected to know exactly what the fuck the AI did. Do not submit blind generations. Trash code will not be merged.
+
+## Contact
+
+- **Support Server:** [SmileyCord](https://discord.gg/PTWXzugDXG)
+- **Non-support Inquiries:** SmileyTatsu@waifu.club
