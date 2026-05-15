@@ -100,10 +100,29 @@ export function OptionsModal({
     userStatus,
 }: OptionsModalProps) {
     const [settingsNavCollapsed, setSettingsNavCollapsed] = useState(false);
+    const [isMobileSettingsLayout, setIsMobileSettingsLayout] = useState(
+        () => window.matchMedia("(max-width: 820px)").matches,
+    );
     const modalRef = useRef<HTMLElement>(null);
+    const isSettingsNavCollapsed = settingsNavCollapsed && !isMobileSettingsLayout;
 
     useEffect(() => {
         modalRef.current?.focus();
+    }, []);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(max-width: 820px)");
+
+        function updateMobileSettingsLayout() {
+            setIsMobileSettingsLayout(mediaQuery.matches);
+        }
+
+        updateMobileSettingsLayout();
+        mediaQuery.addEventListener("change", updateMobileSettingsLayout);
+
+        return () => {
+            mediaQuery.removeEventListener("change", updateMobileSettingsLayout);
+        };
     }, []);
 
     function handleModalKeyDown(event: KeyboardEvent) {
@@ -182,14 +201,14 @@ export function OptionsModal({
                 </header>
 
                 <div
-                    className={`settings-layout ${settingsNavCollapsed ? "nav-collapsed" : ""}`}
+                    className={`settings-layout ${isSettingsNavCollapsed ? "nav-collapsed" : ""}`}
                 >
                     <aside className="settings-nav-panel">
                         <button
                             className="settings-nav-toggle"
                             type="button"
                             title={
-                                settingsNavCollapsed
+                                isSettingsNavCollapsed
                                     ? "Show options navigation"
                                     : "Hide options navigation"
                             }
@@ -197,13 +216,13 @@ export function OptionsModal({
                                 setSettingsNavCollapsed((collapsed) => !collapsed)
                             }
                         >
-                            {settingsNavCollapsed ? (
+                            {isSettingsNavCollapsed ? (
                                 <ChevronsRight size={16} />
                             ) : (
                                 <ChevronsLeft size={16} />
                             )}
                         </button>
-                        {!settingsNavCollapsed && (
+                        {!isSettingsNavCollapsed && (
                             <nav
                                 className="settings-nav"
                                 aria-label="Settings categories"

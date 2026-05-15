@@ -131,149 +131,169 @@ export function CharacterPanel({
     }
 
     return (
-        <aside
-            className={`character-panel ${isOpen ? "open" : "collapsed"}`}
-            aria-label="Current character"
-        >
-            {isOpen && (
-                <div className="panel-content">
-                    <header className="side-panel-header">
-                        <h2>Character</h2>
-                        <button
-                            className="icon-button"
-                            type="button"
-                            title="Collapse character panel"
-                            onClick={() => onOpenChange(false)}
-                        >
-                            <ChevronRight size={18} />
-                        </button>
-                    </header>
+        <>
+            <aside
+                className={`character-panel ${isOpen ? "open" : "collapsed"}`}
+                aria-label="Current character"
+            >
+                {isOpen && (
+                    <div className="panel-content">
+                        <header className="side-panel-header">
+                            <h2>Character</h2>
+                            <button
+                                className="icon-button"
+                                type="button"
+                                title="Collapse character panel"
+                                onClick={() => onOpenChange(false)}
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </header>
 
-                    <div className="profile-card">
-                        <button
-                            className="profile-avatar-button"
-                            type="button"
-                            disabled={isUploadingAvatar}
-                            title="Choose character image"
-                            onClick={() => avatarInputRef.current?.click()}
-                        >
-                            {character.avatar ? (
-                                <img
-                                    className="profile-avatar image-avatar"
-                                    src={character.avatar.path}
-                                    alt=""
+                        <div className="profile-card">
+                            <button
+                                className="profile-avatar-button"
+                                type="button"
+                                disabled={isUploadingAvatar}
+                                title="Choose character image"
+                                onClick={() => avatarInputRef.current?.click()}
+                            >
+                                {character.avatar ? (
+                                    <img
+                                        className="profile-avatar image-avatar"
+                                        src={character.avatar.path}
+                                        alt=""
+                                    />
+                                ) : (
+                                    <img
+                                        className="profile-avatar image-avatar empty-avatar"
+                                        src={characterInitialAvatar(character.data.name)}
+                                        alt=""
+                                    />
+                                )}
+                                <span
+                                    className="profile-avatar-overlay"
+                                    aria-hidden="true"
+                                >
+                                    <ImagePlus size={19} />
+                                </span>
+                            </button>
+                            <div>
+                                <h3>{character.data.name}</h3>
+                                {getCharacterTagline(character) && (
+                                    <p>{getCharacterTagline(character)}</p>
+                                )}
+                                {avatarError && (
+                                    <p className="character-inline-error">
+                                        {avatarError}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <input
+                            ref={avatarInputRef}
+                            hidden
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={(event) => {
+                                const file = (event.currentTarget as HTMLInputElement)
+                                    .files?.[0];
+
+                                if (file) {
+                                    void uploadAvatar(file);
+                                }
+                            }}
+                        />
+
+                        <div className="character-form">
+                            <label>
+                                Name
+                                <input
+                                    value={character.data.name}
+                                    onInput={(event) =>
+                                        updateField(
+                                            "name",
+                                            (event.currentTarget as HTMLInputElement)
+                                                .value,
+                                        )
+                                    }
                                 />
-                            ) : (
-                                <img
-                                    className="profile-avatar image-avatar empty-avatar"
-                                    src={characterInitialAvatar(character.data.name)}
-                                    alt=""
+                            </label>
+                            <label>
+                                Description
+                                <textarea
+                                    value={character.data.description}
+                                    placeholder="{{char}} is a..."
+                                    onInput={(event) =>
+                                        updateField(
+                                            "description",
+                                            (event.currentTarget as HTMLTextAreaElement)
+                                                .value,
+                                        )
+                                    }
                                 />
-                            )}
-                            <span className="profile-avatar-overlay" aria-hidden="true">
-                                <ImagePlus size={19} />
-                            </span>
-                        </button>
-                        <div>
-                            <h3>{character.data.name}</h3>
-                            {getCharacterTagline(character) && (
-                                <p>{getCharacterTagline(character)}</p>
-                            )}
-                            {avatarError && (
-                                <p className="character-inline-error">{avatarError}</p>
-                            )}
+                            </label>
+                            <label>
+                                Scenario
+                                <textarea
+                                    value={character.data.scenario}
+                                    placeholder="A mountain full of donuts..."
+                                    onInput={(event) =>
+                                        updateField(
+                                            "scenario",
+                                            (event.currentTarget as HTMLTextAreaElement)
+                                                .value,
+                                        )
+                                    }
+                                />
+                            </label>
+                            <label>
+                                First message
+                                <textarea
+                                    value={character.data.first_mes}
+                                    placeholder="Hello, I'm {{char}}!"
+                                    onInput={(event) =>
+                                        updateField(
+                                            "first_mes",
+                                            (event.currentTarget as HTMLTextAreaElement)
+                                                .value,
+                                        )
+                                    }
+                                />
+                            </label>
+
+                            <div className="character-panel-actions">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveDialog("greetings")}
+                                >
+                                    <ListPlus size={15} />
+                                    Greetings
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveDialog("details")}
+                                >
+                                    <SlidersHorizontal size={15} />
+                                    Details
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <input
-                        ref={avatarInputRef}
-                        hidden
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={(event) => {
-                            const file = (event.currentTarget as HTMLInputElement)
-                                .files?.[0];
+                )}
 
-                            if (file) {
-                                void uploadAvatar(file);
-                            }
-                        }}
-                    />
-
-                    <div className="character-form">
-                        <label>
-                            Name
-                            <input
-                                value={character.data.name}
-                                onInput={(event) =>
-                                    updateField(
-                                        "name",
-                                        (event.currentTarget as HTMLInputElement).value,
-                                    )
-                                }
-                            />
-                        </label>
-                        <label>
-                            Description
-                            <textarea
-                                value={character.data.description}
-                                placeholder="{{char}} is a..."
-                                onInput={(event) =>
-                                    updateField(
-                                        "description",
-                                        (event.currentTarget as HTMLTextAreaElement)
-                                            .value,
-                                    )
-                                }
-                            />
-                        </label>
-                        <label>
-                            Scenario
-                            <textarea
-                                value={character.data.scenario}
-                                placeholder="A mountain full of donuts..."
-                                onInput={(event) =>
-                                    updateField(
-                                        "scenario",
-                                        (event.currentTarget as HTMLTextAreaElement)
-                                            .value,
-                                    )
-                                }
-                            />
-                        </label>
-                        <label>
-                            First message
-                            <textarea
-                                value={character.data.first_mes}
-                                placeholder="Hello, I'm {{char}}!"
-                                onInput={(event) =>
-                                    updateField(
-                                        "first_mes",
-                                        (event.currentTarget as HTMLTextAreaElement)
-                                            .value,
-                                    )
-                                }
-                            />
-                        </label>
-
-                        <div className="character-panel-actions">
-                            <button
-                                type="button"
-                                onClick={() => setActiveDialog("greetings")}
-                            >
-                                <ListPlus size={15} />
-                                Greetings
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveDialog("details")}
-                            >
-                                <SlidersHorizontal size={15} />
-                                Details
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                {!isOpen && (
+                    <button
+                        className="collapsed-panel-button"
+                        type="button"
+                        title="Open character panel"
+                        onClick={() => onOpenChange(true)}
+                    >
+                        <ChevronLeft size={18} />
+                        <span>Character</span>
+                    </button>
+                )}
+            </aside>
 
             {activeDialog && (
                 <div
@@ -515,18 +535,6 @@ export function CharacterPanel({
                     </section>
                 </div>
             )}
-
-            {!isOpen && (
-                <button
-                    className="collapsed-panel-button"
-                    type="button"
-                    title="Open character panel"
-                    onClick={() => onOpenChange(true)}
-                >
-                    <ChevronLeft size={18} />
-                    <span>Character</span>
-                </button>
-            )}
-        </aside>
+        </>
     );
 }

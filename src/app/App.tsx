@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { CharacterPanel } from "../features/characters/CharacterPanel";
 import { ChatWorkspace } from "../features/chat/ChatWorkspace";
 import { OptionsModal } from "../features/settings/OptionsModal";
@@ -38,10 +38,17 @@ import { useChatSession } from "./useChatSession";
 import { usePersonaLibrary } from "./usePersonaLibrary";
 import "./App.css";
 
+const MOBILE_SIDEBAR_BREAKPOINT = 820;
+const CHARACTER_DRAWER_BREAKPOINT = 1120;
+
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
-    const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [characterOpen, setCharacterOpen] = useState(true);
+    const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+    const previousViewportWidthRef = useRef(window.innerWidth);
+    const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [desktopCharacterOpen, setDesktopCharacterOpen] = useState(false);
+    const [mobileCharacterOpen, setMobileCharacterOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [activeSettingsCategory, setActiveSettingsCategory] =
         useState<SettingsCategory>("connections");
@@ -116,6 +123,12 @@ export function App() {
         presetCollection,
         userStatus,
     });
+    const isMobileLayout = viewportWidth <= MOBILE_SIDEBAR_BREAKPOINT;
+    const isCharacterDrawerLayout = viewportWidth <= CHARACTER_DRAWER_BREAKPOINT;
+    const sidebarOpen = isMobileLayout ? mobileSidebarOpen : desktopSidebarOpen;
+    const characterOpen = isCharacterDrawerLayout
+        ? mobileCharacterOpen
+        : desktopCharacterOpen;
 
     useEffect(() => {
         void loadConnectionSettings();
@@ -124,6 +137,38 @@ export function App() {
         void loadPersonaCollection();
         void loadPlugins();
     }, []);
+
+    useEffect(() => {
+        function updateViewportWidth() {
+            setViewportWidth(window.innerWidth);
+        }
+
+        window.addEventListener("resize", updateViewportWidth);
+
+        return () => {
+            window.removeEventListener("resize", updateViewportWidth);
+        };
+    }, []);
+
+    useEffect(() => {
+        const previousViewportWidth = previousViewportWidthRef.current;
+
+        if (
+            previousViewportWidth > MOBILE_SIDEBAR_BREAKPOINT &&
+            viewportWidth <= MOBILE_SIDEBAR_BREAKPOINT
+        ) {
+            setMobileSidebarOpen(false);
+        }
+
+        if (
+            previousViewportWidth > CHARACTER_DRAWER_BREAKPOINT &&
+            viewportWidth <= CHARACTER_DRAWER_BREAKPOINT
+        ) {
+            setMobileCharacterOpen(false);
+        }
+
+        previousViewportWidthRef.current = viewportWidth;
+    }, [viewportWidth]);
 
     useEffect(() => {
         if (!preferencesInitialized) {
@@ -217,7 +262,13 @@ export function App() {
             const loadedPreferences = normalizeAppPreferences(await loadAppPreferences());
             setPreferences(loadedPreferences);
             setMode(loadedPreferences.chat.defaultMode);
-            setCharacterOpen(loadedPreferences.layout.characterPanelOpenByDefault);
+
+            setDesktopCharacterOpen(
+                loadedPreferences.layout.characterPanelOpenByDefault,
+            );
+            setMobileCharacterOpen(false);
+            setMobileSidebarOpen(false);
+
             setPreferencesLoadError("");
         } catch (error) {
             setPreferencesLoadError(messageFromError(error));
@@ -255,10 +306,42 @@ export function App() {
         setSettingsOpen(true);
     }
 
+    function setActiveSidebarOpen(isOpen: boolean) {
+        if (isMobileLayout) {
+            setMobileSidebarOpen(isOpen);
+            return;
+        }
+
+        setDesktopSidebarOpen(isOpen);
+    }
+
+    function setActiveCharacterOpen(isOpen: boolean) {
+        if (isCharacterDrawerLayout) {
+            setMobileCharacterOpen(isOpen);
+            return;
+        }
+
+        setDesktopCharacterOpen(isOpen);
+    }
+
     return (
         <main
-            className={`app-shell ${sidebarOpen ? "" : "sidebar-collapsed"} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`}
+            className={`app-shell ${desktopSidebarOpen ? "" : "sidebar-collapsed"} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`}
         >
+            {isMobileLayout && sidebarOpen && (
+                <div
+                    className="sidebar-mobile-backdrop open"
+                    role="presentation"
+                    onClick={() => setMobileSidebarOpen(false)}
+                />
+            )}
+            {isCharacterDrawerLayout && hasCharacters && characterOpen && (
+                <div
+                    className="character-mobile-backdrop open"
+                    role="presentation"
+                    onClick={() => setMobileCharacterOpen(false)}
+                />
+            )}
             <Sidebar
                 activeChatId={activeChat?.id ?? ""}
                 activeCharacterId={character.id}
@@ -274,10 +357,15 @@ export function App() {
                 isOpen={sidebarOpen}
                 onCreateCharacter={() => void createCharacter()}
                 onImportCharacterFiles={(files) => void importCharacterFiles(files)}
-                onNewChat={startNewChat}
+                onNewChat={() => {
+                    startNewChat();
+                    if (isMobileLayout) {
+                        setMobileSidebarOpen(false);
+                    }
+                }}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onOpenPersonasSettings={openPersonasSettings}
-                onOpenChange={setSidebarOpen}
+                onOpenChange={setActiveSidebarOpen}
                 chatCountsByCharacterId={chatCountsByCharacterId}
                 onDeleteCharacter={(characterId, options) =>
                     void deleteCharacter(characterId, options)
@@ -290,8 +378,18 @@ export function App() {
                 }
                 onDeleteChat={(chatId) => void deleteChat(chatId)}
                 onRenameChat={(chatId, title) => void renameChat(chatId, title)}
-                onSelectChat={(chatId) => void selectChat(chatId)}
-                onSelectCharacter={(characterId) => void selectCharacter(characterId)}
+                onSelectChat={(chatId) => {
+                    void selectChat(chatId);
+                    if (isMobileLayout) {
+                        setMobileSidebarOpen(false);
+                    }
+                }}
+                onSelectCharacter={(characterId) => {
+                    void selectCharacter(characterId);
+                    if (isMobileLayout) {
+                        setMobileSidebarOpen(false);
+                    }
+                }}
                 onSelectPersona={(personaId) => void selectPersona(personaId)}
                 onStatusChange={setUserStatus}
             />
@@ -321,6 +419,41 @@ export function App() {
                 onNextSwipe={(messageId) => void chatSession.nextSwipe(messageId)}
                 onPreviousSwipe={chatSession.previousSwipe}
                 onSendMessage={chatSession.sendMessage}
+                onToggleSidebar={() => {
+                    if (isMobileLayout) {
+                        setMobileSidebarOpen((prev) => !prev);
+                        setMobileCharacterOpen(false);
+                        return;
+                    }
+
+                    setDesktopSidebarOpen((prev) => !prev);
+
+                    if (isCharacterDrawerLayout) {
+                        setMobileCharacterOpen(false);
+                    } else {
+                        setDesktopCharacterOpen(false);
+                    }
+                }}
+                onToggleCharacter={
+                    hasCharacters
+                        ? () => {
+                              if (isCharacterDrawerLayout) {
+                                  setMobileCharacterOpen((prev) => !prev);
+
+                                  if (isMobileLayout) {
+                                      setMobileSidebarOpen(false);
+                                  } else {
+                                      setDesktopSidebarOpen(false);
+                                  }
+
+                                  return;
+                              }
+
+                              setDesktopCharacterOpen((prev) => !prev);
+                              setDesktopSidebarOpen(false);
+                          }
+                        : undefined
+                }
                 pluginSnapshot={pluginSnapshot}
             />
 
@@ -331,7 +464,7 @@ export function App() {
                     onChange={updateActiveCharacter}
                     onBeforeAvatarUpload={prepareCharacterAvatarUpload}
                     onSavedCharacter={applySavedCharacter}
-                    onOpenChange={setCharacterOpen}
+                    onOpenChange={setActiveCharacterOpen}
                 />
             )}
 

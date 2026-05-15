@@ -113,6 +113,9 @@ export function PersonaBar({
                             <button
                                 type="button"
                                 role="menuitem"
+                                aria-haspopup="menu"
+                                aria-expanded={personaPanelOpen}
+                                onClick={() => setPersonaPanelOpen((open) => !open)}
                                 onFocus={() => setPersonaPanelOpen(true)}
                             >
                                 <Users size={15} />

@@ -1175,7 +1175,7 @@
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     width: min(920px, calc(100vw - 44px));
-    height: min(720px, calc(100vh - 44px));
+    height: min(720px, calc(100dvh - 44px));
     overflow: hidden;
     border: 1px solid #343845;
     border-radius: 8px;

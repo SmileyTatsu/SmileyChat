@@ -265,7 +265,7 @@
     align-content: start;
     justify-items: stretch;
     min-height: 0;
-    max-height: min(280px, 34vh);
+    max-height: min(280px, 34dvh);
 }
 
 .character-row {

@@ -1,6 +1,6 @@
 .character-panel {
     position: relative;
-    height: 100vh;
+    height: 100%;
     min-height: 0;
     overflow: hidden;
     border-left: 1px solid #262831;
@@ -255,8 +255,8 @@
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     width: min(820px, calc(100vw - 48px));
-    max-height: min(840px, calc(100vh - 48px));
-    min-height: min(560px, calc(100vh - 48px));
+    max-height: min(840px, calc(100dvh - 48px));
+    min-height: min(560px, calc(100dvh - 48px));
     border: 1px solid #303440;
     border-radius: 10px;
     background: #17191f;

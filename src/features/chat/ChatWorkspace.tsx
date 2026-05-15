@@ -28,6 +28,8 @@ type ChatWorkspaceProps = {
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     onSendMessage: (draft: string) => void | Promise<void>;
+    onToggleSidebar?: () => void;
+    onToggleCharacter?: () => void;
     pluginSnapshot: PluginAppSnapshot;
 };
 
@@ -49,6 +51,8 @@ export function ChatWorkspace({
     onNextSwipe,
     onPreviousSwipe,
     onSendMessage,
+    onToggleSidebar,
+    onToggleCharacter,
     pluginSnapshot,
 }: ChatWorkspaceProps) {
     return (
@@ -59,6 +63,8 @@ export function ChatWorkspace({
                 chatTitle={chatTitle}
                 mode={mode}
                 onModeChange={onModeChange}
+                onToggleSidebar={onToggleSidebar}
+                onToggleCharacter={onToggleCharacter}
             />
             {emptyState ? (
                 <div className="chat-empty-state">
