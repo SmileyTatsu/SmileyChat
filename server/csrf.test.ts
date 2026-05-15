@@ -4,7 +4,7 @@ import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 const csrfSecret = "test-csrf-secret-that-is-long-enough-for-smileychat";
 const originalSecret = process.env.SMILEYCHAT_CSRF_SECRET;
 const originalTrustedOrigins = process.env.SMILEYCHAT_TRUSTED_ORIGINS;
-const API_PORT = process.env.SMILEYCHAT_API_PORT ?? "5173";
+const API_PORT = process.env.SMILEYCHAT_API_PORT ?? "4173";
 
 describe("CSRF request verification", () => {
     beforeEach(() => {
