@@ -409,15 +409,7 @@ function api<Path extends string, WebSocketData = undefined>(
     return async (request: Bun.BunRequest<Path>, server: Bun.Server<WebSocketData>) => {
         try {
             await verifyCsrfRequest(request);
-
-            // Handlers receive a proxy request for decoded params, but Bun timeout()
-            // requires the original request object. Otherwise it will throw error
-            const timeout = server.timeout.bind(server);
-
-            const wrappedServer = Object.create(server) as Bun.Server<WebSocketData>;
-            wrappedServer.timeout = (_request, seconds) => timeout(request, seconds);
-
-            return await handler(routeRequest(request), wrappedServer);
+            return await handler(routeRequest(request), server);
         } catch (error) {
             return apiErrorResponse(error);
         }
@@ -425,18 +417,12 @@ function api<Path extends string, WebSocketData = undefined>(
 }
 
 function routeRequest<Path extends string>(request: Bun.BunRequest<Path>) {
-    const params = decodeRouteParams(request.params);
-
-    return new Proxy(request, {
-        get(target, property, receiver) {
-            if (property === "params") {
-                return params;
-            }
-
-            const value = Reflect.get(target, property, receiver);
-            return typeof value === "function" ? value.bind(target) : value;
-        },
+    Object.defineProperty(request, "params", {
+        value: decodeRouteParams(request.params),
+        configurable: true,
     });
+
+    return request;
 }
 
 function decodeRouteParams<Path extends string>(params: Bun.BunRequest<Path>["params"]) {
