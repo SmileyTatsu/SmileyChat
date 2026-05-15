@@ -2,7 +2,10 @@ import defaultGoogleAIModels from "../../data/defaultGoogleAIModels.json";
 import defaultOpenAIModels from "../../data/defaultOpenAIModels.json";
 import { isRecord } from "../common/guards";
 import type { GoogleAIConnectionConfig } from "./google-ai/types";
-import type { OpenAICompatibleConnectionConfig } from "./openai-compatible/types";
+import type {
+    OpenAICompatibleConnectionConfig,
+    OpenAICompatibleReasoningConfig,
+} from "./openai-compatible/types";
 import type {
     OpenRouterConnectionConfig,
     OpenRouterProviderPreferences,
@@ -480,6 +483,32 @@ function normalizeOpenAICompatibleConfig(
                     ? model.id
                     : defaultOpenAICompatibleConfig.model.id,
         },
+        reasoning: normalizeOpenAICompatibleReasoningConfig(config.reasoning),
+    };
+}
+
+function normalizeOpenAICompatibleReasoningConfig(
+    value: unknown,
+): OpenAICompatibleReasoningConfig | undefined {
+    const reasoning = isRecord(value) ? value : {};
+
+    if (reasoning.enabled !== true) {
+        return undefined;
+    }
+
+    const effort = normalizeOpenAICompatibleReasoningEffort(reasoning.effort);
+
+    if (!effort) {
+        return undefined;
+    }
+
+    return {
+        enabled: true,
+        effort,
+        wireFormat:
+            reasoning.wireFormat === "chat-reasoning-object"
+                ? "chat-reasoning-object"
+                : "chat-reasoning-effort",
     };
 }
 
@@ -504,6 +533,19 @@ function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
 
 function normalizeProvider(value: unknown): ConnectionProviderId | undefined {
     return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function normalizeOpenAICompatibleReasoningEffort(
+    value: unknown,
+): OpenAICompatibleReasoningConfig["effort"] | undefined {
+    return value === "xhigh" ||
+        value === "high" ||
+        value === "medium" ||
+        value === "low" ||
+        value === "minimal" ||
+        value === "none"
+        ? value
+        : undefined;
 }
 
 function normalizePluginConfig(value: unknown): Record<string, unknown> {

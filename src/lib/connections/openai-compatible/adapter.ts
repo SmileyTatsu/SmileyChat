@@ -39,6 +39,8 @@ export function createOpenAICompatibleConnection(
             if (body.stream) {
                 let message = "";
                 let model: string | undefined;
+                let reasoning = "";
+                let reasoningDetails: unknown;
 
                 await readChatCompletionStream(response, (chunk) => {
                     if (chunk.error?.message) {
@@ -50,6 +52,21 @@ export function createOpenAICompatibleConnection(
                     model = chunk.model ?? model;
 
                     const token = chunk.choices?.[0]?.delta?.content;
+                    const reasoningToken = chunk.choices?.[0]?.delta?.reasoning;
+                    const nextReasoningDetails =
+                        chunk.choices?.[0]?.delta?.reasoning_details;
+
+                    if (reasoningToken) {
+                        reasoning += reasoningToken;
+                        request.onReasoningToken?.(reasoningToken);
+                    }
+
+                    if (nextReasoningDetails !== undefined) {
+                        reasoningDetails = mergeReasoningDetails(
+                            reasoningDetails,
+                            nextReasoningDetails,
+                        );
+                    }
 
                     if (token) {
                         message += token;
@@ -67,6 +84,8 @@ export function createOpenAICompatibleConnection(
                     message: message.trim(),
                     provider: "openai-compatible",
                     model,
+                    ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
+                    ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                 };
             }
 
@@ -75,4 +94,24 @@ export function createOpenAICompatibleConnection(
             return normalizeChatCompletion(data);
         },
     };
+}
+
+function mergeReasoningDetails(current: unknown, next: unknown) {
+    if (Array.isArray(current) && Array.isArray(next)) {
+        return [...current, ...next];
+    }
+
+    if (Array.isArray(current)) {
+        return [...current, next];
+    }
+
+    if (current !== undefined && Array.isArray(next)) {
+        return [current, ...next];
+    }
+
+    if (current !== undefined) {
+        return [current, next];
+    }
+
+    return next;
 }

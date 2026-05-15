@@ -2,6 +2,7 @@ import defaultModelCategories from "../../../../data/defaultOpenAIModels.json";
 import type {
     OpenAICompatibleConnectionConfig,
     OpenAICompatibleModel,
+    OpenAICompatibleReasoningConfig,
 } from "../../../../lib/connections/openai-compatible/types";
 
 type OpenAICompatibleConnectionProps = {
@@ -27,6 +28,34 @@ export function OpenAICompatibleConnection({
 }: OpenAICompatibleConnectionProps) {
     function updateConfig(nextConfig: Partial<OpenAICompatibleConnectionConfig>) {
         onChange({ ...config, ...nextConfig });
+    }
+
+    function updateReasoning(nextReasoning: OpenAICompatibleReasoningConfig | undefined) {
+        updateConfig({ reasoning: nextReasoning });
+    }
+
+    function setReasoningEnabled(enabled: boolean) {
+        if (!enabled) {
+            updateReasoning(undefined);
+            return;
+        }
+
+        updateReasoning({
+            enabled: true,
+            effort: config.reasoning?.effort ?? "medium",
+            wireFormat: config.reasoning?.wireFormat ?? "chat-reasoning-effort",
+        });
+    }
+
+    function updateReasoningPatch(
+        nextReasoning: Partial<OpenAICompatibleReasoningConfig>,
+    ) {
+        updateReasoning({
+            enabled: true,
+            effort: config.reasoning?.effort ?? "medium",
+            wireFormat: config.reasoning?.wireFormat ?? "chat-reasoning-effort",
+            ...nextReasoning,
+        });
     }
 
     function updateSelectedModel(value: string) {
@@ -67,6 +96,8 @@ export function OpenAICompatibleConnection({
             ? "custom:"
             : `${config.model.source}:${config.model.id}`;
     const hasLoadedApiModels = models.length > 0;
+    const reasoning = config.reasoning;
+    const reasoningEnabled = reasoning?.enabled === true;
     const savedApiModelId =
         !hasLoadedApiModels && config.model.source === "api" && config.model.id.length > 0
             ? config.model.id
@@ -178,6 +209,65 @@ export function OpenAICompatibleConnection({
                     }
                 />
             </label>
+            <div className="connection-card">
+                <h4>Reasoning / Thinking Tokens</h4>
+                <div className="preset-toggle-row">
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={reasoningEnabled}
+                            onInput={(event) =>
+                                setReasoningEnabled(
+                                    (event.currentTarget as HTMLInputElement).checked,
+                                )
+                            }
+                        />
+                        Enable reasoning controls
+                    </label>
+                </div>
+                <div className="connection-field-grid">
+                    <label>
+                        Wire format
+                        <select
+                            value={reasoning?.wireFormat ?? "chat-reasoning-effort"}
+                            disabled={!reasoningEnabled}
+                            onInput={(event) =>
+                                updateReasoningPatch({
+                                    wireFormat: (event.currentTarget as HTMLSelectElement)
+                                        .value as OpenAICompatibleReasoningConfig["wireFormat"],
+                                })
+                            }
+                        >
+                            <option value="chat-reasoning-effort">
+                                Chat Completions: reasoning_effort
+                            </option>
+                            <option value="chat-reasoning-object">
+                                Chat Completions: reasoning object
+                            </option>
+                        </select>
+                    </label>
+                    <label>
+                        Effort level
+                        <select
+                            value={reasoning?.effort ?? "medium"}
+                            disabled={!reasoningEnabled}
+                            onInput={(event) =>
+                                updateReasoningPatch({
+                                    effort: (event.currentTarget as HTMLSelectElement)
+                                        .value as OpenAICompatibleReasoningConfig["effort"],
+                                })
+                            }
+                        >
+                            <option value="none">None</option>
+                            <option value="minimal">Minimal</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="xhigh">Extra high</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
             <div className="connection-actions">
                 <button type="button" disabled={disabled} onClick={onSave}>
                     Save
