@@ -42,8 +42,11 @@ export async function writePersonaAvatarAssetBytes(
         throw new BadRequestError("Avatar image is too large. Use an image under 20 MB.");
     }
 
-    if (detectImageType(bytes) !== avatarType) {
-        throw new BadRequestError("Avatar file content is not a valid image.");
+    const detectedType = detectImageType(bytes);
+    if (detectedType !== avatarType) {
+        throw new BadRequestError(
+            `Avatar file content does not match its image type. Expected ${avatarType}, got ${detectedType || "unknown"}.`,
+        );
     }
 
     const extension = avatarType === "jpeg" ? "jpg" : avatarType;
