@@ -37,5 +37,4 @@ echo "Building SmileyChat..."
 BUN_OPTIONS="--os=linux" bun run build
 
 echo "Starting SmileyChat..."
-echo "Open http://127.0.0.1:4173 in your browser."
 BUN_OPTIONS="--os=linux" bun run start

@@ -49,7 +49,6 @@ if errorlevel 1 (
 )
 
 echo Starting SmileyChat...
-echo Open http://127.0.0.1:4173 in your browser.
 bun run start
 
 pause
