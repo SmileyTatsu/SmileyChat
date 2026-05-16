@@ -3,7 +3,6 @@ import { characterToSummary } from "#frontend/lib/characters/normalize";
 import {
     avatarTypeForContentType,
     deleteCharacterAvatarAsset,
-    detectImageType,
     writeAvatarAssetBytes,
 } from "./character-images";
 import {
@@ -13,7 +12,6 @@ import {
     writeCharacterWithBasePath,
 } from "./character-store";
 import { BadRequestError, NotFoundError } from "./http";
-import { maxAvatarBytes } from "./paths";
 
 export async function writeCharacterAvatar(characterId: string, request: Request) {
     const contentType = request.headers.get("Content-Type")?.split(";")[0].trim() ?? "";
@@ -24,20 +22,6 @@ export async function writeCharacterAvatar(characterId: string, request: Request
     }
 
     const bytes = new Uint8Array(await request.arrayBuffer());
-
-    if (bytes.byteLength === 0) {
-        throw new BadRequestError("Avatar image is empty.");
-    }
-
-    if (bytes.byteLength > maxAvatarBytes) {
-        throw new BadRequestError("Avatar image is too large. Use an image under 20 MB.");
-    }
-
-    const detectedType = detectImageType(bytes);
-
-    if (detectedType !== avatarType) {
-        throw new BadRequestError("Avatar file content does not match its image type.");
-    }
 
     const character = await readCharacterById(characterId);
 
