@@ -1,21 +1,14 @@
-import {
-    getMessageAttachments,
-    getMessageContent,
-    getMessageReasoning,
-    getMessageReasoningDetails,
-} from "#frontend/lib/messages";
-import type { Message } from "#frontend/types";
-
 import type {
-    ChatGenerationMessage,
     ChatGenerationRequest,
     ChatGenerationResult,
 } from "../types";
-import { hasImageContent } from "../images";
+import {
+    createChatCompletionMessages,
+    normalizeChatCompletionResponse,
+} from "../chat-completions";
 import type {
     OpenRouterChatCompletionRequest,
     OpenRouterChatCompletionResponse,
-    OpenRouterChatMessage,
     OpenRouterConnectionConfig,
     OpenRouterProviderPreferences,
     OpenRouterReasoningConfig,
@@ -25,9 +18,12 @@ export function createOpenRouterChatCompletionBody(
     request: ChatGenerationRequest,
     config: OpenRouterConnectionConfig,
 ): OpenRouterChatCompletionRequest {
-    const messages = request.promptMessages?.length
-        ? request.promptMessages.map(toOpenRouterPromptMessage)
-        : legacyMessages(request);
+    const messages = createChatCompletionMessages(request, {
+        includeReasoningHistory: true,
+        mapPromptRole: (role) => (role === "developer" ? "system" : role),
+        mapHistoryRole: (message) =>
+            message.role === "user" ? "user" : "assistant",
+    });
     const provider = cleanProviderPreferences(config.providerPreferences);
     const reasoning = cleanReasoningConfig(config.reasoning);
 
@@ -43,35 +39,12 @@ export function createOpenRouterChatCompletionBody(
 export function normalizeOpenRouterChatCompletion(
     response: OpenRouterChatCompletionResponse,
 ): ChatGenerationResult {
-    const firstChoice = response.choices[0];
-
-    if (firstChoice?.error?.message) {
-        throw new Error(`OpenRouter provider error: ${firstChoice.error.message}`);
-    }
-
-    const responseMessage = firstChoice?.message;
-    const message = responseMessage?.content?.trim();
-    const images = responseMessage?.images
-        ?.map((image) => image.image_url?.url)
-        .filter((url): url is string => typeof url === "string" && Boolean(url));
-
-    if (!message && !images?.length) {
-        throw new Error("OpenRouter response did not include message content.");
-    }
-
-    return {
-        message: message ?? "",
-        ...(images?.length ? { images } : {}),
+    return normalizeChatCompletionResponse(response, {
+        allowImages: true,
         provider: "openrouter",
-        model: response.model,
-        ...(responseMessage?.reasoning?.trim()
-            ? { reasoning: responseMessage.reasoning.trim() }
-            : {}),
-        ...(responseMessage?.reasoning_details !== undefined
-            ? { reasoningDetails: responseMessage.reasoning_details }
-            : {}),
-        raw: response,
-    };
+        providerErrorPrefix: "OpenRouter provider error",
+        emptyMessage: "OpenRouter response did not include message content.",
+    });
 }
 
 export function cleanReasoningConfig(
@@ -160,68 +133,6 @@ export function parseOpenRouterSlugList(value: string) {
 
 export function formatOpenRouterSlugList(value: string[] | undefined) {
     return cleanSlugList(value).join(", ");
-}
-
-function toOpenRouterPromptMessage(
-    message: ChatGenerationMessage,
-): OpenRouterChatMessage {
-    return {
-        role: message.role === "developer" ? "system" : message.role,
-        content: message.content,
-        ...(message.reasoning ? { reasoning: message.reasoning } : {}),
-        ...(message.reasoningDetails !== undefined
-            ? { reasoning_details: message.reasoningDetails }
-            : {}),
-    };
-}
-
-function toOpenRouterMessage(message: Message): OpenRouterChatMessage {
-    const reasoning = getMessageReasoning(message);
-    const reasoningDetails = getMessageReasoningDetails(message);
-
-    return {
-        role: message.role === "user" ? "user" : "assistant",
-        content: messageContentWithAttachments(message),
-        ...(reasoning ? { reasoning } : {}),
-        ...(reasoningDetails !== undefined
-            ? { reasoning_details: reasoningDetails }
-            : {}),
-    };
-}
-
-function messageContentWithAttachments(
-    message: Message,
-): OpenRouterChatMessage["content"] {
-    const content = getMessageContent(message);
-    const attachments = getMessageAttachments(message);
-
-    if (attachments.length === 0) {
-        return content;
-    }
-
-    return [
-        ...(content ? [{ type: "text" as const, text: content }] : []),
-        ...attachments.map((attachment) => ({
-            type: "image_url" as const,
-            image_url: { url: attachment.url },
-        })),
-    ];
-}
-
-function legacyMessages(request: ChatGenerationRequest): OpenRouterChatMessage[] {
-    const messages = request.messages.map(toOpenRouterMessage);
-
-    if (!request.context?.trim()) {
-        return messages;
-    }
-
-    return [
-        {
-            role: "system",
-            content: request.context,
-        },
-        ...messages,
-    ];
 }
 
 function cleanSlugList(value: string[] | undefined) {

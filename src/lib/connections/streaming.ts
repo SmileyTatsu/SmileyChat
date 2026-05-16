@@ -26,6 +26,18 @@ export async function readChatCompletionStream(
     onChunk: (chunk: ChatCompletionStreamChunk) => void,
     signal?: AbortSignal,
 ) {
+    await readJsonServerSentEvents<ChatCompletionStreamChunk>(
+        response,
+        onChunk,
+        signal,
+    );
+}
+
+export async function readJsonServerSentEvents<TChunk>(
+    response: Response,
+    onChunk: (chunk: TChunk) => void,
+    signal?: AbortSignal,
+) {
     if (!response.body) {
         throw new Error("Streaming response did not include a readable body.");
     }
@@ -79,9 +91,9 @@ export async function readChatCompletionStream(
     }
 }
 
-function parseServerSentEvent(
+function parseServerSentEvent<TChunk>(
     event: string,
-    onChunk: (chunk: ChatCompletionStreamChunk) => void,
+    onChunk: (chunk: TChunk) => void,
 ) {
     const dataLines = event
         .split(/\r?\n/)
@@ -99,6 +111,6 @@ function parseServerSentEvent(
         return;
     }
 
-    const chunk = JSON.parse(data) as ChatCompletionStreamChunk;
+    const chunk = JSON.parse(data) as TChunk;
     onChunk(chunk);
 }

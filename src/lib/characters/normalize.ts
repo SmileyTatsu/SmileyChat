@@ -1,5 +1,13 @@
 import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
+import {
+    asString,
+    normalizeArray,
+    normalizeImageAvatar,
+    normalizeTimestamps,
+    normalizeUpdatedAt,
+    selectActiveId,
+} from "../common/normalize";
 
 import { defaultCharacterData } from "./defaults";
 import type {
@@ -45,23 +53,12 @@ export function normalizeCharacterCollection(value: unknown): CharacterCollectio
         };
     }
 
-    const characters = Array.isArray(value.characters)
-        ? value.characters
-              .map(normalizeCharacter)
-              .filter((character): character is SmileyCharacter => Boolean(character))
-        : [];
-    const safeCharacters = characters;
-    const requestedActiveId = asString(value.activeCharacterId);
-    const activeCharacterId = safeCharacters.some(
-        (character) => character.id === requestedActiveId,
-    )
-        ? requestedActiveId
-        : (safeCharacters[0]?.id ?? "");
+    const characters = normalizeArray(value.characters, normalizeCharacter);
 
     return {
         version: 1,
-        activeCharacterId,
-        characters: safeCharacters,
+        activeCharacterId: selectActiveId(characters, value.activeCharacterId),
+        characters,
     };
 }
 
@@ -76,23 +73,12 @@ export function normalizeCharacterSummaryCollection(
         };
     }
 
-    const characters = Array.isArray(value.characters)
-        ? value.characters
-              .map(normalizeCharacterSummary)
-              .filter((character): character is CharacterSummary => Boolean(character))
-        : [];
-    const safeCharacters = characters;
-    const requestedActiveId = asString(value.activeCharacterId);
-    const activeCharacterId = safeCharacters.some(
-        (character) => character.id === requestedActiveId,
-    )
-        ? requestedActiveId
-        : (safeCharacters[0]?.id ?? "");
+    const characters = normalizeArray(value.characters, normalizeCharacterSummary);
 
     return {
         version: 1,
-        activeCharacterId,
-        characters: safeCharacters,
+        activeCharacterId: selectActiveId(characters, value.activeCharacterId),
+        characters,
     };
 }
 
@@ -103,8 +89,9 @@ export function normalizeCharacter(value: unknown): SmileyCharacter | undefined 
 
     const now = new Date().toISOString();
     const id = asString(value.id) || createId("character");
-    const avatar = normalizeAvatar(value.avatar);
+    const avatar = normalizeImageAvatar(value.avatar);
     const importedFrom = normalizeImportedFrom(value.importedFrom);
+    const timestamps = normalizeTimestamps(value, now);
 
     return {
         id,
@@ -112,8 +99,7 @@ export function normalizeCharacter(value: unknown): SmileyCharacter | undefined 
         data: normalizeTavernCardData(value.data),
         ...(avatar ? { avatar } : {}),
         ...(importedFrom ? { importedFrom } : {}),
-        createdAt: asIsoString(value.createdAt) || now,
-        updatedAt: asIsoString(value.updatedAt) || now,
+        ...timestamps,
     };
 }
 
@@ -124,7 +110,7 @@ function normalizeCharacterSummary(value: unknown): CharacterSummary | undefined
 
     const id = asString(value.id);
     const name = asString(value.name);
-    const avatar = normalizeAvatar(value.avatar);
+    const avatar = normalizeImageAvatar(value.avatar);
     const importedFrom = normalizeImportedFrom(value.importedFrom);
 
     if (!id || !name) {
@@ -137,7 +123,9 @@ function normalizeCharacterSummary(value: unknown): CharacterSummary | undefined
         tagline: asString(value.tagline),
         ...(avatar ? { avatar } : {}),
         ...(importedFrom ? { importedFrom } : {}),
-        updatedAt: asString(value.updatedAt) || new Date().toISOString(),
+        updatedAt: normalizeUpdatedAt(value.updatedAt, undefined, {
+            requireIso: false,
+        }),
     };
 }
 
@@ -284,19 +272,6 @@ export function createBlankCharacter(name = "New character"): SmileyCharacter {
     };
 }
 
-function normalizeAvatar(value: unknown): SmileyCharacter["avatar"] | undefined {
-    if (
-        !isRecord(value) ||
-        (value.type !== "png" && value.type !== "jpeg" && value.type !== "webp")
-    ) {
-        return undefined;
-    }
-
-    const path = asString(value.path);
-
-    return path ? { type: value.type, path } : undefined;
-}
-
 function normalizeImportedFrom(
     value: unknown,
 ): SmileyCharacter["importedFrom"] | undefined {
@@ -401,18 +376,6 @@ function collectUnknownDataFields(source: Record<string, unknown>) {
 
 function getSmileychatExtension(extensions: Record<string, unknown>) {
     return isRecord(extensions.smileychat) ? extensions.smileychat : {};
-}
-
-function asString(value: unknown) {
-    return typeof value === "string" ? value : "";
-}
-
-function asIsoString(value: unknown) {
-    if (typeof value !== "string") {
-        return "";
-    }
-
-    return Number.isFinite(Date.parse(value)) ? value : "";
 }
 
 function asStringArray(value: unknown, repairText = false) {

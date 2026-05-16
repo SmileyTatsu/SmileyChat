@@ -467,8 +467,10 @@ const server = Bun.serve({
     },
 });
 
-console.log(`Open ${getBrowserUrl(hostname, port)} in your browser.`);
-console.log(`SmileyChat listening on ${formatListeningTarget(hostname, port)}.`);
+const listeningPort = server.port ?? port;
+
+console.log(`Open ${getBrowserUrl(hostname, listeningPort)} in your browser.`);
+console.log(`SmileyChat listening on ${formatListeningTarget(hostname, listeningPort)}.`);
 if (hostname === "0.0.0.0" || hostname === "::") {
     console.log(
         `[server] Reachable from LAN, Tailscale, and Docker. Loopback (127.0.0.1) is always allowed; ` +

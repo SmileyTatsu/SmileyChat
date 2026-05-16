@@ -1,5 +1,5 @@
 import { safeResponseText } from "../http";
-import { readChatCompletionStream } from "../streaming";
+import { consumeChatCompletionStream } from "../chat-completions";
 import type { ConnectionAdapter } from "../types";
 import {
     createOpenRouterChatCompletionBody,
@@ -39,69 +39,13 @@ export function createOpenRouterConnection(
             }
 
             if (body.stream) {
-                let message = "";
-                let model: string | undefined;
-                let reasoning = "";
-                let reasoningDetails: unknown;
-                const images: string[] = [];
-
-                await readChatCompletionStream(response, (chunk) => {
-                    if (chunk.error?.message) {
-                        throw new Error(
-                            `OpenRouter stream failed: ${chunk.error.message}`,
-                        );
-                    }
-
-                    model = chunk.model ?? model;
-
-                    const token = chunk.choices?.[0]?.delta?.content;
-                    const nextImages = chunk.choices?.[0]?.delta?.images
-                        ?.map((image) => image.image_url?.url)
-                        .filter(
-                            (url): url is string =>
-                                typeof url === "string" && Boolean(url),
-                        );
-                    const reasoningToken = chunk.choices?.[0]?.delta?.reasoning;
-                    const nextReasoningDetails =
-                        chunk.choices?.[0]?.delta?.reasoning_details;
-
-                    if (reasoningToken) {
-                        reasoning += reasoningToken;
-                        request.onReasoningToken?.(reasoningToken);
-                    }
-
-                    if (nextReasoningDetails !== undefined) {
-                        reasoningDetails = mergeReasoningDetails(
-                            reasoningDetails,
-                            nextReasoningDetails,
-                        );
-                    }
-
-                    if (token) {
-                        message += token;
-                        request.onToken?.(token);
-                    }
-
-                    if (nextImages?.length) {
-                        images.push(...nextImages);
-                        for (const url of nextImages) {
-                            request.onImage?.(url);
-                        }
-                    }
-                }, request.signal);
-
-                if (!message.trim() && images.length === 0) {
-                    throw new Error("OpenRouter stream did not include message content.");
-                }
-
-                return {
-                    message: message.trim(),
-                    ...(images.length ? { images } : {}),
+                return consumeChatCompletionStream(response, request, {
+                    allowImages: true,
                     provider: "openrouter",
-                    model,
-                    ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
-                    ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
-                };
+                    streamErrorPrefix: "OpenRouter stream failed",
+                    emptyMessage:
+                        "OpenRouter stream did not include message content.",
+                });
             }
 
             const data = (await response.json()) as OpenRouterChatCompletionResponse;
@@ -138,24 +82,4 @@ async function openRouterErrorText(response: Response) {
     } catch {
         return text;
     }
-}
-
-function mergeReasoningDetails(current: unknown, next: unknown) {
-    if (Array.isArray(current) && Array.isArray(next)) {
-        return [...current, ...next];
-    }
-
-    if (Array.isArray(current)) {
-        return [...current, next];
-    }
-
-    if (current !== undefined && Array.isArray(next)) {
-        return [current, ...next];
-    }
-
-    if (current !== undefined) {
-        return [current, next];
-    }
-
-    return next;
 }
