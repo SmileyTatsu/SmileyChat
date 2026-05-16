@@ -46,6 +46,7 @@ import {
 } from "./persona-store";
 import {
     deletePluginStorage,
+    proxyPluginFetch,
     readPluginManifests,
     readPluginStorage,
     servePluginAsset,
@@ -113,6 +114,12 @@ const server = Bun.serve({
         "/api/plugins": {
             GET: api(async () => {
                 return json({ plugins: await readPluginManifests() });
+            }),
+        },
+
+        "/api/plugins/fetch": {
+            POST: api(async (request) => {
+                return proxyPluginFetch(await readJsonBody(request));
             }),
         },
 

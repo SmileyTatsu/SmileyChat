@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/ho
 
 import { CharacterPanel } from "#frontend/features/characters/character-panel";
 import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
+import { PluginModalHost } from "#frontend/features/plugins/plugin-surfaces";
 import { OptionsModal } from "#frontend/features/settings/options-modal";
 import { Sidebar } from "#frontend/features/sidebar/sidebar";
 
@@ -33,6 +34,7 @@ import {
 } from "#frontend/lib/preferences/types";
 
 import {
+    setPluginAppActionHandlers,
     setPluginSnapshot,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
@@ -217,6 +219,17 @@ export function App() {
         [],
     );
 
+    useEffect(() => {
+        setPluginAppActionHandlers({
+            generateResponse: () => chatSession.sendMessage(""),
+            sendMessage: (content, options) =>
+                chatSession.sendMessage(content, options?.images),
+            switchCharacter: selectCharacter,
+        });
+
+        return () => setPluginAppActionHandlers({});
+    });
+
     const pluginSnapshot: PluginAppSnapshot = useMemo(
         () => ({
             activeChat,
@@ -391,6 +404,7 @@ export function App() {
                 characterLoadError={characterLoadError}
                 persona={persona}
                 personas={personaSummaries.personas}
+                pluginSnapshot={pluginSnapshot}
                 userStatus={userStatus}
                 hasCharacters={hasCharacters}
                 isOpen={sidebarOpen}
@@ -501,6 +515,7 @@ export function App() {
                 <CharacterPanel
                     character={character}
                     isOpen={characterOpen}
+                    pluginSnapshot={pluginSnapshot}
                     onChange={updateActiveCharacter}
                     onBeforeAvatarUpload={prepareCharacterAvatarUpload}
                     onSavedCharacter={applySavedCharacter}
@@ -541,6 +556,8 @@ export function App() {
                     userStatus={userStatus}
                 />
             )}
+
+            <PluginModalHost snapshot={pluginSnapshot} />
         </main>
     );
 }

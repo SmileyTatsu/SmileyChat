@@ -61,6 +61,19 @@ export type PluginSettingsPanel = {
     render: (props: PluginSettingsPanelProps) => ComponentChildren;
 };
 
+export type PluginSidebarPanelProps = {
+    pluginId: string;
+    storage: PluginStorageApi;
+    snapshot: PluginAppSnapshot;
+};
+
+export type PluginSidebarPanel = {
+    id: string;
+    label: string;
+    side: "left" | "right";
+    render: (props: PluginSidebarPanelProps) => ComponentChildren;
+};
+
 export type MessageRenderContext = {
     content: string;
     message: Message;
@@ -101,6 +114,17 @@ export type PluginComposerAction = {
     label: string;
     renderIcon?: () => VNode;
     run: (context: PluginComposerActionContext) => void | Promise<void>;
+};
+
+export type PluginHeaderActionContext = {
+    snapshot: PluginAppSnapshot;
+};
+
+export type PluginHeaderAction = {
+    id: string;
+    label: string;
+    renderIcon?: () => VNode;
+    run: (context: PluginHeaderActionContext) => void | Promise<void>;
 };
 
 export type ChatPipelineContext = {
@@ -163,18 +187,57 @@ export type PluginEventsApi = {
     emit(eventName: string, payload?: unknown): void;
 };
 
+export type PluginActionsApi = {
+    sendMessage(content: string, options?: { images?: File[] }): Promise<void>;
+    generateResponse(): Promise<void>;
+    switchCharacter(characterId: string): Promise<void>;
+    setDraft(text: string): void;
+    insertDraft(text: string): void;
+};
+
+export type PluginNetworkFetchInit = {
+    method?: string;
+    headers?: HeadersInit;
+    body?: string;
+    maxResponseBytes?: number;
+};
+
+export type PluginNetworkApi = {
+    fetch(url: string, init?: PluginNetworkFetchInit): Promise<Response>;
+};
+
+export type PluginModalProps = {
+    close: () => void;
+    snapshot: PluginAppSnapshot | undefined;
+};
+
+export type PluginModal = {
+    id: string;
+    title?: string;
+    render: (props: PluginModalProps) => ComponentChildren;
+};
+
+export type PluginModalInstance = PluginModal & {
+    pluginId: string;
+};
+
 export type SmileyPluginApi = {
     plugin: PluginManifest;
     state: {
         getSnapshot(): PluginAppSnapshot | undefined;
         subscribe(listener: (snapshot: PluginAppSnapshot) => void): () => void;
     };
+    actions: PluginActionsApi;
+    network: PluginNetworkApi;
     ui: {
         h: typeof import("preact").h;
         registerSettingsPanel(panel: PluginSettingsPanel): void;
+        registerSidebarPanel(panel: PluginSidebarPanel): void;
         registerMessageRenderer(renderer: MessageRenderer): void;
         registerMessageAction(action: PluginMessageAction): void;
         registerComposerAction(action: PluginComposerAction): void;
+        registerHeaderAction(action: PluginHeaderAction): void;
+        openModal(modal: PluginModal): () => void;
         addStyles(cssText: string): void;
     };
     chat: {

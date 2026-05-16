@@ -50,10 +50,15 @@ Recommended labels:
 
 - `state:read`
 - `ui:settings`
+- `ui:sidebar`
+- `ui:header`
+- `ui:modals`
 - `ui:messages`
 - `ui:message-actions`
 - `ui:composer`
 - `ui:styles`
+- `actions`
+- `network:fetch`
 - `chat:input`
 - `chat:prompt`
 - `chat:output`

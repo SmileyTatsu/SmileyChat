@@ -15,11 +15,14 @@ import {
     getEditableCharacterTagline,
     setCharacterTagline,
 } from "#frontend/lib/characters/normalize";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type {
     CharacterSummaryCollection,
     SmileyCharacter,
     TavernCardDataV2,
 } from "#frontend/types";
+
+import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
 
 type CharacterPanelProps = {
     character: SmileyCharacter;
@@ -31,6 +34,7 @@ type CharacterPanelProps = {
         character: SmileyCharacter,
         summaries?: CharacterSummaryCollection,
     ) => void;
+    pluginSnapshot: PluginAppSnapshot;
 };
 
 export function CharacterPanel({
@@ -40,6 +44,7 @@ export function CharacterPanel({
     onChange,
     onOpenChange,
     onSavedCharacter,
+    pluginSnapshot,
 }: CharacterPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const [activeDialog, setActiveDialog] = useState<"greetings" | "details" | "">("");
@@ -279,6 +284,11 @@ export function CharacterPanel({
                                     Details
                                 </button>
                             </div>
+
+                            <PluginSidebarPanels
+                                side="right"
+                                snapshot={pluginSnapshot}
+                            />
                         </div>
                     </div>
                 )}

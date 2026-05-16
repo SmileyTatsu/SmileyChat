@@ -14,6 +14,9 @@ Current plugin surfaces:
 - Options > Plugins list and per-plugin configuration.
 - Message rendering and message actions.
 - Composer actions.
+- Programmatic app actions.
+- Guarded outbound network fetch through the local server.
+- Sidebar panels, header actions, and app-hosted modals.
 - Chat input, prompt, and output middleware.
 - Custom preset macros.
 - Connection provider registration.

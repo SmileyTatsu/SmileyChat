@@ -27,10 +27,15 @@ These permissions are currently enforced:
 | API                                              | Required permission     |
 | ------------------------------------------------ | ----------------------- |
 | `api.state.getSnapshot`, `api.state.subscribe`   | `state:read`            |
+| `api.actions.*`                                  | `actions`               |
+| `api.network.fetch`                              | `network:fetch`         |
 | `api.ui.registerSettingsPanel`                   | `ui:settings`           |
+| `api.ui.registerSidebarPanel`                    | `ui:sidebar`            |
 | `api.ui.registerMessageRenderer`                 | `ui:messages`           |
 | `api.ui.registerMessageAction`                   | `ui:message-actions`    |
 | `api.ui.registerComposerAction`                  | `ui:composer`           |
+| `api.ui.registerHeaderAction`                    | `ui:header`             |
+| `api.ui.openModal`                               | `ui:modals`             |
 | `api.ui.addStyles` and manifest `styles` loading | `ui:styles`             |
 | `api.chat.registerInputMiddleware`               | `chat:input`            |
 | `api.chat.registerPromptMiddleware`              | `chat:prompt`           |
@@ -76,6 +81,33 @@ Snapshot contains:
 
 Treat snapshots as read-only.
 
+## `api.actions`
+
+Programmatic app actions.
+
+```js
+await api.actions.sendMessage("Hello");
+await api.actions.generateResponse();
+await api.actions.switchCharacter("character-id");
+api.actions.setDraft("Draft text");
+api.actions.insertDraft(" appended text");
+```
+
+Requires `actions`.
+
+## `api.network.fetch`
+
+Makes an outbound request through the local Bun server instead of the browser. This is intended for trusted local plugins that need non-provider helper APIs affected by CORS.
+
+```js
+const response = await api.network.fetch("https://example.com/data.json", {
+    headers: { Accept: "application/json" },
+});
+const data = await response.json();
+```
+
+Requires `network:fetch` and `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true` in `.env`. The server bridge allows HTTPS only, blocks loopback/private/reserved destinations through `safe-fetch.ts`, rechecks redirects, filters unsafe headers, and caps response size.
+
 ## `api.ui.h`
 
 Preact `h` helper for plugin UI.
@@ -98,6 +130,22 @@ api.ui.registerSettingsPanel({
 ```
 
 Requires `ui:settings`.
+
+## `api.ui.registerSidebarPanel`
+
+Adds a custom panel to the left or right sidebar.
+
+```js
+api.ui.registerSidebarPanel({
+    id: "lorebook",
+    label: "Lorebook",
+    side: "right",
+    render: ({ snapshot }) =>
+        api.ui.h("p", null, `Active character: ${snapshot.character.data.name}`),
+});
+```
+
+Requires `ui:sidebar`.
 
 ## `api.ui.registerMessageRenderer`
 
@@ -155,6 +203,45 @@ Context includes:
 - `snapshot`
 
 Requires `ui:composer`.
+
+## `api.ui.registerHeaderAction`
+
+Adds a compact action button to the chat header.
+
+```js
+api.ui.registerHeaderAction({
+    id: "open-lore",
+    label: "Open lore",
+    run: () => {
+        api.ui.openModal({
+            id: "lore-modal",
+            title: "Lore",
+            render: ({ close }) =>
+                api.ui.h("button", { type: "button", onClick: close }, "Close"),
+        });
+    },
+});
+```
+
+Requires `ui:header`. If the action opens a modal, the plugin also needs `ui:modals`.
+
+## `api.ui.openModal`
+
+Opens an app-hosted plugin modal. The returned function closes that modal.
+
+```js
+const close = api.ui.openModal({
+    id: "custom-dialog",
+    title: "Custom Dialog",
+    render: ({ close, snapshot }) =>
+        api.ui.h("section", null, [
+            api.ui.h("p", null, snapshot?.character.data.name ?? "No snapshot"),
+            api.ui.h("button", { type: "button", onClick: close }, "Done"),
+        ]),
+});
+```
+
+Requires `ui:modals`.
 
 ## `api.ui.addStyles`
 

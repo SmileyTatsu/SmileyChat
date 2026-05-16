@@ -1,5 +1,7 @@
 import { Menu, User } from "lucide-preact";
 
+import { getPluginHeaderActions } from "#frontend/lib/plugins/registry";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { ChatMode } from "#frontend/types";
 
 type ChatHeaderProps = {
@@ -7,6 +9,7 @@ type ChatHeaderProps = {
     characterName: string;
     chatTitle: string;
     mode: ChatMode;
+    pluginSnapshot: PluginAppSnapshot;
     onModeChange: (mode: ChatMode) => void;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
@@ -17,10 +20,13 @@ export function ChatHeader({
     characterName,
     chatTitle,
     mode,
+    pluginSnapshot,
     onModeChange,
     onToggleSidebar,
     onToggleCharacter,
 }: ChatHeaderProps) {
+    const pluginHeaderActions = getPluginHeaderActions();
+
     return (
         <header className="chat-header">
             <div className="chat-title-block">
@@ -52,6 +58,23 @@ export function ChatHeader({
             </div>
 
             <div className="header-actions">
+                {pluginHeaderActions.length > 0 && (
+                    <div className="plugin-header-actions">
+                        {pluginHeaderActions.map((action) => (
+                            <button
+                                key={action.id}
+                                type="button"
+                                title={action.label}
+                                onClick={() =>
+                                    void action.run({ snapshot: pluginSnapshot })
+                                }
+                            >
+                                {action.renderIcon ? action.renderIcon() : action.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div className="mode-toggle" aria-label="Visual chat mode">
                     <button
                         className={mode === "chat" ? "active" : ""}

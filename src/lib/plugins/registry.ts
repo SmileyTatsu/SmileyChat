@@ -7,13 +7,18 @@ import type {
     ChatOutputMiddleware,
     LoadedPlugin,
     MessageRenderer,
+    PluginActionsApi,
     PluginAppSnapshot,
     PluginComposerAction,
     PluginConnectionProvider,
     PluginEventsApi,
+    PluginHeaderAction,
     PluginMacroResolver,
     PluginManifest,
+    PluginModalInstance,
     PluginMessageAction,
+    PluginNetworkApi,
+    PluginSidebarPanel,
     PluginSettingsPanel,
     PluginStorageApi,
     PromptMiddleware,
@@ -37,12 +42,15 @@ type OwnedEventListener = {
 
 const loadedPlugins: LoadedPlugin[] = [];
 const settingsPanels: Array<Owned<PluginSettingsPanel>> = [];
+const sidebarPanels: Array<Owned<PluginSidebarPanel>> = [];
 const messageRenderers: Array<Owned<MessageRenderer>> = [];
 const messageActions: Array<Owned<PluginMessageAction>> = [];
 const composerActions: Array<Owned<PluginComposerAction>> = [];
+const headerActions: Array<Owned<PluginHeaderAction>> = [];
 const inputMiddlewares: Array<Owned<ChatInputMiddleware>> = [];
 const promptMiddlewares: Array<Owned<PromptMiddleware>> = [];
 const outputMiddlewares: Array<Owned<ChatOutputMiddleware>> = [];
+const modalInstances: Array<Owned<PluginModalInstance>> = [];
 const macroResolvers = new Map<string, Owned<PluginMacroResolver>>();
 const connectionProviders = new Map<string, Owned<PluginConnectionProvider>>();
 const enabledPlugins = new Map<string, boolean>();
@@ -52,6 +60,11 @@ const eventListeners = new Map<string, Set<OwnedEventListener>>();
 const pluginDisposers = new Map<string, () => void>();
 
 let latestSnapshot: PluginAppSnapshot | undefined;
+let appActionHandlers: Partial<
+    Pick<PluginActionsApi, "generateResponse" | "sendMessage" | "switchCharacter">
+> = {};
+let draftActionHandlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">> =
+    {};
 
 export function subscribeToPluginRegistry(listener: Listener) {
     listeners.add(listener);
@@ -127,12 +140,15 @@ export function deactivatePlugin(pluginId: string) {
     }
 
     removeOwnedItems(settingsPanels, pluginId);
+    removeOwnedItems(sidebarPanels, pluginId);
     removeOwnedItems(messageRenderers, pluginId);
     removeOwnedItems(messageActions, pluginId);
     removeOwnedItems(composerActions, pluginId);
+    removeOwnedItems(headerActions, pluginId);
     removeOwnedItems(inputMiddlewares, pluginId);
     removeOwnedItems(promptMiddlewares, pluginId);
     removeOwnedItems(outputMiddlewares, pluginId);
+    removeOwnedItems(modalInstances, pluginId);
     removeOwnedMapValues(macroResolvers, pluginId);
     removeOwnedMapValues(connectionProviders, pluginId);
 
@@ -167,6 +183,10 @@ export function getPluginSettingsPanels() {
     return enabledValues(settingsPanels);
 }
 
+export function getPluginSidebarPanels(side?: PluginSidebarPanel["side"]) {
+    return enabledValues(sidebarPanels).filter((panel) => !side || panel.side === side);
+}
+
 export function getMessageRenderers() {
     return enabledValues(messageRenderers).sort(
         (left, right) => (right.priority ?? 0) - (left.priority ?? 0),
@@ -179,6 +199,23 @@ export function getPluginMessageActions() {
 
 export function getPluginComposerActions() {
     return enabledValues(composerActions);
+}
+
+export function getPluginHeaderActions() {
+    return enabledValues(headerActions);
+}
+
+export function getPluginModalInstances() {
+    return enabledValues(modalInstances);
+}
+
+export function closePluginModal(modalId: string) {
+    const index = modalInstances.findIndex((item) => item.value.id === modalId);
+
+    if (index >= 0) {
+        modalInstances.splice(index, 1);
+        notifyRegistryChanged();
+    }
 }
 
 export function getInputMiddlewares() {
@@ -212,10 +249,25 @@ export function getPluginConnectionProviders() {
     return enabledValues([...connectionProviders.values()]);
 }
 
+export function setPluginAppActionHandlers(
+    handlers: Partial<
+        Pick<PluginActionsApi, "generateResponse" | "sendMessage" | "switchCharacter">
+    >,
+) {
+    appActionHandlers = handlers;
+}
+
+export function setPluginDraftActionHandlers(
+    handlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">>,
+) {
+    draftActionHandlers = handlers;
+}
+
 export function createPluginApi(
     manifest: PluginManifest,
     storage: PluginStorageApi,
     preactH: typeof h,
+    network: PluginNetworkApi,
 ): SmileyPluginApi {
     return {
         plugin: manifest,
@@ -236,6 +288,13 @@ export function createPluginApi(
                 return () => snapshotListeners.delete(item);
             },
         },
+        actions: pluginActions(manifest),
+        network: {
+            fetch(url, init) {
+                requirePluginPermission(manifest, "network:fetch");
+                return network.fetch(url, init);
+            },
+        },
         ui: {
             h: preactH,
             registerSettingsPanel(panel) {
@@ -243,6 +302,18 @@ export function createPluginApi(
                 settingsPanels.push({
                     pluginId: manifest.id,
                     value: { ...panel, id: pluginScopedId(manifest.id, panel.id) },
+                });
+                notifyRegistryChanged();
+            },
+            registerSidebarPanel(panel) {
+                requirePluginPermission(manifest, "ui:sidebar");
+                const panelId = pluginScopedId(manifest.id, panel.id);
+                upsertOwnedItem(sidebarPanels, manifest.id, panelId, {
+                    pluginId: manifest.id,
+                    value: {
+                        ...panel,
+                        id: panelId,
+                    },
                 });
                 notifyRegistryChanged();
             },
@@ -273,6 +344,36 @@ export function createPluginApi(
                     value: { ...action, id: pluginScopedId(manifest.id, action.id) },
                 });
                 notifyRegistryChanged();
+            },
+            registerHeaderAction(action) {
+                requirePluginPermission(manifest, "ui:header");
+                const actionId = pluginScopedId(manifest.id, action.id);
+                upsertOwnedItem(headerActions, manifest.id, actionId, {
+                    pluginId: manifest.id,
+                    value: {
+                        ...action,
+                        id: actionId,
+                    },
+                });
+                notifyRegistryChanged();
+            },
+            openModal(modal) {
+                requirePluginPermission(manifest, "ui:modals");
+                const modalId = pluginScopedId(
+                    manifest.id,
+                    `${modal.id}-${crypto.randomUUID()}`,
+                );
+                modalInstances.push({
+                    pluginId: manifest.id,
+                    value: {
+                        ...modal,
+                        id: modalId,
+                        pluginId: manifest.id,
+                    },
+                });
+                notifyRegistryChanged();
+
+                return () => closePluginModal(modalId);
             },
             addStyles(cssText) {
                 requirePluginPermission(manifest, "ui:styles");
@@ -326,6 +427,61 @@ export function createAdapterFromPluginProvider(
 ): ConnectionAdapter | undefined {
     const provider = getPluginConnectionProvider(providerId);
     return provider?.createAdapter(profile);
+}
+
+function pluginActions(manifest: PluginManifest): PluginActionsApi {
+    return {
+        async sendMessage(content, options) {
+            requirePluginPermission(manifest, "actions");
+            const handler = appActionHandlers.sendMessage;
+
+            if (!handler) {
+                throw new Error("Plugin sendMessage action is not available.");
+            }
+
+            await handler(content, options);
+        },
+        async generateResponse() {
+            requirePluginPermission(manifest, "actions");
+            const handler = appActionHandlers.generateResponse;
+
+            if (!handler) {
+                throw new Error("Plugin generateResponse action is not available.");
+            }
+
+            await handler();
+        },
+        async switchCharacter(characterId) {
+            requirePluginPermission(manifest, "actions");
+            const handler = appActionHandlers.switchCharacter;
+
+            if (!handler) {
+                throw new Error("Plugin switchCharacter action is not available.");
+            }
+
+            await handler(characterId);
+        },
+        setDraft(text) {
+            requirePluginPermission(manifest, "actions");
+            const handler = draftActionHandlers.setDraft;
+
+            if (!handler) {
+                throw new Error("Plugin setDraft action is not available.");
+            }
+
+            handler(text);
+        },
+        insertDraft(text) {
+            requirePluginPermission(manifest, "actions");
+            const handler = draftActionHandlers.insertDraft;
+
+            if (!handler) {
+                throw new Error("Plugin insertDraft action is not available.");
+            }
+
+            handler(text);
+        },
+    };
 }
 
 function pluginEvents(manifest: PluginManifest): PluginEventsApi {

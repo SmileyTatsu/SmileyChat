@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
     getPluginComposerActions,
+    setPluginDraftActionHandlers,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
@@ -59,6 +60,15 @@ export function MessageComposer({
         const nextHeight = Math.min(composer.scrollHeight, maxHeight);
         composer.style.height = `${nextHeight}px`;
         composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
+    }, [draft]);
+
+    useEffect(() => {
+        setPluginDraftActionHandlers({
+            insertDraft: insertText,
+            setDraft,
+        });
+
+        return () => setPluginDraftActionHandlers({});
     }, [draft]);
 
     useEffect(() => {

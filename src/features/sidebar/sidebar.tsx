@@ -17,6 +17,7 @@ import { useRef, useState } from "preact/hooks";
 
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import { chatDisplayTitle } from "#frontend/lib/chats/normalize";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type {
     CharacterSummary,
     ChatSummary,
@@ -26,6 +27,7 @@ import type {
 } from "#frontend/types";
 
 import { PersonaBar } from "../personas/persona-bar";
+import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
 
 type SidebarProps = {
     activeChatId: string;
@@ -42,6 +44,7 @@ type SidebarProps = {
     isOpen: boolean;
     persona: SmileyPersona;
     personas: PersonaSummary[];
+    pluginSnapshot: PluginAppSnapshot;
     userStatus: UserStatus;
     onCreateCharacter: () => void;
     onImportCharacterFiles: (files: File[]) => void;
@@ -76,6 +79,7 @@ export function Sidebar({
     isOpen,
     persona,
     personas,
+    pluginSnapshot,
     userStatus,
     onCreateCharacter,
     onImportCharacterFiles,
@@ -515,6 +519,8 @@ export function Sidebar({
                 )}
                 {chatLoadError && <p className="rail-error">{chatLoadError}</p>}
             </section>
+
+            <PluginSidebarPanels side="left" snapshot={pluginSnapshot} />
 
             <PersonaBar
                 persona={persona}

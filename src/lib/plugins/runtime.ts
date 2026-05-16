@@ -14,7 +14,13 @@ import {
     recordLoadedPlugin,
     recordPluginDisposer,
 } from "./registry";
-import type { PluginManifest, PluginStorageApi, SmileyPluginModule } from "./types";
+import type {
+    PluginManifest,
+    PluginNetworkApi,
+    PluginNetworkFetchInit,
+    PluginStorageApi,
+    SmileyPluginModule,
+} from "./types";
 
 export async function loadRuntimePlugins(manifests: PluginManifest[]) {
     const runtimeManifests = mergeCoreAndUserPluginManifests(manifests);
@@ -57,7 +63,12 @@ async function loadBundledRuntimePlugin(
         deactivatePlugin(manifest.id);
 
         const dispose = await module.activate(
-            createPluginApi(manifest, createPluginStorage(manifest.id), h),
+            createPluginApi(
+                manifest,
+                createPluginStorage(manifest.id),
+                h,
+                createPluginNetwork(manifest.id),
+            ),
         );
 
         recordPluginDisposer(
@@ -111,7 +122,12 @@ export async function loadRuntimePlugin(manifest: PluginManifest) {
         }
 
         const dispose = await module.activate(
-            createPluginApi(manifest, createPluginStorage(manifest.id), h),
+            createPluginApi(
+                manifest,
+                createPluginStorage(manifest.id),
+                h,
+                createPluginNetwork(manifest.id),
+            ),
         );
 
         recordPluginDisposer(
@@ -182,6 +198,35 @@ export function createPluginStorage(pluginId: string): PluginStorageApi {
                 throw new Error(`Remove plugin storage failed: ${response.status}`);
             }
         },
+    };
+}
+
+function createPluginNetwork(pluginId: string): PluginNetworkApi {
+    return {
+        async fetch(url, init = {}) {
+            const response = await localApiFetch("/api/plugins/fetch", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    pluginId,
+                    url,
+                    ...serializeNetworkFetchInit(init),
+                }),
+            });
+
+            return response;
+        },
+    };
+}
+
+function serializeNetworkFetchInit(init: PluginNetworkFetchInit) {
+    return {
+        body: init.body,
+        headers: init.headers ? Object.fromEntries(new Headers(init.headers)) : undefined,
+        maxResponseBytes: init.maxResponseBytes,
+        method: init.method,
     };
 }
 

@@ -4,13 +4,46 @@ import { basename, dirname, isAbsolute, join, normalize, relative } from "node:p
 
 import type { PluginManifest } from "#frontend/lib/plugins/types";
 
-import { BadRequestError, json, writeJsonAtomic } from "./http";
+import { isPluginsOutboundFetchAllowed } from "./config/runtime-config";
+import { BadRequestError, HttpError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
+import { safeFetch } from "./security/safe-fetch";
 
 const corePluginIds = new Set(["smiley-chat-formatter"]);
 const legacyCorePluginFolders: Record<string, string[]> = {
     "smiley-chat-formatter": ["chat-formatter", "smiley-chat-formatter"],
 };
+const PLUGIN_FETCH_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+const PLUGIN_FETCH_MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+const PLUGIN_FETCH_ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+const BLOCKED_PLUGIN_FETCH_REQUEST_HEADERS = new Set([
+    "connection",
+    "content-length",
+    "cookie",
+    "host",
+    "origin",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "referer",
+    "sec-fetch-dest",
+    "sec-fetch-mode",
+    "sec-fetch-site",
+    "sec-fetch-user",
+    "set-cookie",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+    "x-smileychat-csrf",
+    "x-smileychat-csrf-magic",
+]);
+const BLOCKED_PLUGIN_FETCH_RESPONSE_HEADERS = new Set([
+    "connection",
+    "content-encoding",
+    "content-length",
+    "set-cookie",
+    "transfer-encoding",
+]);
 
 export async function readPluginManifests(): Promise<PluginManifest[]> {
     const coreManifests = await readCorePluginManifests();
@@ -169,10 +202,64 @@ export async function deletePluginStorage(pluginId: string, key: string) {
     return json({ ok: true });
 }
 
+export async function proxyPluginFetch(body: unknown) {
+    if (!isPluginsOutboundFetchAllowed()) {
+        return json(
+            {
+                error:
+                    "Plugin outbound fetch is disabled. Set SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true in .env to enable it.",
+            },
+            403,
+        );
+    }
+
+    const request = normalizePluginFetchRequest(body);
+    const pluginRecord = await findPluginById(request.pluginId);
+
+    if (!pluginRecord) {
+        return json({ error: "Plugin not found." }, 404);
+    }
+
+    if (pluginRecord.manifest.enabled === false) {
+        return json({ error: "Plugin is disabled." }, 403);
+    }
+
+    if (!pluginRecord.manifest.permissions?.includes("network:fetch")) {
+        return json(
+            { error: `${pluginRecord.manifest.name} needs "network:fetch" permission.` },
+            403,
+        );
+    }
+
+    const upstreamResponse = await safeFetch(request.url, {
+        body: request.body,
+        headers: request.headers,
+        maxResponseBytes: request.maxResponseBytes,
+        method: request.method,
+        policy: {
+            allowedProtocols: ["https:"],
+            flagName: "SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH",
+        },
+    });
+    const bytes = await readResponseBytes(
+        upstreamResponse,
+        request.maxResponseBytes,
+        request.url,
+    );
+
+    return new Response(bytes, {
+        headers: filterResponseHeaders(upstreamResponse.headers),
+        status: upstreamResponse.status,
+        statusText: upstreamResponse.statusText,
+    });
+}
+
 async function findPluginById(pluginId: string) {
     if (corePluginIds.has(pluginId)) {
+        const manifest = await readCorePluginManifest(pluginId);
         return {
             folderName: safeSegment(pluginId),
+            manifest,
             manifestPath: "",
             source: "core" as const,
         };
@@ -197,6 +284,7 @@ async function findPluginById(pluginId: string) {
             if (manifest?.id === pluginId) {
                 return {
                     folderName,
+                    manifest,
                     manifestPath,
                     source: "user" as const,
                 };
@@ -361,4 +449,163 @@ function safeSegment(value: string) {
 
 function stringOrFallback(value: unknown, fallback: string) {
     return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function normalizePluginFetchRequest(value: unknown) {
+    if (!value || typeof value !== "object") {
+        throw new BadRequestError("Invalid plugin fetch request.");
+    }
+
+    const request = value as Record<string, unknown>;
+    const pluginId = stringField(request.pluginId, "Plugin ID is required.");
+    const url = stringField(request.url, "URL is required.");
+    const method = (typeof request.method === "string" && request.method.trim()
+        ? request.method
+        : "GET"
+    ).toUpperCase();
+
+    if (!PLUGIN_FETCH_ALLOWED_METHODS.has(method)) {
+        throw new BadRequestError(`Method ${method} is not allowed for plugin fetch.`);
+    }
+
+    const body = typeof request.body === "string" ? request.body : undefined;
+
+    if (body && method === "GET") {
+        throw new BadRequestError("GET plugin fetch requests cannot include a body.");
+    }
+
+    if (
+        body &&
+        new TextEncoder().encode(body).byteLength > PLUGIN_FETCH_MAX_REQUEST_BODY_BYTES
+    ) {
+        throw new BadRequestError("Plugin fetch request body is too large.");
+    }
+
+    const maxResponseBytes = normalizeMaxResponseBytes(request.maxResponseBytes);
+
+    return {
+        body,
+        headers: normalizePluginFetchHeaders(request.headers),
+        maxResponseBytes,
+        method,
+        pluginId,
+        url,
+    };
+}
+
+function stringField(value: unknown, message: string) {
+    if (typeof value !== "string" || !value.trim()) {
+        throw new BadRequestError(message);
+    }
+
+    return value.trim();
+}
+
+function normalizeMaxResponseBytes(value: unknown) {
+    if (value === undefined) {
+        return PLUGIN_FETCH_MAX_RESPONSE_BYTES;
+    }
+
+    const bytes = Number(value);
+
+    if (
+        !Number.isInteger(bytes) ||
+        bytes < 1 ||
+        bytes > PLUGIN_FETCH_MAX_RESPONSE_BYTES
+    ) {
+        throw new BadRequestError(
+            `maxResponseBytes must be between 1 and ${PLUGIN_FETCH_MAX_RESPONSE_BYTES}.`,
+        );
+    }
+
+    return bytes;
+}
+
+function normalizePluginFetchHeaders(value: unknown) {
+    const headers = new Headers();
+
+    if (value === undefined) {
+        return headers;
+    }
+
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new BadRequestError("Plugin fetch headers must be an object.");
+    }
+
+    for (const [name, headerValue] of Object.entries(value)) {
+        const normalizedName = name.toLowerCase();
+
+        if (BLOCKED_PLUGIN_FETCH_REQUEST_HEADERS.has(normalizedName)) {
+            continue;
+        }
+
+        if (typeof headerValue !== "string") {
+            throw new BadRequestError("Plugin fetch header values must be strings.");
+        }
+
+        headers.set(name, headerValue);
+    }
+
+    return headers;
+}
+
+function filterResponseHeaders(sourceHeaders: Headers) {
+    const headers = new Headers();
+
+    for (const [name, value] of sourceHeaders) {
+        if (!BLOCKED_PLUGIN_FETCH_RESPONSE_HEADERS.has(name.toLowerCase())) {
+            headers.set(name, value);
+        }
+    }
+
+    return headers;
+}
+
+async function readResponseBytes(
+    response: Response,
+    maxResponseBytes: number,
+    url: string,
+) {
+    const reader = response.body?.getReader();
+
+    if (!reader) {
+        return new Uint8Array();
+    }
+
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+                break;
+            }
+
+            totalBytes += value.byteLength;
+
+            if (totalBytes > maxResponseBytes) {
+                await reader.cancel().catch(() => undefined);
+                throw new HttpError(
+                    502,
+                    `Outbound response from ${url} exceeded ${maxResponseBytes} bytes.`,
+                );
+            }
+
+            chunks.push(value);
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+
+    return bytes;
 }

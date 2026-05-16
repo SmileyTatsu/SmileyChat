@@ -14,6 +14,7 @@ Plugins can:
 - Register connection providers.
 - Store plugin-owned JSON data.
 - Make browser network requests, subject to the browser and endpoint CORS behavior.
+- Make server-bridged outbound requests through `api.network.fetch` when the plugin has `network:fetch` and `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true` is set.
 
 ## What Plugins Should Not Do
 
@@ -37,7 +38,7 @@ Enabling a listed local plugin from Options > Plugins loads it into the current 
 - Plugins are browser-side ESM modules. They do not run as Bun server plugins.
 - There is no plugin package installer yet. Users install plugins by placing folders under `userData/plugins`.
 - Plugin cleanup/unload is not a full isolation boundary. Supported hooks are filtered when disabled, but arbitrary side effects from plugin code cannot always be undone.
-- Provider plugins run from the frontend and are subject to browser CORS rules.
+- Provider plugins run from the frontend and are subject to browser CORS rules unless they explicitly use the guarded plugin fetch bridge for non-provider helper requests.
 
 ## Recommended Plugin Style
 

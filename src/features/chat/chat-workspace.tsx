@@ -63,6 +63,7 @@ export function ChatWorkspace({
                 characterName={characterName}
                 chatTitle={chatTitle}
                 mode={mode}
+                pluginSnapshot={pluginSnapshot}
                 onModeChange={onModeChange}
                 onToggleSidebar={onToggleSidebar}
                 onToggleCharacter={onToggleCharacter}
