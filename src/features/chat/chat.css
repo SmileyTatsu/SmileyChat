@@ -216,10 +216,14 @@
     }
 
     .message-meta {
-        @apply flex h-full items-center gap-2;
+        @apply flex items-center gap-2;
+
+        .character-title {
+            @apply text-xl;
+        }
 
         time {
-            @apply text-sm;
+            @apply text-xs;
         }
     }
 
