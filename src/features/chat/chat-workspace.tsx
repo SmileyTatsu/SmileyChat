@@ -88,6 +88,9 @@ export function ChatWorkspace({
                     mode={mode}
                     autoScroll={preferences.chat.autoScroll}
                     pendingSwipeMessageId={pendingSwipeMessageId}
+                    showRpCharacterImages={
+                        preferences.appearance.showRpCharacterImages
+                    }
                     showTimestamps={preferences.appearance.showTimestamps}
                     onDeleteMessage={onDeleteMessage}
                     onEditMessage={onEditMessage}

@@ -9,6 +9,7 @@ export type AppPreferences = {
     appearance: {
         messageDensity: MessageDensity;
         showTimestamps: boolean;
+        showRpCharacterImages: boolean;
         fontScale: FontScale;
     };
     chat: {
@@ -27,6 +28,7 @@ export const defaultAppPreferences: AppPreferences = {
     appearance: {
         messageDensity: "comfortable",
         showTimestamps: true,
+        showRpCharacterImages: false,
         fontScale: "default",
     },
     chat: {
@@ -56,6 +58,10 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             showTimestamps: booleanOrFallback(
                 appearance.showTimestamps,
                 defaultAppPreferences.appearance.showTimestamps,
+            ),
+            showRpCharacterImages: booleanOrFallback(
+                appearance.showRpCharacterImages,
+                defaultAppPreferences.appearance.showRpCharacterImages,
             ),
             fontScale: normalizeFontScale(
                 appearance.fontScale,

@@ -678,6 +678,16 @@
     display: none;
 }
 
+.rp .message.show-rp-character-avatar {
+    grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
+    align-items: start;
+}
+
+.rp .message.show-rp-character-avatar .message-avatar {
+    display: grid;
+    border-radius: 8px;
+}
+
 .rp .message-meta {
     margin-bottom: 8px;
 }

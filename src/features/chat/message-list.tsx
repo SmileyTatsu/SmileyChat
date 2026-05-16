@@ -37,6 +37,7 @@ type MessageListProps = {
     messages: Message[];
     mode: ChatMode;
     pendingSwipeMessageId?: string;
+    showRpCharacterImages: boolean;
     showTimestamps: boolean;
     onDeleteMessage: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
@@ -54,6 +55,7 @@ export function MessageList({
     messages,
     mode,
     pendingSwipeMessageId,
+    showRpCharacterImages,
     showTimestamps,
     onDeleteMessage,
     onEditMessage,
@@ -174,10 +176,16 @@ export function MessageList({
                 const isPendingSwipe = pendingSwipeMessageId === message.id;
                 const isFailedSwipe = isActiveSwipeError(message);
                 const showSwipeControls = message.role === "character";
+                const showRpCharacterAvatar =
+                    mode === "rp" &&
+                    showRpCharacterImages &&
+                    message.role === "character";
 
                 return (
                     <article
-                        className={`message ${isPendingSwipe ? "generating-swipe" : ""} ${
+                        className={`message ${
+                            showRpCharacterAvatar ? "show-rp-character-avatar" : ""
+                        } ${isPendingSwipe ? "generating-swipe" : ""} ${
                             isFailedSwipe ? "failed-swipe" : ""
                         }`}
                         key={message.id}

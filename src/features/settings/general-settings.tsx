@@ -103,6 +103,15 @@ export function GeneralSettings({
                     label="Show timestamps"
                     onChange={(showTimestamps) => updateAppearance({ showTimestamps })}
                 />
+
+                <ToggleRow
+                    checked={preferences.appearance.showRpCharacterImages}
+                    description="Display the active character image beside character messages in Roleplaying mode."
+                    label="Show character image in RP mode"
+                    onChange={(showRpCharacterImages) =>
+                        updateAppearance({ showRpCharacterImages })
+                    }
+                />
             </section>
 
             <section className="settings-card">
