@@ -27,6 +27,9 @@ import {
     sanitizeConnectionSettings,
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
+import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
+import { getAdapterForSettings } from "#frontend/lib/connections/registry";
+import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
 import {
     defaultAppPreferences,
     normalizeAppPreferences,
@@ -35,6 +38,7 @@ import {
 
 import {
     setPluginAppActionHandlers,
+    setPluginModelHandlers,
     setPluginSnapshot,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
@@ -230,6 +234,14 @@ export function App() {
         return () => setPluginAppActionHandlers({});
     });
 
+    useEffect(() => {
+        setPluginModelHandlers({
+            generate: generatePluginModelResponse,
+        });
+
+        return () => setPluginModelHandlers({});
+    });
+
     const pluginSnapshot: PluginAppSnapshot = useMemo(
         () => ({
             activeChat,
@@ -341,6 +353,32 @@ export function App() {
         } catch (error) {
             console.warn("Could not load plugins:", error);
         }
+    }
+
+    async function generatePluginModelResponse(request: {
+        messages: ChatGenerationMessage[];
+        onImage?: (url: string) => void;
+        onReasoningToken?: (token: string) => void;
+        onToken?: (token: string) => void;
+        stream?: boolean;
+    }) {
+        if (!Array.isArray(request.messages) || request.messages.length === 0) {
+            throw new Error("Plugin model request must include at least one message.");
+        }
+
+        const connection = getAdapterForSettings(connectionSettings);
+        const promptMessages = await materializeChatGenerationMessageImages(
+            request.messages,
+        );
+
+        return connection.generate({
+            messages: [],
+            onImage: request.onImage,
+            onReasoningToken: request.onReasoningToken,
+            onToken: request.onToken,
+            promptMessages,
+            stream: request.stream,
+        });
     }
 
     function openPersonasSettings() {

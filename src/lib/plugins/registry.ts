@@ -15,6 +15,7 @@ import type {
     PluginHeaderAction,
     PluginMacroResolver,
     PluginManifest,
+    PluginModelApi,
     PluginModalInstance,
     PluginMessageAction,
     PluginNetworkApi,
@@ -65,6 +66,7 @@ let appActionHandlers: Partial<
 > = {};
 let draftActionHandlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">> =
     {};
+let modelHandlers: Partial<PluginModelApi> = {};
 
 export function subscribeToPluginRegistry(listener: Listener) {
     listeners.add(listener);
@@ -263,6 +265,10 @@ export function setPluginDraftActionHandlers(
     draftActionHandlers = handlers;
 }
 
+export function setPluginModelHandlers(handlers: Partial<PluginModelApi>) {
+    modelHandlers = handlers;
+}
+
 export function createPluginApi(
     manifest: PluginManifest,
     storage: PluginStorageApi,
@@ -289,6 +295,7 @@ export function createPluginApi(
             },
         },
         actions: pluginActions(manifest),
+        model: pluginModel(manifest),
         network: {
             fetch(url, init) {
                 requirePluginPermission(manifest, "network:fetch");
@@ -427,6 +434,21 @@ export function createAdapterFromPluginProvider(
 ): ConnectionAdapter | undefined {
     const provider = getPluginConnectionProvider(providerId);
     return provider?.createAdapter(profile);
+}
+
+function pluginModel(manifest: PluginManifest): PluginModelApi {
+    return {
+        async generate(request) {
+            requirePluginPermission(manifest, "model:generate");
+            const handler = modelHandlers.generate;
+
+            if (!handler) {
+                throw new Error("Plugin model generate API is not available.");
+            }
+
+            return handler(request);
+        },
+    };
 }
 
 function pluginActions(manifest: PluginManifest): PluginActionsApi {

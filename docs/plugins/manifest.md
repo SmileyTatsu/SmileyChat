@@ -58,6 +58,7 @@ Recommended labels:
 - `ui:composer`
 - `ui:styles`
 - `actions`
+- `model:generate`
 - `network:fetch`
 - `chat:input`
 - `chat:prompt`

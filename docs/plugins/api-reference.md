@@ -28,6 +28,7 @@ These permissions are currently enforced:
 | ------------------------------------------------ | ----------------------- |
 | `api.state.getSnapshot`, `api.state.subscribe`   | `state:read`            |
 | `api.actions.*`                                  | `actions`               |
+| `api.model.generate`                             | `model:generate`        |
 | `api.network.fetch`                              | `network:fetch`         |
 | `api.ui.registerSettingsPanel`                   | `ui:settings`           |
 | `api.ui.registerSidebarPanel`                    | `ui:sidebar`            |
@@ -94,6 +95,51 @@ api.actions.insertDraft(" appended text");
 ```
 
 Requires `actions`.
+
+## `api.model.generate`
+
+Sends a custom temporary message history through the active connection/model and returns a normalized generation result. This does not append messages to the active chat and does not expose provider API keys to the plugin.
+
+```js
+const result = await api.model.generate({
+    messages: [
+        {
+            role: "system",
+            content: "You summarize lore entries for a roleplay chat.",
+        },
+        {
+            role: "user",
+            content: "Summarize this lore entry in two short bullets: ...",
+        },
+    ],
+});
+
+console.log(result.message);
+```
+
+Streaming callbacks are optional:
+
+```js
+let text = "";
+
+const result = await api.model.generate({
+    stream: true,
+    messages: [{ role: "user", content: "Write one atmospheric sentence." }],
+    onToken: (token) => {
+        text += token;
+    },
+});
+```
+
+Requires `model:generate`.
+
+Notes:
+
+- Uses the active connection profile and provider adapter.
+- Uses only the messages supplied by the plugin.
+- Does not compile the active preset.
+- Does not run chat input, prompt, or output middleware.
+- Supports multimodal message parts where the active provider supports them.
 
 ## `api.network.fetch`
 

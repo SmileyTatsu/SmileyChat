@@ -11,6 +11,7 @@ Plugins can:
 - Read current app snapshots exposed by the plugin API.
 - Register UI hooks.
 - Modify chat input, compiled prompt messages, and AI output through middleware.
+- Request generations from the active model with custom temporary histories.
 - Register connection providers.
 - Store plugin-owned JSON data.
 - Make browser network requests, subject to the browser and endpoint CORS behavior.
@@ -23,6 +24,7 @@ Plugins should not:
 - Patch SmileyChat internals directly.
 - Depend on private DOM structure or CSS class names unless intentionally documented.
 - Store API keys in plugin storage unless the plugin clearly explains the risk.
+- Ask for `model:generate` unless the plugin clearly needs to send its own temporary prompts to the active model.
 - Modify global prototypes.
 - Use broad CSS selectors that restyle unrelated app surfaces.
 

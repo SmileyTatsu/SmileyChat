@@ -195,6 +195,18 @@ export type PluginActionsApi = {
     insertDraft(text: string): void;
 };
 
+export type PluginModelGenerateRequest = {
+    messages: ChatGenerationMessage[];
+    onImage?: (url: string) => void;
+    onReasoningToken?: (token: string) => void;
+    onToken?: (token: string) => void;
+    stream?: boolean;
+};
+
+export type PluginModelApi = {
+    generate(request: PluginModelGenerateRequest): Promise<ChatGenerationResult>;
+};
+
 export type PluginNetworkFetchInit = {
     method?: string;
     headers?: HeadersInit;
@@ -228,6 +240,7 @@ export type SmileyPluginApi = {
         subscribe(listener: (snapshot: PluginAppSnapshot) => void): () => void;
     };
     actions: PluginActionsApi;
+    model: PluginModelApi;
     network: PluginNetworkApi;
     ui: {
         h: typeof import("preact").h;
