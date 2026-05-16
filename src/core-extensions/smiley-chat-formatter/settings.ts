@@ -6,6 +6,7 @@ export type FormatterSettings = {
     links: boolean;
     images: boolean;
     codeBlocks: boolean;
+    codeBlockScrolling: boolean;
     spoilers: boolean;
     preserveUnknownTags: boolean;
 };
@@ -18,6 +19,7 @@ export const defaultFormatterSettings: FormatterSettings = {
     links: true,
     images: true,
     codeBlocks: true,
+    codeBlockScrolling: false,
     spoilers: true,
     preserveUnknownTags: true,
 };

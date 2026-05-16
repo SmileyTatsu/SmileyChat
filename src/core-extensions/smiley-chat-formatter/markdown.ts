@@ -60,8 +60,12 @@ export function renderMarkdownBlocks(
                 index += 1;
             }
 
+            const codeBlockClass = getFormatterSettings().codeBlockScrolling
+                ? "scf-code-block scf-code-block-scroll"
+                : "scf-code-block";
+
             blocks.push(
-                api.ui.h("pre", { className: "scf-code-block" }, [
+                api.ui.h("pre", { className: codeBlockClass }, [
                     language
                         ? api.ui.h("span", { className: "scf-code-language" }, language)
                         : null,

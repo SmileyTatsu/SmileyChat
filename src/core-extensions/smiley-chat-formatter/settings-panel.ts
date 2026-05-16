@@ -90,6 +90,11 @@ export function renderSettingsPanel(
             "codeBlocks",
         ),
         checkbox(
+            "Scroll code blocks",
+            "Keep long fenced code lines on one line with horizontal scrolling.",
+            "codeBlockScrolling",
+        ),
+        checkbox(
             "Enable spoilers",
             "Render <spoiler>hidden text</spoiler> as click-to-reveal.",
             "spoilers",
