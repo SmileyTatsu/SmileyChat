@@ -1,6 +1,7 @@
 {
     "arrowParens": "always",
     "endOfLine": "lf",
+    "plugins": ["prettier-plugin-tailwindcss"],
     "printWidth": 90,
     "semi": true,
     "singleQuote": false,
