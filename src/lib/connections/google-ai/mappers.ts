@@ -6,6 +6,7 @@ import type {
     ChatGenerationRequest,
     ChatGenerationResult,
 } from "../types";
+import { messageContentToText, parseDataImageUrl } from "../images";
 import type {
     GoogleAIContent,
     GoogleAIGenerateContentRequest,
@@ -27,14 +28,14 @@ export function createGoogleAIGenerateBody(
         : legacyMessages(request);
     const systemText = messages
         .filter((message) => message.role === "developer" || message.role === "system")
-        .map((message) => message.content.trim())
+        .map((message) => messageContentToText(message.content).trim())
         .filter(Boolean)
         .join("\n\n");
     const contents = mergeConsecutiveContents(
         messages
             .filter((message) => message.role === "user" || message.role === "assistant")
             .map(toGoogleAIContent)
-            .filter((content) => content.parts.some((part) => part.text?.trim())),
+            .filter((content) => content.parts.some(hasVisiblePart)),
     );
     const thinkingConfig = cleanThinkingConfig(config.thinking);
 
@@ -74,10 +75,11 @@ export function normalizeGoogleAIResponse(
 
     const candidate = response.candidates?.[0];
     const message = extractGoogleAIText(response).trim();
+    const images = extractGoogleAIImages(response);
     const reasoning = extractGoogleAIThoughtText(response).trim();
     const reasoningDetails = createGoogleAIReasoningDetails(response, message);
 
-    if (!message) {
+    if (!message && images.length === 0) {
         const reason = candidate?.finishMessage || candidate?.finishReason;
         throw new Error(
             reason
@@ -88,12 +90,26 @@ export function normalizeGoogleAIResponse(
 
     return {
         message,
+        ...(images.length ? { images } : {}),
         provider: "google-ai",
         model: response.modelVersion,
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails ? { reasoningDetails } : {}),
         raw: response,
     };
+}
+
+export function extractGoogleAIImages(response: GoogleAIGenerateContentResponse) {
+    return (
+        response.candidates?.[0]?.content?.parts
+            ?.map((part) =>
+                part.inlineData?.mimeType?.startsWith("image/") &&
+                part.inlineData.data
+                    ? `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
+                    : "",
+            )
+            .filter(Boolean) ?? []
+    );
 }
 
 export function extractGoogleAIText(response: GoogleAIGenerateContentResponse) {
@@ -176,7 +192,7 @@ function toGoogleAIContent(message: ChatGenerationMessage): GoogleAIContent {
 
     return {
         role: message.role === "assistant" ? "model" : "user",
-        parts: [{ text: message.content }],
+        parts: generationMessageContentToGoogleAIParts(message.content),
     };
 }
 
@@ -185,9 +201,7 @@ function mergeConsecutiveContents(contents: GoogleAIContent[]) {
 
     for (const content of contents) {
         const role = content.role as GoogleAIRole | undefined;
-        const text = visibleTextForParts(content.parts).trim();
-
-        if (!role || !text) {
+        if (!role || !content.parts.some(hasVisiblePart)) {
             continue;
         }
 
@@ -198,17 +212,13 @@ function mergeConsecutiveContents(contents: GoogleAIContent[]) {
             !hasPreservedGoogleAIParts(previous.parts) &&
             !hasPreservedGoogleAIParts(content.parts)
         ) {
-            previous.parts = [
-                {
-                    text: `${visibleTextForParts(previous.parts)}\n${text}`,
-                },
-            ];
+            previous.parts = mergeGoogleAIParts(previous.parts, content.parts);
             continue;
         }
 
         merged.push({
             role,
-            parts: hasPreservedGoogleAIParts(content.parts) ? content.parts : [{ text }],
+            parts: content.parts,
         });
     }
 
@@ -229,7 +239,7 @@ function replayGoogleAIParts(message: ChatGenerationMessage): GoogleAIPart[] | u
     const parts = googleAI.parts;
     const visibleText = googleAI.visibleText ?? visibleTextForParts(parts).trim();
 
-    if (visibleText !== message.content.trim()) {
+    if (visibleText !== messageContentToText(message.content).trim()) {
         return undefined;
     }
 
@@ -262,6 +272,66 @@ function visibleTextForParts(parts: GoogleAIPart[]) {
         .join("");
 }
 
+function generationMessageContentToGoogleAIParts(
+    content: ChatGenerationMessage["content"],
+): GoogleAIPart[] {
+    if (typeof content === "string") {
+        return [{ text: content }];
+    }
+
+    return content.map((part) => {
+        if (part.type === "text") {
+            return { text: part.text };
+        }
+
+        const image = parseDataImageUrl(part.image_url.url);
+
+        if (!image) {
+            throw new Error("Google AI image input must be a base64 data URL.");
+        }
+
+        return {
+            inlineData: {
+                mimeType: image.mimeType,
+                data: image.data,
+            },
+        };
+    });
+}
+
+function mergeGoogleAIParts(left: GoogleAIPart[], right: GoogleAIPart[]) {
+    if (!left.length) {
+        return right;
+    }
+
+    if (!right.length) {
+        return left;
+    }
+
+    if (left.every(isTextOnlyPart) && right.every(isTextOnlyPart)) {
+        return [
+            {
+                text: `${visibleTextForParts(left)}\n${visibleTextForParts(right)}`,
+            },
+        ];
+    }
+
+    return [...left, { text: "\n" }, ...right];
+}
+
+function hasVisiblePart(part: GoogleAIPart) {
+    return Boolean(part.text?.trim() || part.inlineData);
+}
+
+function isTextOnlyPart(part: GoogleAIPart) {
+    return (
+        typeof part.text === "string" &&
+        !part.inlineData &&
+        !part.thought &&
+        !hasThoughtSignature(part)
+    );
+}
+
 function hasPreservedGoogleAIParts(parts: GoogleAIPart[]) {
     return parts.some((part) => part.thought || hasThoughtSignature(part));
 }
@@ -277,9 +347,18 @@ function isGoogleAIPart(value: unknown): value is GoogleAIPart {
 
     return (
         typeof value.text === "string" ||
+        isGoogleAIInlineData(value.inlineData) ||
         typeof value.thought === "boolean" ||
         typeof value.thoughtSignature === "string" ||
         typeof value.thought_signature === "string"
+    );
+}
+
+function isGoogleAIInlineData(value: unknown) {
+    return (
+        isRecord(value) &&
+        typeof value.mimeType === "string" &&
+        typeof value.data === "string"
     );
 }
 

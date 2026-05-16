@@ -1,10 +1,15 @@
-import { extractGoogleAIText, extractGoogleAIThoughtText } from "./mappers";
+import {
+    extractGoogleAIImages,
+    extractGoogleAIText,
+    extractGoogleAIThoughtText,
+} from "./mappers";
 import type { GoogleAIGenerateContentStreamChunk } from "./types";
 
 export async function readGoogleAIStream(
     response: Response,
     onChunk: (
         tokens: {
+            images: string[];
             message: string;
             reasoning: string;
         },
@@ -50,6 +55,7 @@ function parseGoogleAIEvent(
     event: string,
     onChunk: (
         tokens: {
+            images: string[];
             message: string;
             reasoning: string;
         },
@@ -73,10 +79,11 @@ function parseGoogleAIEvent(
     }
 
     const chunk = JSON.parse(data) as GoogleAIGenerateContentStreamChunk;
+    const images = extractGoogleAIImages(chunk);
     const message = extractGoogleAIText(chunk);
     const reasoning = extractGoogleAIThoughtText(chunk);
 
-    if (message || reasoning) {
-        onChunk({ message, reasoning }, chunk);
+    if (message || reasoning || images.length) {
+        onChunk({ images, message, reasoning }, chunk);
     }
 }

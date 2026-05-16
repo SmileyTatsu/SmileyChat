@@ -29,6 +29,10 @@ export type GoogleAIModelSelection =
       };
 
 export type GoogleAIPart = {
+    inlineData?: {
+        mimeType: string;
+        data: string;
+    };
     text?: string;
     thought?: boolean;
     thoughtSignature?: string;

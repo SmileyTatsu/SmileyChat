@@ -1,4 +1,5 @@
 import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
+import { messageContentToText } from "#frontend/lib/connections/images";
 
 import type { RequestState } from "./use-preset-autosave";
 
@@ -28,7 +29,7 @@ export function PresetPreview({
                         key={`${message.role}-${index}`}
                     >
                         <strong>{message.role}</strong>
-                        <pre>{message.content}</pre>
+                        <pre>{messageContentToText(message.content)}</pre>
                     </article>
                 ))}
             </div>

@@ -1,16 +1,30 @@
-import type { Message, MessageSwipe, SmileyCharacter, SmileyPersona } from "../types";
+import type {
+    ChatAttachment,
+    Message,
+    MessageSwipe,
+    SmileyCharacter,
+    SmileyPersona,
+} from "../types";
 
 import { createId } from "./common/ids";
 
-export function createUserMessage(content: string, persona: SmileyPersona): Message {
+export function createUserMessage(
+    content: string,
+    persona: SmileyPersona,
+    attachments?: ChatAttachment[],
+): Message {
     return createMessage("user", persona.name.trim() || "Anon", content, {
         authorAvatarPath: persona.avatar?.path,
         authorPersonaId: persona.id,
-    });
+    }, undefined, attachments);
 }
 
-export function createCharacterMessage(author: string, content: string): Message {
-    return createMessage("character", author, content);
+export function createCharacterMessage(
+    author: string,
+    content: string,
+    attachments?: ChatAttachment[],
+): Message {
+    return createMessage("character", author, content, undefined, undefined, attachments);
 }
 
 export function createCharacterErrorMessage(author: string, content: string): Message {
@@ -63,6 +77,10 @@ export function getActiveSwipe(message: Message): MessageSwipe {
 
 export function getMessageContent(message: Message) {
     return getActiveSwipe(message)?.content ?? "";
+}
+
+export function getMessageAttachments(message: Message) {
+    return getActiveSwipe(message)?.attachments ?? [];
 }
 
 export function getMessageReasoning(message: Message) {
@@ -155,6 +173,33 @@ export function updateActiveSwipeReasoning(
     };
 }
 
+export function updateActiveSwipeAttachments(
+    message: Message,
+    attachments: ChatAttachment[],
+): Message {
+    if (message.swipes.length === 0) {
+        const swipe = createMessageSwipe("");
+
+        return {
+            ...message,
+            swipes: [{ ...swipe, ...(attachments.length ? { attachments } : {}) }],
+            activeSwipeIndex: 0,
+        };
+    }
+
+    return {
+        ...message,
+        swipes: message.swipes.map((swipe, index) =>
+            index === message.activeSwipeIndex
+                ? {
+                      ...swipe,
+                      ...(attachments.length ? { attachments } : {}),
+                  }
+                : swipe,
+        ),
+    };
+}
+
 export function appendMessageSwipe(
     message: Message,
     content: string,
@@ -185,6 +230,7 @@ function createMessage(
     content: string,
     authorMetadata?: Pick<Message, "authorAvatarPath" | "authorPersonaId">,
     status?: MessageSwipe["status"],
+    attachments?: ChatAttachment[],
 ): Message {
     const createdAt = new Date().toISOString();
 
@@ -204,6 +250,7 @@ function createMessage(
             {
                 id: createId("swipe"),
                 content,
+                ...(attachments?.length ? { attachments } : {}),
                 createdAt,
                 ...(status ? { status } : {}),
             },

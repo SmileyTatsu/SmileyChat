@@ -1,5 +1,6 @@
 import type {
     CharacterSummaryCollection,
+    ChatAttachment,
     ChatSession,
     ChatSummaryCollection,
     PersonaSummaryCollection,
@@ -284,6 +285,23 @@ export function importChatFile(formData: FormData) {
         chat: ChatSession;
         chats?: ChatSummaryCollection;
     }>("/api/chats/import", {
+        method: "POST",
+        body: formData,
+    });
+}
+
+export function uploadChatAttachments(chatId: string, files: File[]) {
+    const formData = new FormData();
+
+    for (const file of files) {
+        formData.append("files", file);
+    }
+
+    return requestJson<{
+        ok: true;
+        attachments: ChatAttachment[];
+        url?: string;
+    }>(`/api/chats/${encodeURIComponent(chatId)}/attachments`, {
         method: "POST",
         body: formData,
     });

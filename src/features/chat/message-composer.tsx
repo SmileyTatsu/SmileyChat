@@ -1,4 +1,4 @@
-import { Send } from "lucide-preact";
+import { ImagePlus, Send, X } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
@@ -14,8 +14,14 @@ type MessageComposerProps = {
     enterToSend: boolean;
     mode: ChatMode;
     resetKey: string;
-    onSubmit: (draft: string) => void | Promise<void>;
+    onSubmit: (draft: string, images?: File[]) => void | Promise<void>;
     pluginSnapshot: PluginAppSnapshot;
+};
+
+type StagedImage = {
+    id: string;
+    file: File;
+    previewUrl: string;
 };
 
 export function MessageComposer({
@@ -28,7 +34,9 @@ export function MessageComposer({
     pluginSnapshot,
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [draft, setDraft] = useState("");
+    const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
     const [, setRegistryRevision] = useState(0);
 
     useEffect(
@@ -55,7 +63,15 @@ export function MessageComposer({
 
     useEffect(() => {
         setDraft("");
+        clearStagedImages();
     }, [resetKey]);
+
+    useEffect(
+        () => () => {
+            clearStagedImages();
+        },
+        [],
+    );
 
     function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
@@ -63,7 +79,11 @@ export function MessageComposer({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-        if (event.key !== "Enter" || disabled || !draft.trim()) {
+        if (
+            event.key !== "Enter" ||
+            disabled ||
+            (!draft.trim() && stagedImages.length === 0)
+        ) {
             return;
         }
 
@@ -100,14 +120,71 @@ export function MessageComposer({
 
     function submitDraft() {
         const submittedDraft = draft;
+        const submittedImages = stagedImages.map((image) => image.file);
         setDraft("");
-        return onSubmit(submittedDraft);
+        clearStagedImages();
+        return onSubmit(submittedDraft, submittedImages);
+    }
+
+    function stageFiles(files: FileList | null) {
+        const images = Array.from(files ?? []).filter((file) =>
+            file.type.startsWith("image/"),
+        );
+
+        if (!images.length) {
+            return;
+        }
+
+        setStagedImages((current) => [
+            ...current,
+            ...images.map((file) => ({
+                id: crypto.randomUUID(),
+                file,
+                previewUrl: URL.createObjectURL(file),
+            })),
+        ]);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    }
+
+    function removeStagedImage(imageId: string) {
+        setStagedImages((current) => {
+            const target = current.find((image) => image.id === imageId);
+
+            if (target) {
+                URL.revokeObjectURL(target.previewUrl);
+            }
+
+            return current.filter((image) => image.id !== imageId);
+        });
+    }
+
+    function clearStagedImages() {
+        setStagedImages((current) => {
+            for (const image of current) {
+                URL.revokeObjectURL(image.previewUrl);
+            }
+
+            return [];
+        });
     }
 
     const pluginActions = getPluginComposerActions();
 
     return (
         <form className="composer" onSubmit={handleSubmit}>
+            <input
+                ref={fileInputRef}
+                className="composer-file-input"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(event) =>
+                    stageFiles((event.currentTarget as HTMLInputElement).files)
+                }
+            />
             {pluginActions.length > 0 && (
                 <div className="composer-plugin-actions">
                     {pluginActions.map((action) => (
@@ -131,6 +208,32 @@ export function MessageComposer({
                     ))}
                 </div>
             )}
+            {stagedImages.length > 0 && (
+                <div className="composer-staged-images" aria-label="Staged images">
+                    {stagedImages.map((image) => (
+                        <div className="composer-staged-image" key={image.id}>
+                            <img src={image.previewUrl} alt={image.file.name} />
+                            <button
+                                type="button"
+                                title="Remove image"
+                                disabled={disabled}
+                                onClick={() => removeStagedImage(image.id)}
+                            >
+                                <X size={13} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <button
+                className="attachment-button"
+                type="button"
+                title="Attach images"
+                disabled={disabled}
+                onClick={() => fileInputRef.current?.click()}
+            >
+                <ImagePlus size={18} />
+            </button>
             <textarea
                 ref={composerRef}
                 aria-label="Message"
@@ -149,7 +252,11 @@ export function MessageComposer({
             <button
                 className="send-button"
                 type="submit"
-                title={draft.trim() ? "Send message" : "Generate response"}
+                title={
+                    draft.trim() || stagedImages.length
+                        ? "Send message"
+                        : "Generate response"
+                }
                 disabled={disabled}
             >
                 <Send size={18} />

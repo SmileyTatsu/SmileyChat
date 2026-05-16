@@ -2,7 +2,7 @@ import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
 import { getMessageCreatedAt } from "#frontend/lib/messages";
 
-import type { ChatMode, Message, MessageSwipe } from "#frontend/types";
+import type { ChatAttachment, ChatMode, Message, MessageSwipe } from "#frontend/types";
 
 import type { ChatSession, ChatSummary, ChatSummaryCollection } from "./types";
 
@@ -184,12 +184,44 @@ function normalizeSwipe(value: unknown): MessageSwipe | undefined {
     return {
         id: asString(value.id) || createId("swipe"),
         content: asString(value.content),
+        ...(Array.isArray(value.attachments)
+            ? {
+                  attachments: value.attachments
+                      .map(normalizeAttachment)
+                      .filter(
+                          (attachment): attachment is ChatAttachment =>
+                              Boolean(attachment),
+                      ),
+              }
+            : {}),
         createdAt: asIsoString(value.createdAt) || new Date().toISOString(),
         ...(asString(value.reasoning) ? { reasoning: asString(value.reasoning) } : {}),
         ...("reasoningDetails" in value
             ? { reasoningDetails: value.reasoningDetails }
             : {}),
         ...(value.status === "error" ? { status: "error" as const } : {}),
+    };
+}
+
+function normalizeAttachment(value: unknown): ChatAttachment | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const id = asString(value.id) || createId("attachment");
+    const url = asString(value.url);
+
+    if (value.type !== "image" || !url) {
+        return undefined;
+    }
+
+    const name = asString(value.name);
+
+    return {
+        id,
+        type: "image",
+        url,
+        ...(name ? { name } : {}),
     };
 }
 

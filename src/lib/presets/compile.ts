@@ -2,7 +2,9 @@ import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/t
 
 import { getCharacterTagline } from "../characters/normalize";
 import type { ChatGenerationMessage } from "../connections/types";
+import { messageContentToText } from "../connections/images";
 import {
+    getMessageAttachments,
     getMessageContent,
     getMessageReasoning,
     getMessageReasoningDetails,
@@ -29,7 +31,10 @@ export function compilePresetContext(
     }
 
     return compilePresetMessages(preset, context)
-        .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
+        .map(
+            (message) =>
+                `${message.role.toUpperCase()}: ${messageContentToText(message.content)}`,
+        )
         .join("\n\n");
 }
 
@@ -279,7 +284,7 @@ function toGenerationMessage(
 
     return {
         role: message.role === "user" ? "user" : "assistant",
-        content: messageContentForPrompt(message, context),
+        content: messageContentWithAttachments(message, context),
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
     };
@@ -287,4 +292,24 @@ function toGenerationMessage(
 
 function messageContentForPrompt(message: Message, context: CompilePresetContext) {
     return resolvePresetMacros(getMessageContent(message), context);
+}
+
+function messageContentWithAttachments(
+    message: Message,
+    context: CompilePresetContext,
+): ChatGenerationMessage["content"] {
+    const content = messageContentForPrompt(message, context);
+    const attachments = getMessageAttachments(message);
+
+    if (attachments.length === 0) {
+        return content;
+    }
+
+    return [
+        ...(content ? [{ type: "text" as const, text: content }] : []),
+        ...attachments.map((attachment) => ({
+            type: "image_url" as const,
+            image_url: { url: attachment.url },
+        })),
+    ];
 }

@@ -703,11 +703,15 @@
 
 .composer {
     display: grid;
-    grid-template-columns: 1fr 44px;
+    grid-template-columns: 44px 1fr 44px;
     gap: 10px;
     border-top: 1px solid #262831;
     background: rgba(16, 17, 20, 0.94);
     padding: 14px 18px;
+}
+
+.composer-file-input {
+    display: none;
 }
 
 .composer-plugin-actions {
@@ -736,6 +740,69 @@
     background: #242833;
 }
 
+.composer-staged-images {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 8px;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.composer-staged-image {
+    position: relative;
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    overflow: hidden;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #111318;
+}
+
+.composer-staged-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.composer-staged-image button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(10, 11, 14, 0.82);
+    color: #ececf1;
+    padding: 0;
+}
+
+.message-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 9px;
+}
+
+.message-attachments a {
+    display: block;
+    overflow: hidden;
+    max-width: min(320px, 100%);
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #111318;
+}
+
+.message-attachments img {
+    display: block;
+    max-width: min(320px, 100%);
+    max-height: 280px;
+    object-fit: contain;
+}
+
 .composer textarea {
     min-height: 46px;
     max-height: 150px;
@@ -759,11 +826,29 @@
     background: #17191f;
 }
 
+.attachment-button,
 .send-button {
     align-self: stretch;
     width: 44px;
     min-height: 46px;
     border-radius: 8px;
+}
+
+.attachment-button {
+    display: grid;
+    place-items: center;
+    border: 1px solid #303440;
+    background: #1b1e25;
+    color: #d8dcea;
+    padding: 0;
+}
+
+.attachment-button:hover:not(:disabled) {
+    border-color: #465065;
+    background: #242833;
+}
+
+.send-button {
     background: #e1e7ff;
     color: #15171d;
 }

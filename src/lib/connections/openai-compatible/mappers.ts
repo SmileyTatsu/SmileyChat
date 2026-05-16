@@ -1,4 +1,5 @@
 import {
+    getMessageAttachments,
     getMessageContent,
     getMessageReasoning,
     getMessageReasoningDetails,
@@ -117,12 +118,31 @@ function toOpenAICompatibleMessage(
 
     return {
         role: message.role === "user" ? "user" : "assistant",
-        content: getMessageContent(message),
+        content: messageContentWithAttachments(message),
         ...(includeReasoningHistory && reasoning ? { reasoning } : {}),
         ...(includeReasoningHistory && reasoningDetails !== undefined
             ? { reasoning_details: reasoningDetails }
             : {}),
     };
+}
+
+function messageContentWithAttachments(
+    message: Message,
+): OpenAICompatibleChatMessage["content"] {
+    const content = getMessageContent(message);
+    const attachments = getMessageAttachments(message);
+
+    if (attachments.length === 0) {
+        return content;
+    }
+
+    return [
+        ...(content ? [{ type: "text" as const, text: content }] : []),
+        ...attachments.map((attachment) => ({
+            type: "image_url" as const,
+            image_url: { url: attachment.url },
+        })),
+    ];
 }
 
 function legacyMessages(

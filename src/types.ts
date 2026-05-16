@@ -21,9 +21,17 @@ export type Message = {
     swipes: MessageSwipe[];
 };
 
+export type ChatAttachment = {
+    id: string;
+    type: "image";
+    url: string;
+    name?: string;
+};
+
 export type MessageSwipe = {
     id: string;
     content: string;
+    attachments?: ChatAttachment[];
     createdAt: string;
     reasoning?: string;
     reasoningDetails?: unknown;

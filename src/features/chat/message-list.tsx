@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import { formatShortTime } from "#frontend/lib/common/time";
 import {
+    getMessageAttachments,
     getMessageContent,
     getMessageCreatedAt,
     getMessageReasoning,
@@ -165,6 +166,7 @@ export function MessageList({
         >
             {messages.map((message) => {
                 const content = getMessageContent(message);
+                const attachments = getMessageAttachments(message);
                 const reasoning = getMessageReasoning(message);
                 const isEditing = editingMessageId === message.id;
                 const canPagePrevious = message.activeSwipeIndex > 0;
@@ -335,6 +337,23 @@ export function MessageList({
                                             <summary>Thought Process</summary>
                                             <p>{reasoning}</p>
                                         </details>
+                                    )}
+                                    {attachments.length > 0 && (
+                                        <div className="message-attachments">
+                                            {attachments.map((attachment) => (
+                                                <a
+                                                    key={attachment.id}
+                                                    href={attachment.url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    <img
+                                                        src={attachment.url}
+                                                        alt={attachment.name ?? ""}
+                                                    />
+                                                </a>
+                                            ))}
+                                        </div>
                                     )}
                                     {messageRenderers[0]?.render({
                                         characterAvatarPath,

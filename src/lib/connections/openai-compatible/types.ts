@@ -1,3 +1,5 @@
+import type { ChatGenerationMessageContentPart } from "../types";
+
 export type OpenAICompatibleConnectionConfig = {
     baseUrl: string;
     apiKey?: string;
@@ -29,7 +31,7 @@ export type OpenAICompatibleReasoningConfig = {
 
 export type OpenAICompatibleChatMessage = {
     role: "developer" | "system" | "user" | "assistant";
-    content: string;
+    content: string | ChatGenerationMessageContentPart[];
     reasoning?: string;
     reasoning_details?: unknown;
 };

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { uploadChatAttachments } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
+import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
 import type { ConnectionSettings } from "#frontend/lib/connections/config";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import {
@@ -9,6 +11,7 @@ import {
     createCharacterMessage,
     createUserMessage,
     isActiveSwipeError,
+    updateActiveSwipeAttachments,
     updateActiveSwipeContent,
     updateActiveSwipeReasoning,
 } from "#frontend/lib/messages";
@@ -23,6 +26,7 @@ import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
     ChatMode,
+    ChatAttachment,
     ChatSession,
     Message,
     SmileyCharacter,
@@ -93,7 +97,7 @@ export function useChatSession({
         });
     }
 
-    async function sendMessage(draft: string) {
+    async function sendMessage(draft: string, images: File[] = []) {
         const sourceChat = latestChatRef.current;
 
         if (!sourceChat) {
@@ -115,7 +119,21 @@ export function useChatSession({
         }
 
         const chatId = sourceChat.id;
-        const userMessage = text ? createUserMessage(text, persona) : undefined;
+        let attachments: ChatAttachment[] = [];
+
+        try {
+            attachments = images.length
+                ? await uploadMessageAttachments(chatId, images)
+                : [];
+        } catch (error) {
+            setChatError(`Attachment upload failed: ${messageFromError(error)}`);
+            return;
+        }
+
+        const userMessage =
+            text || attachments.length
+                ? createUserMessage(text, persona, attachments)
+                : undefined;
         const nextMessages = userMessage
             ? [...sourceMessages, userMessage]
             : sourceMessages;
@@ -147,6 +165,7 @@ export function useChatSession({
 
             let streamedContent = "";
             let streamedReasoning = "";
+            const streamedImages: string[] = [];
             const result = await generateWithPreset(
                 nextMessages,
                 generationCharacter,
@@ -170,10 +189,20 @@ export function useChatSession({
                               );
                           }
                         : undefined,
+                    onImage: streamingReply
+                        ? (url) => {
+                              streamedImages.push(url);
+                              updateMessageAttachments(
+                                  streamingReply.id,
+                                  imageUrlsToAttachments(streamedImages),
+                              );
+                          }
+                        : undefined,
                 },
             );
 
             if (streamingReply) {
+                const resultAttachments = imageUrlsToAttachments(result.images ?? []);
                 updateMessageContent(
                     streamingReply.id,
                     result.message,
@@ -181,9 +210,16 @@ export function useChatSession({
                     result.reasoning,
                     result.reasoningDetails,
                 );
+                if (resultAttachments.length) {
+                    updateMessageAttachments(streamingReply.id, resultAttachments);
+                }
             } else {
                 const reply = withMessageReasoning(
-                    createCharacterMessage(generationCharacter.data.name, result.message),
+                    createCharacterMessage(
+                        generationCharacter.data.name,
+                        result.message,
+                        imageUrlsToAttachments(result.images ?? []),
+                    ),
                     result.reasoning,
                     result.reasoningDetails,
                 );
@@ -349,6 +385,7 @@ export function useChatSession({
 
             let streamedContent = "";
             let streamedReasoning = "";
+            const streamedImages: string[] = [];
             const result = await generateWithPreset(
                 historyBeforeTarget,
                 generationCharacter,
@@ -369,6 +406,15 @@ export function useChatSession({
                               updateMessageReasoning(messageId, streamedReasoning);
                           }
                         : undefined,
+                    onImage: preferences.chat.streaming
+                        ? (url) => {
+                              streamedImages.push(url);
+                              updateMessageAttachments(
+                                  messageId,
+                                  imageUrlsToAttachments(streamedImages),
+                              );
+                          }
+                        : undefined,
                 },
             );
 
@@ -381,6 +427,10 @@ export function useChatSession({
                     result.reasoning,
                     result.reasoningDetails,
                 );
+                const resultAttachments = imageUrlsToAttachments(result.images ?? []);
+                if (resultAttachments.length) {
+                    updateMessageAttachments(messageId, resultAttachments);
+                }
             } else {
                 updateChatMessages(
                     targetChat.messages.map((message) =>
@@ -396,6 +446,10 @@ export function useChatSession({
                     ),
                     targetChat,
                 );
+                const resultAttachments = imageUrlsToAttachments(result.images ?? []);
+                if (resultAttachments.length) {
+                    updateMessageAttachments(messageId, resultAttachments);
+                }
             }
         } catch (error) {
             const targetChat = currentOrSourceChat(sourceChat);
@@ -494,6 +548,26 @@ export function useChatSession({
         );
     }
 
+    function updateMessageAttachments(
+        messageId: string,
+        attachments: ChatAttachment[],
+    ) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? updateActiveSwipeAttachments(message, attachments)
+                    : message,
+            ),
+            sourceChat,
+        );
+    }
+
     function currentOrSourceChat(sourceChat: ChatSession) {
         return latestChatRef.current?.id === sourceChat.id
             ? latestChatRef.current
@@ -551,6 +625,7 @@ export function useChatSession({
         sourceUserStatus: UserStatus,
         sourceConnectionSettings: ConnectionSettings,
         options: {
+            onImage?: (url: string) => void;
             onReasoningToken?: (token: string) => void;
             onToken?: (token: string) => void;
             stream?: boolean;
@@ -575,11 +650,14 @@ export function useChatSession({
             sourceMode,
             sourceUserStatus,
         );
+        const materializedPromptMessages =
+            await materializeChatGenerationMessageImages(promptMessages);
         const result = await connection.generate({
             messages: generationMessages,
+            onImage: options.onImage,
             onReasoningToken: options.onReasoningToken,
             onToken: options.onToken,
-            promptMessages,
+            promptMessages: materializedPromptMessages,
             stream: options.stream,
         });
         const message = await applyOutputMiddlewares(
@@ -700,6 +778,24 @@ function withMessageReasoning(
         reasoning,
         reasoningDetails,
     );
+}
+
+async function uploadMessageAttachments(chatId: string, images: File[]) {
+    if (images.length === 0) {
+        return [];
+    }
+
+    const result = await uploadChatAttachments(chatId, images);
+    return result.attachments;
+}
+
+function imageUrlsToAttachments(urls: string[]): ChatAttachment[] {
+    return urls.map((url, index) => ({
+        id: `generated-image-${index + 1}`,
+        type: "image",
+        url,
+        name: `Generated image ${index + 1}`,
+    }));
 }
 
 function latestChatValue(

@@ -40,11 +40,13 @@ export function createGoogleAIConnection(
                 let message = "";
                 let reasoning = "";
                 let model: string | undefined;
+                const images: string[] = [];
                 let lastChunk: GoogleAIGenerateContentResponse | undefined;
 
                 await readGoogleAIStream(response, (tokens, chunk) => {
                     message += tokens.message;
                     reasoning += tokens.reasoning;
+                    images.push(...tokens.images);
                     model = chunk.modelVersion ?? model;
                     lastChunk = chunk;
                     if (tokens.reasoning) {
@@ -53,9 +55,12 @@ export function createGoogleAIConnection(
                     if (tokens.message) {
                         request.onToken?.(tokens.message);
                     }
+                    for (const image of tokens.images) {
+                        request.onImage?.(image);
+                    }
                 });
 
-                if (!message.trim()) {
+                if (!message.trim() && images.length === 0) {
                     throw new Error("Google AI stream did not include message content.");
                 }
 
@@ -65,6 +70,7 @@ export function createGoogleAIConnection(
 
                 return {
                     message: message.trim(),
+                    ...(images.length ? { images } : {}),
                     provider: "google-ai",
                     model,
                     ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),

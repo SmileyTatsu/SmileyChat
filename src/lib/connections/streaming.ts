@@ -8,6 +8,12 @@ export type ChatCompletionStreamChunk = {
     choices?: Array<{
         delta?: {
             content?: string | null;
+            images?: Array<{
+                type?: string;
+                image_url?: {
+                    url?: string;
+                };
+            }>;
             reasoning?: string | null;
             reasoning_details?: unknown;
         };

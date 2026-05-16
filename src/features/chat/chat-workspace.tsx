@@ -28,7 +28,7 @@ type ChatWorkspaceProps = {
     onModeChange: (mode: ChatMode) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
-    onSendMessage: (draft: string) => void | Promise<void>;
+    onSendMessage: (draft: string, images?: File[]) => void | Promise<void>;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
     pluginSnapshot: PluginAppSnapshot;

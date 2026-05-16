@@ -42,6 +42,7 @@ export function createOpenRouterConnection(
                 let model: string | undefined;
                 let reasoning = "";
                 let reasoningDetails: unknown;
+                const images: string[] = [];
 
                 await readChatCompletionStream(response, (chunk) => {
                     if (chunk.error?.message) {
@@ -53,6 +54,12 @@ export function createOpenRouterConnection(
                     model = chunk.model ?? model;
 
                     const token = chunk.choices?.[0]?.delta?.content;
+                    const nextImages = chunk.choices?.[0]?.delta?.images
+                        ?.map((image) => image.image_url?.url)
+                        .filter(
+                            (url): url is string =>
+                                typeof url === "string" && Boolean(url),
+                        );
                     const reasoningToken = chunk.choices?.[0]?.delta?.reasoning;
                     const nextReasoningDetails =
                         chunk.choices?.[0]?.delta?.reasoning_details;
@@ -73,14 +80,22 @@ export function createOpenRouterConnection(
                         message += token;
                         request.onToken?.(token);
                     }
+
+                    if (nextImages?.length) {
+                        images.push(...nextImages);
+                        for (const url of nextImages) {
+                            request.onImage?.(url);
+                        }
+                    }
                 });
 
-                if (!message.trim()) {
+                if (!message.trim() && images.length === 0) {
                     throw new Error("OpenRouter stream did not include message content.");
                 }
 
                 return {
                     message: message.trim(),
+                    ...(images.length ? { images } : {}),
                     provider: "openrouter",
                     model,
                     ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
     characterImportsDir,
     characterLibraryDir,
+    chatAssetsDir,
     chatOrphanedDir,
     chatSessionsDir,
     personaAssetsDir,
@@ -27,6 +28,7 @@ export function ensureUserData() {
     for (const folder of [
         characterImportsDir,
         characterLibraryDir,
+        chatAssetsDir,
         chatSessionsDir,
         chatOrphanedDir,
         personaCardsDir,

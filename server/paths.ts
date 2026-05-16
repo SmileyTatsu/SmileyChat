@@ -26,6 +26,7 @@ export const characterLibraryDir = join(userDataDir, "characters", "library");
 export const characterImportsDir = join(userDataDir, "characters", "imports");
 export const characterOrphanedDir = join(userDataDir, "characters", "orphaned");
 export const chatIndexPath = join(userDataDir, "chats", "index.json");
+export const chatAssetsDir = join(userDataDir, "chats", "assets");
 export const chatSessionsDir = join(userDataDir, "chats", "sessions");
 export const chatOrphanedDir = join(userDataDir, "chats", "orphaned");
 export const personaIndexPath = join(userDataDir, "personas", "index.json");
@@ -36,3 +37,4 @@ export const pluginsDir = join(userDataDir, "plugins");
 export const coreExtensionsDataDir = join(userDataDir, "settings", "core-extensions");
 
 export const maxAvatarBytes = 20 * 1024 * 1024;
+export const maxChatAssetBytes = 25 * 1024 * 1024;

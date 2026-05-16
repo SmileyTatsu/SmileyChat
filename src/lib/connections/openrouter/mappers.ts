@@ -1,4 +1,5 @@
 import {
+    getMessageAttachments,
     getMessageContent,
     getMessageReasoning,
     getMessageReasoningDetails,
@@ -10,6 +11,7 @@ import type {
     ChatGenerationRequest,
     ChatGenerationResult,
 } from "../types";
+import { hasImageContent } from "../images";
 import type {
     OpenRouterChatCompletionRequest,
     OpenRouterChatCompletionResponse,
@@ -49,13 +51,17 @@ export function normalizeOpenRouterChatCompletion(
 
     const responseMessage = firstChoice?.message;
     const message = responseMessage?.content?.trim();
+    const images = responseMessage?.images
+        ?.map((image) => image.image_url?.url)
+        .filter((url): url is string => typeof url === "string" && Boolean(url));
 
-    if (!message) {
+    if (!message && !images?.length) {
         throw new Error("OpenRouter response did not include message content.");
     }
 
     return {
-        message,
+        message: message ?? "",
+        ...(images?.length ? { images } : {}),
         provider: "openrouter",
         model: response.model,
         ...(responseMessage?.reasoning?.trim()
@@ -175,12 +181,31 @@ function toOpenRouterMessage(message: Message): OpenRouterChatMessage {
 
     return {
         role: message.role === "user" ? "user" : "assistant",
-        content: getMessageContent(message),
+        content: messageContentWithAttachments(message),
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails !== undefined
             ? { reasoning_details: reasoningDetails }
             : {}),
     };
+}
+
+function messageContentWithAttachments(
+    message: Message,
+): OpenRouterChatMessage["content"] {
+    const content = getMessageContent(message);
+    const attachments = getMessageAttachments(message);
+
+    if (attachments.length === 0) {
+        return content;
+    }
+
+    return [
+        ...(content ? [{ type: "text" as const, text: content }] : []),
+        ...attachments.map((attachment) => ({
+            type: "image_url" as const,
+            image_url: { url: attachment.url },
+        })),
+    ];
 }
 
 function legacyMessages(request: ChatGenerationRequest): OpenRouterChatMessage[] {

@@ -1,3 +1,5 @@
+import type { ChatGenerationMessageContentPart } from "../types";
+
 export type OpenRouterConnectionConfig = {
     apiKey?: string;
     model: OpenRouterModelSelection;
@@ -33,14 +35,22 @@ export type OpenRouterReasoningConfig = {
 
 export type OpenRouterChatMessage = {
     role: "system" | "user" | "assistant";
-    content: string;
+    content: string | ChatGenerationMessageContentPart[];
     reasoning?: string;
     reasoning_details?: unknown;
+};
+
+export type OpenRouterImage = {
+    type: "image_url";
+    image_url: {
+        url: string;
+    };
 };
 
 export type OpenRouterChatCompletionRequest = {
     model: string;
     messages: OpenRouterChatMessage[];
+    modalities?: string[];
     stream: boolean;
     provider?: OpenRouterProviderPreferences;
     reasoning?: OpenRouterReasoningConfig;
@@ -56,6 +66,7 @@ export type OpenRouterChatCompletionResponse = {
         message?: {
             role?: string;
             content: string | null;
+            images?: OpenRouterImage[];
             reasoning?: string | null;
             reasoning_details?: unknown;
         };

@@ -15,6 +15,11 @@ import {
 } from "./characters";
 import { importUploadedChatFile } from "./chat-imports";
 import {
+    readUploadedChatAssets,
+    serveChatAsset,
+    writeChatAssets,
+} from "./chat-assets";
+import {
     createChat,
     deleteChatById,
     deleteChatsByCharacterId,
@@ -217,6 +222,26 @@ const server = Bun.serve({
                 const result = await importUploadedChatFile(request);
 
                 return json({ ok: true, ...result });
+            }),
+        },
+
+        "/api/chats/:chatId/attachments": {
+            POST: api(async (request, routeServer) => {
+                routeServer.timeout(request, 60);
+                const files = await readUploadedChatAssets(request);
+                const attachments = await writeChatAssets(request.params.chatId, files);
+
+                return json({
+                    ok: true,
+                    attachments,
+                    url: attachments[0]?.url,
+                });
+            }),
+        },
+
+        "/api/chats/:chatId/attachments/:file": {
+            GET: api(async (request) => {
+                return serveChatAsset(request.params.chatId, request.params.file);
             }),
         },
 
