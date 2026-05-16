@@ -28,6 +28,7 @@ type ChatWorkspaceProps = {
     onModeChange: (mode: ChatMode) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
+    onAbortGeneration: () => void;
     onSendMessage: (draft: string, images?: File[]) => void | Promise<void>;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
@@ -51,6 +52,7 @@ export function ChatWorkspace({
     onModeChange,
     onNextSwipe,
     onPreviousSwipe,
+    onAbortGeneration,
     onSendMessage,
     onToggleSidebar,
     onToggleCharacter,
@@ -118,7 +120,9 @@ export function ChatWorkspace({
                     disabled={isSending || Boolean(pendingSwipeMessageId)}
                     mode={mode}
                     enterToSend={preferences.chat.enterToSend}
+                    isGenerating={Boolean(isSending)}
                     resetKey={activeChatId}
+                    onAbortGeneration={onAbortGeneration}
                     onSubmit={onSendMessage}
                     pluginSnapshot={pluginSnapshot}
                 />

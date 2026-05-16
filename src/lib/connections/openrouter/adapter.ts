@@ -29,6 +29,7 @@ export function createOpenRouterConnection(
                 method: "POST",
                 headers: createOpenRouterHeaders(config),
                 body: JSON.stringify(body),
+                signal: request.signal,
             });
 
             if (!response.ok) {
@@ -87,7 +88,7 @@ export function createOpenRouterConnection(
                             request.onImage?.(url);
                         }
                     }
-                });
+                }, request.signal);
 
                 if (!message.trim() && images.length === 0) {
                     throw new Error("OpenRouter stream did not include message content.");

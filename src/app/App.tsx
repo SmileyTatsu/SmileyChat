@@ -505,6 +505,7 @@ export function App() {
                 preferences={preferences}
                 pendingSwipeMessageId={chatSession.pendingSwipeMessageId}
                 emptyState={chatEmptyState}
+                onAbortGeneration={chatSession.stopGeneration}
                 onDeleteMessage={chatSession.deleteMessage}
                 onEditMessage={chatSession.editMessage}
                 onModeChange={changeMode}

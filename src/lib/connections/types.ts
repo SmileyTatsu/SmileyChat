@@ -18,6 +18,7 @@ export type ChatGenerationRequest = {
     onReasoningToken?: (token: string) => void;
     onToken?: (token: string) => void;
     promptMessages?: ChatGenerationMessage[];
+    signal?: AbortSignal;
     stream?: boolean;
 };
 

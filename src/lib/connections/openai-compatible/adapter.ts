@@ -29,6 +29,7 @@ export function createOpenAICompatibleConnection(
                 method: "POST",
                 headers,
                 body: JSON.stringify(body),
+                signal: request.signal,
             });
 
             if (!response.ok) {
@@ -73,7 +74,7 @@ export function createOpenAICompatibleConnection(
                         message += token;
                         request.onToken?.(token);
                     }
-                });
+                }, request.signal);
 
                 if (!message.trim()) {
                     throw new Error(

@@ -24,6 +24,7 @@ export type ChatCompletionStreamChunk = {
 export async function readChatCompletionStream(
     response: Response,
     onChunk: (chunk: ChatCompletionStreamChunk) => void,
+    signal?: AbortSignal,
 ) {
     if (!response.body) {
         throw new Error("Streaming response did not include a readable body.");
@@ -32,10 +33,23 @@ export async function readChatCompletionStream(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    const abortReader = () => {
+        void reader.cancel();
+    };
 
     try {
+        if (signal?.aborted) {
+            throw new DOMException("The operation was aborted.", "AbortError");
+        }
+
+        signal?.addEventListener("abort", abortReader, { once: true });
+
         while (true) {
             const { done, value } = await reader.read();
+
+            if (signal?.aborted) {
+                throw new DOMException("The operation was aborted.", "AbortError");
+            }
 
             if (done) {
                 break;
@@ -50,12 +64,17 @@ export async function readChatCompletionStream(
             }
         }
 
+        if (signal?.aborted) {
+            throw new DOMException("The operation was aborted.", "AbortError");
+        }
+
         buffer += decoder.decode();
 
         if (buffer.trim()) {
             parseServerSentEvent(buffer, onChunk);
         }
     } finally {
+        signal?.removeEventListener("abort", abortReader);
         reader.releaseLock();
     }
 }

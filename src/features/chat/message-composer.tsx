@@ -1,4 +1,4 @@
-import { ImagePlus, Send, X } from "lucide-preact";
+import { ImagePlus, Send, Square, X } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
@@ -13,8 +13,10 @@ type MessageComposerProps = {
     characterName: string;
     disabled?: boolean;
     enterToSend: boolean;
+    isGenerating?: boolean;
     mode: ChatMode;
     resetKey: string;
+    onAbortGeneration?: () => void;
     onSubmit: (draft: string, images?: File[]) => void | Promise<void>;
     pluginSnapshot: PluginAppSnapshot;
 };
@@ -29,8 +31,10 @@ export function MessageComposer({
     characterName,
     disabled,
     enterToSend,
+    isGenerating,
     mode,
     resetKey,
+    onAbortGeneration,
     onSubmit,
     pluginSnapshot,
 }: MessageComposerProps) {
@@ -85,6 +89,12 @@ export function MessageComposer({
 
     function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
+
+        if (isGenerating) {
+            abortGeneration();
+            return;
+        }
+
         submitDraft();
     }
 
@@ -134,6 +144,10 @@ export function MessageComposer({
         setDraft("");
         clearStagedImages();
         return onSubmit(submittedDraft, submittedImages);
+    }
+
+    function abortGeneration() {
+        onAbortGeneration?.();
     }
 
     function stageFiles(files: FileList | null) {
@@ -261,15 +275,26 @@ export function MessageComposer({
             />
             <button
                 className="send-button"
-                type="submit"
+                type={isGenerating ? "button" : "submit"}
                 title={
-                    draft.trim() || stagedImages.length
-                        ? "Send message"
-                        : "Generate response"
+                    isGenerating
+                        ? "Stop generation"
+                        : draft.trim() || stagedImages.length
+                          ? "Send message"
+                          : "Generate response"
                 }
-                disabled={disabled}
+                disabled={isGenerating ? false : disabled}
+                onClick={
+                    isGenerating
+                        ? (event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              abortGeneration();
+                          }
+                        : undefined
+                }
             >
-                <Send size={18} />
+                {isGenerating ? <Square size={17} /> : <Send size={18} />}
             </button>
         </form>
     );

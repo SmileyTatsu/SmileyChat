@@ -28,6 +28,7 @@ export function createGoogleAIConnection(
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(body),
+                signal: request.signal,
             });
 
             if (!response.ok) {
@@ -58,7 +59,7 @@ export function createGoogleAIConnection(
                     for (const image of tokens.images) {
                         request.onImage?.(image);
                     }
-                });
+                }, request.signal);
 
                 if (!message.trim() && images.length === 0) {
                     throw new Error("Google AI stream did not include message content.");
