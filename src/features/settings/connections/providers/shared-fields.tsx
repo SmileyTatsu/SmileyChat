@@ -79,6 +79,14 @@ export function ApiKeyField({
                 <input
                     value={apiKey ?? ""}
                     type="password"
+                    inputMode="text"
+                    autoCapitalize="off"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
+                    data-lpignore="true"
                     placeholder="Saved to userData/settings/connection-secrets.json"
                     onInput={(event) =>
                         onChange((event.currentTarget as HTMLInputElement).value)
