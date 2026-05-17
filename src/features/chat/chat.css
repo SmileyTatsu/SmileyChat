@@ -188,6 +188,8 @@
 }
 
 .message {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 96px;
     display: grid;
     grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
     gap: var(--message-gap);
@@ -669,6 +671,7 @@
 }
 
 .rp .message {
+    contain-intrinsic-size: auto 180px;
     grid-template-columns: minmax(0, 1fr);
     border-left: 2px solid #384252;
     padding: 0 0 0 18px;

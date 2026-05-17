@@ -80,15 +80,18 @@ export function MessageList({
         [],
     );
 
-    const scrollVersion = messages
-        .map((message) => {
-            const activeSwipe =
-                message.swipes[message.activeSwipeIndex] ?? message.swipes[0];
-            return `${message.id}:${message.activeSwipeIndex}:${activeSwipe?.id ?? ""}:${
-                activeSwipe?.content ?? ""
-            }:${activeSwipe?.reasoning ?? ""}`;
-        })
-        .join("|");
+    const lastMessage = messages[messages.length - 1];
+    const lastActiveSwipe = lastMessage
+        ? lastMessage.swipes[lastMessage.activeSwipeIndex] ?? lastMessage.swipes[0]
+        : undefined;
+    const scrollVersion = [
+        messages.length,
+        lastMessage?.id ?? "",
+        lastMessage?.activeSwipeIndex ?? "",
+        lastActiveSwipe?.id ?? "",
+        lastActiveSwipe?.content.length ?? 0,
+        lastActiveSwipe?.reasoning?.length ?? 0,
+    ].join(":");
 
     useEffect(() => {
         const list = listRef.current;
