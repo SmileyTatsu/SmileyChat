@@ -78,25 +78,10 @@ export function ClaudeMaxConnection({
     return (
         <div className="connection-card">
             <p className="field-hint">
-                Sends chats through your Claude Pro or Max subscription. No API key needed.
-                Usage counts against your plan quota.
+                Sends chats through your Claude Pro or Max subscription. Requires the
+                Claude Code CLI to be installed and logged in on this machine. No API key
+                needed. Usage counts against your plan quota.
             </p>
-
-            <div className="claude-max-setup">
-                <span className="claude-max-setup-label">
-                    First-time setup on this machine
-                </span>
-                <ol>
-                    <li>
-                        <span>Install the Claude Code CLI</span>
-                        <code>npm i -g @anthropic-ai/claude-code</code>
-                    </li>
-                    <li>
-                        <span>Sign in once</span>
-                        <code>claude login</code>
-                    </li>
-                </ol>
-            </div>
 
             <div className="inline-field-row">
                 <label>
