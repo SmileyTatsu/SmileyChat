@@ -82,6 +82,7 @@ export function ChatWorkspace({
                 </div>
             ) : (
                 <MessageList
+                    key={activeChatId}
                     characterAvatarPath={characterAvatarPath}
                     characterName={characterName}
                     errorMessage={errorMessage}
@@ -89,7 +90,9 @@ export function ChatWorkspace({
                     messages={messages}
                     mode={mode}
                     autoScroll={preferences.chat.autoScroll}
+                    initialMessageCount={preferences.chat.initialMessageCount}
                     pendingSwipeMessageId={pendingSwipeMessageId}
+                    resetKey={activeChatId}
                     showRpCharacterImages={
                         preferences.appearance.showRpCharacterImages
                     }
