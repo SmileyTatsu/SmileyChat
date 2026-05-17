@@ -313,11 +313,19 @@
     color: #ececf1;
 }
 
+.message-menu-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 6px 8px 12px;
+    margin: -6px -8px -12px;
+}
+
 .message-menu {
     position: absolute;
     z-index: 4;
-    top: 28px;
-    right: 0;
+    top: 34px;
+    right: -8px;
     display: grid;
     min-width: 138px;
     border: 1px solid #303440;

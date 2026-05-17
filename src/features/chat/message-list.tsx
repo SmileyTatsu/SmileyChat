@@ -72,6 +72,7 @@ export function MessageList({
 }: MessageListProps) {
     const shouldAutoScrollRef = useRef(true);
     const listRef = useRef<HTMLDivElement>(null);
+    const openMenuRef = useRef<HTMLDivElement>(null);
 
     const [editingDraft, setEditingDraft] = useState("");
     const [editingMessageId, setEditingMessageId] = useState("");
@@ -111,6 +112,36 @@ export function MessageList({
 
         list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
     }, [autoScroll, errorMessage, isTyping, pendingSwipeMessageId, scrollVersion]);
+
+    useEffect(() => {
+        if (!openMenuMessageId) {
+            return;
+        }
+
+        function handlePointerDown(event: PointerEvent) {
+            const openMenu = openMenuRef.current;
+
+            if (!openMenu || openMenu.contains(event.target as Node)) {
+                return;
+            }
+
+            setOpenMenuMessageId("");
+        }
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setOpenMenuMessageId("");
+            }
+        }
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [openMenuMessageId]);
 
     function updateAutoScrollPreference() {
         const list = listRef.current;
@@ -198,7 +229,6 @@ export function MessageList({
                 return (
                     <article
                         key={message.id}
-                        onMouseLeave={() => setOpenMenuMessageId("")}
                         className={cn("message", {
                             "failed-swipe": isFailedSwipe,
                             "generating-swipe": isPendingSwipe,
@@ -252,68 +282,78 @@ export function MessageList({
                                 )}
 
                                 {isPendingSwipe && <span className="swipe-loading-dot" />}
-
-                                <button
-                                    className="message-actions-trigger"
-                                    type="button"
-                                    title="Message actions"
-                                    onClick={() => {
-                                        setOpenMenuMessageId((current) => {
-                                            return current === message.id
-                                                ? ""
-                                                : message.id;
-                                        });
-                                    }}
+                                <div
+                                    className="message-menu-wrap"
+                                    ref={
+                                        openMenuMessageId === message.id
+                                            ? openMenuRef
+                                            : undefined
+                                    }
                                 >
-                                    <MoreHorizontal size={15} />
-                                </button>
-
-                                {openMenuMessageId === message.id && (
-                                    <div className="message-menu">
-                                        <button
-                                            type="button"
-                                            onClick={() => startEditing(message)}
-                                        >
-                                            <FilePenLine size={14} />
-                                            Edit
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => void copyMessage(message)}
-                                        >
-                                            <Copy size={14} />
-                                            Copy
-                                        </button>
-
-                                        {pluginMessageActions.map((action) => (
+                                    <button
+                                        className="message-actions-trigger"
+                                        type="button"
+                                        title="Message actions"
+                                        aria-haspopup="menu"
+                                        aria-expanded={openMenuMessageId === message.id}
+                                        onClick={() =>
+                                            setOpenMenuMessageId((current) =>
+                                                current === message.id ? "" : message.id,
+                                            )
+                                        }
+                                    >
+                                        <MoreHorizontal size={15} />
+                                    </button>
+                                    {openMenuMessageId === message.id && (
+                                        <div className="message-menu" role="menu">
                                             <button
-                                                key={action.id}
                                                 type="button"
-                                                onClick={() => {
-                                                    setOpenMenuMessageId("");
-                                                    void action.run({
-                                                        content,
-                                                        message,
-                                                        snapshot: pluginSnapshot,
-                                                    });
-                                                }}
+                                                role="menuitem"
+                                                onClick={() => startEditing(message)}
                                             >
-                                                {action.renderIcon?.()}
-                                                {action.label}
+                                                <FilePenLine size={14} />
+                                                Edit
                                             </button>
-                                        ))}
-
-                                        <button
-                                            className="danger-menu-item"
-                                            type="button"
-                                            onClick={() => requestDeleteMessage(message)}
-                                        >
-                                            <Trash2 size={14} />
-                                            Delete
-                                        </button>
-                                    </div>
-                                )}
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => void copyMessage(message)}
+                                            >
+                                                <Copy size={14} />
+                                                Copy
+                                            </button>
+                                            {pluginMessageActions.map((action) => (
+                                                <button
+                                                    key={action.id}
+                                                    type="button"
+                                                    role="menuitem"
+                                                    onClick={() => {
+                                                        setOpenMenuMessageId("");
+                                                        void action.run({
+                                                            content,
+                                                            message,
+                                                            snapshot: pluginSnapshot,
+                                                        });
+                                                    }}
+                                                >
+                                                    {action.renderIcon
+                                                        ? action.renderIcon()
+                                                        : null}
+                                                    {action.label}
+                                                </button>
+                                            ))}
+                                            <button
+                                                className="danger-menu-item"
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => requestDeleteMessage(message)}
+                                            >
+                                                <Trash2 size={14} />
+                                                Delete
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </MessageHeader>
 
