@@ -1123,6 +1123,21 @@
     height: 18px;
 }
 
+.settings-text-input {
+    width: min(100%, 360px);
+    justify-self: end;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #15181e;
+    color: #ececf1;
+    min-height: 38px;
+    padding: 0 11px;
+}
+
+.settings-text-input::placeholder {
+    color: #798194;
+}
+
 .settings-segmented-control {
     display: grid;
     justify-self: end;
@@ -1185,6 +1200,7 @@
 .settings-message-preview p {
     margin: 0;
     color: #d9dce6;
+    font-family: var(--chat-font-family);
     font-size: var(--message-font-size);
     line-height: var(--message-line-height);
 }

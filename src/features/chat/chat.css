@@ -195,6 +195,8 @@
 
     @apply relative m-0 grid gap-x-[var(--message-gap)] gap-y-2;
 
+    font-family: var(--chat-font-family);
+
     p {
         margin: 0;
         color: #d9dce6;
@@ -535,6 +537,7 @@
     border-radius: 8px;
     background: #191b21;
     color: #ececf1;
+    font-family: var(--chat-font-family);
     padding: 10px 11px;
     line-height: 1.5;
 }
@@ -801,8 +804,9 @@
     textarea {
         max-height: 200px;
         font-size: var(--message-font-size);
+        font-family: var(--chat-font-family);
 
-        @apply h-full min-h-9 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent py-1.5 pr-1.5 text-[var(--message-font-size)] outline-none placeholder:text-[var(--message-font-size)];
+        @apply h-full min-h-8.5 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent py-1.5 pr-1.5 text-[var(--message-font-size)] outline-none placeholder:text-[var(--message-font-size)];
     }
 
     .send-button {

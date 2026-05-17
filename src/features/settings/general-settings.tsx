@@ -98,6 +98,36 @@ export function GeneralSettings({
                     />
                 </SettingField>
 
+                <SettingField label="UI font">
+                    <input
+                        className="settings-text-input"
+                        type="text"
+                        value={preferences.appearance.uiFontFamily}
+                        placeholder="System default"
+                        spellcheck={false}
+                        onInput={(event) =>
+                            updateAppearance({
+                                uiFontFamily: event.currentTarget.value,
+                            })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField label="Chat font">
+                    <input
+                        className="settings-text-input"
+                        type="text"
+                        value={preferences.appearance.chatFontFamily}
+                        placeholder="Use UI font"
+                        spellcheck={false}
+                        onInput={(event) =>
+                            updateAppearance({
+                                chatFontFamily: event.currentTarget.value,
+                            })
+                        }
+                    />
+                </SettingField>
+
                 <ToggleRow
                     checked={preferences.appearance.showTimestamps}
                     label="Show timestamps"
