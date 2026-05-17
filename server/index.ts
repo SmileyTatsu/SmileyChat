@@ -14,6 +14,7 @@ import {
     writeCharacterById,
 } from "./characters";
 import { importUploadedChatFile } from "./chat-imports";
+import { handleClaudeMaxGenerate, handleClaudeMaxStatus } from "./claude-max";
 import {
     readUploadedChatAssets,
     serveChatAsset,
@@ -165,6 +166,19 @@ const server = Bun.serve({
                     await readJsonBody(request),
                 );
                 return json({ ok: true, settings });
+            }),
+        },
+
+        "/api/claude-max/status": {
+            GET: api(async () => {
+                return handleClaudeMaxStatus();
+            }),
+        },
+
+        "/api/claude-max/generate": {
+            POST: api(async (request, routeServer) => {
+                routeServer.timeout(request, 600);
+                return handleClaudeMaxGenerate(request);
             }),
         },
 

@@ -1,0 +1,22 @@
+.claude-max-toggle-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.5rem 0;
+}
+
+.claude-max-toggle-row input[type="checkbox"] {
+    margin-top: 0.2rem;
+}
+
+.claude-max-toggle-row span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.claude-max-toggle-row small {
+    color: var(--text-muted, #888);
+    font-size: 0.85em;
+    line-height: 1.3;
+}
