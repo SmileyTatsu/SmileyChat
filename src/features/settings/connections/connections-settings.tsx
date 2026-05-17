@@ -31,6 +31,14 @@ import type { OpenRouterModel } from "#frontend/lib/connections/openrouter/types
 import { createUserMessage } from "#frontend/lib/messages";
 import { defaultPersona } from "#frontend/lib/personas/defaults";
 import {
+    contextTokenBudgetRangeStep,
+    contextTokenBudgetToRangeValue,
+    maxContextTokenBudget,
+    maxContextTokenBudgetRangeValue,
+    minContextTokenBudget,
+    normalizeContextTokenBudget,
+} from "#frontend/lib/presets/context-budget-constants";
+import {
     getPluginConnectionProvider,
     getPluginConnectionProviders,
     subscribeToPluginRegistry,
@@ -469,6 +477,21 @@ export function ConnectionsSettings({
         onSettingsChange(updateProfile(settings, activeProfile.id, { name }));
     }
 
+    function updateActiveProfileContextTokenBudget(value: number) {
+        if (!activeProfile) {
+            return;
+        }
+
+        onSettingsChange(
+            updateProfile(settings, activeProfile.id, {
+                contextTokenBudget: normalizeContextTokenBudget(
+                    value,
+                    activeProfile.contextTokenBudget,
+                ),
+            }),
+        );
+    }
+
     function addProfile() {
         const profile = createConnectionProfile(
             "openai-compatible",
@@ -555,6 +578,7 @@ export function ConnectionsSettings({
                 ...activeProfile.config,
                 apiKey: undefined,
             },
+            contextTokenBudget: activeProfile.contextTokenBudget,
             createdAt: now,
             updatedAt: now,
         };
@@ -692,6 +716,14 @@ export function ConnectionsSettings({
                         </label>
                     </div>
 
+                    <label className="connection-context-limit-field">
+                        Context token limit
+                        <ContextTokenLimitControl
+                            value={activeProfile.contextTokenBudget}
+                            onChange={updateActiveProfileContextTokenBudget}
+                        />
+                    </label>
+
                     {isOpenAICompatibleProfile(activeProfile) ? (
                         <OpenAICompatibleConnection
                             config={activeProfile.config}
@@ -807,4 +839,59 @@ function updateProfileConfig(
     config: Record<string, unknown>,
 ): ConnectionSettings {
     return updateProfile(settings, profileId, { config });
+}
+
+function ContextTokenLimitControl({
+    value,
+    onChange,
+}: {
+    value: number;
+    onChange: (value: number) => void;
+}) {
+    const normalizedValue = normalizeContextTokenBudget(value);
+
+    return (
+        <div className="connection-context-limit-control">
+            <input
+                max={maxContextTokenBudgetRangeValue}
+                min={minContextTokenBudget}
+                step={contextTokenBudgetRangeStep}
+                type="range"
+                value={contextTokenBudgetToRangeValue(normalizedValue)}
+                onInput={(event) =>
+                    onChange(
+                        normalizeContextTokenBudget(
+                            (event.currentTarget as HTMLInputElement).valueAsNumber,
+                            normalizedValue,
+                        ),
+                    )
+                }
+            />
+            <input
+                max={maxContextTokenBudget}
+                min={minContextTokenBudget}
+                step={1}
+                type="number"
+                value={normalizedValue}
+                onBlur={(event) => {
+                    const input = event.currentTarget as HTMLInputElement;
+                    const nextValue = normalizeContextTokenBudget(
+                        input.valueAsNumber,
+                        normalizedValue,
+                    );
+
+                    input.value = String(nextValue);
+                    onChange(nextValue);
+                }}
+                onInput={(event) => {
+                    const nextValue = (event.currentTarget as HTMLInputElement)
+                        .valueAsNumber;
+
+                    if (Number.isFinite(nextValue)) {
+                        onChange(nextValue);
+                    }
+                }}
+            />
+        </div>
+    );
 }

@@ -16,6 +16,7 @@ export type AppPreferences = {
         enterToSend: boolean;
         autoScroll: boolean;
         defaultMode: ChatMode;
+        initialMessageCount: number;
         streaming: boolean;
     };
     layout: {
@@ -35,6 +36,7 @@ export const defaultAppPreferences: AppPreferences = {
         enterToSend: true,
         autoScroll: true,
         defaultMode: "chat",
+        initialMessageCount: 50,
         streaming: true,
     },
     layout: {
@@ -81,6 +83,12 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 chat.defaultMode,
                 defaultAppPreferences.chat.defaultMode,
             ),
+            initialMessageCount: numberInRange(
+                chat.initialMessageCount,
+                defaultAppPreferences.chat.initialMessageCount,
+                20,
+                300,
+            ),
             streaming: booleanOrFallback(
                 chat.streaming,
                 defaultAppPreferences.chat.streaming,
@@ -113,4 +121,17 @@ function normalizeChatMode(value: unknown, fallback: ChatMode) {
 
 function booleanOrFallback(value: unknown, fallback: boolean) {
     return typeof value === "boolean" ? value : fallback;
+}
+
+function numberInRange(
+    value: unknown,
+    fallback: number,
+    min: number,
+    max: number,
+) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        return fallback;
+    }
+
+    return Math.min(max, Math.max(min, Math.round(value)));
 }

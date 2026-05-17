@@ -2,6 +2,10 @@ import defaultGoogleAIModels from "#frontend/data/default-google-ai-models.json"
 import defaultOpenAIModels from "#frontend/data/default-openai-models.json";
 
 import { isRecord } from "../common/guards";
+import {
+    defaultContextTokenBudget,
+    normalizeContextTokenBudget,
+} from "../presets/context-budget-constants";
 
 import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./google-ai/types";
 import type {
@@ -25,6 +29,7 @@ export type OpenAICompatibleConnectionProfile = {
     id: string;
     name: string;
     provider: "openai-compatible";
+    contextTokenBudget: number;
     config: OpenAICompatibleConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -34,6 +39,7 @@ export type OpenRouterConnectionProfile = {
     id: string;
     name: string;
     provider: "openrouter";
+    contextTokenBudget: number;
     config: OpenRouterConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -43,6 +49,7 @@ export type GoogleAIConnectionProfile = {
     id: string;
     name: string;
     provider: "google-ai";
+    contextTokenBudget: number;
     config: GoogleAIConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -55,6 +62,7 @@ export type PluginConnectionProfile = {
         ConnectionProviderId,
         "openai-compatible" | "openrouter" | "google-ai"
     >;
+    contextTokenBudget: number;
     config: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
@@ -119,6 +127,7 @@ export const defaultConnectionSettings: ConnectionSettings = {
             id: migratedOpenAIProfileId,
             name: "OpenAI",
             provider: "openai-compatible",
+            contextTokenBudget: defaultContextTokenBudget,
             config: defaultOpenAICompatibleConfig,
             createdAt: "2026-01-01T00:00:00.000Z",
             updatedAt: "2026-01-01T00:00:00.000Z",
@@ -231,6 +240,7 @@ export function createConnectionProfile(
             id: createConnectionProfileId(),
             name,
             provider,
+            contextTokenBudget: defaultContextTokenBudget,
             config: normalizeOpenRouterConfig(defaultConfig ?? defaultOpenRouterConfig),
             createdAt: now,
             updatedAt: now,
@@ -242,6 +252,7 @@ export function createConnectionProfile(
             id: createConnectionProfileId(),
             name,
             provider,
+            contextTokenBudget: defaultContextTokenBudget,
             config: normalizeGoogleAIConfig(defaultConfig ?? defaultGoogleAIConfig),
             createdAt: now,
             updatedAt: now,
@@ -253,6 +264,7 @@ export function createConnectionProfile(
             id: createConnectionProfileId(),
             name,
             provider,
+            contextTokenBudget: defaultContextTokenBudget,
             config: defaultConfig ?? {},
             createdAt: now,
             updatedAt: now,
@@ -263,6 +275,7 @@ export function createConnectionProfile(
         id: createConnectionProfileId(),
         name,
         provider,
+        contextTokenBudget: defaultContextTokenBudget,
         config: normalizeOpenAICompatibleConfig(
             defaultConfig ?? defaultOpenAICompatibleConfig,
         ),
@@ -333,6 +346,7 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
         id: stringOrFallback(profile.id, createConnectionProfileId()),
         name: stringOrFallback(profile.name, "Untitled connection"),
         provider,
+        contextTokenBudget: normalizeContextTokenBudget(profile.contextTokenBudget),
         config:
             provider === "openai-compatible"
                 ? normalizeOpenAICompatibleConfig(profile.config)

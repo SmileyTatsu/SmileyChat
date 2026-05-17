@@ -531,6 +531,30 @@
     gap: 12px;
 }
 
+.connection-context-limit-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 108px;
+    align-items: center;
+    gap: 10px;
+    justify-self: stretch;
+    width: 100%;
+}
+
+.connection-context-limit-control input[type="number"] {
+    max-width: 108px;
+}
+
+.connection-context-limit-control input[type="range"] {
+    width: 100%;
+    accent-color: #e1e7ff;
+}
+
+.connection-context-limit-field {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+}
+
 .preset-editor {
     display: grid;
     grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
@@ -1121,6 +1145,17 @@
     justify-self: end;
     width: 18px;
     height: 18px;
+}
+
+.settings-number-input {
+    justify-self: end;
+    width: 108px;
+    min-height: 36px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #15181e;
+    color: #ececf1;
+    padding: 0 10px;
 }
 
 .settings-segmented-control {
