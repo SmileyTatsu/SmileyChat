@@ -11,6 +11,8 @@ export type AppPreferences = {
         showTimestamps: boolean;
         showRpCharacterImages: boolean;
         fontScale: FontScale;
+        uiFontFamily: string;
+        chatFontFamily: string;
     };
     chat: {
         enterToSend: boolean;
@@ -31,6 +33,8 @@ export const defaultAppPreferences: AppPreferences = {
         showTimestamps: true,
         showRpCharacterImages: false,
         fontScale: "default",
+        uiFontFamily: "",
+        chatFontFamily: "",
     },
     chat: {
         enterToSend: true,
@@ -68,6 +72,14 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             fontScale: normalizeFontScale(
                 appearance.fontScale,
                 defaultAppPreferences.appearance.fontScale,
+            ),
+            uiFontFamily: normalizeFontFamily(
+                appearance.uiFontFamily,
+                defaultAppPreferences.appearance.uiFontFamily,
+            ),
+            chatFontFamily: normalizeFontFamily(
+                appearance.chatFontFamily,
+                defaultAppPreferences.appearance.chatFontFamily,
             ),
         },
         chat: {
@@ -117,6 +129,17 @@ function normalizeFontScale(value: unknown, fallback: FontScale) {
 
 function normalizeChatMode(value: unknown, fallback: ChatMode) {
     return value === "chat" || value === "rp" ? value : fallback;
+}
+
+function normalizeFontFamily(value: unknown, fallback: string) {
+    if (typeof value !== "string") {
+        return fallback;
+    }
+
+    return value
+        .replace(/[\n\r\t]/g, " ")
+        .replace(/[;{}]/g, "")
+        .slice(0, 160);
 }
 
 function booleanOrFallback(value: unknown, fallback: boolean) {

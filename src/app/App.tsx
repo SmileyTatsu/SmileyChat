@@ -404,9 +404,20 @@ export function App() {
         setDesktopCharacterOpen(isOpen);
     }
 
+    const uiFontFamily = preferences.appearance.uiFontFamily.trim();
+    const chatFontFamily = preferences.appearance.chatFontFamily.trim();
+
     return (
         <main
             className={`app-shell ${desktopSidebarOpen ? "" : "sidebar-collapsed"} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`}
+            style={{
+                "--custom-ui-font-family": uiFontFamily
+                    ? `${uiFontFamily}, var(--default-font-family)`
+                    : undefined,
+                "--custom-chat-font-family": chatFontFamily
+                    ? `${chatFontFamily}, var(--default-font-family)`
+                    : undefined,
+            }}
         >
             {isMobileLayout && sidebarOpen && (
                 <div
