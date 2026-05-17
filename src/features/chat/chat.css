@@ -1,11 +1,9 @@
 @reference "tailwindcss";
 
 .chat-workspace {
-    display: grid;
     grid-template-rows: auto 1fr auto auto;
-    min-height: 0;
-    min-width: 0;
-    overflow: hidden;
+
+    @apply relative grid min-h-0 min-w-0 overflow-hidden;
 }
 
 .chat-header {
@@ -713,24 +711,15 @@
 }
 
 .composer {
-    display: grid;
-    grid-template-columns: 44px 1fr 44px;
-    gap: 10px;
-    border-top: 1px solid #262831;
-    background: rgba(16, 17, 20, 0.94);
-    padding: 14px 18px;
-}
+    color: #ececf1;
+    background: #191b21;
+    border: 1px solid #303440;
 
-.composer-file-input {
-    display: none;
+    @apply m-2.5 grid gap-y-2 rounded-md;
 }
 
 .composer-plugin-actions {
-    display: flex;
-    grid-column: 1 / -1;
-    gap: 6px;
-    min-width: 0;
-    overflow-x: auto;
+    @apply col-span-full flex min-w-0 gap-2 overflow-x-auto;
 }
 
 .composer-plugin-actions button {
@@ -752,28 +741,22 @@
 }
 
 .composer-staged-images {
-    display: flex;
-    grid-column: 1 / -1;
-    gap: 8px;
-    min-width: 0;
-    overflow-x: auto;
+    border-bottom: 1px solid #303440;
+
+    @apply col-span-full mx-2 flex min-w-0 gap-2 overflow-x-auto py-2;
 }
 
 .composer-staged-image {
-    position: relative;
     flex: 0 0 auto;
-    width: 64px;
-    height: 64px;
-    overflow: hidden;
+
     border: 1px solid #303440;
-    border-radius: 8px;
     background: #111318;
+
+    @apply relative size-16 gap-2 overflow-hidden rounded-md;
 }
 
 .composer-staged-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    @apply size-full object-cover;
 }
 
 .composer-staged-image button {
@@ -792,74 +775,55 @@
 }
 
 .message-attachments {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 4px 0 9px;
+    @apply flex flex-wrap gap-2;
+
+    a {
+        max-width: min(320px, 100%);
+        border: 1px solid #303440;
+        background: #111318;
+
+        @apply block overflow-hidden rounded-md;
+    }
+
+    img {
+        max-height: 280px;
+        max-width: min(320px, 100%);
+
+        @apply block object-contain;
+    }
 }
 
-.message-attachments a {
-    display: block;
-    overflow: hidden;
-    max-width: min(320px, 100%);
-    border: 1px solid #303440;
-    border-radius: 8px;
-    background: #111318;
-}
+.chat-composer-area {
+    @apply flex w-full items-start gap-4 p-2;
 
-.message-attachments img {
-    display: block;
-    max-width: min(320px, 100%);
-    max-height: 280px;
-    object-fit: contain;
-}
+    .attachment-button {
+        @apply rounded-md border-none bg-transparent p-2 transition-colors outline-none;
 
-.composer textarea {
-    min-height: 46px;
-    max-height: 150px;
-    resize: none;
-    overflow-y: hidden;
-    border: 1px solid #303440;
-    border-radius: 8px;
-    background: #191b21;
-    color: #ececf1;
-    font-size: var(--message-font-size);
-    line-height: 1.45;
-    padding: 12px 13px;
-    outline: none;
-}
+        &:hover:not(:disabled) {
+            background: #242833;
+        }
+    }
 
-.composer textarea:focus {
-    border-color: #7e8fb4;
-}
+    textarea {
+        max-height: 200px;
+        font-size: var(--message-font-size);
 
-.composer textarea:disabled {
-    background: #17191f;
-}
+        @apply min-h-0 w-full resize-none border-none bg-transparent text-lg outline-none placeholder:text-lg;
+    }
 
-.attachment-button,
-.send-button {
-    align-self: stretch;
-    width: 44px;
-    min-height: 46px;
-    border-radius: 8px;
-}
+    .send-button {
+        @apply cursor-not-allowed rounded-md border-none bg-transparent p-2 transition-colors outline-none;
 
-.attachment-button {
-    display: grid;
-    place-items: center;
-    border: 1px solid #303440;
-    background: #1b1e25;
-    color: #d8dcea;
-    padding: 0;
-}
+        & svg {
+            @apply fill-neutral-700 text-neutral-700 transition-colors;
+        }
 
-.attachment-button:hover:not(:disabled) {
-    border-color: #465065;
-    background: #242833;
-}
+        &[data-active="true"] {
+            @apply cursor-pointer;
 
-.send-button {
-    background: #e1e7ff;
-    color: #15171d;
+            svg {
+                @apply fill-blue-400 text-blue-400;
+            }
+        }
+    }
 }

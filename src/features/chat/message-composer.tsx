@@ -1,4 +1,4 @@
-import { ImagePlus, Send, Square, X } from "lucide-preact";
+import { ImagePlus, SendHorizonal, Square, X } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
@@ -54,13 +54,11 @@ export function MessageComposer({
 
     useEffect(() => {
         const composer = composerRef.current;
+        if (!composer) return;
 
-        if (!composer) {
-            return;
-        }
-
-        const maxHeight = 150;
+        const maxHeight = 200;
         composer.style.height = "auto";
+
         const nextHeight = Math.min(composer.scrollHeight, maxHeight);
         composer.style.height = `${nextHeight}px`;
         composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
@@ -130,6 +128,7 @@ export function MessageComposer({
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const nextDraft = `${draft.slice(0, start)}${text}${draft.slice(end)}`;
+
         setDraft(nextDraft);
 
         requestAnimationFrame(() => {
@@ -141,8 +140,10 @@ export function MessageComposer({
     function submitDraft() {
         const submittedDraft = draft;
         const submittedImages = stagedImages.map((image) => image.file);
+
         setDraft("");
         clearStagedImages();
+
         return onSubmit(submittedDraft, submittedImages);
     }
 
@@ -200,15 +201,15 @@ export function MessageComposer({
     return (
         <form className="composer" onSubmit={handleSubmit}>
             <input
+                hidden
                 ref={fileInputRef}
                 className="composer-file-input"
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(event) =>
-                    stageFiles((event.currentTarget as HTMLInputElement).files)
-                }
+                onChange={(event) => stageFiles(event.currentTarget.files)}
             />
+
             {pluginActions.length > 0 && (
                 <div className="composer-plugin-actions">
                     {pluginActions.map((action) => (
@@ -232,6 +233,7 @@ export function MessageComposer({
                     ))}
                 </div>
             )}
+
             {stagedImages.length > 0 && (
                 <div className="composer-staged-images" aria-label="Staged images">
                     {stagedImages.map((image) => (
@@ -249,53 +251,58 @@ export function MessageComposer({
                     ))}
                 </div>
             )}
-            <button
-                className="attachment-button"
-                type="button"
-                title="Attach images"
-                disabled={disabled}
-                onClick={() => fileInputRef.current?.click()}
-            >
-                <ImagePlus size={18} />
-            </button>
-            <textarea
-                ref={composerRef}
-                aria-label="Message"
-                disabled={disabled}
-                value={draft}
-                placeholder={
-                    mode === "chat"
-                        ? `Message ${characterName}...`
-                        : "Write your next line, action, or narration..."
-                }
-                onInput={(event) =>
-                    setDraft((event.currentTarget as HTMLTextAreaElement).value)
-                }
-                onKeyDown={handleKeyDown}
-            />
-            <button
-                className="send-button"
-                type={isGenerating ? "button" : "submit"}
-                title={
-                    isGenerating
-                        ? "Stop generation"
-                        : draft.trim() || stagedImages.length
-                          ? "Send message"
-                          : "Generate response"
-                }
-                disabled={isGenerating ? false : disabled}
-                onClick={
-                    isGenerating
-                        ? (event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              abortGeneration();
-                          }
-                        : undefined
-                }
-            >
-                {isGenerating ? <Square size={17} /> : <Send size={18} />}
-            </button>
+
+            <div className="chat-composer-area">
+                <button
+                    type="button"
+                    title="Attach images"
+                    disabled={disabled}
+                    className="attachment-button"
+                    onClick={() => fileInputRef.current?.click()}
+                >
+                    <ImagePlus size={18} />
+                </button>
+
+                <textarea
+                    ref={composerRef}
+                    aria-label="Message"
+                    disabled={disabled}
+                    value={draft}
+                    rows={1}
+                    placeholder={
+                        mode === "chat"
+                            ? `Message ${characterName}...`
+                            : "Write your next line, action, or narration..."
+                    }
+                    onInput={(event) =>
+                        setDraft((event.currentTarget as HTMLTextAreaElement).value)
+                    }
+                    onKeyDown={handleKeyDown}
+                />
+
+                <button
+                    className="send-button"
+                    type={isGenerating ? "button" : "submit"}
+                    data-active={draft.trim().length > 0}
+                    title={
+                        isGenerating
+                            ? "Stop generation"
+                            : draft.trim() || stagedImages.length
+                              ? "Send message"
+                              : "Generate response"
+                    }
+                    disabled={isGenerating ? false : disabled}
+                    onClick={(event) => {
+                        if (!isGenerating) return;
+
+                        event.preventDefault();
+                        event.stopPropagation();
+                        abortGeneration();
+                    }}
+                >
+                    {isGenerating ? <Square size={17} /> : <SendHorizonal size={18} />}
+                </button>
+            </div>
         </form>
     );
 }
