@@ -7,6 +7,7 @@ import {
     FilePenLine,
     MoreHorizontal,
     Trash2,
+    User,
     X,
 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -183,6 +184,11 @@ export function MessageList({
                 const showSwipeControls =
                     message.role === "character" && index === messages.length - 1;
 
+                const avatar =
+                    message.role === "character"
+                        ? { path: characterAvatarPath, alt: "Character Avatar" }
+                        : { path: message.authorAvatarPath, alt: "User Persona Avatar" };
+
                 return (
                     <article
                         key={message.id}
@@ -192,6 +198,11 @@ export function MessageList({
                             "failed-swipe": isFailedSwipe,
                         })}
                     >
+                        <div className="message-avatar">
+                            {avatar.path && <img src={avatar.path} alt={avatar.alt} />}
+                            {!avatar.path && <User size={18} />}
+                        </div>
+
                         <MessageHeader
                             message={message}
                             characterAvatarPath={characterAvatarPath}
@@ -299,7 +310,7 @@ export function MessageList({
                             </div>
                         </MessageHeader>
 
-                        <div className="message-body">
+                        <div className="message-content">
                             {isEditing && (
                                 <div className="message-edit-panel">
                                     <textarea

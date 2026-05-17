@@ -58,7 +58,7 @@ export function ChatHeader({
 
                 <CharacterAvatar characterAvatarPath={characterAvatarPath} />
 
-                <div className="chat-character-header">
+                <div className="chat-character-header" data-mode={mode}>
                     <h1 className="chat-character-title">{characterName}</h1>
 
                     <div className="session-kicker">
@@ -66,7 +66,7 @@ export function ChatHeader({
                         <span className="status-title">Online</span>
                     </div>
 
-                    <div className="rp-chat-title">{chatTitle}</div>
+                    {mode === "rp" && <div className="rp-chat-title">{chatTitle}</div>}
                 </div>
             </div>
 
