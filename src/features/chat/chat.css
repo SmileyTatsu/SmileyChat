@@ -808,7 +808,7 @@
         max-height: 200px;
         font-size: var(--message-font-size);
 
-        @apply min-h-0 w-full resize-none border-none bg-transparent text-lg outline-none placeholder:text-lg;
+        @apply min-h-0 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent pr-1.5 text-lg outline-none placeholder:text-lg;
     }
 
     .send-button {
