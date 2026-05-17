@@ -791,7 +791,7 @@
     @apply flex w-full items-start gap-4 p-2;
 
     .attachment-button {
-        @apply rounded-md border-none bg-transparent p-2 transition-colors outline-none;
+        @apply flex items-center justify-center rounded-md border-none bg-transparent p-2 transition-colors outline-none;
 
         &:hover:not(:disabled) {
             background: #242833;
@@ -802,11 +802,11 @@
         max-height: 200px;
         font-size: var(--message-font-size);
 
-        @apply min-h-0 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent pr-1.5 text-[var(--message-font-size)] outline-none placeholder:text-[var(--message-font-size)];
+        @apply h-full min-h-9 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent py-1.5 pr-1.5 text-[var(--message-font-size)] outline-none placeholder:text-[var(--message-font-size)];
     }
 
     .send-button {
-        @apply cursor-not-allowed rounded-md border-none bg-transparent p-2 transition-colors outline-none;
+        @apply flex cursor-not-allowed items-center justify-center rounded-md border-none bg-transparent p-2 transition-colors outline-none;
 
         & svg {
             @apply fill-neutral-700 text-neutral-700 transition-colors;
