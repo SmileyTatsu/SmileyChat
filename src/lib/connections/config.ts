@@ -7,6 +7,11 @@ import {
     normalizeContextTokenBudget,
 } from "../presets/context-budget-constants";
 
+import { claudeMaxModels } from "./claude-max/models";
+import type {
+    ClaudeMaxConnectionConfig,
+    ClaudeMaxThinkingMode,
+} from "./claude-max/types";
 import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./google-ai/types";
 import type {
     OpenAICompatibleConnectionConfig,
@@ -23,6 +28,7 @@ export type ConnectionProviderId =
     | "openai-compatible"
     | "openrouter"
     | "google-ai"
+    | "claude-max"
     | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
@@ -55,12 +61,22 @@ export type GoogleAIConnectionProfile = {
     updatedAt: string;
 };
 
+export type ClaudeMaxConnectionProfile = {
+    id: string;
+    name: string;
+    provider: "claude-max";
+    contextTokenBudget: number;
+    config: ClaudeMaxConnectionConfig;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type PluginConnectionProfile = {
     id: string;
     name: string;
     provider: Exclude<
         ConnectionProviderId,
-        "openai-compatible" | "openrouter" | "google-ai"
+        "openai-compatible" | "openrouter" | "google-ai" | "claude-max"
     >;
     contextTokenBudget: number;
     config: Record<string, unknown>;
@@ -72,6 +88,7 @@ export type ConnectionProfile =
     | OpenAICompatibleConnectionProfile
     | OpenRouterConnectionProfile
     | GoogleAIConnectionProfile
+    | ClaudeMaxConnectionProfile
     | PluginConnectionProfile;
 
 export type ConnectionSettings = {
@@ -117,6 +134,18 @@ export const defaultGoogleAIConfig: GoogleAIConnectionConfig = {
         source: "default",
         id: defaultGoogleAIModels[0]?.models[1]?.id ?? "gemini-3.1-flash-lite",
     },
+};
+
+const defaultClaudeMaxModel = claudeMaxModels[0];
+
+export const defaultClaudeMaxConfig: ClaudeMaxConnectionConfig = {
+    model: {
+        source: "default",
+        id: defaultClaudeMaxModel?.id ?? "claude-opus-4-7",
+    },
+    thinking: "adaptive",
+    contextWindow: defaultClaudeMaxModel?.context ?? 1_000_000,
+    maxOutputTokens: defaultClaudeMaxModel?.maxOutput ?? 128_000,
 };
 
 export const defaultConnectionSettings: ConnectionSettings = {
@@ -259,6 +288,18 @@ export function createConnectionProfile(
         };
     }
 
+    if (provider === "claude-max") {
+        return {
+            id: createConnectionProfileId(),
+            name,
+            provider,
+            contextTokenBudget: defaultContextTokenBudget,
+            config: normalizeClaudeMaxConfig(defaultConfig ?? defaultClaudeMaxConfig),
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
     if (provider !== "openai-compatible") {
         return {
             id: createConnectionProfileId(),
@@ -309,6 +350,12 @@ export function isGoogleAIProfile(
     return profile?.provider === "google-ai";
 }
 
+export function isClaudeMaxProfile(
+    profile: ConnectionProfile | undefined,
+): profile is ClaudeMaxConnectionProfile {
+    return profile?.provider === "claude-max";
+}
+
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {
     const sourceProfiles = Array.isArray(settings.profiles) ? settings.profiles : [];
     const profiles = sourceProfiles
@@ -354,7 +401,9 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                   ? normalizeOpenRouterConfig(profile.config)
                   : provider === "google-ai"
                     ? normalizeGoogleAIConfig(profile.config)
-                    : normalizePluginConfig(profile.config),
+                    : provider === "claude-max"
+                      ? normalizeClaudeMaxConfig(profile.config)
+                      : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;
@@ -526,6 +575,42 @@ function normalizeOpenAICompatibleReasoningConfig(
                 ? "chat-reasoning-object"
                 : "chat-reasoning-effort",
     };
+}
+
+function normalizeClaudeMaxConfig(value: unknown): ClaudeMaxConnectionConfig {
+    const config = isRecord(value) ? value : {};
+    const model = isRecord(config.model) ? config.model : {};
+    const modelSource = model.source === "custom" ? "custom" : "default";
+    const modelId =
+        typeof model.id === "string" && model.id.trim()
+            ? model.id.trim()
+            : defaultClaudeMaxConfig.model.id;
+
+    return {
+        model: { source: modelSource, id: modelId },
+        thinking: normalizeClaudeMaxThinking(config.thinking),
+        contextWindow: normalizePositiveInteger(
+            config.contextWindow,
+            defaultClaudeMaxConfig.contextWindow,
+        ),
+        maxOutputTokens: normalizePositiveInteger(
+            config.maxOutputTokens,
+            defaultClaudeMaxConfig.maxOutputTokens,
+        ),
+    };
+}
+
+function normalizeClaudeMaxThinking(value: unknown): ClaudeMaxThinkingMode {
+    return value === "off" ? "off" : "adaptive";
+}
+
+function normalizePositiveInteger(value: unknown, fallback: number) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        return fallback;
+    }
+
+    const truncated = Math.trunc(value);
+    return truncated > 0 ? truncated : fallback;
 }
 
 function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {

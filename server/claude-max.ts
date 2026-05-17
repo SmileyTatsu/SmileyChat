@@ -9,6 +9,7 @@ const installInstructions =
 type GenerateRequestBody = {
     model: string;
     thinking: "off" | "adaptive";
+    maxOutputTokens?: number;
     systemPrompt?: string;
     messages: Array<{ role: "user" | "assistant"; content: string }>;
     stream: boolean;
@@ -23,6 +24,7 @@ type SdkOptions = {
     permissionMode: "bypassPermissions";
     includePartialMessages: boolean;
     thinking?: { type: "adaptive" };
+    maxOutputTokens?: number;
 };
 
 type SdkMessage =
@@ -125,6 +127,14 @@ function buildSdkOptions(body: GenerateRequestBody): SdkOptions {
 
     if (body.thinking === "adaptive" && opusFourSevenPlus.test(body.model)) {
         options.thinking = { type: "adaptive" };
+    }
+
+    if (
+        typeof body.maxOutputTokens === "number" &&
+        Number.isFinite(body.maxOutputTokens) &&
+        body.maxOutputTokens > 0
+    ) {
+        options.maxOutputTokens = Math.trunc(body.maxOutputTokens);
     }
 
     return options;
@@ -351,9 +361,17 @@ async function readGenerateBody(request: Request): Promise<GenerateRequestBody> 
         throw new BadRequestError("Claude Max needs at least one user message.");
     }
 
+    const maxOutputTokens =
+        typeof raw.maxOutputTokens === "number" &&
+        Number.isFinite(raw.maxOutputTokens) &&
+        raw.maxOutputTokens > 0
+            ? Math.trunc(raw.maxOutputTokens)
+            : undefined;
+
     return {
         model,
         thinking: raw.thinking === "off" ? "off" : "adaptive",
+        maxOutputTokens,
         systemPrompt:
             typeof raw.systemPrompt === "string" && raw.systemPrompt.trim()
                 ? raw.systemPrompt

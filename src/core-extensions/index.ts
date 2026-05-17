@@ -1,8 +1,7 @@
 import type { PluginManifest } from "../lib/plugins/types";
-import { claudeMaxPlugin } from "./claude-max";
 import { smileyChatFormatterPlugin } from "./smiley-chat-formatter";
 
-export const corePlugins = [smileyChatFormatterPlugin, claudeMaxPlugin];
+export const corePlugins = [smileyChatFormatterPlugin];
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
 
 export function getCorePluginManifests() {

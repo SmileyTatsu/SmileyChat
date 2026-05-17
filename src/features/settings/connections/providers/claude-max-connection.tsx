@@ -1,29 +1,30 @@
-import type { ComponentChildren } from "preact";
+import {
+    claudeMaxModels,
+    findClaudeMaxModel,
+} from "#frontend/lib/connections/claude-max/models";
+import type {
+    ClaudeMaxConnectionConfig,
+    ClaudeMaxThinkingMode,
+} from "#frontend/lib/connections/claude-max/types";
 
-import type { ConnectionProfile } from "#frontend/lib/connections/config";
+import { ConnectionActions } from "./shared-fields";
 
-import { normalizeClaudeMaxConfig } from "./config";
-import { claudeMaxModels, findClaudeMaxModel } from "./models";
-import type { ClaudeMaxConfig, ClaudeMaxThinkingMode } from "./types";
-
-type ClaudeMaxSettingsProps = {
-    profile: ConnectionProfile;
+type ClaudeMaxConnectionProps = {
+    config: ClaudeMaxConnectionConfig;
     disabled?: boolean;
-    onChange: (config: Record<string, unknown>) => void;
-    onSave: () => void | Promise<void>;
-    onTest: () => void | Promise<void>;
+    onChange: (config: ClaudeMaxConnectionConfig) => void;
+    onSave: () => void;
+    onTest: () => void;
 };
 
-export function renderClaudeMaxSettings({
-    profile,
+export function ClaudeMaxConnection({
+    config,
     disabled,
     onChange,
     onSave,
     onTest,
-}: ClaudeMaxSettingsProps): ComponentChildren {
-    const config = normalizeClaudeMaxConfig(profile.config);
-
-    const updateConfig = (patch: Partial<ClaudeMaxConfig>) => {
+}: ClaudeMaxConnectionProps) {
+    const updateConfig = (patch: Partial<ClaudeMaxConnectionConfig>) => {
         onChange({ ...config, ...patch });
     };
 
@@ -41,7 +42,17 @@ export function renderClaudeMaxSettings({
             return;
         }
 
-        updateConfig({ model: { source: "default", id } });
+        const matched = findClaudeMaxModel(id);
+
+        updateConfig({
+            model: { source: "default", id },
+            ...(matched
+                ? {
+                      contextWindow: matched.context,
+                      maxOutputTokens: matched.maxOutput,
+                  }
+                : {}),
+        });
     };
 
     const onCustomIdChange = (value: string) => {
@@ -52,7 +63,17 @@ export function renderClaudeMaxSettings({
         updateConfig({ thinking: value });
     };
 
-    const matchedModel = findClaudeMaxModel(config.model.id);
+    const onContextWindowChange = (value: number) => {
+        if (Number.isFinite(value) && value > 0) {
+            updateConfig({ contextWindow: Math.trunc(value) });
+        }
+    };
+
+    const onMaxOutputChange = (value: number) => {
+        if (Number.isFinite(value) && value > 0) {
+            updateConfig({ maxOutputTokens: Math.trunc(value) });
+        }
+    };
 
     return (
         <div className="connection-card">
@@ -102,12 +123,44 @@ export function renderClaudeMaxSettings({
                 />
             </label>
 
-            {matchedModel && (
-                <p className="connection-help">
-                    Context window: {matchedModel.context.toLocaleString()} tokens. Max
-                    output: {matchedModel.maxOutput.toLocaleString()} tokens.
-                </p>
-            )}
+            <div className="inline-field-row">
+                <label>
+                    Context window (tokens)
+                    <input
+                        type="number"
+                        min={1}
+                        step={1000}
+                        value={config.contextWindow}
+                        disabled={disabled}
+                        onInput={(event) => {
+                            const next = (event.currentTarget as HTMLInputElement)
+                                .valueAsNumber;
+
+                            if (Number.isFinite(next)) {
+                                onContextWindowChange(next);
+                            }
+                        }}
+                    />
+                </label>
+                <label>
+                    Max output (tokens)
+                    <input
+                        type="number"
+                        min={1}
+                        step={1000}
+                        value={config.maxOutputTokens}
+                        disabled={disabled}
+                        onInput={(event) => {
+                            const next = (event.currentTarget as HTMLInputElement)
+                                .valueAsNumber;
+
+                            if (Number.isFinite(next)) {
+                                onMaxOutputChange(next);
+                            }
+                        }}
+                    />
+                </label>
+            </div>
 
             <label>
                 Extended thinking
@@ -128,14 +181,7 @@ export function renderClaudeMaxSettings({
                 </select>
             </label>
 
-            <div className="connection-actions">
-                <button type="button" disabled={disabled} onClick={() => void onSave()}>
-                    Save
-                </button>
-                <button type="button" disabled={disabled} onClick={() => void onTest()}>
-                    Test connection
-                </button>
-            </div>
+            <ConnectionActions disabled={disabled} onSave={onSave} onTest={onTest} />
         </div>
     );
 }

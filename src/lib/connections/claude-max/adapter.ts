@@ -1,24 +1,26 @@
 import { localApiFetch } from "#frontend/lib/api/client";
-import { createChatCompletionMessages } from "#frontend/lib/connections/chat-completions";
-import { readChatCompletionStream } from "#frontend/lib/connections/streaming";
+
+import {
+    createChatCompletionMessages,
+} from "../chat-completions";
+import { readChatCompletionStream } from "../streaming";
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
     ChatGenerationResult,
     ConnectionAdapter,
-} from "#frontend/lib/connections/types";
+} from "../types";
 
-import { normalizeClaudeMaxConfig } from "./config";
-import type { ClaudeMaxConfig } from "./types";
+import type { ClaudeMaxRuntimeConfig } from "./types";
 
-export function createClaudeMaxAdapter(config: ClaudeMaxConfig): ConnectionAdapter {
-    const safeConfig = normalizeClaudeMaxConfig(config);
-
+export function createClaudeMaxConnection(
+    config: ClaudeMaxRuntimeConfig,
+): ConnectionAdapter {
     return {
         id: "claude-max",
         label: "Claude Max",
         async generate(request) {
-            if (!safeConfig.model.id.trim()) {
+            if (!config.model.id.trim()) {
                 throw new Error("Claude Max needs a model.");
             }
 
@@ -39,8 +41,9 @@ export function createClaudeMaxAdapter(config: ClaudeMaxConfig): ConnectionAdapt
                     Accept: stream ? "text/event-stream" : "application/json",
                 },
                 body: JSON.stringify({
-                    model: safeConfig.model.id,
-                    thinking: safeConfig.thinking,
+                    model: config.model.id,
+                    thinking: config.thinking,
+                    maxOutputTokens: config.maxOutputTokens,
                     systemPrompt,
                     messages: conversation,
                     stream,
@@ -58,7 +61,7 @@ export function createClaudeMaxAdapter(config: ClaudeMaxConfig): ConnectionAdapt
                 return consumeServerStream(response, request);
             }
 
-            return readNonStreamingResponse(response, safeConfig.model.id);
+            return readNonStreamingResponse(response, config.model.id);
         },
     };
 }
@@ -166,13 +169,40 @@ async function readNonStreamingResponse(
         typeof body.reasoning === "string" && body.reasoning.trim()
             ? body.reasoning.trim()
             : undefined;
-    const model = typeof body.model === "string" && body.model.trim() ? body.model : modelId;
+    const model =
+        typeof body.model === "string" && body.model.trim() ? body.model : modelId;
 
     return {
         message,
         provider: "claude-max",
         model,
         ...(reasoning ? { reasoning } : {}),
+    };
+}
+
+export async function readClaudeMaxStatus(): Promise<{
+    ok: boolean;
+    version?: string;
+    error?: string;
+}> {
+    const response = await localApiFetch("/api/claude-max/status");
+    const body = (await response.json().catch(() => null)) as {
+        ok?: unknown;
+        version?: unknown;
+        error?: unknown;
+    } | null;
+
+    if (!body || typeof body !== "object") {
+        return {
+            ok: false,
+            error: `Claude Max status check failed: ${response.status}.`,
+        };
+    }
+
+    return {
+        ok: body.ok === true,
+        version: typeof body.version === "string" ? body.version : undefined,
+        error: typeof body.error === "string" ? body.error : undefined,
     };
 }
 

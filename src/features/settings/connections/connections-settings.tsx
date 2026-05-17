@@ -7,6 +7,7 @@ import {
     createConnectionProfile,
     extractConnectionSecrets,
     getActiveConnectionProfile,
+    isClaudeMaxProfile,
     isGoogleAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
@@ -15,6 +16,7 @@ import {
     type ConnectionProfile,
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
+import { readClaudeMaxStatus } from "#frontend/lib/connections/claude-max/adapter";
 import {
     createGoogleAIConnection,
     createGoogleAIGenerateUrl,
@@ -44,6 +46,7 @@ import {
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
 
+import { ClaudeMaxConnection } from "./providers/claude-max-connection";
 import { GoogleAIConnection } from "./providers/google-ai-connection";
 import { OpenAICompatibleConnection } from "./providers/openai-compatible-connection";
 import { OpenRouterConnection } from "./providers/openrouter-connection";
@@ -231,6 +234,37 @@ export function ConnectionsSettings({
                         `OpenRouter connection test succeeded: ${result.message}`,
                     );
                     setRequestState("success");
+                } catch (error) {
+                    setStatusMessage(
+                        messageFromError(error, "Unexpected connection error."),
+                    );
+                    setRequestState("error");
+                }
+
+                return;
+            }
+
+            if (isClaudeMaxProfile(activeProfile)) {
+                setRequestState("loading");
+                setStatusMessage("Checking the local Claude Code CLI...");
+
+                try {
+                    const status = await readClaudeMaxStatus();
+
+                    if (status.ok) {
+                        setStatusMessage(
+                            status.version
+                                ? `Claude CLI is installed and responding (version ${status.version}).`
+                                : "Claude CLI is installed and responding.",
+                        );
+                        setRequestState("success");
+                    } else {
+                        setStatusMessage(
+                            status.error ??
+                                "Claude CLI is not available. Install it with 'npm i -g @anthropic-ai/claude-code' and run 'claude login'.",
+                        );
+                        setRequestState("error");
+                    }
                 } catch (error) {
                     setStatusMessage(
                         messageFromError(error, "Unexpected connection error."),
@@ -537,19 +571,21 @@ export function ConnectionsSettings({
         }
 
         const provider = getPluginConnectionProvider(providerId);
-        const config =
+        const isBuiltIn =
             providerId === "openai-compatible" ||
             providerId === "openrouter" ||
-            providerId === "google-ai"
-                ? undefined
-                : (provider?.defaultConfig ?? {});
+            providerId === "google-ai" ||
+            providerId === "claude-max";
+        const config = isBuiltIn ? undefined : (provider?.defaultConfig ?? {});
         const nextProfile = createConnectionProfile(
             providerId,
             providerId === "openrouter"
                 ? "OpenRouter"
                 : providerId === "google-ai"
                   ? "Google AI"
-                  : (provider?.label ?? "OpenAI compatible"),
+                  : providerId === "claude-max"
+                    ? "Claude Max"
+                    : (provider?.label ?? "OpenAI compatible"),
             config,
         );
 
@@ -707,6 +743,7 @@ export function ConnectionsSettings({
                                 </option>
                                 <option value="openrouter">OpenRouter</option>
                                 <option value="google-ai">Google AI</option>
+                                <option value="claude-max">Claude Max</option>
                                 {pluginProviders.map((provider) => (
                                     <option key={provider.id} value={provider.id}>
                                         {provider.label}
@@ -754,6 +791,14 @@ export function ConnectionsSettings({
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
+                            onSave={() => void saveSettings()}
+                            onTest={testConnection}
+                        />
+                    ) : isClaudeMaxProfile(activeProfile) ? (
+                        <ClaudeMaxConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            onChange={(config) => updateActiveProfileConfig(config)}
                             onSave={() => void saveSettings()}
                             onTest={testConnection}
                         />

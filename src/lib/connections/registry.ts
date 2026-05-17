@@ -1,7 +1,9 @@
 import { createAdapterFromPluginProvider } from "../plugins/registry";
 
+import { createClaudeMaxConnection } from "./claude-max/adapter";
 import {
     getActiveConnectionProfile,
+    isClaudeMaxProfile,
     isGoogleAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
@@ -49,6 +51,14 @@ export function getAdapterForSettings(settings: ConnectionSettings) {
             ...profile.config,
             apiKey: profile.config.apiKey?.trim() || undefined,
         });
+    }
+
+    if (isClaudeMaxProfile(profile)) {
+        if (!profile.config.model.id.trim()) {
+            throw new Error(`${profile.name} needs a model.`);
+        }
+
+        return createClaudeMaxConnection(profile.config);
     }
 
     const pluginAdapter = createAdapterFromPluginProvider(profile.provider, profile);
