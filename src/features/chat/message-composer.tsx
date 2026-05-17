@@ -40,9 +40,12 @@ export function MessageComposer({
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
     const [draft, setDraft] = useState("");
-    const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
     const [, setRegistryRevision] = useState(0);
+    const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
+
+    const hasSubmittableContent = draft.trim().length > 0 || stagedImages.length > 0;
 
     useEffect(
         () =>
@@ -65,10 +68,7 @@ export function MessageComposer({
     }, [draft]);
 
     useEffect(() => {
-        setPluginDraftActionHandlers({
-            insertDraft: insertText,
-            setDraft,
-        });
+        setPluginDraftActionHandlers({ insertDraft: insertText, setDraft });
 
         return () => setPluginDraftActionHandlers({});
     }, [draft]);
@@ -78,12 +78,11 @@ export function MessageComposer({
         clearStagedImages();
     }, [resetKey]);
 
-    useEffect(
-        () => () => {
+    useEffect(function () {
+        return () => {
             clearStagedImages();
-        },
-        [],
-    );
+        };
+    }, []);
 
     function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
@@ -97,11 +96,7 @@ export function MessageComposer({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-        if (
-            event.key !== "Enter" ||
-            disabled ||
-            (!draft.trim() && stagedImages.length === 0)
-        ) {
+        if (event.key !== "Enter" || disabled || !hasSubmittableContent) {
             return;
         }
 
@@ -305,15 +300,16 @@ export function MessageComposer({
                 <button
                     className="send-button"
                     type={isGenerating ? "button" : "submit"}
-                    data-active={draft.trim().length > 0}
+                    data-active={hasSubmittableContent || isGenerating}
+                    data-state={isGenerating ? "generating" : "ready"}
                     title={
                         isGenerating
                             ? "Stop generation"
-                            : draft.trim() || stagedImages.length
+                            : hasSubmittableContent
                               ? "Send message"
-                              : "Generate response"
+                              : "Write a message or attach an image to send"
                     }
-                    disabled={isGenerating ? false : disabled}
+                    disabled={isGenerating ? false : disabled || !hasSubmittableContent}
                     onClick={(event) => {
                         if (!isGenerating) return;
 

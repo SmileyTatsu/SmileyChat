@@ -884,10 +884,14 @@
 
         &[data-active="true"] {
             @apply cursor-pointer;
+        }
 
-            svg {
-                @apply fill-blue-400 text-blue-400;
-            }
+        &[data-active="true"][data-state="ready"] svg {
+            @apply fill-blue-400 text-blue-400;
+        }
+
+        &[data-active="true"][data-state="generating"] svg {
+            @apply fill-red-400 text-red-400;
         }
     }
 }
