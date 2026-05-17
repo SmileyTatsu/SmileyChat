@@ -8,27 +8,21 @@
 
 .chat-header {
     background: rgba(16, 17, 20, 0.86);
-    @apply flex items-center justify-between gap-4 border-b border-[#303440] px-4 py-2;
+    @apply flex items-center justify-between gap-x-4 gap-y-2 border-b border-[#303440] px-4 py-2;
 }
 
 .mobile-sidebar-toggle,
 .mobile-character-toggle {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: transparent;
+    border: 1px solid #303440;
     color: #c4cad8;
-    padding: 0;
+
+    @apply hidden size-10 items-center justify-center rounded-md bg-transparent;
 }
 
 .mobile-sidebar-toggle:hover,
 .mobile-character-toggle:hover {
-    background: #242832;
     color: #fff;
+    background: #242832;
 }
 
 @media (max-width: 1120px) {
@@ -808,7 +802,7 @@
         max-height: 200px;
         font-size: var(--message-font-size);
 
-        @apply min-h-0 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent pr-1.5 text-lg outline-none placeholder:text-lg;
+        @apply min-h-0 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent pr-1.5 text-[var(--message-font-size)] outline-none placeholder:text-[var(--message-font-size)];
     }
 
     .send-button {
