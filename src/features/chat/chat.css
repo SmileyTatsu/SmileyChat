@@ -238,9 +238,11 @@
 
 .message {
     padding: var(--message-padding-y) var(--message-padding-x);
+    grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
     grid-template-areas:
         "avatar header"
-        "avater content";
+        "avatar content";
+    align-items: start;
 
     @apply relative m-0 grid gap-x-[var(--message-gap)] gap-y-2;
 
@@ -717,6 +719,9 @@
 .rp .message {
     contain-intrinsic-size: auto 180px;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "header"
+        "content";
     border-left: 2px solid #384252;
     padding: 0 0 0 18px;
 }
@@ -727,6 +732,9 @@
 
 .rp .message.show-rp-character-avatar {
     grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
+    grid-template-areas:
+        "avatar header"
+        "avatar content";
     align-items: start;
 }
 
