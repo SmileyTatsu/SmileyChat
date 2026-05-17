@@ -290,6 +290,16 @@ export function MessageList({
         }
     }, [visibleCount, messages.length]);
 
+    useLayoutEffect(() => {
+        const list = listRef.current;
+
+        if (!list || !autoScroll || !shouldAutoScrollRef.current) {
+            return;
+        }
+
+        snapToBottom(list);
+    }, [autoScroll, mode, showRpCharacterImages]);
+
     return (
         <div className="message-list-shell">
             <div
@@ -327,10 +337,7 @@ export function MessageList({
                     const showSwipeControls =
                         message.role === "character" &&
                         message === messages[messages.length - 1];
-                    const showRpCharacterAvatar =
-                        mode === "rp" &&
-                        showRpCharacterImages &&
-                        message.role === "character";
+                    const showRpMessageAvatar = mode === "rp" && showRpCharacterImages;
 
                     const avatar =
                         message.role === "character"
@@ -346,7 +353,7 @@ export function MessageList({
                             className={cn("message", {
                                 "failed-swipe": isFailedSwipe,
                                 "generating-swipe": isPendingSwipe,
-                                "show-rp-character-avatar": showRpCharacterAvatar,
+                                "show-rp-message-avatar": showRpMessageAvatar,
                             })}
                         >
                             <div className="message-avatar">

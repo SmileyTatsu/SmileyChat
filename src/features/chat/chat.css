@@ -731,7 +731,7 @@
     display: grid;
     align-content: start;
     gap: var(--rp-message-gap);
-    padding: 28px clamp(24px, 8vw, 96px);
+    padding: 28px clamp(24px, 8vw, 96px) 28px clamp(68px, 8vw, 96px);
 }
 
 .rp .message {
@@ -748,15 +748,10 @@
     display: none;
 }
 
-.rp .message.show-rp-character-avatar {
-    grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
-    grid-template-areas:
-        "avatar header"
-        "avatar content";
-    align-items: start;
-}
-
-.rp .message.show-rp-character-avatar .message-avatar {
+.rp .message.show-rp-message-avatar .message-avatar {
+    position: absolute;
+    top: -2px;
+    left: calc(-1 * (var(--message-avatar-size) + 14px));
     display: grid;
     border-radius: 8px;
 }
