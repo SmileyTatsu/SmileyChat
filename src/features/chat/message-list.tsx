@@ -12,11 +12,10 @@ import {
 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import { formatShortTime } from "#frontend/lib/common/time";
+import { cn } from "#frontend/lib/common/style";
 import {
     getMessageAttachments,
     getMessageContent,
-    getMessageCreatedAt,
     getMessageReasoning,
     isActiveSwipeError,
 } from "#frontend/lib/messages";
@@ -28,17 +27,25 @@ import {
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { ChatMode, Message } from "#frontend/types";
 
+import { MessageAttachments } from "./message/message-attachment";
+import { MessageContent } from "./message/message-content";
+import { MessageHeader } from "./message/message-header";
+import { MessageReasoning } from "./message/message-reasoning";
+
 type MessageListProps = {
-    autoScroll: boolean;
-    characterAvatarPath?: string;
-    characterName: string;
-    errorMessage?: string;
-    isTyping?: boolean;
-    messages: Message[];
     mode: ChatMode;
+    messages: Message[];
+    autoScroll: boolean;
+    characterName: string;
+    characterAvatarPath?: string;
+
+    isTyping?: boolean;
+    errorMessage?: string;
+
+    showTimestamps: boolean;
     pendingSwipeMessageId?: string;
     showRpCharacterImages: boolean;
-    showTimestamps: boolean;
+
     onDeleteMessage: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
     onNextSwipe: (messageId: string) => void;
@@ -63,20 +70,19 @@ export function MessageList({
     onPreviousSwipe,
     pluginSnapshot,
 }: MessageListProps) {
-    const listRef = useRef<HTMLDivElement>(null);
     const shouldAutoScrollRef = useRef(true);
-    const [openMenuMessageId, setOpenMenuMessageId] = useState("");
-    const [editingMessageId, setEditingMessageId] = useState("");
+    const listRef = useRef<HTMLDivElement>(null);
+
     const [editingDraft, setEditingDraft] = useState("");
-    const [deleteCandidate, setDeleteCandidate] = useState<Message | undefined>();
-    const [copyError, setCopyError] = useState("");
+    const [editingMessageId, setEditingMessageId] = useState("");
+    const [openMenuMessageId, setOpenMenuMessageId] = useState("");
+
     const [, setRegistryRevision] = useState(0);
+    const [copyError, setCopyError] = useState("");
+    const [deleteCandidate, setDeleteCandidate] = useState<Message | undefined>();
 
     useEffect(
-        () =>
-            subscribeToPluginRegistry(() =>
-                setRegistryRevision((revision) => revision + 1),
-            ),
+        () => subscribeToPluginRegistry(() => setRegistryRevision((r) => r + 1)),
         [],
     );
 
@@ -84,28 +90,30 @@ export function MessageList({
         .map((message) => {
             const activeSwipe =
                 message.swipes[message.activeSwipeIndex] ?? message.swipes[0];
-            return `${message.id}:${message.activeSwipeIndex}:${activeSwipe?.id ?? ""}:${
-                activeSwipe?.content ?? ""
-            }:${activeSwipe?.reasoning ?? ""}`;
+
+            const ids = [
+                message.id,
+                message.activeSwipeIndex,
+                activeSwipe?.id ?? "",
+                activeSwipe?.content ?? "",
+                activeSwipe?.reasoning ?? "",
+            ];
+
+            return ids.join(":");
         })
         .join("|");
 
     useEffect(() => {
         const list = listRef.current;
-
         if (!list || !autoScroll || !shouldAutoScrollRef.current) {
             return;
         }
 
-        list.scrollTo({
-            top: list.scrollHeight,
-            behavior: "smooth",
-        });
+        list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
     }, [autoScroll, errorMessage, isTyping, pendingSwipeMessageId, scrollVersion]);
 
     function updateAutoScrollPreference() {
         const list = listRef.current;
-
         if (!list) {
             return;
         }
@@ -122,10 +130,7 @@ export function MessageList({
 
     function saveEdit(messageId: string) {
         const content = editingDraft.trim();
-
-        if (!content) {
-            return;
-        }
+        if (!content) return;
 
         onEditMessage(messageId, content);
         setEditingMessageId("");
@@ -161,48 +166,55 @@ export function MessageList({
 
     return (
         <div
-            className="message-list"
             ref={listRef}
             aria-live="polite"
+            className="message-list"
             onScroll={updateAutoScrollPreference}
         >
-            {messages.map((message) => {
+            {messages.map((message, index) => {
                 const content = getMessageContent(message);
-                const attachments = getMessageAttachments(message);
                 const reasoning = getMessageReasoning(message);
+                const attachments = getMessageAttachments(message);
+
                 const isEditing = editingMessageId === message.id;
-                const canPagePrevious = message.activeSwipeIndex > 0;
-                const canPageForward = message.role === "character";
                 const isPendingSwipe = pendingSwipeMessageId === message.id;
                 const isFailedSwipe = isActiveSwipeError(message);
-                const showSwipeControls = message.role === "character";
+
+                const canPagePrevious = message.activeSwipeIndex > 0;
+                const canPageForward = message.role === "character";
+
+                const showSwipeControls =
+                    message.role === "character" && index === messages.length - 1;
                 const showRpCharacterAvatar =
                     mode === "rp" &&
                     showRpCharacterImages &&
                     message.role === "character";
 
+                const avatar =
+                    message.role === "character"
+                        ? { path: characterAvatarPath, alt: "Character Avatar" }
+                        : { path: message.authorAvatarPath, alt: "User Persona Avatar" };
+
                 return (
                     <article
-                        className={`message ${
-                            showRpCharacterAvatar ? "show-rp-character-avatar" : ""
-                        } ${isPendingSwipe ? "generating-swipe" : ""} ${
-                            isFailedSwipe ? "failed-swipe" : ""
-                        }`}
                         key={message.id}
                         onMouseLeave={() => setOpenMenuMessageId("")}
+                        className={cn("message", {
+                            "failed-swipe": isFailedSwipe,
+                            "generating-swipe": isPendingSwipe,
+                            "show-rp-character-avatar": showRpCharacterAvatar,
+                        })}
                     >
                         <div className="message-avatar">
-                            {message.role === "character" ? (
-                                characterAvatarPath ? (
-                                    <img src={characterAvatarPath} alt="" />
-                                ) : null
-                            ) : message.authorAvatarPath ? (
-                                <img src={message.authorAvatarPath} alt="" />
-                            ) : (
-                                <User size={18} />
-                            )}
+                            {avatar.path && <img src={avatar.path} alt={avatar.alt} />}
+                            {!avatar.path && <User size={18} />}
                         </div>
-                        <div className="message-body">
+
+                        <MessageHeader
+                            message={message}
+                            characterAvatarPath={characterAvatarPath}
+                            showTimestamps={showTimestamps}
+                        >
                             <div className="message-overlay-actions">
                                 {showSwipeControls && (
                                     <div
@@ -211,44 +223,51 @@ export function MessageList({
                                     >
                                         <button
                                             type="button"
-                                            disabled={!canPagePrevious || isPendingSwipe}
                                             title="Previous swipe"
+                                            disabled={!canPagePrevious || isPendingSwipe}
                                             onClick={() => onPreviousSwipe(message.id)}
                                         >
                                             <ChevronLeft size={14} />
                                         </button>
+
                                         <span>
                                             {message.activeSwipeIndex + 1}/
                                             {message.swipes.length}
                                         </span>
+
                                         <button
                                             type="button"
                                             disabled={!canPageForward || isPendingSwipe}
+                                            onClick={() => onNextSwipe(message.id)}
                                             title={
                                                 message.activeSwipeIndex <
                                                 message.swipes.length - 1
                                                     ? "Next swipe"
                                                     : "Generate next swipe"
                                             }
-                                            onClick={() => onNextSwipe(message.id)}
                                         >
                                             <ChevronRight size={14} />
                                         </button>
                                     </div>
                                 )}
+
                                 {isPendingSwipe && <span className="swipe-loading-dot" />}
+
                                 <button
                                     className="message-actions-trigger"
                                     type="button"
                                     title="Message actions"
-                                    onClick={() =>
-                                        setOpenMenuMessageId((current) =>
-                                            current === message.id ? "" : message.id,
-                                        )
-                                    }
+                                    onClick={() => {
+                                        setOpenMenuMessageId((current) => {
+                                            return current === message.id
+                                                ? ""
+                                                : message.id;
+                                        });
+                                    }}
                                 >
                                     <MoreHorizontal size={15} />
                                 </button>
+
                                 {openMenuMessageId === message.id && (
                                     <div className="message-menu">
                                         <button
@@ -258,6 +277,7 @@ export function MessageList({
                                             <FilePenLine size={14} />
                                             Edit
                                         </button>
+
                                         <button
                                             type="button"
                                             onClick={() => void copyMessage(message)}
@@ -265,6 +285,7 @@ export function MessageList({
                                             <Copy size={14} />
                                             Copy
                                         </button>
+
                                         {pluginMessageActions.map((action) => (
                                             <button
                                                 key={action.id}
@@ -278,12 +299,11 @@ export function MessageList({
                                                     });
                                                 }}
                                             >
-                                                {action.renderIcon
-                                                    ? action.renderIcon()
-                                                    : null}
+                                                {action.renderIcon?.()}
                                                 {action.label}
                                             </button>
                                         ))}
+
                                         <button
                                             className="danger-menu-item"
                                             type="button"
@@ -295,29 +315,18 @@ export function MessageList({
                                     </div>
                                 )}
                             </div>
-                            <div className="message-meta">
-                                <strong>{message.author}</strong>
-                                {showTimestamps && (
-                                    <time dateTime={getMessageCreatedAt(message)}>
-                                        {formatShortTime(
-                                            new Date(getMessageCreatedAt(message)),
-                                        )}
-                                    </time>
-                                )}
-                            </div>
+                        </MessageHeader>
 
-                            {isEditing ? (
+                        <div className="message-content">
+                            {isEditing && (
                                 <div className="message-edit-panel">
                                     <textarea
                                         value={editingDraft}
-                                        onInput={(event) =>
-                                            setEditingDraft(
-                                                (
-                                                    event.currentTarget as HTMLTextAreaElement
-                                                ).value,
-                                            )
-                                        }
+                                        onInput={(event) => {
+                                            setEditingDraft(event.currentTarget.value);
+                                        }}
                                     />
+
                                     <div className="message-edit-actions">
                                         <button
                                             type="button"
@@ -326,6 +335,7 @@ export function MessageList({
                                             <Check size={15} />
                                             Save
                                         </button>
+
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -338,38 +348,21 @@ export function MessageList({
                                         </button>
                                     </div>
                                 </div>
-                            ) : (
+                            )}
+
+                            {!isEditing && (
                                 <>
-                                    {reasoning && (
-                                        <details className="message-reasoning">
-                                            <summary>Thought Process</summary>
-                                            <p>{reasoning}</p>
-                                        </details>
-                                    )}
-                                    {attachments.length > 0 && (
-                                        <div className="message-attachments">
-                                            {attachments.map((attachment) => (
-                                                <a
-                                                    key={attachment.id}
-                                                    href={attachment.url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                >
-                                                    <img
-                                                        src={attachment.url}
-                                                        alt={attachment.name ?? ""}
-                                                    />
-                                                </a>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {messageRenderers[0]?.render({
-                                        characterAvatarPath,
-                                        characterName,
-                                        content,
-                                        message,
-                                        mode,
-                                    }) ?? <p>{content}</p>}
+                                    <MessageReasoning reasoning={reasoning} />
+                                    <MessageAttachments attachments={attachments} />
+
+                                    <MessageContent
+                                        renderer={messageRenderers[0]}
+                                        characterAvatarPath={characterAvatarPath}
+                                        characterName={characterName}
+                                        content={content}
+                                        message={message}
+                                        mode={mode}
+                                    />
                                 </>
                             )}
                         </div>
@@ -380,6 +373,7 @@ export function MessageList({
             {isTyping && <TypingIndicator characterName={characterName} mode={mode} />}
             {copyError && <p className="chat-error">{copyError}</p>}
             {errorMessage && <p className="chat-error">{errorMessage}</p>}
+
             {deleteCandidate && (
                 <div
                     className="message-confirm-backdrop"
@@ -397,8 +391,10 @@ export function MessageList({
                             <AlertTriangle size={19} />
                             <h2>Delete message?</h2>
                         </header>
+
                         <p>This removes the message from the current chat.</p>
                         <blockquote>{getMessageContent(deleteCandidate)}</blockquote>
+
                         <div className="message-confirm-actions">
                             <button
                                 type="button"
@@ -406,6 +402,7 @@ export function MessageList({
                             >
                                 Cancel
                             </button>
+
                             <button
                                 className="danger-button"
                                 type="button"

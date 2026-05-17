@@ -15,6 +15,20 @@ type ChatHeaderProps = {
     onToggleCharacter?: () => void;
 };
 
+function CharacterAvatar(props: { characterAvatarPath?: string }) {
+    if (!props.characterAvatarPath) {
+        return <div className="header-avatar" />;
+    }
+
+    return (
+        <img
+            className="header-avatar image-avatar"
+            src={props.characterAvatarPath}
+            alt="Character Card Avatar"
+        />
+    );
+}
+
 export function ChatHeader({
     characterAvatarPath,
     characterName,
@@ -41,18 +55,17 @@ export function ChatHeader({
                         <Menu size={22} />
                     </button>
                 )}
-                {characterAvatarPath ? (
-                    <img
-                        className="header-avatar image-avatar"
-                        src={characterAvatarPath}
-                        alt=""
-                    />
-                ) : (
-                    <div className="header-avatar" />
-                )}
-                <div>
-                    <h1>{characterName}</h1>
-                    <div className="session-kicker">online</div>
+
+                <CharacterAvatar characterAvatarPath={characterAvatarPath} />
+
+                <div className="chat-character-header" data-mode={mode}>
+                    <h1 className="chat-character-title">{characterName}</h1>
+
+                    <div className="session-kicker">
+                        <span className="status-dot"></span>
+                        <span className="status-title">Online</span>
+                    </div>
+
                     {mode === "rp" && <div className="rp-chat-title">{chatTitle}</div>}
                 </div>
             </div>
@@ -83,6 +96,7 @@ export function ChatHeader({
                     >
                         Chatting
                     </button>
+
                     <button
                         className={mode === "rp" ? "active" : ""}
                         type="button"

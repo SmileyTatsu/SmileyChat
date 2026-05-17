@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import preact from "@preact/preset-vite";
 import { defineConfig, loadEnv } from "vite";
 
@@ -9,7 +10,7 @@ export default defineConfig(function ({ mode }) {
 
     return {
         resolve: { tsconfigPaths: true },
-        plugins: [preact()],
+        plugins: [tailwindcss(), preact()],
         server: {
             port: Number(FRONTEND_PORT),
             proxy: { "/api": `http://127.0.0.1:${BACKEND_PORT}` },
