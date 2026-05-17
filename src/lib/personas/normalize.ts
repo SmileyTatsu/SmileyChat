@@ -1,5 +1,13 @@
 import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
+import {
+    asString,
+    normalizeArray,
+    normalizeImageAvatar,
+    normalizeTimestamps,
+    normalizeUpdatedAt,
+    selectActiveId,
+} from "../common/normalize";
 
 import {
     defaultPersona,
@@ -21,7 +29,8 @@ export function normalizePersona(value: unknown): SmileyPersona | undefined {
     const now = new Date().toISOString();
     const id = asString(value.id) || createId("persona");
     const name = asString(value.name).trim() || "Anon";
-    const avatar = normalizeAvatar(value.avatar);
+    const avatar = normalizeImageAvatar(value.avatar);
+    const timestamps = normalizeTimestamps(value, now);
 
     return {
         id,
@@ -29,8 +38,7 @@ export function normalizePersona(value: unknown): SmileyPersona | undefined {
         name,
         description: asString(value.description),
         ...(avatar ? { avatar } : {}),
-        createdAt: asIsoString(value.createdAt) || now,
-        updatedAt: asIsoString(value.updatedAt) || now,
+        ...timestamps,
     };
 }
 
@@ -41,7 +49,7 @@ export function normalizePersonaSummary(value: unknown): PersonaSummary | undefi
 
     const id = asString(value.id);
     const name = asString(value.name).trim();
-    const avatar = normalizeAvatar(value.avatar);
+    const avatar = normalizeImageAvatar(value.avatar);
 
     if (!id || !name) {
         return undefined;
@@ -51,7 +59,7 @@ export function normalizePersonaSummary(value: unknown): PersonaSummary | undefi
         id,
         name,
         ...(avatar ? { avatar } : {}),
-        updatedAt: asIsoString(value.updatedAt) || new Date().toISOString(),
+        updatedAt: normalizeUpdatedAt(value.updatedAt),
     };
 }
 
@@ -62,22 +70,12 @@ export function normalizePersonaSummaryCollection(
         return defaultPersonaSummaryCollection;
     }
 
-    const personas = Array.isArray(value.personas)
-        ? value.personas
-              .map(normalizePersonaSummary)
-              .filter((persona): persona is PersonaSummary => Boolean(persona))
-        : [];
+    const personas = normalizeArray(value.personas, normalizePersonaSummary);
     const safePersonas = personas.length ? personas : [personaToSummary(defaultPersona)];
-    const requestedActiveId = asString(value.activePersonaId);
-    const activePersonaId = safePersonas.some(
-        (persona) => persona.id === requestedActiveId,
-    )
-        ? requestedActiveId
-        : safePersonas[0].id;
 
     return {
         version: 1,
-        activePersonaId,
+        activePersonaId: selectActiveId(safePersonas, value.activePersonaId),
         personas: safePersonas,
     };
 }
@@ -101,37 +99,14 @@ export function normalizePersonaIndex(value: unknown): PersonaIndex {
           )
         : [];
     const safePersonaIds = personaIds.length ? personaIds : [defaultPersona.id];
-    const requestedActiveId = asString(value.activePersonaId);
 
     return {
         version: 1,
-        activePersonaId: safePersonaIds.includes(requestedActiveId)
-            ? requestedActiveId
-            : safePersonaIds[0],
+        activePersonaId: selectActiveId(
+            safePersonaIds.map((id) => ({ id })),
+            value.activePersonaId,
+            defaultPersona.id,
+        ),
         personaIds: safePersonaIds,
     };
-}
-
-function normalizeAvatar(value: unknown): SmileyPersona["avatar"] | undefined {
-    if (
-        !isRecord(value) ||
-        (value.type !== "png" && value.type !== "jpeg" && value.type !== "webp")
-    ) {
-        return undefined;
-    }
-
-    const path = asString(value.path);
-    return path ? { type: value.type, path } : undefined;
-}
-
-function asString(value: unknown) {
-    return typeof value === "string" ? value : "";
-}
-
-function asIsoString(value: unknown) {
-    if (typeof value !== "string") {
-        return "";
-    }
-
-    return Number.isFinite(Date.parse(value)) ? value : "";
 }

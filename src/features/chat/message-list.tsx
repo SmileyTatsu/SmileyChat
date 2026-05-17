@@ -44,6 +44,7 @@ type MessageListProps = {
 
     showTimestamps: boolean;
     pendingSwipeMessageId?: string;
+    showRpCharacterImages: boolean;
 
     onDeleteMessage: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
@@ -61,6 +62,7 @@ export function MessageList({
     messages,
     mode,
     pendingSwipeMessageId,
+    showRpCharacterImages,
     showTimestamps,
     onDeleteMessage,
     onEditMessage,
@@ -183,6 +185,10 @@ export function MessageList({
 
                 const showSwipeControls =
                     message.role === "character" && index === messages.length - 1;
+                const showRpCharacterAvatar =
+                    mode === "rp" &&
+                    showRpCharacterImages &&
+                    message.role === "character";
 
                 const avatar =
                     message.role === "character"
@@ -194,8 +200,9 @@ export function MessageList({
                         key={message.id}
                         onMouseLeave={() => setOpenMenuMessageId("")}
                         className={cn("message", {
-                            "generating-swipe": isPendingSwipe,
                             "failed-swipe": isFailedSwipe,
+                            "generating-swipe": isPendingSwipe,
+                            "show-rp-character-avatar": showRpCharacterAvatar,
                         })}
                     >
                         <div className="message-avatar">

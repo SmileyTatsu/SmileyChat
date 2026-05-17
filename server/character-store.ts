@@ -477,7 +477,7 @@ async function writeCharacterToLibrary(
         await mkdir(targetDirectory, { recursive: true });
     }
 
-    const character = await normalizeStoredAvatar(sourceCharacter, desiredBasePath);
+    const character = await normalizeStoredAvatar(sourceCharacter);
     await writeJsonAtomic(characterDataPath(desiredBasePath), character);
 
     return {
@@ -486,10 +486,7 @@ async function writeCharacterToLibrary(
     };
 }
 
-async function normalizeStoredAvatar(
-    character: SmileyCharacter,
-    basePath: string,
-): Promise<SmileyCharacter> {
+async function normalizeStoredAvatar(character: SmileyCharacter): Promise<SmileyCharacter> {
     if (!character.avatar) {
         return character;
     }

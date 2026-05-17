@@ -47,10 +47,6 @@ export function importSillyTavernChat({
             continue;
         }
 
-        if (entry.is_system === true) {
-            continue;
-        }
-
         const message = normalizeSillyTavernMessage(entry);
 
         if (message) {

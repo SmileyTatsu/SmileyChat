@@ -467,7 +467,10 @@ const server = Bun.serve({
     },
 });
 
-console.log(`SmileyChat running at http://${hostname}:${port}`);
+const listeningPort = server.port ?? port;
+
+console.log(`Open ${getBrowserUrl(hostname, listeningPort)} in your browser.`);
+console.log(`SmileyChat listening on ${formatListeningTarget(hostname, listeningPort)}.`);
 if (hostname === "0.0.0.0" || hostname === "::") {
     console.log(
         `[server] Reachable from LAN, Tailscale, and Docker. Loopback (127.0.0.1) is always allowed; ` +
@@ -538,4 +541,34 @@ function statusForApiError(error: unknown) {
     }
 
     return 500;
+}
+
+function getBrowserUrl(host: string, port: number) {
+    if (host === "0.0.0.0") {
+        return `http://127.0.0.1:${port}`;
+    }
+    if (host === "::") {
+        return `http://[::1]:${port}`;
+    }
+
+    return `http://${formatUrlHost(host)}:${port}`;
+}
+
+function formatHostPort(host: string, port: number) {
+    return `${formatUrlHost(host)}:${port}`;
+}
+
+function formatListeningTarget(host: string, port: number) {
+    if (host === "0.0.0.0") {
+        return `all IPv4 interfaces, port ${port}`;
+    }
+    if (host === "::") {
+        return `all IPv6 interfaces, port ${port}`;
+    }
+
+    return formatHostPort(host, port);
+}
+
+function formatUrlHost(host: string) {
+    return host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
 }

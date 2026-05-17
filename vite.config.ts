@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from "vite";
 export default defineConfig(function ({ mode }) {
     const env = loadEnv(mode, process.cwd(), "");
 
-    const BACKEND_PORT = env.SMILEYCHAT_API_PORT ?? "4173";
+    const BACKEND_PORT = env.SMILEYCHAT_PORT ?? env.SMILEYCHAT_API_PORT ?? "4173";
     const FRONTEND_PORT = env.SMILEYCHAT_FRONTEND_PORT ?? "5173";
 
     return {

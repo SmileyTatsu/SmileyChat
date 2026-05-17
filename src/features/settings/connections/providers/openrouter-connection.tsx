@@ -12,6 +12,8 @@ import type {
     OpenRouterSort,
 } from "#frontend/lib/connections/openrouter/types";
 
+import { ApiKeyField, ConnectionActions } from "./shared-fields";
+
 type OpenRouterConnectionProps = {
     config: OpenRouterConnectionConfig;
     disabled?: boolean;
@@ -120,28 +122,12 @@ export function OpenRouterConnection({
     return (
         <section className="connection-provider-panel">
             <h3>OpenRouter</h3>
-            <label>
-                API key
-                <div className="inline-field-row">
-                    <input
-                        value={config.apiKey ?? ""}
-                        type="password"
-                        placeholder="Saved to userData/settings/connection-secrets.json"
-                        onInput={(event) =>
-                            updateConfig({
-                                apiKey: (event.currentTarget as HTMLInputElement).value,
-                            })
-                        }
-                    />
-                    <button
-                        type="button"
-                        disabled={disabled || !config.apiKey?.trim()}
-                        onClick={onClearApiKey}
-                    >
-                        Clear
-                    </button>
-                </div>
-            </label>
+            <ApiKeyField
+                apiKey={config.apiKey}
+                disabled={disabled}
+                onChange={(apiKey) => updateConfig({ apiKey })}
+                onClear={onClearApiKey}
+            />
             <div className="inline-field-row">
                 <label>
                     Model
@@ -435,14 +421,7 @@ export function OpenRouterConnection({
                     </label>
                 </div>
             </div>
-            <div className="connection-actions">
-                <button type="button" disabled={disabled} onClick={onSave}>
-                    Save
-                </button>
-                <button type="button" disabled={disabled} onClick={onTest}>
-                    Test connection
-                </button>
-            </div>
+            <ConnectionActions disabled={disabled} onSave={onSave} onTest={onTest} />
         </section>
     );
 }

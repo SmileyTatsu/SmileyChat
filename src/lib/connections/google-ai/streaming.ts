@@ -1,3 +1,5 @@
+import { readJsonServerSentEvents } from "../streaming";
+
 import {
     extractGoogleAIImages,
     extractGoogleAIText,
@@ -15,44 +17,17 @@ export async function readGoogleAIStream(
         },
         chunk: GoogleAIGenerateContentStreamChunk,
     ) => void,
+    signal?: AbortSignal,
 ) {
-    if (!response.body) {
-        throw new Error("Streaming response did not include a readable body.");
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-
-            if (done) {
-                break;
-            }
-
-            buffer += decoder.decode(value, { stream: true });
-            const events = buffer.split(/\r?\n\r?\n/);
-            buffer = events.pop() ?? "";
-
-            for (const event of events) {
-                parseGoogleAIEvent(event, onChunk);
-            }
-        }
-
-        buffer += decoder.decode();
-
-        if (buffer.trim()) {
-            parseGoogleAIEvent(buffer, onChunk);
-        }
-    } finally {
-        reader.releaseLock();
-    }
+    await readJsonServerSentEvents<GoogleAIGenerateContentStreamChunk>(
+        response,
+        (chunk) => emitGoogleAITokens(chunk, onChunk),
+        signal,
+    );
 }
 
-function parseGoogleAIEvent(
-    event: string,
+function emitGoogleAITokens(
+    chunk: GoogleAIGenerateContentStreamChunk,
     onChunk: (
         tokens: {
             images: string[];
@@ -62,23 +37,6 @@ function parseGoogleAIEvent(
         chunk: GoogleAIGenerateContentStreamChunk,
     ) => void,
 ) {
-    const dataLines = event
-        .split(/\r?\n/)
-        .map((line) => line.trimEnd())
-        .filter((line) => line.startsWith("data:"))
-        .map((line) => line.slice(5).trimStart());
-
-    if (dataLines.length === 0) {
-        return;
-    }
-
-    const data = dataLines.join("\n").trim();
-
-    if (!data || data === "[DONE]") {
-        return;
-    }
-
-    const chunk = JSON.parse(data) as GoogleAIGenerateContentStreamChunk;
     const images = extractGoogleAIImages(chunk);
     const message = extractGoogleAIText(chunk);
     const reasoning = extractGoogleAIThoughtText(chunk);

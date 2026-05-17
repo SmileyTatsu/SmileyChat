@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { basename, extname, join, resolve } from "node:path";
+import { basename, extname, resolve } from "node:path";
 
 import type { ChatAttachment } from "#frontend/types";
 

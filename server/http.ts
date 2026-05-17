@@ -47,18 +47,3 @@ export async function readJsonBody(request: Request) {
         throw new BadRequestError("Invalid JSON body.");
     }
 }
-
-export function parsePort(value: string | undefined) {
-    if (!value) {
-        return 4173;
-    }
-
-    const portNumber = Number(value);
-
-    if (Number.isInteger(portNumber) && portNumber >= 1 && portNumber <= 65535) {
-        return portNumber;
-    }
-
-    console.warn(`Invalid 'SMILEYCHAT_API_PORT' "${value}". Falling back to 4173.`);
-    return 4173;
-}
