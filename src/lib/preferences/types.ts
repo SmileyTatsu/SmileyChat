@@ -146,12 +146,7 @@ function booleanOrFallback(value: unknown, fallback: boolean) {
     return typeof value === "boolean" ? value : fallback;
 }
 
-function numberInRange(
-    value: unknown,
-    fallback: number,
-    min: number,
-    max: number,
-) {
+function numberInRange(value: unknown, fallback: number, min: number, max: number) {
     if (typeof value !== "number" || !Number.isFinite(value)) {
         return fallback;
     }

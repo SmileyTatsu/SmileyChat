@@ -32,9 +32,7 @@ async function materializeMessageImages(
     };
 }
 
-export function messageContentToText(
-    content: ChatGenerationMessage["content"],
-): string {
+export function messageContentToText(content: ChatGenerationMessage["content"]): string {
     if (typeof content === "string") {
         return content;
     }

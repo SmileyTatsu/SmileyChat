@@ -44,7 +44,9 @@ function parsePort(value: string | undefined, fallback: number) {
     if (!value) return fallback;
     const num = Number.parseInt(value, 10);
     if (Number.isInteger(num) && num >= 1 && num <= 65535) return num;
-    console.warn(`[runtime-config] Invalid port "${value}"; falling back to ${fallback}.`);
+    console.warn(
+        `[runtime-config] Invalid port "${value}"; falling back to ${fallback}.`,
+    );
     return fallback;
 }
 
@@ -113,7 +115,10 @@ export function isRateLimitEnabled() {
 }
 
 export function getDefaultRateLimit() {
-    return parsePort(process.env.SMILEYCHAT_RATE_LIMIT_DEFAULT, DEFAULT_RATE_LIMIT_PER_MINUTE);
+    return parsePort(
+        process.env.SMILEYCHAT_RATE_LIMIT_DEFAULT,
+        DEFAULT_RATE_LIMIT_PER_MINUTE,
+    );
 }
 
 export function getAdminSecret() {

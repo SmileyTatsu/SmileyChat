@@ -486,7 +486,9 @@ async function writeCharacterToLibrary(
     };
 }
 
-async function normalizeStoredAvatar(character: SmileyCharacter): Promise<SmileyCharacter> {
+async function normalizeStoredAvatar(
+    character: SmileyCharacter,
+): Promise<SmileyCharacter> {
     if (!character.avatar) {
         return character;
     }

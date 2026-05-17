@@ -314,8 +314,7 @@ function NumberInput({
                 onChange(nextValue);
             }}
             onChange={(event) => {
-                const nextValue = (event.currentTarget as HTMLInputElement)
-                    .valueAsNumber;
+                const nextValue = (event.currentTarget as HTMLInputElement).valueAsNumber;
 
                 if (Number.isFinite(nextValue)) {
                     onChange(clampNumber(nextValue, min, max));

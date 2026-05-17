@@ -1,6 +1,14 @@
 import { Glob } from "bun";
 import { mkdir, readdir, rm } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, normalize, relative } from "node:path";
+import {
+    basename,
+    dirname,
+    extname,
+    isAbsolute,
+    join,
+    normalize,
+    relative,
+} from "node:path";
 
 import {
     PLUGIN_CATEGORIES,
@@ -260,10 +268,7 @@ export async function writePluginStorageSnapshot(pluginId: string, body: unknown
                 value,
             );
         } catch (error) {
-            console.warn(
-                `Could not restore plugin storage ${pluginId}/${key}:`,
-                error,
-            );
+            console.warn(`Could not restore plugin storage ${pluginId}/${key}:`, error);
         }
     }
 
@@ -287,8 +292,7 @@ export async function proxyPluginFetch(body: unknown) {
     if (!isPluginsOutboundFetchAllowed()) {
         return json(
             {
-                error:
-                    "Plugin outbound fetch is disabled. Set SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true in .env to enable it.",
+                error: "Plugin outbound fetch is disabled. Set SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true in .env to enable it.",
             },
             403,
         );
@@ -553,9 +557,10 @@ function normalizePluginFetchRequest(value: unknown) {
     const request = value as Record<string, unknown>;
     const pluginId = stringField(request.pluginId, "Plugin ID is required.");
     const url = stringField(request.url, "URL is required.");
-    const method = (typeof request.method === "string" && request.method.trim()
-        ? request.method
-        : "GET"
+    const method = (
+        typeof request.method === "string" && request.method.trim()
+            ? request.method
+            : "GET"
     ).toUpperCase();
 
     if (!PLUGIN_FETCH_ALLOWED_METHODS.has(method)) {

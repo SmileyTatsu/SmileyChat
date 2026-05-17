@@ -43,8 +43,7 @@ export function createOpenRouterConnection(
                     allowImages: true,
                     provider: "openrouter",
                     streamErrorPrefix: "OpenRouter stream failed",
-                    emptyMessage:
-                        "OpenRouter stream did not include message content.",
+                    emptyMessage: "OpenRouter stream did not include message content.",
                 });
             }
 

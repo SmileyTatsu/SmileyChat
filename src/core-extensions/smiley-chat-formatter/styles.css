@@ -209,9 +209,7 @@
     background: transparent;
     cursor: pointer;
     padding: 0.35rem 0.2rem;
-    transition:
-        background 140ms ease,
-        color 140ms ease;
+    transition: background 140ms ease;
 }
 
 .scf-setting-row:hover {

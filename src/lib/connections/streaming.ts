@@ -26,11 +26,7 @@ export async function readChatCompletionStream(
     onChunk: (chunk: ChatCompletionStreamChunk) => void,
     signal?: AbortSignal,
 ) {
-    await readJsonServerSentEvents<ChatCompletionStreamChunk>(
-        response,
-        onChunk,
-        signal,
-    );
+    await readJsonServerSentEvents<ChatCompletionStreamChunk>(response, onChunk, signal);
 }
 
 export async function readJsonServerSentEvents<TChunk>(
@@ -91,10 +87,7 @@ export async function readJsonServerSentEvents<TChunk>(
     }
 }
 
-function parseServerSentEvent<TChunk>(
-    event: string,
-    onChunk: (chunk: TChunk) => void,
-) {
+function parseServerSentEvent<TChunk>(event: string, onChunk: (chunk: TChunk) => void) {
     const dataLines = event
         .split(/\r?\n/)
         .map((line) => line.trimEnd())

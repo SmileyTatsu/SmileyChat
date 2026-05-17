@@ -29,8 +29,7 @@ export function preparePresetContextForBudget({
         ...context,
         messages: [],
     });
-    const staticPromptTokens =
-        estimateChatGenerationMessagesTokens(staticPromptMessages);
+    const staticPromptTokens = estimateChatGenerationMessagesTokens(staticPromptMessages);
     const messages = trimMessagesForEstimatedContext({
         messages: context.messages,
         reservedTokens: staticPromptTokens + contextEstimatePaddingTokens,
@@ -55,9 +54,7 @@ function estimateTextTokens(value: string) {
     return Math.ceil(textEncoder.encode(value).length / bytesPerToken);
 }
 
-function estimateChatGenerationMessagesTokens(
-    messages: ChatGenerationMessage[],
-) {
+function estimateChatGenerationMessagesTokens(messages: ChatGenerationMessage[]) {
     return messages.reduce(
         (total, message) => total + estimateChatGenerationMessageTokens(message),
         0,

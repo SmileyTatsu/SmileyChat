@@ -13,10 +13,17 @@ export function createUserMessage(
     persona: SmileyPersona,
     attachments?: ChatAttachment[],
 ): Message {
-    return createMessage("user", persona.name.trim() || "Anon", content, {
-        authorAvatarPath: persona.avatar?.path,
-        authorPersonaId: persona.id,
-    }, undefined, attachments);
+    return createMessage(
+        "user",
+        persona.name.trim() || "Anon",
+        content,
+        {
+            authorAvatarPath: persona.avatar?.path,
+            authorPersonaId: persona.id,
+        },
+        undefined,
+        attachments,
+    );
 }
 
 export function createCharacterMessage(

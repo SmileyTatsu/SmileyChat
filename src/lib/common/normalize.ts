@@ -43,9 +43,7 @@ export function normalizeArray<T>(
     normalizeItem: (item: unknown) => T | undefined,
 ) {
     return Array.isArray(value)
-        ? value
-              .map(normalizeItem)
-              .filter((item): item is T => Boolean(item))
+        ? value.map(normalizeItem).filter((item): item is T => Boolean(item))
         : [];
 }
 

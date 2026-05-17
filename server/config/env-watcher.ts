@@ -89,7 +89,10 @@ export function startEnvWatcher(): EnvWatcherHandle {
     let lastMtimeMs = existsSync(envPath) ? statSync(envPath).mtimeMs : 0;
     let lastSize = existsSync(envPath) ? statSync(envPath).size : -1;
 
-    const handler = (curr: { mtimeMs: number; size: number }, prev: { mtimeMs: number }) => {
+    const handler = (
+        curr: { mtimeMs: number; size: number },
+        prev: { mtimeMs: number },
+    ) => {
         if (stopped) return;
         if (curr.mtimeMs === 0 && prev.mtimeMs !== 0) {
             console.warn(

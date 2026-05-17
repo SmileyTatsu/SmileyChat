@@ -44,22 +44,26 @@ export function createGoogleAIConnection(
                 const images: string[] = [];
                 let lastChunk: GoogleAIGenerateContentResponse | undefined;
 
-                await readGoogleAIStream(response, (tokens, chunk) => {
-                    message += tokens.message;
-                    reasoning += tokens.reasoning;
-                    images.push(...tokens.images);
-                    model = chunk.modelVersion ?? model;
-                    lastChunk = chunk;
-                    if (tokens.reasoning) {
-                        request.onReasoningToken?.(tokens.reasoning);
-                    }
-                    if (tokens.message) {
-                        request.onToken?.(tokens.message);
-                    }
-                    for (const image of tokens.images) {
-                        request.onImage?.(image);
-                    }
-                }, request.signal);
+                await readGoogleAIStream(
+                    response,
+                    (tokens, chunk) => {
+                        message += tokens.message;
+                        reasoning += tokens.reasoning;
+                        images.push(...tokens.images);
+                        model = chunk.modelVersion ?? model;
+                        lastChunk = chunk;
+                        if (tokens.reasoning) {
+                            request.onReasoningToken?.(tokens.reasoning);
+                        }
+                        if (tokens.message) {
+                            request.onToken?.(tokens.message);
+                        }
+                        for (const image of tokens.images) {
+                            request.onImage?.(image);
+                        }
+                    },
+                    request.signal,
+                );
 
                 if (!message.trim() && images.length === 0) {
                     throw new Error("Google AI stream did not include message content.");

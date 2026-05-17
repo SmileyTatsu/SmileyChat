@@ -93,9 +93,7 @@ export function ChatWorkspace({
                     initialMessageCount={preferences.chat.initialMessageCount}
                     pendingSwipeMessageId={pendingSwipeMessageId}
                     resetKey={activeChatId}
-                    showRpCharacterImages={
-                        preferences.appearance.showRpCharacterImages
-                    }
+                    showRpCharacterImages={preferences.appearance.showRpCharacterImages}
                     showTimestamps={preferences.appearance.showTimestamps}
                     onDeleteMessage={onDeleteMessage}
                     onEditMessage={onEditMessage}

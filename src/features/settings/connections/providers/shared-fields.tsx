@@ -66,12 +66,7 @@ export function BaseUrlField({ baseUrl, placeholder, onChange }: BaseUrlFieldPro
     );
 }
 
-export function ApiKeyField({
-    apiKey,
-    disabled,
-    onChange,
-    onClear,
-}: ApiKeyFieldProps) {
+export function ApiKeyField({ apiKey, disabled, onChange, onClear }: ApiKeyFieldProps) {
     return (
         <label>
             API key
@@ -220,11 +215,7 @@ export function CatalogModelField<TModel>({
     );
 }
 
-export function ConnectionActions({
-    disabled,
-    onSave,
-    onTest,
-}: ConnectionActionsProps) {
+export function ConnectionActions({ disabled, onSave, onTest }: ConnectionActionsProps) {
     return (
         <div className="connection-actions">
             <button type="button" disabled={disabled} onClick={onSave}>

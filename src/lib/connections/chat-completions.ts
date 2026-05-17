@@ -121,44 +121,48 @@ export async function consumeChatCompletionStream(
     let reasoningDetails: unknown;
     const images: string[] = [];
 
-    await readChatCompletionStream(response, (chunk) => {
-        if (chunk.error?.message) {
-            throw new Error(`${options.streamErrorPrefix}: ${chunk.error.message}`);
-        }
-
-        model = chunk.model ?? model;
-
-        const token = chunk.choices?.[0]?.delta?.content;
-        const reasoningToken = chunk.choices?.[0]?.delta?.reasoning;
-        const nextReasoningDetails = chunk.choices?.[0]?.delta?.reasoning_details;
-        const nextImages = options.allowImages
-            ? extractImageUrls(chunk.choices?.[0]?.delta?.images)
-            : undefined;
-
-        if (reasoningToken) {
-            reasoning += reasoningToken;
-            request.onReasoningToken?.(reasoningToken);
-        }
-
-        if (nextReasoningDetails !== undefined) {
-            reasoningDetails = mergeReasoningDetails(
-                reasoningDetails,
-                nextReasoningDetails,
-            );
-        }
-
-        if (token) {
-            message += token;
-            request.onToken?.(token);
-        }
-
-        if (nextImages?.length) {
-            images.push(...nextImages);
-            for (const url of nextImages) {
-                request.onImage?.(url);
+    await readChatCompletionStream(
+        response,
+        (chunk) => {
+            if (chunk.error?.message) {
+                throw new Error(`${options.streamErrorPrefix}: ${chunk.error.message}`);
             }
-        }
-    }, request.signal);
+
+            model = chunk.model ?? model;
+
+            const token = chunk.choices?.[0]?.delta?.content;
+            const reasoningToken = chunk.choices?.[0]?.delta?.reasoning;
+            const nextReasoningDetails = chunk.choices?.[0]?.delta?.reasoning_details;
+            const nextImages = options.allowImages
+                ? extractImageUrls(chunk.choices?.[0]?.delta?.images)
+                : undefined;
+
+            if (reasoningToken) {
+                reasoning += reasoningToken;
+                request.onReasoningToken?.(reasoningToken);
+            }
+
+            if (nextReasoningDetails !== undefined) {
+                reasoningDetails = mergeReasoningDetails(
+                    reasoningDetails,
+                    nextReasoningDetails,
+                );
+            }
+
+            if (token) {
+                message += token;
+                request.onToken?.(token);
+            }
+
+            if (nextImages?.length) {
+                images.push(...nextImages);
+                for (const url of nextImages) {
+                    request.onImage?.(url);
+                }
+            }
+        },
+        request.signal,
+    );
 
     if (!message.trim() && images.length === 0) {
         throw new Error(options.emptyMessage);

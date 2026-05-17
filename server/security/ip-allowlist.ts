@@ -104,10 +104,7 @@ export function matchesCidr(ipBytes: number[], cidr: CidrEntry): boolean {
     return (ipBytes[fullBytes]! & mask) === (cidr.bytes[fullBytes]! & mask);
 }
 
-const LOOPBACK_CIDRS: CidrEntry[] = [
-    parseCidr("127.0.0.0/8")!,
-    parseCidr("::1/128")!,
-];
+const LOOPBACK_CIDRS: CidrEntry[] = [parseCidr("127.0.0.0/8")!, parseCidr("::1/128")!];
 
 const DEFAULT_PRIVATE_NETWORK_CIDRS: CidrEntry[] = [
     parseCidr("10.0.0.0/8")!,
@@ -122,8 +119,11 @@ const DEFAULT_PRIVATE_NETWORK_CIDRS: CidrEntry[] = [
 const TAILSCALE_CIDR = parseCidr("100.64.0.0/10")!;
 const DOCKER_CIDR = parseCidr("172.16.0.0/12")!;
 
-let cachedAllowlist: { raw: string | null; entries: CidrEntry[] | null; announced: boolean } | null =
-    null;
+let cachedAllowlist: {
+    raw: string | null;
+    entries: CidrEntry[] | null;
+    announced: boolean;
+} | null = null;
 
 function buildAllowlist(raw: string | null): CidrEntry[] | null {
     if (!raw) return null;
@@ -157,8 +157,11 @@ function getAllowlist(): CidrEntry[] | null {
     return cachedAllowlist.entries;
 }
 
-let cachedPrivateNetworks: { raw: string | null; entries: CidrEntry[]; announced: boolean } | null =
-    null;
+let cachedPrivateNetworks: {
+    raw: string | null;
+    entries: CidrEntry[];
+    announced: boolean;
+} | null = null;
 
 function getPrivateNetworkCidrs(): CidrEntry[] {
     const raw = getTrustedPrivateNetworksOverride();

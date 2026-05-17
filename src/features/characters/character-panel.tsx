@@ -285,10 +285,7 @@ export function CharacterPanel({
                                 </button>
                             </div>
 
-                            <PluginSidebarPanels
-                                side="right"
-                                snapshot={pluginSnapshot}
-                            />
+                            <PluginSidebarPanels side="right" snapshot={pluginSnapshot} />
                         </div>
                     </div>
                 )}

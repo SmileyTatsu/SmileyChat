@@ -8,14 +8,8 @@ import {
     type PluginConfigSnapshot,
     type PluginProfile,
 } from "./profiles";
-import {
-    deactivatePlugin,
-    setPluginEnabledState,
-} from "./registry";
-import {
-    loadCoreRuntimePlugin,
-    loadRuntimePlugin,
-} from "./runtime";
+import { deactivatePlugin, setPluginEnabledState } from "./registry";
+import { loadCoreRuntimePlugin, loadRuntimePlugin } from "./runtime";
 import type { PluginManifest } from "./types";
 
 export type ProfileActivationResult = {
@@ -40,10 +34,7 @@ export async function applyProfileToPlugins(
             await savePluginStorageSnapshot(pluginId, snapshot);
             configChanges.push(pluginId);
         } catch (error) {
-            console.warn(
-                `Could not restore plugin storage for ${pluginId}:`,
-                error,
-            );
+            console.warn(`Could not restore plugin storage for ${pluginId}:`, error);
         }
     }
 

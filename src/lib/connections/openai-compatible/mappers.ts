@@ -20,8 +20,7 @@ export function createChatCompletionBody(
     const messages = createChatCompletionMessages(request, {
         includeReasoningHistory,
         mapPromptRole: (role) => role,
-        mapHistoryRole: (message) =>
-            message.role === "user" ? "user" : "assistant",
+        mapHistoryRole: (message) => (message.role === "user" ? "user" : "assistant"),
     });
     const reasoning = cleanReasoningConfig(config.reasoning);
 

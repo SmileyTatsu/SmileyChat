@@ -64,8 +64,7 @@ let latestSnapshot: PluginAppSnapshot | undefined;
 let appActionHandlers: Partial<
     Pick<PluginActionsApi, "generateResponse" | "sendMessage" | "switchCharacter">
 > = {};
-let draftActionHandlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">> =
-    {};
+let draftActionHandlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">> = {};
 let modelHandlers: Partial<PluginModelApi> = {};
 
 export function subscribeToPluginRegistry(listener: Listener) {

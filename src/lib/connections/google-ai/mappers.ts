@@ -103,8 +103,7 @@ export function extractGoogleAIImages(response: GoogleAIGenerateContentResponse)
     return (
         response.candidates?.[0]?.content?.parts
             ?.map((part) =>
-                part.inlineData?.mimeType?.startsWith("image/") &&
-                part.inlineData.data
+                part.inlineData?.mimeType?.startsWith("image/") && part.inlineData.data
                     ? `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
                     : "",
             )

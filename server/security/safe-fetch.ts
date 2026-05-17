@@ -130,7 +130,8 @@ function describeBlockedAddresses(
 }
 
 async function validateUrl(rawUrl: string | URL, policy: SafeFetchPolicy): Promise<URL> {
-    const parsed = typeof rawUrl === "string" ? new URL(rawUrl) : new URL(rawUrl.toString());
+    const parsed =
+        typeof rawUrl === "string" ? new URL(rawUrl) : new URL(rawUrl.toString());
     const original = typeof rawUrl === "string" ? rawUrl : parsed.toString();
     const allowedProtocols = policy.allowedProtocols ?? ["https:"];
 
@@ -146,7 +147,11 @@ async function validateUrl(rawUrl: string | URL, policy: SafeFetchPolicy): Promi
 
     if (
         isLocalHostname(parsed.hostname) &&
-        !(policy.allowLoopback && (LOCALHOST_NAMES.has(parsed.hostname.toLowerCase()) || isLoopbackIp(parsed.hostname))) &&
+        !(
+            policy.allowLoopback &&
+            (LOCALHOST_NAMES.has(parsed.hostname.toLowerCase()) ||
+                isLoopbackIp(parsed.hostname))
+        ) &&
         !(policy.allowMdns && isMdnsHostname(parsed.hostname))
     ) {
         throw new Error(
@@ -184,7 +189,11 @@ export async function safeFetch(
     url: string | URL,
     options: SafeFetchOptions = {},
 ): Promise<Response> {
-    const { policy = {}, maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES, ...init } = options;
+    const {
+        policy = {},
+        maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+        ...init
+    } = options;
     const maxRedirects = policy.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
 
     let current = await validateUrl(url, policy);

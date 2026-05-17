@@ -86,8 +86,9 @@ const CATEGORY_ICONS: Record<
 
 export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
     const [plugins, setPlugins] = useState<PluginManifest[]>([]);
-    const [profilesPayload, setProfilesPayload] =
-        useState<PluginProfilesPayload | null>(null);
+    const [profilesPayload, setProfilesPayload] = useState<PluginProfilesPayload | null>(
+        null,
+    );
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
     const [openPluginId, setOpenPluginId] = useState("");
@@ -130,6 +131,14 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
     const isCustom = profilesPayload
         ? isStateCustom(currentEnabledMap, profilesPayload.lastApplied)
         : false;
+    const setProfilesStateFromSave = (state: PluginProfilesState) => {
+        setProfilesPayload({
+            activeProfileId: state.activeProfileId,
+            lastApplied: state.lastApplied,
+            builtinProfiles: profilesPayload?.builtinProfiles ?? BUILT_IN_PROFILES,
+            userProfiles: state.userProfiles,
+        });
+    };
 
     const filteredPlugins = useMemo(() => {
         const search = searchTerm.trim().toLowerCase();
@@ -275,12 +284,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 userProfiles: profilesPayload.userProfiles,
             };
             const saved = await savePluginProfilesState(nextState);
-            setProfilesPayload({
-                activeProfileId: saved.state.activeProfileId,
-                lastApplied: saved.state.lastApplied,
-                builtinProfiles: profilesPayload.builtinProfiles,
-                userProfiles: saved.state.userProfiles,
-            });
+            setProfilesStateFromSave(saved.state);
 
             const summary =
                 enabledChanges.length === 0 && configChanges.length === 0
@@ -317,17 +321,14 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 activeProfileId: id,
                 lastApplied: { ...currentEnabledMap },
                 userProfiles: [
-                    ...profilesPayload.userProfiles.filter((profile) => profile.id !== id),
+                    ...profilesPayload.userProfiles.filter(
+                        (profile) => profile.id !== id,
+                    ),
                     newProfile,
                 ],
             };
             const saved = await savePluginProfilesState(nextState);
-            setProfilesPayload({
-                activeProfileId: saved.state.activeProfileId,
-                lastApplied: saved.state.lastApplied,
-                builtinProfiles: profilesPayload.builtinProfiles,
-                userProfiles: saved.state.userProfiles,
-            });
+            setProfilesStateFromSave(saved.state);
             setStatusMessage(`Created "${name}" from the current plugin state.`);
             setRequestState("success");
         } catch (error) {
@@ -361,12 +362,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 userProfiles: [...profilesPayload.userProfiles, duplicated],
             };
             const saved = await savePluginProfilesState(nextState);
-            setProfilesPayload({
-                activeProfileId: saved.state.activeProfileId,
-                lastApplied: saved.state.lastApplied,
-                builtinProfiles: profilesPayload.builtinProfiles,
-                userProfiles: saved.state.userProfiles,
-            });
+            setProfilesStateFromSave(saved.state);
             setStatusMessage(`Duplicated "${activeProfile.name}" as "${name}".`);
             setRequestState("success");
         } catch (error) {
@@ -380,12 +376,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         setRequestState("loading");
         try {
             const response = await deletePluginProfile(activeProfile.id);
-            setProfilesPayload({
-                activeProfileId: response.state.activeProfileId,
-                lastApplied: response.state.lastApplied,
-                builtinProfiles: profilesPayload.builtinProfiles,
-                userProfiles: response.state.userProfiles,
-            });
+            setProfilesStateFromSave(response.state);
             setStatusMessage(`Deleted "${activeProfile.name}". Active profile reset.`);
             setRequestState("success");
         } catch (error) {
@@ -442,12 +433,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
             };
             const saved = await savePluginProfilesState(nextState);
 
-            setProfilesPayload({
-                activeProfileId: saved.state.activeProfileId,
-                lastApplied: saved.state.lastApplied,
-                builtinProfiles: profilesPayload.builtinProfiles,
-                userProfiles: saved.state.userProfiles,
-            });
+            setProfilesStateFromSave(saved.state);
             setStatusMessage(`Updated "${name}".`);
             setRequestState("success");
             return true;
@@ -464,8 +450,8 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 <div>
                     <h2>Plugins</h2>
                     <p>
-                        Core extensions and trusted local plugins. Switch profiles to
-                        tune the engine for the experience you want.
+                        Core extensions and trusted local plugins. Switch profiles to tune
+                        the engine for the experience you want.
                     </p>
                 </div>
                 <button
@@ -497,9 +483,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     value={searchTerm}
                     placeholder="Search extensions..."
                     onInput={(event) =>
-                        setSearchTerm(
-                            (event.currentTarget as HTMLInputElement).value,
-                        )
+                        setSearchTerm((event.currentTarget as HTMLInputElement).value)
                     }
                 />
                 <div className="marketplace-filter-pills">
@@ -655,8 +639,14 @@ function ProfileBar({
         setIsEditing(false);
     }, [activeProfile?.id, activeProfile?.name, activeProfile?.description]);
 
+    function resetEditor() {
+        setDraftName(activeProfile?.name ?? "");
+        setDraftDescription(activeProfile?.description ?? "");
+        setIsEditing(false);
+    }
+
     async function saveDetails() {
-        if (!activeProfile || activeProfile.builtin) return;
+        if (!canEditProfile) return;
         const saved = await onUpdateActiveDetails({
             description: draftDescription,
             name: draftName,
@@ -708,7 +698,10 @@ function ProfileBar({
                 </label>
 
                 {isCustom && (
-                    <span className="custom-badge" title="State diverges from this profile">
+                    <span
+                        className="custom-badge"
+                        title="State diverges from this profile"
+                    >
                         Custom
                     </span>
                 )}
@@ -737,7 +730,7 @@ function ProfileBar({
                     <button
                         type="button"
                         className="danger-button"
-                        disabled={isBusy || !activeProfile || activeProfile.builtin}
+                        disabled={isBusy || !canEditProfile}
                         onClick={onDeleteActive}
                     >
                         <Trash2 size={16} />
@@ -757,9 +750,7 @@ function ProfileBar({
                         <input
                             type="text"
                             value={draftName}
-                            onInput={(event) =>
-                                setDraftName(event.currentTarget.value)
-                            }
+                            onInput={(event) => setDraftName(event.currentTarget.value)}
                         />
                     </label>
                     <label>
@@ -780,23 +771,12 @@ function ProfileBar({
                         >
                             Save
                         </button>
-                        <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => {
-                                setDraftName(activeProfile?.name ?? "");
-                                setDraftDescription(
-                                    activeProfile?.description ?? "",
-                                );
-                                setIsEditing(false);
-                            }}
-                        >
+                        <button type="button" disabled={isBusy} onClick={resetEditor}>
                             Cancel
                         </button>
                     </div>
                 </div>
             )}
-
         </section>
     );
 }
@@ -870,9 +850,7 @@ function PluginCard({
                 </div>
                 <div>
                     <dt>Status</dt>
-                    <dd
-                        className={loaded?.status === "error" ? "plugin-error" : ""}
-                    >
+                    <dd className={loaded?.status === "error" ? "plugin-error" : ""}>
                         {plugin.source === "core" &&
                         enabled &&
                         loaded?.status === "loaded" ? (
@@ -926,10 +904,7 @@ function PluginCard({
                 <div className="plugin-config-panel">
                     {settingsPanels.length > 0 ? (
                         settingsPanels.map((panel) => (
-                            <section
-                                className="plugin-config-section"
-                                key={panel.id}
-                            >
+                            <section className="plugin-config-section" key={panel.id}>
                                 <h4>{panel.label}</h4>
                                 {panel.render({
                                     pluginId: plugin.id,

@@ -27,7 +27,9 @@ function announceRejectedOrigin(kind: "Origin" | "Referer", value: string, hint:
         if (oldest !== undefined) announcedRejectedOrigins.delete(oldest);
     }
     announcedRejectedOrigins.add(key);
-    console.warn(`[csrf] Rejected request: ${kind} '${value}' is not in the trusted list. ${hint}`);
+    console.warn(
+        `[csrf] Rejected request: ${kind} '${value}' is not in the trusted list. ${hint}`,
+    );
 }
 
 type CsrfSecretFile = {
@@ -157,7 +159,9 @@ function forwardedRequestOrigins(request: Request) {
 
 function trustedOriginsFromEnv() {
     const configuredOrigins = getCsrfTrustedOrigins();
-    const origins = configuredOrigins.length ? configuredOrigins : defaultTrustedOrigins();
+    const origins = configuredOrigins.length
+        ? configuredOrigins
+        : defaultTrustedOrigins();
 
     return origins
         .map((value) => normalizeOrigin(value))

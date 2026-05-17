@@ -29,8 +29,7 @@ export function contextTokenBudgetToRangeValue(value: number) {
         maxContextTokenBudgetRangeValue,
         Math.max(
             minContextTokenBudget,
-            Math.round(value / contextTokenBudgetRangeStep) *
-                contextTokenBudgetRangeStep,
+            Math.round(value / contextTokenBudgetRangeStep) * contextTokenBudgetRangeStep,
         ),
     );
 }

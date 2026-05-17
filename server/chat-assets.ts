@@ -40,7 +40,10 @@ export async function writeChatAsset(
     const targetDir = resolve(chatAssetsDir, cleanChatId);
     const targetPath = resolve(targetDir, fileName);
 
-    if (!targetPath.startsWith(`${targetDir}\\`) && !targetPath.startsWith(`${targetDir}/`)) {
+    if (
+        !targetPath.startsWith(`${targetDir}\\`) &&
+        !targetPath.startsWith(`${targetDir}/`)
+    ) {
         throw new BadRequestError("Invalid attachment path.");
     }
 
@@ -66,7 +69,10 @@ export async function serveChatAsset(chatId: string, fileName: string) {
     const targetDir = resolve(chatAssetsDir, cleanChatId);
     const targetPath = resolve(targetDir, cleanFileName);
 
-    if (!targetPath.startsWith(`${targetDir}\\`) && !targetPath.startsWith(`${targetDir}/`)) {
+    if (
+        !targetPath.startsWith(`${targetDir}\\`) &&
+        !targetPath.startsWith(`${targetDir}/`)
+    ) {
         throw new BadRequestError("Invalid attachment path.");
     }
 

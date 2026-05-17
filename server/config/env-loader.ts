@@ -52,7 +52,12 @@ export function ensureEnvFileExists() {
         writeFileSync(envFilePath, template, { flag: "wx" });
         return true;
     } catch (error) {
-        if (error && typeof error === "object" && "code" in error && error.code === "EEXIST") {
+        if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "EEXIST"
+        ) {
             return false;
         }
         throw error;

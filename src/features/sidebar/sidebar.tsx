@@ -509,11 +509,7 @@ export function Sidebar({
                     )}
                 </div>
                 {chatImportStatus && (
-                    <p
-                        className={`rail-status${
-                            chatImportStatusFading ? " fading" : ""
-                        }`}
-                    >
+                    <p className={`rail-status${chatImportStatusFading ? "fading" : ""}`}>
                         {chatImportStatus}
                     </p>
                 )}

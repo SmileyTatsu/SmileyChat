@@ -156,7 +156,8 @@ export function checkBasicAuth(request: Request, url: URL, ip: string): Response
     const config = loadConfig();
 
     if (!config) {
-        if (isPrivateNetworkIp(ip) && isUnauthenticatedPrivateNetworkAllowed()) return null;
+        if (isPrivateNetworkIp(ip) && isUnauthenticatedPrivateNetworkAllowed())
+            return null;
         if (isUnauthenticatedRemoteAllowed()) return null;
         if (!lockdownAnnounced) {
             console.warn(
@@ -187,7 +188,8 @@ export function isBasicAuthSatisfied(request: Request, ip: string): boolean {
 
     const config = loadConfig();
     if (!config) {
-        if (isPrivateNetworkIp(ip) && isUnauthenticatedPrivateNetworkAllowed()) return true;
+        if (isPrivateNetworkIp(ip) && isUnauthenticatedPrivateNetworkAllowed())
+            return true;
         return isUnauthenticatedRemoteAllowed();
     }
 

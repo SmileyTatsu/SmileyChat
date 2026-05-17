@@ -238,7 +238,7 @@ export function useChatSession({
                                   streamingReply.id,
                                   imageUrlsToAttachments(streamedImages),
                               );
-                        }
+                          }
                         : undefined,
                     signal: abortController.signal,
                 },
@@ -478,7 +478,7 @@ export function useChatSession({
                                   messageId,
                                   imageUrlsToAttachments(streamedImages),
                               );
-                        }
+                          }
                         : undefined,
                     signal: abortController.signal,
                 },
@@ -645,10 +645,7 @@ export function useChatSession({
         );
     }
 
-    function updateMessageAttachments(
-        messageId: string,
-        attachments: ChatAttachment[],
-    ) {
+    function updateMessageAttachments(messageId: string, attachments: ChatAttachment[]) {
         const sourceChat = latestChatRef.current;
 
         if (!sourceChat) {
@@ -968,8 +965,9 @@ function generationErrorMessage(error: unknown) {
 
 function isAbortError(error: unknown) {
     return (
-        error instanceof DOMException && error.name === "AbortError"
-    ) || (error instanceof Error && error.name === "AbortError");
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError")
+    );
 }
 
 function isActiveMessageSwipeEmpty(message: Message) {

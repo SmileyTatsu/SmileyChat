@@ -50,7 +50,9 @@ function defaultRule(): RateLimitRule {
 }
 
 function selectRule(pathname: string): RateLimitRule {
-    return ROUTE_RULES.find((entry) => entry.pattern.test(pathname))?.rule ?? defaultRule();
+    return (
+        ROUTE_RULES.find((entry) => entry.pattern.test(pathname))?.rule ?? defaultRule()
+    );
 }
 
 function sweepExpired(now: number) {
@@ -113,7 +115,10 @@ export function buildRateLimitedResponse(result: RateLimitResult): Response {
     );
 }
 
-export function applyRateLimitHeaders(response: Response, result: RateLimitResult): Response {
+export function applyRateLimitHeaders(
+    response: Response,
+    result: RateLimitResult,
+): Response {
     response.headers.set("RateLimit-Limit", String(result.limit));
     response.headers.set("RateLimit-Remaining", String(result.remaining));
     response.headers.set("RateLimit-Reset", String(Math.ceil(result.resetAt / 1000)));

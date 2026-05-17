@@ -1,7 +1,4 @@
-import type {
-    ChatGenerationRequest,
-    ChatGenerationResult,
-} from "../types";
+import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 import {
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
@@ -21,8 +18,7 @@ export function createOpenRouterChatCompletionBody(
     const messages = createChatCompletionMessages(request, {
         includeReasoningHistory: true,
         mapPromptRole: (role) => (role === "developer" ? "system" : role),
-        mapHistoryRole: (message) =>
-            message.role === "user" ? "user" : "assistant",
+        mapHistoryRole: (message) => (message.role === "user" ? "user" : "assistant"),
     });
     const provider = cleanProviderPreferences(config.providerPreferences);
     const reasoning = cleanReasoningConfig(config.reasoning);

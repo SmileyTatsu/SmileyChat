@@ -188,9 +188,8 @@ function normalizeSwipe(value: unknown): MessageSwipe | undefined {
             ? {
                   attachments: value.attachments
                       .map(normalizeAttachment)
-                      .filter(
-                          (attachment): attachment is ChatAttachment =>
-                              Boolean(attachment),
+                      .filter((attachment): attachment is ChatAttachment =>
+                          Boolean(attachment),
                       ),
               }
             : {}),

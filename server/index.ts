@@ -14,11 +14,7 @@ import {
     writeCharacterById,
 } from "./characters";
 import { importUploadedChatFile } from "./chat-imports";
-import {
-    readUploadedChatAssets,
-    serveChatAsset,
-    writeChatAssets,
-} from "./chat-assets";
+import { readUploadedChatAssets, serveChatAsset, writeChatAssets } from "./chat-assets";
 import {
     createChat,
     deleteChatById,
@@ -496,10 +492,18 @@ const server = Bun.serve({
         if (pipeline instanceof Response) return pipeline;
 
         if (pipeline.url.pathname.startsWith("/plugins/")) {
-            return finalize(await servePluginAsset(pipeline.url), pipeline.url, pipeline.rateLimit);
+            return finalize(
+                await servePluginAsset(pipeline.url),
+                pipeline.url,
+                pipeline.rateLimit,
+            );
         }
 
-        return finalize(await serveStatic(pipeline.url), pipeline.url, pipeline.rateLimit);
+        return finalize(
+            await serveStatic(pipeline.url),
+            pipeline.url,
+            pipeline.rateLimit,
+        );
     },
 });
 
