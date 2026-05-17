@@ -27,7 +27,7 @@ export const BUILT_IN_PROFILES: PluginProfile[] = [
         id: DEFAULT_PROFILE_ID,
         name: "Default",
         description:
-            "Baseline SmileyChat setup with every plugin at its installed default. Create your own profiles with Save as.",
+            "Baseline SmileyChat setup with every plugin at its installed default. Create your own profiles with New.",
         builtin: true,
         enabledPlugins: {},
         defaultEnabled: true,

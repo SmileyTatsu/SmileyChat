@@ -258,9 +258,6 @@
     display: grid;
     gap: 10px;
     min-height: 0;
-    max-height: 540px;
-    overflow: auto;
-    padding-right: 6px;
 }
 
 .plugin-card {
@@ -524,32 +521,35 @@
     margin: 0;
 }
 
-.plugins-marketplace {
-    gap: 10px;
+.plugins-settings {
+    gap: 12px;
+    min-width: 0;
 }
 
 .profile-bar {
     display: grid;
-    gap: 7px;
-    border: 1px solid #3a4256;
-    border-radius: 9px;
-    background: linear-gradient(180deg, #1e2230 0%, #181b25 100%);
-    padding: 9px 11px;
+    align-content: start;
+    gap: 9px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 10px 11px;
 }
 
 .profile-bar-row {
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
+    align-items: end;
+    gap: 10px;
+    min-width: 0;
 }
 
 .profile-bar-select {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 240px;
-    flex: 1 1 240px;
+    display: grid;
+    flex: 1 1 260px;
+    gap: 6px;
+    min-width: 0;
 }
 
 .profile-bar-select > span {
@@ -557,7 +557,7 @@
     align-items: center;
     gap: 5px;
     color: #b4bbcc;
-    font-size: 0.7rem;
+    font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -565,46 +565,24 @@
 }
 
 .profile-bar-select select {
-    flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
-    height: 30px;
-    border: 1px solid #3a4256;
+    min-height: 36px;
+    border: 1px solid #303440;
     border-radius: 7px;
-    background: #242a38;
+    background-color: #15181e;
     color: #ececf1;
-    padding: 0 9px;
+    padding: 0 36px 0 9px;
     font-weight: 600;
-    font-size: 0.86rem;
+    font-size: 0.84rem;
 }
 
 .profile-bar-actions {
-    display: inline-flex;
+    align-self: end;
+    flex: 0 1 auto;
     flex-wrap: wrap;
-    gap: 5px;
-    margin-left: auto;
-}
-
-.profile-bar-actions button {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 28px;
-    border: 1px solid #3a4256;
-    border-radius: 6px;
-    background: #242a38;
-    color: #ececf1;
-    padding: 0 9px;
-    font-size: 0.78rem;
-}
-
-.profile-bar-actions button:hover:not(:disabled) {
-    border-color: #5a6584;
-    background: #2c3242;
-}
-
-.profile-bar-actions button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+    justify-content: flex-end;
+    min-width: 0;
 }
 
 .profile-bar-actions button.danger-button:hover:not(:disabled) {
@@ -614,38 +592,44 @@
 
 .profile-bar-description {
     margin: 0;
-    color: #8b91a3;
+    color: #9ea4b3;
     font-size: 0.78rem;
+    line-height: 1.4;
 }
 
-.profile-bar-save-as {
-    display: flex;
+.profile-bar-editor {
+    display: grid;
+    gap: 10px;
+    border-top: 1px solid #292c35;
+    padding-top: 10px;
+}
+
+.profile-bar-editor label {
+    display: grid;
     gap: 6px;
-    margin-top: 2px;
-}
-
-.profile-bar-save-as input {
-    flex: 1 1 auto;
-    height: 30px;
-    border: 1px solid #3a4256;
-    border-radius: 6px;
-    background: #181b25;
-    color: #ececf1;
-    padding: 0 9px;
-    font-size: 0.84rem;
-}
-
-.profile-bar-save-as button {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 30px;
-    border: 1px solid #3a4256;
-    border-radius: 6px;
-    background: #2a3142;
-    color: #ececf1;
-    padding: 0 11px;
+    color: #b9bfd0;
     font-size: 0.82rem;
+}
+
+.profile-bar-editor input,
+.profile-bar-editor textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #15181e;
+    color: #ececf1;
+    padding: 9px 10px;
+    outline: none;
+}
+
+.profile-bar-editor textarea {
+    min-height: 64px;
+    resize: vertical;
+}
+
+.profile-bar-editor-actions {
+    justify-content: flex-end;
 }
 
 .custom-badge {
@@ -665,14 +649,14 @@
 .marketplace-toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 7px;
+    gap: 9px;
     align-items: center;
 }
 
 .marketplace-search {
     flex: 1 1 220px;
     min-width: 0;
-    height: 30px;
+    height: 34px;
     border: 1px solid #303440;
     border-radius: 6px;
     background: #181b25;
@@ -698,11 +682,11 @@
 
 .marketplace-filter-pills {
     display: inline-flex;
-    gap: 2px;
+    gap: 3px;
     background: #1a1d27;
     border: 1px solid #2b2f3a;
     border-radius: 7px;
-    padding: 2px;
+    padding: 3px;
 }
 
 .marketplace-filter-pills .pill {
@@ -712,7 +696,8 @@
     color: #aab0bf;
     font-size: 0.78rem;
     font-weight: 600;
-    padding: 4px 11px;
+    min-height: 26px;
+    padding: 4px 12px;
     cursor: pointer;
 }
 

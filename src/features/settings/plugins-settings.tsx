@@ -4,6 +4,7 @@ import {
     Bot,
     Boxes,
     CheckCircle2,
+    Copy,
     Layers,
     Layout,
     Pencil,
@@ -11,8 +12,6 @@ import {
     Plus,
     Power,
     RefreshCw,
-    RotateCcw,
-    Save,
     Search,
     Settings,
     Sparkles,
@@ -295,28 +294,17 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         }
     }
 
-    async function resetToActiveProfile() {
-        if (!activeProfile) return;
-        await applyProfile(activeProfile);
-    }
-
-    async function saveCurrentAs(name: string) {
+    async function createNewProfile() {
         if (!profilesPayload) return;
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        const id = slugify(trimmed) || `profile-${Date.now()}`;
-        if (BUILT_IN_PROFILES.some((profile) => profile.id === id)) {
-            setStatusMessage("That name conflicts with a built-in profile.");
-            setRequestState("error");
-            return;
-        }
+        const name = nextProfileName("Plugin profile", allProfiles);
+        const id = uniqueProfileId(name, allProfiles);
 
         setRequestState("loading");
         try {
             const pluginConfig = await snapshotAllPluginConfigs(plugins);
             const newProfile: PluginProfile = {
                 id,
-                name: trimmed,
+                name,
                 description: "User-defined profile.",
                 builtin: false,
                 enabledPlugins: { ...currentEnabledMap },
@@ -340,31 +328,37 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 builtinProfiles: profilesPayload.builtinProfiles,
                 userProfiles: saved.state.userProfiles,
             });
-            setStatusMessage(`Saved "${trimmed}" and activated it.`);
+            setStatusMessage(`Created "${name}" from the current plugin state.`);
             setRequestState("success");
         } catch (error) {
-            setStatusMessage(messageFromError(error, "Could not save profile."));
+            setStatusMessage(messageFromError(error, "Could not create profile."));
             setRequestState("error");
         }
     }
 
-    async function updateActiveUserProfile() {
-        if (!profilesPayload || !activeProfile || activeProfile.builtin) return;
+    async function duplicateActiveProfile() {
+        if (!profilesPayload || !activeProfile) return;
+        const name = nextProfileName(`${activeProfile.name} Copy`, allProfiles);
+        const id = uniqueProfileId(name, allProfiles);
+
         setRequestState("loading");
         try {
-            const pluginConfig = await snapshotAllPluginConfigs(plugins);
-            const updated: PluginProfile = {
+            const duplicated: PluginProfile = {
                 ...activeProfile,
-                enabledPlugins: { ...currentEnabledMap },
-                pluginConfig,
+                id,
+                name,
+                builtin: false,
+                description: activeProfile.description || "User-defined profile.",
+                enabledPlugins: { ...activeProfile.enabledPlugins },
+                pluginConfig: activeProfile.pluginConfig
+                    ? structuredClone(activeProfile.pluginConfig)
+                    : undefined,
             };
             const nextState: PluginProfilesState = {
                 version: 1,
-                activeProfileId: activeProfile.id,
-                lastApplied: { ...currentEnabledMap },
-                userProfiles: profilesPayload.userProfiles.map((profile) =>
-                    profile.id === activeProfile.id ? updated : profile,
-                ),
+                activeProfileId: id,
+                lastApplied: { ...profilesPayload.lastApplied },
+                userProfiles: [...profilesPayload.userProfiles, duplicated],
             };
             const saved = await savePluginProfilesState(nextState);
             setProfilesPayload({
@@ -373,10 +367,10 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 builtinProfiles: profilesPayload.builtinProfiles,
                 userProfiles: saved.state.userProfiles,
             });
-            setStatusMessage(`Saved current state to "${activeProfile.name}".`);
+            setStatusMessage(`Duplicated "${activeProfile.name}" as "${name}".`);
             setRequestState("success");
         } catch (error) {
-            setStatusMessage(messageFromError(error, "Could not save profile."));
+            setStatusMessage(messageFromError(error, "Could not duplicate profile."));
             setRequestState("error");
         }
     }
@@ -400,9 +394,73 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         }
     }
 
+    async function updateActiveProfileDetails(details: {
+        description: string;
+        name: string;
+    }) {
+        if (!profilesPayload || !activeProfile || activeProfile.builtin) {
+            return false;
+        }
+
+        const name = details.name.trim();
+        const description = details.description.trim();
+
+        if (!name) {
+            setStatusMessage("Profile name cannot be empty.");
+            setRequestState("error");
+            return false;
+        }
+
+        const nameTaken = allProfiles.some(
+            (profile) =>
+                profile.id !== activeProfile.id &&
+                profile.name.trim().toLowerCase() === name.toLowerCase(),
+        );
+
+        if (nameTaken) {
+            setStatusMessage(`A profile named "${name}" already exists.`);
+            setRequestState("error");
+            return false;
+        }
+
+        setRequestState("loading");
+
+        try {
+            const nextState: PluginProfilesState = {
+                version: 1,
+                activeProfileId: profilesPayload.activeProfileId,
+                lastApplied: profilesPayload.lastApplied,
+                userProfiles: profilesPayload.userProfiles.map((profile) =>
+                    profile.id === activeProfile.id
+                        ? {
+                              ...profile,
+                              name,
+                              description: description || undefined,
+                          }
+                        : profile,
+                ),
+            };
+            const saved = await savePluginProfilesState(nextState);
+
+            setProfilesPayload({
+                activeProfileId: saved.state.activeProfileId,
+                lastApplied: saved.state.lastApplied,
+                builtinProfiles: profilesPayload.builtinProfiles,
+                userProfiles: saved.state.userProfiles,
+            });
+            setStatusMessage(`Updated "${name}".`);
+            setRequestState("success");
+            return true;
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Could not update profile."));
+            setRequestState("error");
+            return false;
+        }
+    }
+
     return (
-        <section className="tool-window plugins-marketplace">
-            <div className="plugins-heading">
+        <section className="tool-window plugins-settings">
+            <header className="settings-section-heading plugins-heading">
                 <div>
                     <h2>Plugins</h2>
                     <p>
@@ -418,7 +476,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     <RefreshCw size={16} />
                     Refresh
                 </button>
-            </div>
+            </header>
 
             <ProfileBar
                 profiles={allProfiles}
@@ -426,10 +484,10 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 isCustom={isCustom}
                 isBusy={requestState === "loading"}
                 onApply={applyProfile}
-                onReset={resetToActiveProfile}
-                onSaveCurrentAs={(name) => void saveCurrentAs(name)}
-                onUpdateActive={updateActiveUserProfile}
+                onCreateNew={() => void createNewProfile()}
+                onDuplicateActive={() => void duplicateActiveProfile()}
                 onDeleteActive={deleteActiveProfile}
+                onUpdateActiveDetails={updateActiveProfileDetails}
             />
 
             <div className="marketplace-toolbar">
@@ -564,10 +622,13 @@ type ProfileBarProps = {
     isCustom: boolean;
     isBusy: boolean;
     onApply: (profile: PluginProfile) => void | Promise<void>;
-    onReset: () => void | Promise<void>;
-    onSaveCurrentAs: (name: string) => void;
-    onUpdateActive: () => void | Promise<void>;
+    onCreateNew: () => void | Promise<void>;
+    onDuplicateActive: () => void | Promise<void>;
     onDeleteActive: () => void | Promise<void>;
+    onUpdateActiveDetails: (details: {
+        description: string;
+        name: string;
+    }) => boolean | Promise<boolean>;
 };
 
 function ProfileBar({
@@ -576,21 +637,43 @@ function ProfileBar({
     isCustom,
     isBusy,
     onApply,
-    onReset,
-    onSaveCurrentAs,
-    onUpdateActive,
+    onCreateNew,
+    onDuplicateActive,
     onDeleteActive,
+    onUpdateActiveDetails,
 }: ProfileBarProps) {
-    const [draftName, setDraftName] = useState("");
-    const [showSaveAs, setShowSaveAs] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [draftName, setDraftName] = useState(activeProfile?.name ?? "");
+    const [draftDescription, setDraftDescription] = useState(
+        activeProfile?.description ?? "",
+    );
+    const canEditProfile = Boolean(activeProfile && !activeProfile.builtin);
+
+    useEffect(() => {
+        setDraftName(activeProfile?.name ?? "");
+        setDraftDescription(activeProfile?.description ?? "");
+        setIsEditing(false);
+    }, [activeProfile?.id, activeProfile?.name, activeProfile?.description]);
+
+    async function saveDetails() {
+        if (!activeProfile || activeProfile.builtin) return;
+        const saved = await onUpdateActiveDetails({
+            description: draftDescription,
+            name: draftName,
+        });
+
+        if (saved) {
+            setIsEditing(false);
+        }
+    }
 
     return (
-        <div className="profile-bar">
+        <section className="profile-bar">
             <div className="profile-bar-row">
                 <label className="profile-bar-select">
                     <span>
                         <Sparkles size={14} />
-                        Plugin Profile
+                        Profile
                     </span>
                     <select
                         value={activeProfile?.id ?? ""}
@@ -630,45 +713,35 @@ function ProfileBar({
                     </span>
                 )}
 
-                <div className="profile-bar-actions">
-                    <button
-                        type="button"
-                        disabled={isBusy || !isCustom}
-                        onClick={() => void onReset()}
-                        title="Re-apply the active profile"
-                    >
-                        <RotateCcw size={15} />
-                        Reset
+                <div className="button-row profile-bar-actions">
+                    <button type="button" disabled={isBusy} onClick={onCreateNew}>
+                        <Plus size={16} />
+                        New
                     </button>
-                    {activeProfile && !activeProfile.builtin && (
-                        <>
-                            <button
-                                type="button"
-                                disabled={isBusy}
-                                onClick={() => void onUpdateActive()}
-                                title="Save current state to this profile"
-                            >
-                                <Save size={15} />
-                                Save
-                            </button>
-                            <button
-                                type="button"
-                                className="danger-button"
-                                disabled={isBusy}
-                                onClick={() => void onDeleteActive()}
-                            >
-                                <Trash2 size={15} />
-                                Delete
-                            </button>
-                        </>
-                    )}
                     <button
                         type="button"
-                        disabled={isBusy}
-                        onClick={() => setShowSaveAs((value) => !value)}
+                        disabled={isBusy || !activeProfile}
+                        onClick={onDuplicateActive}
                     >
-                        <Pencil size={15} />
-                        Save as...
+                        <Copy size={16} />
+                        Duplicate
+                    </button>
+                    <button
+                        type="button"
+                        disabled={isBusy || !canEditProfile}
+                        onClick={() => setIsEditing((value) => !value)}
+                    >
+                        <Pencil size={16} />
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        className="danger-button"
+                        disabled={isBusy || !activeProfile || activeProfile.builtin}
+                        onClick={onDeleteActive}
+                    >
+                        <Trash2 size={16} />
+                        Delete
                     </button>
                 </div>
             </div>
@@ -677,33 +750,54 @@ function ProfileBar({
                 <p className="profile-bar-description">{activeProfile.description}</p>
             )}
 
-            {showSaveAs && (
-                <div className="profile-bar-save-as">
-                    <input
-                        type="text"
-                        placeholder="Profile name (e.g. My Lite Setup)"
-                        value={draftName}
-                        onInput={(event) =>
-                            setDraftName(
-                                (event.currentTarget as HTMLInputElement).value,
-                            )
-                        }
-                    />
-                    <button
-                        type="button"
-                        disabled={isBusy || draftName.trim().length === 0}
-                        onClick={() => {
-                            onSaveCurrentAs(draftName);
-                            setDraftName("");
-                            setShowSaveAs(false);
-                        }}
-                    >
-                        <Plus size={15} />
-                        Create
-                    </button>
+            {isEditing && canEditProfile && (
+                <div className="profile-bar-editor">
+                    <label>
+                        Name
+                        <input
+                            type="text"
+                            value={draftName}
+                            onInput={(event) =>
+                                setDraftName(event.currentTarget.value)
+                            }
+                        />
+                    </label>
+                    <label>
+                        Description
+                        <textarea
+                            rows={2}
+                            value={draftDescription}
+                            onInput={(event) =>
+                                setDraftDescription(event.currentTarget.value)
+                            }
+                        />
+                    </label>
+                    <div className="button-row profile-bar-editor-actions">
+                        <button
+                            type="button"
+                            disabled={isBusy || draftName.trim().length === 0}
+                            onClick={() => void saveDetails()}
+                        >
+                            Save
+                        </button>
+                        <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => {
+                                setDraftName(activeProfile?.name ?? "");
+                                setDraftDescription(
+                                    activeProfile?.description ?? "",
+                                );
+                                setIsEditing(false);
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             )}
-        </div>
+
+        </section>
     );
 }
 
@@ -867,4 +961,43 @@ function slugify(value: string) {
         .replace(/[^a-z0-9-_]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(0, 60);
+}
+
+function nextProfileName(baseName: string, profiles: PluginProfile[]) {
+    const names = new Set(profiles.map((profile) => profile.name));
+
+    if (!names.has(baseName)) {
+        return baseName;
+    }
+
+    for (let index = 2; index < 1000; index += 1) {
+        const name = `${baseName} ${index}`;
+
+        if (!names.has(name)) {
+            return name;
+        }
+    }
+
+    return `${baseName} ${Date.now()}`;
+}
+
+function uniqueProfileId(name: string, profiles: PluginProfile[]) {
+    const ids = new Set(profiles.map((profile) => profile.id));
+    const baseId = slugify(name) || `profile-${Date.now()}`;
+    const isReserved = (id: string) =>
+        ids.has(id) || BUILT_IN_PROFILES.some((profile) => profile.id === id);
+
+    if (!isReserved(baseId)) {
+        return baseId;
+    }
+
+    for (let index = 2; index < 1000; index += 1) {
+        const id = `${baseId}-${index}`;
+
+        if (!isReserved(id)) {
+            return id;
+        }
+    }
+
+    return `${baseId}-${Date.now()}`;
 }
