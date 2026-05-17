@@ -140,6 +140,18 @@ export function GeneralSettings({
                     onChange={(autoScroll) => updateChat({ autoScroll })}
                 />
 
+                <SettingField label="Initial messages">
+                    <NumberInput
+                        min={20}
+                        max={300}
+                        step={10}
+                        value={preferences.chat.initialMessageCount}
+                        onChange={(initialMessageCount) =>
+                            updateChat({ initialMessageCount })
+                        }
+                    />
+                </SettingField>
+
                 <ToggleRow
                     checked={preferences.chat.streaming}
                     description="Show model replies as they arrive from supported providers."
@@ -241,6 +253,54 @@ function ToggleRow({
             />
         </label>
     );
+}
+
+function NumberInput({
+    max,
+    min,
+    step,
+    value,
+    onChange,
+}: {
+    max: number;
+    min: number;
+    step: number;
+    value: number;
+    onChange: (value: number) => void;
+}) {
+    return (
+        <input
+            className="settings-number-input"
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onBlur={(event) => {
+                const input = event.currentTarget as HTMLInputElement;
+                const nextValue = clampNumber(input.valueAsNumber, min, max);
+
+                input.value = String(nextValue);
+                onChange(nextValue);
+            }}
+            onChange={(event) => {
+                const nextValue = (event.currentTarget as HTMLInputElement)
+                    .valueAsNumber;
+
+                if (Number.isFinite(nextValue)) {
+                    onChange(clampNumber(nextValue, min, max));
+                }
+            }}
+        />
+    );
+}
+
+function clampNumber(value: number, min: number, max: number) {
+    if (!Number.isFinite(value)) {
+        return min;
+    }
+
+    return Math.min(max, Math.max(min, Math.round(value)));
 }
 
 function SegmentedControl<T extends string>({

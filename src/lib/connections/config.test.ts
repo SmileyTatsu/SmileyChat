@@ -2,6 +2,32 @@ import { describe, expect, test } from "bun:test";
 import { normalizeConnectionSettings } from "./config";
 
 describe("connection config normalization", () => {
+    test("normalizes connection context token budgets", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-openai",
+            profiles: [
+                {
+                    id: "profile-openai",
+                    name: "OpenAI",
+                    provider: "openai-compatible",
+                    contextTokenBudget: 250000,
+                    config: {
+                        baseUrl: "https://api.openai.com/v1",
+                        model: {
+                            source: "default",
+                            id: "gpt-4o-mini",
+                        },
+                    },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.contextTokenBudget).toBe(200000);
+    });
+
     test("normalizes valid Google AI thinking config", () => {
         const settings = normalizeConnectionSettings({
             version: 1,

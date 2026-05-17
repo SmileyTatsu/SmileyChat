@@ -142,10 +142,59 @@
     background: #242832;
 }
 
+.message-list-shell {
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .message-list {
+    height: 100%;
     min-height: 0;
     overflow: auto;
     padding: 18px 0;
+}
+
+.message-list-sentinel {
+    height: 1px;
+}
+
+.load-earlier-messages {
+    display: block;
+    min-height: 34px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #1b1e25;
+    color: #cdd5eb;
+    margin: 0 auto 12px;
+    padding: 0 12px;
+}
+
+.load-earlier-messages:hover {
+    border-color: #465065;
+    background: #242833;
+    color: #ececf1;
+}
+
+.jump-to-bottom-button {
+    position: absolute;
+    right: 20px;
+    bottom: 18px;
+    z-index: 8;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #363b48;
+    border-radius: 999px;
+    background: #e1e7ff;
+    color: #15171d;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.38);
+    padding: 0;
+}
+
+.jump-to-bottom-button:hover {
+    background: #f0f4ff;
 }
 
 .chat-empty-state {
@@ -189,9 +238,11 @@
 
 .message {
     padding: var(--message-padding-y) var(--message-padding-x);
+    grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
     grid-template-areas:
         "avatar header"
-        "avater content";
+        "avatar content";
+    align-items: start;
 
     @apply relative m-0 grid gap-x-[var(--message-gap)] gap-y-2;
 
@@ -674,7 +725,11 @@
 }
 
 .rp .message {
+    contain-intrinsic-size: auto 180px;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "header"
+        "content";
     border-left: 2px solid #384252;
     padding: 0 0 0 18px;
 }
@@ -685,6 +740,9 @@
 
 .rp .message.show-rp-character-avatar {
     grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
+    grid-template-areas:
+        "avatar header"
+        "avatar content";
     align-items: start;
 }
 
@@ -799,7 +857,7 @@
     @apply flex w-full items-start gap-4 p-2;
 
     .attachment-button {
-        @apply rounded-md border-none bg-transparent p-2 transition-colors outline-none;
+        @apply flex items-center justify-center rounded-md border-none bg-transparent p-2 transition-colors outline-none;
 
         &:hover:not(:disabled) {
             background: #242833;
@@ -810,11 +868,11 @@
         max-height: 200px;
         font-size: var(--message-font-size);
 
-        @apply min-h-0 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent pr-1.5 text-[var(--message-font-size)] outline-none placeholder:text-[var(--message-font-size)];
+        @apply h-full min-h-9 w-full resize-none scrollbar-thin scrollbar-gutter-both border-none bg-transparent py-1.5 pr-1.5 text-[var(--message-font-size)] outline-none placeholder:text-[var(--message-font-size)];
     }
 
     .send-button {
-        @apply cursor-not-allowed rounded-md border-none bg-transparent p-2 transition-colors outline-none;
+        @apply flex cursor-not-allowed items-center justify-center rounded-md border-none bg-transparent p-2 transition-colors outline-none;
 
         & svg {
             @apply fill-neutral-700 text-neutral-700 transition-colors;

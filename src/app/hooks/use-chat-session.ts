@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { uploadChatAttachments } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
+import {
+    type ConnectionSettings,
+    getActiveConnectionProfile,
+} from "#frontend/lib/connections/config";
 import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
-import type { ConnectionSettings } from "#frontend/lib/connections/config";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import {
     appendMessageSwipe,
@@ -22,6 +25,11 @@ import {
 } from "#frontend/lib/plugins/registry";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { compilePresetMessages } from "#frontend/lib/presets/compile";
+import { preparePresetContextForBudget } from "#frontend/lib/presets/context-budget";
+import {
+    defaultContextTokenBudget,
+    normalizeContextTokenBudget,
+} from "#frontend/lib/presets/context-budget-constants";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
@@ -90,6 +98,10 @@ export function useChatSession({
                 (preset) => preset.id === presetCollection.activePresetId,
             ),
         [presetCollection],
+    );
+    const contextTokenBudget = normalizeContextTokenBudget(
+        getActiveConnectionProfile(connectionSettings)?.contextTokenBudget,
+        defaultContextTokenBudget,
     );
 
     function resolveChatMacros(
@@ -816,20 +828,25 @@ export function useChatSession({
             stream?: boolean;
         } = {},
     ) {
-        const generationMessages = sourceMessages.filter(
+        const sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );
-        const presetContext = {
-            character: sourceCharacter,
-            messages: generationMessages,
-            mode: sourceMode,
-            personaDescription: persona.description,
-            personaName: persona.name,
-            userStatus: sourceUserStatus,
-        };
+        const budgetedContext = preparePresetContextForBudget({
+            context: {
+                character: sourceCharacter,
+                messages: sourceGenerationMessages,
+                mode: sourceMode,
+                personaDescription: persona.description,
+                personaName: persona.name,
+                userStatus: sourceUserStatus,
+            },
+            preset: activePreset,
+            tokenBudget: contextTokenBudget,
+        });
+        const generationMessages = budgetedContext.messages;
         const connection = getAdapterForSettings(sourceConnectionSettings);
         const promptMessages = await applyPromptMiddlewares(
-            compilePresetMessages(activePreset, presetContext),
+            budgetedContext.promptMessages,
             generationMessages,
             sourceCharacter,
             sourceMode,
