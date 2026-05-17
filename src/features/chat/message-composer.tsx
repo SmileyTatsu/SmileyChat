@@ -150,13 +150,11 @@ export function MessageComposer({
         onAbortGeneration?.();
     }
 
-    function stageFiles(files: FileList | null) {
-        const images = Array.from(files ?? []).filter((file) =>
-            file.type.startsWith("image/"),
-        );
+    function stageImages(files: File[]) {
+        const images = files.filter((file) => file.type.startsWith("image/"));
 
         if (!images.length) {
-            return;
+            return false;
         }
 
         setStagedImages((current) => [
@@ -168,8 +166,32 @@ export function MessageComposer({
             })),
         ]);
 
+        return true;
+    }
+
+    function stageFiles(files: FileList | null) {
+        const staged = stageImages(Array.from(files ?? []));
+
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
+        }
+
+        return staged;
+    }
+
+    function handlePaste(event: ClipboardEvent) {
+        const items = Array.from(event.clipboardData?.items ?? []);
+        const files = items.flatMap((item) => {
+            if (item.kind !== "file") {
+                return [];
+            }
+
+            const file = item.getAsFile();
+            return file ? [file] : [];
+        });
+
+        if (stageImages(files)) {
+            event.preventDefault();
         }
     }
 
@@ -272,6 +294,7 @@ export function MessageComposer({
                     setDraft((event.currentTarget as HTMLTextAreaElement).value)
                 }
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
             />
             <button
                 className="send-button"
