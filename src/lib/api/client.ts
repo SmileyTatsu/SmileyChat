@@ -350,6 +350,35 @@ export function uploadChatAttachments(chatId: string, files: File[]) {
     });
 }
 
+export function deleteChatAttachment(chatId: string, fileName: string) {
+    return requestJson<{ ok: true }>(
+        `/api/chats/${encodeURIComponent(chatId)}/attachments/${encodeURIComponent(fileName)}`,
+        { method: "DELETE" },
+    );
+}
+
+export async function exportGroupChat(chatId: string) {
+    const response = await localApiFetch(
+        `/api/chats/${encodeURIComponent(chatId)}/export-group.json`,
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Export group failed: ${response.status}${await responseErrorSuffix(response)}`,
+        );
+    }
+
+    return response;
+}
+
+export function importGroupChat(definition: unknown) {
+    return requestJson<{
+        ok: true;
+        chat: ChatSession;
+        chats?: ChatSummaryCollection;
+    }>("/api/chats/import-group", jsonInit("POST", definition));
+}
+
 export function saveChatIndex(chats: ChatSummaryCollection) {
     return requestJson<{
         ok: true;

@@ -147,13 +147,27 @@ export function useChatSession({
     }
 
     async function forceGroupMemberResponse(characterId: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (
+            !sourceChat ||
+            !isGroupChat(sourceChat) ||
+            !groupCharacters.some((item) => item.id === characterId)
+        ) {
+            setChatError("That group member no longer has a saved character card.");
+            return;
+        }
+
         return sendMessageWithOptions("", {
             forcedCharacterId: characterId,
             suppressAutoResponses: true,
         });
     }
 
-    async function sendMessageWithOptions(draft: string, options: SendMessageOptions = {}) {
+    async function sendMessageWithOptions(
+        draft: string,
+        options: SendMessageOptions = {},
+    ) {
         const images = options.images ?? [];
         const sourceChat = latestChatRef.current;
 
@@ -161,7 +175,10 @@ export function useChatSession({
             return;
         }
 
-        if ((draft.trim() || images.length || options.forcedCharacterId) && !options.autoTurnCount) {
+        if (
+            (draft.trim() || images.length || options.forcedCharacterId) &&
+            !options.autoTurnCount
+        ) {
             clearAutomaticResponseTimer();
         }
 
@@ -223,7 +240,12 @@ export function useChatSession({
             updateChatMessages(nextMessages, sourceChat);
         }
         const streamingReply = preferences.chat.streaming
-            ? createCharacterMessage(generationCharacter.data.name, "", undefined, generationCharacter)
+            ? createCharacterMessage(
+                  generationCharacter.data.name,
+                  "",
+                  undefined,
+                  generationCharacter,
+              )
             : undefined;
         let streamedContent = "";
         let streamedReasoning = "";
@@ -1126,8 +1148,7 @@ export function useChatSession({
 
         if (forcedCharacterId) {
             return (
-                groupCharacters.find((item) => item.id === forcedCharacterId) ??
-                character
+                groupCharacters.find((item) => item.id === forcedCharacterId) ?? character
             );
         }
 
@@ -1199,7 +1220,10 @@ export function useChatSession({
         availableCharacters: SmileyCharacter[],
         messages: Message[],
     ) {
-        const lastUserIndex = findLastIndex(messages, (message) => message.role === "user");
+        const lastUserIndex = findLastIndex(
+            messages,
+            (message) => message.role === "user",
+        );
         const spokenSinceUser = new Set(
             messages
                 .slice(lastUserIndex + 1)
@@ -1207,7 +1231,8 @@ export function useChatSession({
                 .map((message) => message.authorCharacterId || message.author),
         );
         const unspoken = availableCharacters.filter(
-            (item) => !spokenSinceUser.has(item.id) && !spokenSinceUser.has(item.data.name),
+            (item) =>
+                !spokenSinceUser.has(item.id) && !spokenSinceUser.has(item.data.name),
         );
         const pool = unspoken.length ? unspoken : availableCharacters;
 
@@ -1268,7 +1293,9 @@ export function useChatSession({
                 : activeSpeaker;
         }
 
-        const memberIds = new Set((sourceChat.members ?? []).map((member) => member.characterId));
+        const memberIds = new Set(
+            (sourceChat.members ?? []).map((member) => member.characterId),
+        );
         const orderedCharacters = (sourceChat.members ?? [])
             .slice()
             .sort((left, right) => left.order - right.order)
@@ -1456,7 +1483,10 @@ function joinCharacterField(
                 return "";
             }
 
-            const prefix = safePrefixTemplate.replace(/\{\{char\}\}/g, character.data.name);
+            const prefix = safePrefixTemplate.replace(
+                /\{\{char\}\}/g,
+                character.data.name,
+            );
 
             return [prefix, `${fieldName}:\n${value}`].filter(Boolean).join("\n");
         })

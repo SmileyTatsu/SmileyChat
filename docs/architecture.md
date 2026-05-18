@@ -18,6 +18,12 @@ SmileyChat's architecture separates the UI, the state orchestration, the text ge
 Adapters are defined in `src/lib/connections/`. The goal is that the frontend UI should never know if it's talking to OpenAI, Anthropic, or a local model.
 The adapter normalizes the generation request and returns a standardized response format.
 
+## Local Chat Assets
+
+Chat image attachments are written to `userData/chats/assets/{chatId}` and served through `/api/chats/{chatId}/attachments/{file}`. The server also exposes `DELETE /api/chats/{chatId}/attachments/{file}` for explicit cleanup, and chat deletion removes the full per-chat asset directory.
+
+Group chat definitions can be exported through `/api/chats/{chatId}/export-group.json` and imported through `/api/chats/import-group`. These routes move room setup data only; message history remains in normal chat session files.
+
 ## Plugins
 
 SmileyChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are trusted local browser ESM modules that run in the SmileyChat page, so permissions guide API access but are not a sandbox. For more information, see the [Plugins Docs](plugins/README.md).

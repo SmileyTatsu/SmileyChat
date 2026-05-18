@@ -17,6 +17,7 @@ import type {
 import { isRecord } from "#frontend/lib/common/guards";
 
 import { moveToUniquePath } from "./character-file-utils";
+import { deleteChatAssetDirectory } from "./chat-assets";
 import { chatFilePath } from "./chat-file-paths";
 import { BadRequestError, writeJsonAtomic } from "./http";
 import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
@@ -125,6 +126,7 @@ export async function deleteChatById(chatId: string) {
     }
 
     await rm(chatFilePath(chatId), { force: true });
+    await deleteChatAssetDirectory(chatId);
     const index = await readChatIndex();
     const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };
 
@@ -169,6 +171,7 @@ export async function deleteChatsByCharacterId(characterId: string) {
 
     for (const chatId of deleteIds) {
         await rm(chatFilePath(chatId), { force: true });
+        await deleteChatAssetDirectory(chatId);
     }
 
     const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };

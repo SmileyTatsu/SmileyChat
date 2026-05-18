@@ -13,8 +13,14 @@ import {
     writeCharacterAvatar,
     writeCharacterById,
 } from "./characters";
+import {
+    deleteChatAsset,
+    readUploadedChatAssets,
+    serveChatAsset,
+    writeChatAssets,
+} from "./chat-assets";
+import { exportGroupChatDefinition, importGroupChatDefinition } from "./chat-groups";
 import { importUploadedChatFile } from "./chat-imports";
-import { readUploadedChatAssets, serveChatAsset, writeChatAssets } from "./chat-assets";
 import {
     createChat,
     deleteChatById,
@@ -264,6 +270,16 @@ const server = Bun.serve({
             }),
         },
 
+        "/api/chats/import-group": {
+            POST: api(async (request) => {
+                const result = await importGroupChatDefinition(
+                    await readJsonBody(request),
+                );
+
+                return json({ ok: true, ...result });
+            }),
+        },
+
         "/api/chats/:chatId/attachments": {
             POST: api(async (request, routeServer) => {
                 routeServer.timeout(request, 60);
@@ -281,6 +297,18 @@ const server = Bun.serve({
         "/api/chats/:chatId/attachments/:file": {
             GET: api(async (request) => {
                 return serveChatAsset(request.params.chatId, request.params.file);
+            }),
+
+            DELETE: api(async (request) => {
+                await deleteChatAsset(request.params.chatId, request.params.file);
+
+                return json({ ok: true });
+            }),
+        },
+
+        "/api/chats/:chatId/export-group.json": {
+            GET: api(async (request) => {
+                return exportGroupChatDefinition(request.params.chatId);
             }),
         },
 

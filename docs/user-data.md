@@ -12,6 +12,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `index.json`: Maintains the list of active characters, their order, and summaries.
 - `userData/chats/`: Chat sessions are stored here as individual JSON files.
     - `sessions/`: JSON files for each chat session.
+    - `assets/`: Per-chat image files used by message attachments and current group custom avatars. Deleting a chat removes its asset folder; replacing a group avatar deletes the previous avatar attachment through the attachment delete API.
     - `orphaned/`: Safely holds data from deleted chats to prevent accidental loss.
     - `index.json`: Tracks active chats per character and session metadata.
 - `userData/personas/`: Your personas (user profiles).
@@ -32,3 +33,5 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
 ## File Formats
 
 SmileyChat uses its own internal normalized formats, heavily inspired by existing V2 card formats for maximum compatibility. When importing SillyTavern or Tavern cards, unsupported fields are safely preserved inside an `extensions.smileychat` object to ensure no data loss during export.
+
+Group chat definitions can be exported as `smileychat_group` JSON with member metadata and group settings, but without message history. Custom group avatar image paths are local assets and are not treated as portable room data.

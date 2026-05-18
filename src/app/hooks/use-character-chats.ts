@@ -4,6 +4,7 @@ import {
     createCharacter as createCharacterRequest,
     createChat as createChatRequest,
     deleteCharacter as deleteCharacterRequest,
+    deleteChatAttachment,
     deleteChat as deleteChatRequest,
     exportCharacterCard,
     importChatFile as importChatFileRequest,
@@ -25,10 +26,7 @@ import {
     normalizeCharacter,
     normalizeCharacterSummaryCollection,
 } from "#frontend/lib/characters/normalize";
-import {
-    createChatSession,
-    createGroupChatSession,
-} from "#frontend/lib/chats/defaults";
+import { createChatSession, createGroupChatSession } from "#frontend/lib/chats/defaults";
 import {
     chatDisplayTitle,
     chatToSummary,
@@ -214,10 +212,9 @@ export function useCharacterChats({
             (chat) => chat.characterId === nextCharacter.id && !isGroupChat(chat),
         );
         const mappedActiveChatId = summaries.activeChatIdsByCharacter[nextCharacter.id];
-        const activeChatId =
-            characterChats.some((chat) => chat.id === mappedActiveChatId)
-                ? mappedActiveChatId
-                : characterChats[0]?.id;
+        const activeChatId = characterChats.some((chat) => chat.id === mappedActiveChatId)
+            ? mappedActiveChatId
+            : characterChats[0]?.id;
 
         if (!activeChatId) {
             setActiveChat(undefined);
@@ -302,7 +299,10 @@ export function useCharacterChats({
         }
 
         const characterById = new Map(
-            sourceCharacters.map((sourceCharacter) => [sourceCharacter.id, sourceCharacter]),
+            sourceCharacters.map((sourceCharacter) => [
+                sourceCharacter.id,
+                sourceCharacter,
+            ]),
         );
         let changed = false;
         const members = chat.members.map((member) => {
@@ -390,7 +390,9 @@ export function useCharacterChats({
         const uniqueIds = Array.from(new Set(characterIds)).filter(Boolean);
 
         if (uniqueIds.length === 0) {
-            setChatLoadError("Choose at least one character before creating a group chat.");
+            setChatLoadError(
+                "Choose at least one character before creating a group chat.",
+            );
             return;
         }
 
@@ -1056,34 +1058,70 @@ export function useCharacterChats({
                 throw new Error("Group chat not found.");
             }
 
+            const previousAvatarPath =
+                currentChat.group?.avatar?.type === "custom"
+                    ? currentChat.group.avatar.path
+                    : "";
             const result = await uploadChatAttachments(chatId, [file]);
-            const avatarPath = result.attachments[0]?.url;
+            const uploadedAttachment = result.attachments[0];
+            const avatarPath = uploadedAttachment?.url;
 
             if (!avatarPath) {
                 throw new Error("Group image upload failed.");
             }
 
-            await persistChat(
-                {
-                    ...currentChat,
-                    group: {
-                        ...currentChat.group,
-                        avatar: {
-                            type: "custom",
-                            path: avatarPath,
+            try {
+                await persistChat(
+                    {
+                        ...currentChat,
+                        group: {
+                            ...currentChat.group,
+                            avatar: {
+                                type: "custom",
+                                path: avatarPath,
+                            },
+                            replyOrder: currentChat.group?.replyOrder ?? "list",
+                            generationMode:
+                                currentChat.group?.generationMode ??
+                                "swap-character-cards",
                         },
-                        replyOrder: currentChat.group?.replyOrder ?? "list",
-                        generationMode:
-                            currentChat.group?.generationMode ??
-                            "swap-character-cards",
+                        updatedAt: new Date().toISOString(),
                     },
-                    updatedAt: new Date().toISOString(),
-                },
-                currentChat.id === latestChatRef.current?.id,
-            );
+                    currentChat.id === latestChatRef.current?.id,
+                );
+            } catch (error) {
+                await deleteChatAttachment(chatId, uploadedAttachment.id);
+                throw error;
+            }
+
+            const previousAvatarFile = chatAttachmentFileName(previousAvatarPath, chatId);
+
+            if (previousAvatarFile && previousAvatarPath !== avatarPath) {
+                await deleteChatAttachment(chatId, previousAvatarFile);
+            }
+
             setChatLoadError("");
         } catch (error) {
             setChatLoadError(messageFromError(error));
+        }
+    }
+
+    function chatAttachmentFileName(url: string | undefined, chatId: string) {
+        if (!url) {
+            return "";
+        }
+
+        try {
+            const parsed = new URL(url, window.location.origin);
+            const prefix = `/api/chats/${encodeURIComponent(chatId)}/attachments/`;
+
+            if (!parsed.pathname.startsWith(prefix)) {
+                return "";
+            }
+
+            return decodeURIComponent(parsed.pathname.slice(prefix.length));
+        } catch {
+            return "";
         }
     }
 
@@ -1120,8 +1158,7 @@ export function useCharacterChats({
                     summaries.activeChatIdsByCharacter[deletedCharacterId] ??
                     summaries.chats.find(
                         (chat) =>
-                            chat.characterId === deletedCharacterId &&
-                            !isGroupChat(chat),
+                            chat.characterId === deletedCharacterId && !isGroupChat(chat),
                     )?.id;
 
                 if (nextChatId) {

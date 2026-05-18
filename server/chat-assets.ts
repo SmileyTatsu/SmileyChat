@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { basename, extname, resolve } from "node:path";
 
 import type { ChatAttachment } from "#frontend/types";
@@ -59,22 +59,7 @@ export async function writeChatAsset(
 }
 
 export async function serveChatAsset(chatId: string, fileName: string) {
-    const cleanChatId = safePathSegment(chatId);
-    const cleanFileName = safePathSegment(fileName);
-
-    if (!cleanChatId || !cleanFileName) {
-        throw new BadRequestError("Invalid attachment path.");
-    }
-
-    const targetDir = resolve(chatAssetsDir, cleanChatId);
-    const targetPath = resolve(targetDir, cleanFileName);
-
-    if (
-        !targetPath.startsWith(`${targetDir}\\`) &&
-        !targetPath.startsWith(`${targetDir}/`)
-    ) {
-        throw new BadRequestError("Invalid attachment path.");
-    }
+    const targetPath = chatAssetPath(chatId, fileName);
 
     const file = Bun.file(targetPath);
 
@@ -83,6 +68,20 @@ export async function serveChatAsset(chatId: string, fileName: string) {
     }
 
     return new Response(file);
+}
+
+export async function deleteChatAsset(chatId: string, fileName: string) {
+    await rm(chatAssetPath(chatId, fileName), { force: true });
+}
+
+export async function deleteChatAssetDirectory(chatId: string) {
+    const cleanChatId = safePathSegment(chatId);
+
+    if (!cleanChatId) {
+        return;
+    }
+
+    await rm(resolve(chatAssetsDir, cleanChatId), { recursive: true, force: true });
 }
 
 export async function readUploadedChatAssets(request: Request) {
@@ -104,6 +103,27 @@ export async function readUploadedChatAssets(request: Request) {
     }
 
     return files;
+}
+
+function chatAssetPath(chatId: string, fileName: string) {
+    const cleanChatId = safePathSegment(chatId);
+    const cleanFileName = safePathSegment(fileName);
+
+    if (!cleanChatId || !cleanFileName) {
+        throw new BadRequestError("Invalid attachment path.");
+    }
+
+    const targetDir = resolve(chatAssetsDir, cleanChatId);
+    const targetPath = resolve(targetDir, cleanFileName);
+
+    if (
+        !targetPath.startsWith(`${targetDir}\\`) &&
+        !targetPath.startsWith(`${targetDir}/`)
+    ) {
+        throw new BadRequestError("Invalid attachment path.");
+    }
+
+    return targetPath;
 }
 
 function safePathSegment(value: string) {
