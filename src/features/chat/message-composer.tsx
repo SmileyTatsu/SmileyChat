@@ -47,7 +47,8 @@ export function MessageComposer({
     const [, setRegistryRevision] = useState(0);
     const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
 
-    const hasSubmittableContent = draft.trim().length > 0 || stagedImages.length > 0;
+    const hasMessageContent = draft.trim().length > 0 || stagedImages.length > 0;
+    const canSubmit = !disabled || isGenerating;
 
     useEffect(
         () =>
@@ -98,7 +99,7 @@ export function MessageComposer({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-        if (event.key !== "Enter" || disabled || !hasSubmittableContent) {
+        if (event.key !== "Enter" || disabled) {
             return;
         }
 
@@ -303,16 +304,23 @@ export function MessageComposer({
                 <button
                     className="send-button"
                     type={isGenerating ? "button" : "submit"}
-                    data-active={hasSubmittableContent || isGenerating}
+                    data-active={canSubmit}
                     data-state={isGenerating ? "generating" : "ready"}
                     title={
                         isGenerating
                             ? "Stop generation"
-                            : hasSubmittableContent
+                            : hasMessageContent
                               ? "Send message"
-                              : "Write a message or attach an image to send"
+                              : "Generate response"
                     }
-                    disabled={isGenerating ? false : disabled || !hasSubmittableContent}
+                    aria-label={
+                        isGenerating
+                            ? "Stop generation"
+                            : hasMessageContent
+                              ? "Send message"
+                              : "Generate response"
+                    }
+                    disabled={isGenerating ? false : disabled}
                     onClick={(event) => {
                         if (!isGenerating) return;
 
