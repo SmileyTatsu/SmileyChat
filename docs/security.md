@@ -184,7 +184,7 @@ Cache-Control: no-store    # on /api/* only
 
 CSP is the tricky one. SmileyChat's frontend loads plugins as ESM modules
 via `URL.createObjectURL` (which CSP sees as `blob:`), and LLM provider
-calls go browser→provider directly to whatever URL the user configured,
+calls go browser-to-provider directly to whatever URL the user configured,
 so `connect-src` is intentionally wide. Everything else is locked to
 `'self'`. If you serve SmileyChat over HTTPS, manually add an HSTS
 header at the reverse-proxy layer. It's not on by default because most
@@ -224,20 +224,24 @@ or future features (auto-update, "wipe all data," etc.).
 
 ### SSRF guard (`safeFetch`)
 
-`server/security/safe-fetch.ts` is the outbound-fetch wrapper SmileyChat
-hands plugins for the day they need server-side HTTP. It refuses to
+`server/security/safe-fetch.ts` is the outbound-fetch wrapper used by
+the plugin `api.network.fetch` bridge. It refuses to
 fetch any URL whose hostname resolves (via `dns.lookup({all, verbatim})`)
 to a loopback / RFC 1918 / link-local / CGNAT / metadata / reserved
 IPv4 or IPv6 range, follows up to 5 redirects with the same gate re-
 applied to each `Location` target, and respects an optional response-
 size cap.
 
-SmileyChat's own server makes **no outbound HTTP calls** of its own. All LLM
-provider traffic goes browser→provider direct (see
-[`docs/architecture.md`](architecture.md)). The wrapper is there
-preemptively so a plugin author has a safe primitive when they need
-one, with `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=false` as the global
-master switch.
+Outside the plugin fetch bridge, SmileyChat's server makes **no outbound HTTP
+calls** of its own. All LLM
+provider traffic goes browser-to-provider direct (see
+[`docs/architecture.md`](architecture.md)). The plugin bridge is for
+trusted local plugins that need non-provider helper APIs affected by
+CORS. It allows HTTPS only, accepts `GET`, `POST`, `PUT`, `PATCH`, and
+`DELETE`, drops unsafe request/response headers, caps request bodies at
+1 MiB, and caps responses at 10 MiB by default.
+`SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=false` is the global master
+switch.
 
 ## Hot-reload
 

@@ -12,6 +12,7 @@ Start here:
 Current plugin surfaces:
 
 - Options > Plugins list and per-plugin configuration.
+- Plugin profiles for switching sets of enabled plugins and saved plugin configuration.
 - Message rendering and message actions.
 - Composer actions.
 - Programmatic app actions.
@@ -24,3 +25,15 @@ Current plugin surfaces:
 - Plugin-owned JSON storage.
 
 Plugin API permissions are enforced by the runtime for most hooks. A plugin that calls a protected API without the matching manifest permission fails to load or fails when that API is called.
+
+## Plugin Profiles
+
+Options > Plugins includes a profile selector. The built-in **Default** profile keeps plugins at their installed defaults. Users can create, duplicate, edit, and delete their own profiles.
+
+User profiles store:
+
+- Which plugins should be enabled.
+- Optional per-plugin storage snapshots.
+- Optional category defaults for plugins not listed by ID.
+
+Applying a profile writes plugin enabled states, restores stored plugin JSON snapshots where present, and reloads affected enabled plugins in the current browser session. Profile metadata is stored in `userData/settings/plugin-profiles.json`; plugin-owned settings remain in each plugin's storage folder.

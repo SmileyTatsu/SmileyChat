@@ -21,6 +21,7 @@ Each plugin needs a `plugin.json` file at the root of its plugin folder.
 `id`
 
 Stable plugin identifier. Use lowercase letters, numbers, hyphens, or underscores. Do not change it after users install the plugin because storage is keyed by plugin ID.
+If the field is omitted or blank, SmileyChat falls back to the plugin folder name during manifest normalization.
 
 `name`
 
@@ -37,6 +38,7 @@ Optional text shown in Options > Plugins.
 `main`
 
 Path to the browser ESM entry file, relative to the plugin folder.
+If omitted or blank, SmileyChat falls back to `dist/index.js`.
 
 `styles`
 

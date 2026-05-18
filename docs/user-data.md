@@ -24,8 +24,10 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `connections.json`: Provider URLs and generic model settings.
     - `connection-secrets.json`: **API Keys**. This is kept strictly separated so it is never accidentally exported.
     - `csrf-secret.json`: Token used to secure local API endpoints.
+    - `plugin-profiles.json`: Saved plugin profile selection plus user-created plugin profile definitions.
     - `core-extensions/`: Storage for built-in extension data.
 - `userData/plugins/`: Folder for user-installed extension modules.
+    - Each plugin folder contains `plugin.json`, browser ESM files, optional CSS, and plugin-owned `data/{key}.json` storage.
 
 ## File Formats
 

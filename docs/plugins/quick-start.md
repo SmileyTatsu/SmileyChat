@@ -50,11 +50,13 @@ Open **Options > Plugins** to see installed plugins. The plugin card shows:
 - Version
 - Description
 - Status
-- Main file
-- Styles
+- Source, such as Core or Local
+- Category
 - Permissions
 
 Disabling an already-loaded plugin takes effect immediately for supported hooks. Enabling a listed local plugin from **Options > Plugins** loads it into the current browser session. Core extensions can also be disabled and re-enabled from the same screen.
+
+The same screen also includes plugin profiles. A profile can save enabled/disabled plugin states plus plugin storage snapshots, then restore that setup later.
 
 ## Plugin Configuration
 

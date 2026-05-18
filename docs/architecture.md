@@ -20,4 +20,4 @@ The adapter normalizes the generation request and returns a standardized respons
 
 ## Plugins
 
-SmileyChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are executed securely as local ESM browser modules. For more information, see the [Plugins Docs](plugins/README.md).
+SmileyChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are trusted local browser ESM modules that run in the SmileyChat page, so permissions guide API access but are not a sandbox. For more information, see the [Plugins Docs](plugins/README.md).

@@ -147,12 +147,23 @@ Makes an outbound request through the local Bun server instead of the browser. T
 
 ```js
 const response = await api.network.fetch("https://example.com/data.json", {
+    method: "GET",
     headers: { Accept: "application/json" },
+    maxResponseBytes: 250_000,
 });
 const data = await response.json();
 ```
 
 Requires `network:fetch` and `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true` in `.env`. The server bridge allows HTTPS only, blocks loopback/private/reserved destinations through `safe-fetch.ts`, rechecks redirects, filters unsafe headers, and caps response size.
+
+Supported options:
+
+- `method`: `GET`, `POST`, `PUT`, `PATCH`, or `DELETE`. Defaults to `GET`.
+- `headers`: string header values. Unsafe headers such as `cookie`, `host`, `origin`, `referer`, and SmileyChat CSRF headers are dropped by the server.
+- `body`: string request body. `GET` requests cannot include a body. Request bodies are capped at 1 MiB.
+- `maxResponseBytes`: response size cap from 1 byte through 10 MiB. Defaults to 10 MiB.
+
+The returned `Response` contains the upstream status and filtered response headers. Unsafe response headers such as `set-cookie`, `content-length`, and transfer headers are removed.
 
 ## `api.ui.h`
 
@@ -460,6 +471,8 @@ userData/settings/core-extensions/{pluginId}/{key}.json
 
 Keys are sanitized by the server.
 
+Storage can also be snapshotted by SmileyChat's plugin profile UI. Profile application may overwrite a plugin's storage with a saved snapshot, then reload the plugin if it is enabled.
+
 ## `api.events`
 
 Simple plugin event bus.
@@ -475,3 +488,21 @@ api.events.emit("my-plugin:changed", { ok: true });
 Use namespaced event names to avoid collisions.
 
 Requires `events`.
+
+## Local Plugin API Routes
+
+These routes are used by the app and plugin runtime:
+
+- `GET /api/plugins`: discover bundled core extensions and installed local plugin manifests.
+- `PUT /api/plugins/{pluginId}`: enable or disable one plugin.
+- `POST /api/plugins/fetch`: SSRF-guarded outbound fetch for trusted local plugins with `network:fetch`, gated by `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true`.
+- `GET /api/plugins/profiles`: load plugin profile state plus built-in profile definitions.
+- `PUT /api/plugins/profiles`: save plugin profile state.
+- `DELETE /api/plugins/profiles/{profileId}`: delete a user plugin profile.
+- `GET /api/plugins/{pluginId}/storage`: load a full plugin-owned JSON storage snapshot.
+- `PUT /api/plugins/{pluginId}/storage`: replace a full plugin-owned JSON storage snapshot.
+- `GET /api/plugins/{pluginId}/storage/{key}`: load one plugin-owned JSON value.
+- `PUT /api/plugins/{pluginId}/storage/{key}`: save one plugin-owned JSON value.
+- `DELETE /api/plugins/{pluginId}/storage/{key}`: delete one plugin-owned JSON value.
+
+Provider calls should still go directly from the frontend to the configured provider URL. Do not add local API proxy routes for provider model listing or generation unless the project direction changes.
