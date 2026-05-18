@@ -25,6 +25,7 @@ import {
     characterFolderName,
 } from "./character-file-paths";
 import { moveToUniquePath } from "./character-file-utils";
+import { readFileBackedIndex, writeFileBackedIndex } from "./file-store";
 import { BadRequestError, writeJsonAtomic } from "./http";
 import {
     characterIndexPath,
@@ -252,21 +253,18 @@ export async function writeCharacterWithBasePath(
 }
 
 async function readCharacterIndex(): Promise<CharacterIndex> {
-    if (await Bun.file(characterIndexPath).exists()) {
-        try {
-            const file = Bun.file(characterIndexPath);
-            return await repairCharacterIndex(normalizeCharacterIndex(await file.json()));
-        } catch {
-            return rebuildCharacterIndex({
+    return readFileBackedIndex({
+        indexPath: characterIndexPath,
+        normalizeIndex: normalizeCharacterIndex,
+        repairIndex: repairCharacterIndex,
+        rebuildIndex: () => rebuildCharacterIndex(),
+        rebuildInvalidIndex: () =>
+            rebuildCharacterIndex({
                 version: 1,
                 activeCharacterId: "",
                 characters: [],
-            });
-        }
-    }
-
-    const rebuiltIndex = await rebuildCharacterIndex();
-    return rebuiltIndex;
+            }),
+    });
 }
 
 async function repairCharacterIndex(index: CharacterIndex): Promise<CharacterIndex> {
@@ -556,7 +554,7 @@ async function upsertCharacterIndexEntry(
 }
 
 async function writeCharacterIndex(index: CharacterIndex) {
-    await writeJsonAtomic(characterIndexPath, index);
+    await writeFileBackedIndex(characterIndexPath, index);
 }
 
 function normalizeCharacterIndex(value: unknown): CharacterIndex {

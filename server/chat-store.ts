@@ -1,6 +1,4 @@
-import { Glob } from "bun";
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
 
 import {
     chatLastMessageAt,
@@ -16,9 +14,15 @@ import type {
 } from "#frontend/lib/chats/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
-import { moveToUniquePath } from "./character-file-utils";
 import { deleteChatAssetDirectory } from "./chat-assets";
 import { chatFilePath } from "./chat-file-paths";
+import {
+    discoverJsonFiles,
+    readEntitiesFromIds,
+    readExistingIdsInOrder,
+    readFileBackedIndex,
+    writeFileBackedIndex,
+} from "./file-store";
 import { BadRequestError, writeJsonAtomic } from "./http";
 import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
 
@@ -68,7 +72,7 @@ export async function createChat(value: unknown) {
         chatIds,
     };
 
-    await writeJsonAtomic(chatIndexPath, nextIndex);
+    await writeFileBackedIndex(chatIndexPath, nextIndex);
 
     return {
         chat,
@@ -102,7 +106,7 @@ export async function writeChatById(chatId: string, value: unknown) {
     const chatIds = index.chatIds.includes(chat.id)
         ? moveChatIdToFront(index.chatIds, chat.id)
         : [chat.id, ...index.chatIds];
-    await writeJsonAtomic(chatIndexPath, {
+    await writeFileBackedIndex(chatIndexPath, {
         version: 1,
         activeChatIdsByCharacter: isGroupChat(chat)
             ? index.activeChatIdsByCharacter
@@ -136,7 +140,7 @@ export async function deleteChatById(chatId: string) {
         }
     }
 
-    await writeJsonAtomic(chatIndexPath, {
+    await writeFileBackedIndex(chatIndexPath, {
         version: 1,
         activeChatIdsByCharacter,
         chatIds: index.chatIds.filter((item) => item !== chatId),
@@ -177,7 +181,7 @@ export async function deleteChatsByCharacterId(characterId: string) {
     const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };
     delete activeChatIdsByCharacter[characterId];
 
-    await writeJsonAtomic(chatIndexPath, {
+    await writeFileBackedIndex(chatIndexPath, {
         version: 1,
         activeChatIdsByCharacter,
         chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
@@ -231,31 +235,21 @@ export async function updateChatIndex(value: unknown) {
         chatIds,
     };
 
-    await writeJsonAtomic(chatIndexPath, nextIndex);
+    await writeFileBackedIndex(chatIndexPath, nextIndex);
     return nextIndex;
 }
 
 async function readChatIndex(): Promise<ChatIndex> {
-    if (await Bun.file(chatIndexPath).exists()) {
-        try {
-            const file = Bun.file(chatIndexPath);
-            return repairChatIndex(normalizeChatIndex(await file.json()));
-        } catch {
-            return rebuildChatIndexFromSessions();
-        }
-    }
-
-    return rebuildChatIndexFromSessions();
+    return readFileBackedIndex({
+        indexPath: chatIndexPath,
+        normalizeIndex: normalizeChatIndex,
+        repairIndex: repairChatIndex,
+        rebuildIndex: rebuildChatIndexFromSessions,
+    });
 }
 
 async function repairChatIndex(index: ChatIndex): Promise<ChatIndex> {
-    const chatIds: string[] = [];
-
-    for (const chatId of index.chatIds) {
-        if (await Bun.file(chatFilePath(chatId)).exists()) {
-            chatIds.push(chatId);
-        }
-    }
+    const chatIds = await readExistingIdsInOrder(index.chatIds, chatFilePath);
 
     if (chatIds.length === index.chatIds.length) {
         return index;
@@ -273,30 +267,20 @@ async function repairChatIndex(index: ChatIndex): Promise<ChatIndex> {
         chatIds,
     };
 
-    await writeJsonAtomic(chatIndexPath, repairedIndex);
+    await writeFileBackedIndex(chatIndexPath, repairedIndex);
     return repairedIndex;
 }
 
 async function rebuildChatIndexFromSessions(): Promise<ChatIndex> {
-    const chats: ChatSession[] = [];
-    const glob = new Glob("*.json");
-
-    for await (const fileName of glob.scan(chatSessionsDir)) {
-        const filePath = join(chatSessionsDir, fileName);
-
-        try {
-            const chat = normalizeChat({
-                ...(await Bun.file(filePath).json()),
+    const chats = await discoverJsonFiles<ChatSession>({
+        directory: chatSessionsDir,
+        orphanedDirectory: chatOrphanedDir,
+        normalizeFile: (value, fileName) =>
+            normalizeChat({
+                ...(isRecord(value) ? value : {}),
                 id: fileName.slice(0, -".json".length),
-            });
-
-            if (chat) {
-                chats.push(chat);
-            }
-        } catch {
-            await moveToUniquePath(filePath, chatOrphanedDir, fileName);
-        }
-    }
+            }),
+    });
 
     const sortedChats = sortChats(chats);
     const index = {
@@ -305,21 +289,12 @@ async function rebuildChatIndexFromSessions(): Promise<ChatIndex> {
         chatIds: sortedChats.map((chat) => chat.id),
     };
 
-    await writeJsonAtomic(chatIndexPath, index);
+    await writeFileBackedIndex(chatIndexPath, index);
     return index;
 }
 
 async function readChatsFromIndex(index: ChatIndex) {
-    const chats: ChatSession[] = [];
-
-    for (const chatId of index.chatIds) {
-        const chat = await readChatById(chatId);
-
-        if (chat) {
-            chats.push(chat);
-        }
-    }
-
+    const chats = await readEntitiesFromIds(index.chatIds, readChatById);
     return sortChats(chats);
 }
 

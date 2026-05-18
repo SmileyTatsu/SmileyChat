@@ -1,6 +1,4 @@
-import { Glob } from "bun";
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
 
 import { isRecord } from "#frontend/lib/common/guards";
 import { defaultPersona, personaToSummary } from "#frontend/lib/personas/defaults";
@@ -15,7 +13,13 @@ import type {
     SmileyPersona,
 } from "#frontend/lib/personas/types";
 
-import { moveToUniquePath } from "./character-file-utils";
+import {
+    discoverJsonFiles,
+    readEntitiesFromIds,
+    readExistingIdsInOrder,
+    readFileBackedIndex,
+    writeFileBackedIndex,
+} from "./file-store";
 import { BadRequestError, writeJsonAtomic } from "./http";
 import { personaCardsDir, personaIndexPath, personaOrphanedDir } from "./paths";
 import { personaFilePath } from "./persona-file-paths";
@@ -59,7 +63,7 @@ export async function createPersona(value: unknown) {
         ? index.personaIds
         : [...index.personaIds, persona.id];
 
-    await writeJsonAtomic(personaIndexPath, {
+    await writeFileBackedIndex(personaIndexPath, {
         version: 1,
         activePersonaId: index.activePersonaId,
         personaIds,
@@ -92,7 +96,7 @@ export async function writePersonaById(personaId: string, value: unknown) {
     const index = await readPersonaIndex();
 
     if (!index.personaIds.includes(persona.id)) {
-        await writeJsonAtomic(personaIndexPath, {
+        await writeFileBackedIndex(personaIndexPath, {
             version: 1,
             activePersonaId: index.activePersonaId,
             personaIds: [...index.personaIds, persona.id],
@@ -139,7 +143,7 @@ export async function updatePersonaIndex(value: unknown) {
         personaIds,
     };
 
-    await writeJsonAtomic(personaIndexPath, index);
+    await writeFileBackedIndex(personaIndexPath, index);
     return index;
 }
 
@@ -166,7 +170,7 @@ export async function deletePersonaById(personaId: string) {
         personaIds,
     };
 
-    await writeJsonAtomic(personaIndexPath, nextIndex);
+    await writeFileBackedIndex(personaIndexPath, nextIndex);
 
     return {
         personas: await readPersonaSummaryCollection(),
@@ -174,16 +178,13 @@ export async function deletePersonaById(personaId: string) {
 }
 
 async function readPersonaIndex(): Promise<PersonaIndex> {
-    if (await Bun.file(personaIndexPath).exists()) {
-        try {
-            const file = Bun.file(personaIndexPath);
-            return repairPersonaIndex(normalizePersonaIndex(await file.json()));
-        } catch {
-            return rebuildPersonaIndexFromCards();
-        }
-    }
+    const rebuiltIndex = await readFileBackedIndex({
+        indexPath: personaIndexPath,
+        normalizeIndex: normalizePersonaIndex,
+        repairIndex: repairPersonaIndex,
+        rebuildIndex: rebuildPersonaIndexFromCards,
+    });
 
-    const rebuiltIndex = await rebuildPersonaIndexFromCards();
     if (rebuiltIndex.personaIds.length > 0) {
         return rebuiltIndex;
     }
@@ -193,13 +194,7 @@ async function readPersonaIndex(): Promise<PersonaIndex> {
 }
 
 async function repairPersonaIndex(index: PersonaIndex): Promise<PersonaIndex> {
-    const personaIds: string[] = [];
-
-    for (const personaId of index.personaIds) {
-        if (await Bun.file(personaFilePath(personaId)).exists()) {
-            personaIds.push(personaId);
-        }
-    }
+    const personaIds = await readExistingIdsInOrder(index.personaIds, personaFilePath);
 
     if (personaIds.length === index.personaIds.length && personaIds.length > 0) {
         return index;
@@ -217,30 +212,20 @@ async function repairPersonaIndex(index: PersonaIndex): Promise<PersonaIndex> {
             : personaIds[0],
         personaIds,
     };
-    await writeJsonAtomic(personaIndexPath, repairedIndex);
+    await writeFileBackedIndex(personaIndexPath, repairedIndex);
     return repairedIndex;
 }
 
 async function rebuildPersonaIndexFromCards(): Promise<PersonaIndex> {
-    const personas: SmileyPersona[] = [];
-    const glob = new Glob("*.json");
-
-    for await (const fileName of glob.scan(personaCardsDir)) {
-        const filePath = join(personaCardsDir, fileName);
-
-        try {
-            const persona = normalizePersona({
-                ...(await Bun.file(filePath).json()),
+    const personas = await discoverJsonFiles<SmileyPersona>({
+        directory: personaCardsDir,
+        orphanedDirectory: personaOrphanedDir,
+        normalizeFile: (value, fileName) =>
+            normalizePersona({
+                ...(isRecord(value) ? value : {}),
                 id: fileName.slice(0, -".json".length),
-            });
-
-            if (persona) {
-                personas.push(persona);
-            }
-        } catch {
-            await moveToUniquePath(filePath, personaOrphanedDir, fileName);
-        }
-    }
+            }),
+    });
 
     if (personas.length === 0) {
         return {
@@ -255,20 +240,12 @@ async function rebuildPersonaIndexFromCards(): Promise<PersonaIndex> {
     );
     const index = collectionToIndex(sortedPersonas, sortedPersonas[0].id);
 
-    await writeJsonAtomic(personaIndexPath, index);
+    await writeFileBackedIndex(personaIndexPath, index);
     return index;
 }
 
 async function readPersonasFromIndex(index: PersonaIndex) {
-    const personas: SmileyPersona[] = [];
-
-    for (const personaId of index.personaIds) {
-        const persona = await readPersonaById(personaId);
-
-        if (persona) {
-            personas.push(persona);
-        }
-    }
+    const personas = await readEntitiesFromIds(index.personaIds, readPersonaById);
 
     if (personas.length === 0) {
         await writeDefaultPersonaCollection();
@@ -280,7 +257,7 @@ async function readPersonasFromIndex(index: PersonaIndex) {
 
 async function writeDefaultPersonaCollection() {
     await writeJsonAtomic(personaFilePath(defaultPersona.id), defaultPersona);
-    await writeJsonAtomic(
+    await writeFileBackedIndex(
         personaIndexPath,
         collectionToIndex([defaultPersona], defaultPersona.id),
     );
