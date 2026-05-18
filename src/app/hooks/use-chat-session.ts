@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { uploadChatAttachments } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
+import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import {
     type ConnectionSettings,
     getActiveConnectionProfile,
@@ -14,11 +15,13 @@ import {
     createCharacterMessage,
     createInjectedMessage,
     createUserMessage,
+    getMessageContent,
     isActiveSwipeError,
     updateActiveSwipeAttachments,
     updateActiveSwipeContent,
     updateActiveSwipeReasoning,
 } from "#frontend/lib/messages";
+import { isGroupChat } from "#frontend/lib/chats/normalize";
 import {
     getInputMiddlewares,
     getOutputMiddlewares,
@@ -47,6 +50,7 @@ type UseChatSessionOptions = {
     chat?: ChatSession;
     character: SmileyCharacter;
     connectionSettings: ConnectionSettings;
+    groupCharacters?: SmileyCharacter[];
     mode: ChatMode;
     onChatChange: (chat: ChatSession) => void;
     persona: SmileyPersona;
@@ -61,12 +65,20 @@ type ActiveGeneration = {
     swipeMessageId?: string;
 };
 
+type SendMessageOptions = {
+    autoTurnCount?: number;
+    forcedCharacterId?: string;
+    images?: File[];
+    suppressAutoResponses?: boolean;
+};
+
 const emptyGenerationSuppressMs = 750;
 
 export function useChatSession({
     chat,
     character,
     connectionSettings,
+    groupCharacters = [],
     mode,
     onChatChange,
     persona,
@@ -83,6 +95,7 @@ export function useChatSession({
     const pendingChatIdsRef = useRef<string[]>([]);
     const pendingSwipeMessageIdsRef = useRef<Record<string, string>>({});
     const activeGenerationsRef = useRef<Record<string, ActiveGeneration>>({});
+    const autoResponseTimerRef = useRef<number | undefined>(undefined);
     const suppressEmptyGenerationUntilRef = useRef<Record<string, number>>({});
 
     latestChatRef.current = latestChatValue(latestChatRef.current, chat);
@@ -91,7 +104,15 @@ export function useChatSession({
 
     useEffect(() => {
         setChatError("");
+        clearAutomaticResponseTimer();
     }, [chat?.id]);
+
+    useEffect(
+        () => () => {
+            clearAutomaticResponseTimer();
+        },
+        [],
+    );
 
     const activePreset = useMemo(
         () =>
@@ -112,6 +133,7 @@ export function useChatSession({
     ) {
         return resolvePresetMacros(content, {
             character: sourceCharacter,
+            group: groupPromptContext(latestChatRef.current),
             messages: sourceMessages,
             mode,
             personaDescription: persona.description,
@@ -121,14 +143,34 @@ export function useChatSession({
     }
 
     async function sendMessage(draft: string, images: File[] = []) {
+        return sendMessageWithOptions(draft, { images });
+    }
+
+    async function forceGroupMemberResponse(characterId: string) {
+        return sendMessageWithOptions("", {
+            forcedCharacterId: characterId,
+            suppressAutoResponses: true,
+        });
+    }
+
+    async function sendMessageWithOptions(draft: string, options: SendMessageOptions = {}) {
+        const images = options.images ?? [];
         const sourceChat = latestChatRef.current;
 
         if (!sourceChat) {
             return;
         }
 
-        const generationCharacter = character;
+        if ((draft.trim() || images.length || options.forcedCharacterId) && !options.autoTurnCount) {
+            clearAutomaticResponseTimer();
+        }
+
         const sourceMessages = sourceChat.messages;
+        const generationCharacter = selectGenerationCharacter(
+            sourceChat,
+            sourceMessages,
+            options.forcedCharacterId,
+        );
         const text = await applyInputMiddlewares(
             resolveChatMacros(draft.trim(), sourceMessages, generationCharacter),
             sourceMessages,
@@ -181,7 +223,7 @@ export function useChatSession({
             updateChatMessages(nextMessages, sourceChat);
         }
         const streamingReply = preferences.chat.streaming
-            ? createCharacterMessage(generationCharacter.data.name, "")
+            ? createCharacterMessage(generationCharacter.data.name, "", undefined, generationCharacter)
             : undefined;
         let streamedContent = "";
         let streamedReasoning = "";
@@ -207,6 +249,10 @@ export function useChatSession({
                 userStatus,
                 connectionSettings,
                 {
+                    promptCharacter: promptCharacterForGeneration(
+                        sourceChat,
+                        generationCharacter,
+                    ),
                     stream: preferences.chat.streaming,
                     onToken: streamingReply
                         ? (token) => {
@@ -261,12 +307,18 @@ export function useChatSession({
                 if (resultAttachments.length) {
                     updateMessageAttachments(streamingReply.id, resultAttachments);
                 }
+                scheduleAutomaticGroupResponse({
+                    autoTurnCount: options.autoTurnCount ?? 0,
+                    chatId,
+                    suppressAutoResponses: options.suppressAutoResponses === true,
+                });
             } else {
                 const reply = withMessageReasoning(
                     createCharacterMessage(
                         generationCharacter.data.name,
                         result.message,
                         imageUrlsToAttachments(result.images ?? []),
+                        generationCharacter,
                     ),
                     result.reasoning,
                     result.reasoningDetails,
@@ -276,6 +328,11 @@ export function useChatSession({
                     [...pendingChat.messages, reply],
                     currentOrSourceChat(pendingChat),
                 );
+                scheduleAutomaticGroupResponse({
+                    autoTurnCount: options.autoTurnCount ?? 0,
+                    chatId,
+                    suppressAutoResponses: options.suppressAutoResponses === true,
+                });
             }
         } catch (error) {
             if (isAbortError(error)) {
@@ -460,7 +517,9 @@ export function useChatSession({
             0,
             Math.max(0, targetIndex),
         );
-        const generationCharacter = character;
+        const generationCharacter =
+            groupCharacters.find((item) => item.id === targetMessage.authorCharacterId) ??
+            selectGenerationCharacter(sourceChat, historyBeforeTarget);
 
         setChatError("");
         beginChatPending(chatId, messageId);
@@ -490,6 +549,10 @@ export function useChatSession({
                 userStatus,
                 connectionSettings,
                 {
+                    promptCharacter: promptCharacterForGeneration(
+                        sourceChat,
+                        generationCharacter,
+                    ),
                     stream: preferences.chat.streaming,
                     onToken: preferences.chat.streaming
                         ? (token) => {
@@ -601,6 +664,8 @@ export function useChatSession({
     function stopGeneration() {
         const activeChatId = latestChatRef.current?.id;
 
+        clearAutomaticResponseTimer();
+
         if (!activeChatId) {
             return;
         }
@@ -634,6 +699,72 @@ export function useChatSession({
             latestChatRef.current = nextChat;
         }
         onChatChange(nextChat);
+    }
+
+    function scheduleAutomaticGroupResponse({
+        autoTurnCount,
+        chatId,
+        suppressAutoResponses,
+    }: {
+        autoTurnCount: number;
+        chatId: string;
+        suppressAutoResponses: boolean;
+    }) {
+        if (suppressAutoResponses) {
+            return;
+        }
+
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat || sourceChat.id !== chatId || !isGroupChat(sourceChat)) {
+            return;
+        }
+
+        const autoResponses = sourceChat.group?.autoResponses;
+
+        if (!autoResponses?.enabled) {
+            return;
+        }
+
+        const maxTurns = clampInteger(autoResponses.maxTurns, 1, 8);
+
+        if (autoTurnCount >= maxTurns) {
+            return;
+        }
+
+        if (eligibleGroupCharacters(sourceChat, sourceChat.messages).length === 0) {
+            return;
+        }
+
+        const chance = clampNumber(autoResponses.chance, 0, 1);
+
+        if (Math.random() >= chance) {
+            return;
+        }
+
+        const delayMs = clampInteger(autoResponses.delayMs, 0, 10000);
+
+        clearAutomaticResponseTimer();
+        autoResponseTimerRef.current = window.setTimeout(() => {
+            autoResponseTimerRef.current = undefined;
+
+            if (latestChatRef.current?.id !== chatId || isChatPending(chatId)) {
+                return;
+            }
+
+            void sendMessageWithOptions("", {
+                autoTurnCount: autoTurnCount + 1,
+            });
+        }, delayMs);
+    }
+
+    function clearAutomaticResponseTimer() {
+        if (!autoResponseTimerRef.current) {
+            return;
+        }
+
+        window.clearTimeout(autoResponseTimerRef.current);
+        autoResponseTimerRef.current = undefined;
     }
 
     function updateMessageContent(
@@ -860,6 +991,7 @@ export function useChatSession({
         sourceConnectionSettings: ConnectionSettings,
         options: {
             onImage?: (url: string) => void;
+            promptCharacter?: SmileyCharacter;
             onReasoningToken?: (token: string) => void;
             onToken?: (token: string) => void;
             signal?: AbortSignal;
@@ -871,7 +1003,8 @@ export function useChatSession({
         );
         const budgetedContext = preparePresetContextForBudget({
             context: {
-                character: sourceCharacter,
+                character: options.promptCharacter ?? sourceCharacter,
+                group: groupPromptContext(latestChatRef.current),
                 messages: sourceGenerationMessages,
                 mode: sourceMode,
                 personaDescription: persona.description,
@@ -886,7 +1019,7 @@ export function useChatSession({
         const promptMessages = await applyPromptMiddlewares(
             budgetedContext.promptMessages,
             generationMessages,
-            sourceCharacter,
+            options.promptCharacter ?? sourceCharacter,
             sourceMode,
             sourceUserStatus,
         );
@@ -982,6 +1115,229 @@ export function useChatSession({
         return nextContent;
     }
 
+    function selectGenerationCharacter(
+        sourceChat: ChatSession,
+        messages: Message[],
+        forcedCharacterId = "",
+    ) {
+        if (!isGroupChat(sourceChat) || groupCharacters.length === 0) {
+            return character;
+        }
+
+        if (forcedCharacterId) {
+            return (
+                groupCharacters.find((item) => item.id === forcedCharacterId) ??
+                character
+            );
+        }
+
+        const availableCharacters = eligibleGroupCharacters(sourceChat, messages);
+
+        if (availableCharacters.length === 0) {
+            return groupCharacters[0] ?? character;
+        }
+
+        const replyOrder = sourceChat.group?.replyOrder ?? "list";
+
+        if (replyOrder === "pooled") {
+            return selectPooledGroupCharacter(availableCharacters, messages);
+        }
+
+        if (replyOrder === "natural") {
+            return selectNaturalGroupCharacter(availableCharacters, messages);
+        }
+
+        return selectListGroupCharacter(availableCharacters, messages);
+    }
+
+    function eligibleGroupCharacters(sourceChat: ChatSession, messages: Message[]) {
+        if (!isGroupChat(sourceChat)) {
+            return [];
+        }
+
+        const lastMessage = messages[messages.length - 1];
+        const lastSpeakerId =
+            lastMessage?.role === "character"
+                ? lastMessage.authorCharacterId ||
+                  groupCharacters.find((item) => item.data.name === lastMessage.author)
+                      ?.id ||
+                  ""
+                : "";
+        const allowSelfResponses = sourceChat.group?.allowSelfResponses === true;
+
+        return (sourceChat.members ?? [])
+            .slice()
+            .sort((left, right) => left.order - right.order)
+            .filter((member) => !member.muted)
+            .map((member) =>
+                groupCharacters.find((item) => item.id === member.characterId),
+            )
+            .filter(
+                (item): item is SmileyCharacter =>
+                    item !== undefined &&
+                    (allowSelfResponses || item.id !== lastSpeakerId),
+            );
+    }
+
+    function selectListGroupCharacter(
+        availableCharacters: SmileyCharacter[],
+        messages: Message[],
+    ) {
+        const lastCharacterMessage = [...messages]
+            .reverse()
+            .find((message) => message.role === "character");
+        const lastIndex = availableCharacters.findIndex(
+            (item) =>
+                item.id === lastCharacterMessage?.authorCharacterId ||
+                item.data.name === lastCharacterMessage?.author,
+        );
+
+        return availableCharacters[(lastIndex + 1) % availableCharacters.length];
+    }
+
+    function selectPooledGroupCharacter(
+        availableCharacters: SmileyCharacter[],
+        messages: Message[],
+    ) {
+        const lastUserIndex = findLastIndex(messages, (message) => message.role === "user");
+        const spokenSinceUser = new Set(
+            messages
+                .slice(lastUserIndex + 1)
+                .filter((message) => message.role === "character")
+                .map((message) => message.authorCharacterId || message.author),
+        );
+        const unspoken = availableCharacters.filter(
+            (item) => !spokenSinceUser.has(item.id) && !spokenSinceUser.has(item.data.name),
+        );
+        const pool = unspoken.length ? unspoken : availableCharacters;
+
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function selectNaturalGroupCharacter(
+        availableCharacters: SmileyCharacter[],
+        messages: Message[],
+    ) {
+        const lastMessage = messages[messages.length - 1];
+        const lastContent = lastMessage ? getMessageContent(lastMessage) : "";
+        const mentioned = availableCharacters.filter((item) =>
+            characterNameMentioned(lastContent, item.data.name),
+        );
+
+        if (mentioned.length) {
+            return mentioned[Math.floor(Math.random() * mentioned.length)];
+        }
+        const activated = availableCharacters.filter((item) => {
+            const talkativeness =
+                latestChatRef.current?.members?.find(
+                    (member) => member.characterId === item.id,
+                )?.talkativeness ?? 0.5;
+            return Math.random() < talkativeness;
+        });
+        const pool = activated.length ? activated : availableCharacters;
+
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function characterNameMentioned(content: string, characterName: string) {
+        const safeName = characterName.trim();
+
+        if (!safeName) {
+            return false;
+        }
+
+        return new RegExp(`\\b${escapeRegExp(safeName)}\\b`, "i").test(content);
+    }
+
+    function promptCharacterForGeneration(
+        sourceChat: ChatSession,
+        activeSpeaker: SmileyCharacter,
+    ) {
+        if (
+            !isGroupChat(sourceChat) ||
+            sourceChat.group?.generationMode !== "join-character-cards"
+        ) {
+            return sourceChat.group?.scenarioOverride
+                ? {
+                      ...activeSpeaker,
+                      data: {
+                          ...activeSpeaker.data,
+                          scenario: sourceChat.group.scenarioOverride,
+                      },
+                  }
+                : activeSpeaker;
+        }
+
+        const memberIds = new Set((sourceChat.members ?? []).map((member) => member.characterId));
+        const orderedCharacters = (sourceChat.members ?? [])
+            .slice()
+            .sort((left, right) => left.order - right.order)
+            .map((member) =>
+                groupCharacters.find((character) => character.id === member.characterId),
+            )
+            .filter((item): item is SmileyCharacter => Boolean(item));
+
+        if (orderedCharacters.length <= 1 || !memberIds.has(activeSpeaker.id)) {
+            return activeSpeaker;
+        }
+
+        return {
+            ...activeSpeaker,
+            data: {
+                ...activeSpeaker.data,
+                description: joinCharacterField(
+                    orderedCharacters,
+                    sourceChat.group?.joinPrefix,
+                    "Description",
+                    (item) => item.data.description,
+                ),
+                personality: joinCharacterField(
+                    orderedCharacters,
+                    sourceChat.group?.joinPrefix,
+                    "Personality",
+                    (item) => item.data.personality,
+                ),
+                scenario:
+                    sourceChat.group?.scenarioOverride ||
+                    joinCharacterField(
+                        orderedCharacters,
+                        sourceChat.group?.joinPrefix,
+                        "Scenario",
+                        (item) => item.data.scenario,
+                    ),
+                mes_example: activeSpeaker.data.mes_example,
+                system_prompt: [
+                    `This is a group chat. The active speaker for the next reply is ${activeSpeaker.data.name}.`,
+                    joinCharacterField(
+                        orderedCharacters,
+                        sourceChat.group?.joinPrefix,
+                        "System prompt",
+                        (item) => item.data.system_prompt,
+                    ),
+                ]
+                    .filter(Boolean)
+                    .join("\n\n"),
+                post_history_instructions: [
+                    activeSpeaker.data.post_history_instructions,
+                    groupInstructionSections(orderedCharacters),
+                ]
+                    .filter((part) => part.trim())
+                    .join("\n\n"),
+            },
+        };
+    }
+
+    function groupPromptContext(sourceChat: ChatSession | undefined) {
+        if (!sourceChat || !isGroupChat(sourceChat)) {
+            return undefined;
+        }
+
+        return {
+            joinPrefix: sourceChat.group?.joinPrefix,
+            memberIds: (sourceChat.members ?? []).map((member) => member.characterId),
+        };
+    }
+
     const activeChatId = chat?.id ?? "";
 
     return {
@@ -996,6 +1352,7 @@ export function useChatSession({
             ? (pendingSwipeMessageIds[activeChatId] ?? "")
             : "",
         previousSwipe,
+        forceGroupMemberResponse,
         sendMessage,
         stopGeneration,
     };
@@ -1067,4 +1424,57 @@ function latestChatValue(
     }
 
     return next.updatedAt >= current.updatedAt ? next : current;
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean) {
+    for (let index = items.length - 1; index >= 0; index -= 1) {
+        if (predicate(items[index])) {
+            return index;
+        }
+    }
+
+    return -1;
+}
+
+function escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function joinCharacterField(
+    characters: SmileyCharacter[],
+    prefixTemplate: string | undefined,
+    fieldName: string,
+    valueForCharacter: (character: SmileyCharacter) => string,
+) {
+    const safePrefixTemplate = prefixTemplate ?? "{{char}}:";
+
+    return characters
+        .map((character) => {
+            const value = valueForCharacter(character).trim();
+
+            if (!value) {
+                return "";
+            }
+
+            const prefix = safePrefixTemplate.replace(/\{\{char\}\}/g, character.data.name);
+
+            return [prefix, `${fieldName}:\n${value}`].filter(Boolean).join("\n");
+        })
+        .filter(Boolean)
+        .join("\n\n");
+}
+
+function groupInstructionSections(characters: SmileyCharacter[]) {
+    return characters
+        .map((character) => {
+            const value = character.data.post_history_instructions.trim();
+
+            if (!value) {
+                return "";
+            }
+
+            return `Post-history instructions for ${character.data.name}:\n${value}`;
+        })
+        .filter(Boolean)
+        .join("\n\n");
 }

@@ -4,9 +4,14 @@ import { getCharacterTagline } from "../characters/normalize";
 import { formatDate, formatDateTime, formatShortTime } from "../common/time";
 import { getMessageContent } from "../messages";
 import { getPluginMacroValue } from "../plugins/registry";
+import { messageTextForHistory } from "./message-format";
 
 export type MacroContext = {
     character: SmileyCharacter;
+    group?: {
+        joinPrefix?: string;
+        memberIds?: string[];
+    };
     messages: Message[];
     mode: ChatMode;
     personaName: string;
@@ -116,7 +121,7 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
         // Conversation history and message lookups. These are intentionally not
         // recursively expanded so chat content cannot accidentally invoke macros.
         case "chat_history":
-            return { value: chatHistory(context.messages) };
+            return { value: chatHistory(context.messages, context) };
         case "last message":
         case "last_message":
         case "lastMessage":
@@ -158,9 +163,11 @@ function pluginMacroValue(key: string, context: MacroContext) {
     return typeof value === "string" ? { recursive: true, value } : undefined;
 }
 
-function chatHistory(messages: Message[]) {
+function chatHistory(messages: Message[], context: MacroContext) {
     return messages
-        .map((message) => `${message.author}: ${getMessageContent(message)}`)
+        .map((message) =>
+            messageTextForHistory(message, context, getMessageContent(message)),
+        )
         .join("\n");
 }
 

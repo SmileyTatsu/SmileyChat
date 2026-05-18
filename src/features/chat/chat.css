@@ -77,12 +77,21 @@
         @apply grid;
     }
 
+    &[data-mode="rp"][data-group="true"] {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "character-name"
+            "chat-title";
+    }
+
     .chat-character-title {
+        grid-area: character-name;
         @apply font-bold;
     }
 }
 
 .rp-chat-title {
+    grid-area: chat-title;
     max-width: min(52vw, 680px);
     color: #b9bfd0;
     text-overflow: ellipsis;
@@ -94,7 +103,58 @@
     @apply aspect-square size-10 flex-[0_0_auto] object-cover;
 }
 
+.group-avatar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid #303440;
+    background: #20242d;
+}
+
+.group-avatar.count-1 {
+    grid-template-columns: 1fr;
+}
+
+.group-avatar.count-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.group-avatar.count-3 .group-avatar-tile:first-child {
+    grid-row: span 2;
+}
+
+.group-avatar.count-5,
+.group-avatar.count-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.group-avatar-tile {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: #394252;
+}
+
+.group-avatar-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.group-avatar.custom {
+    display: block;
+}
+
+.group-avatar.custom > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .session-kicker {
+    grid-area: character-status;
     @apply flex items-center gap-1;
 
     .status-dot {

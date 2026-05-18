@@ -11,10 +11,15 @@ import {
 } from "../messages";
 import { dynamicPromptIds } from "./defaults";
 import { formatCharacterBook, resolvePresetMacros } from "./macros";
+import { messageAuthorForPrompt } from "./message-format";
 import type { PresetPrompt, SmileyPreset } from "./types";
 
 type CompilePresetContext = {
     character: SmileyCharacter;
+    group?: {
+        joinPrefix?: string;
+        memberIds?: string[];
+    };
     messages: Message[];
     mode: ChatMode;
     personaDescription: string;
@@ -126,10 +131,7 @@ function contentForPrompt(
             resolvedContent.trim() ||
             context.messages
                 .filter(isMessageIncludedInPrompt)
-                .map(
-                    (message) =>
-                        `${message.author}: ${messageContentForPrompt(message, context)}`,
-                )
+                .map((message) => messageTextForHistory(message, context))
                 .join("\n")
         );
     }
@@ -320,11 +322,15 @@ function messageContentForPrompt(message: Message, context: CompilePresetContext
     return resolvePresetMacros(getMessageContent(message), context);
 }
 
+function messageTextForHistory(message: Message, context: CompilePresetContext) {
+    return `${messageAuthorForPrompt(message, context.group)}${messageContentForPrompt(message, context)}`;
+}
+
 function messageContentWithAttachments(
     message: Message,
     context: CompilePresetContext,
 ): ChatGenerationMessage["content"] {
-    const content = messageContentForPrompt(message, context);
+    const content = messageTextForGeneration(message, context);
     const attachments = getMessageAttachments(message);
 
     if (attachments.length === 0) {
@@ -338,4 +344,18 @@ function messageContentWithAttachments(
             image_url: { url: attachment.url },
         })),
     ];
+}
+
+function messageTextForGeneration(message: Message, context: CompilePresetContext) {
+    const content = messageContentForPrompt(message, context);
+
+    if (
+        message.role !== "character" ||
+        !message.authorCharacterId ||
+        !context.group?.memberIds?.includes(message.authorCharacterId)
+    ) {
+        return content;
+    }
+
+    return `${messageAuthorForPrompt(message, context.group)}${content}`;
 }

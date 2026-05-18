@@ -13,6 +13,7 @@ export type SettingsCategory =
 export type Message = {
     id: string;
     author: string;
+    authorCharacterId?: string;
     authorAvatarPath?: string;
     authorPersonaId?: string;
     metadata?: MessageMetadata;
@@ -48,7 +49,17 @@ export type MessageSwipe = {
     status?: "error";
 };
 
-export type { ChatSession, ChatSummary, ChatSummaryCollection } from "./lib/chats/types";
+export type {
+    ChatGroup,
+    ChatGroupMember,
+    ChatKind,
+    ChatSession,
+    ChatSummary,
+    ChatSummaryCollection,
+    GroupGenerationMode,
+    GroupGreetingMode,
+    GroupReplyOrder,
+} from "./lib/chats/types";
 
 export type {
     CharacterCollection,

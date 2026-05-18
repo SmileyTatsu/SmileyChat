@@ -3,6 +3,7 @@ import "./App.css";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { CharacterPanel } from "#frontend/features/characters/character-panel";
+import { GroupPanel } from "#frontend/features/characters/group-panel";
 import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
 import { PluginModalHost } from "#frontend/features/plugins/plugin-surfaces";
 import { OptionsModal } from "#frontend/features/settings/options-modal";
@@ -18,6 +19,7 @@ import {
     saveAppPreferences,
 } from "#frontend/lib/api/client";
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
+import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { messageFromError } from "#frontend/lib/common/errors";
 import {
     applyConnectionSecrets,
@@ -105,7 +107,9 @@ export function App() {
         activeChat,
         activeChatTitle,
         chatCountsByCharacterId,
+        groupCharacters,
         applySavedCharacter,
+        changeGroupAvatar,
         changeMode,
         character,
         characterImportStatus,
@@ -115,6 +119,7 @@ export function App() {
         chatImportStatusFading,
         chatLoadError,
         createCharacter,
+        createGroupChat,
         deleteCharacter,
         deleteChat,
         exportCharacter,
@@ -128,6 +133,7 @@ export function App() {
         selectCharacter,
         selectChat,
         startNewChat,
+        updateActiveGroupChat,
         updateActiveCharacter,
     } = useCharacterChats({
         defaultNewChatMode: preferences.chat.defaultMode,
@@ -138,6 +144,7 @@ export function App() {
     const chatSession = useChatSession({
         chat: activeChat,
         character,
+        groupCharacters,
         connectionSettings,
         mode,
         onChatChange: queueChatSave,
@@ -296,6 +303,7 @@ export function App() {
                 onAction: startNewChat,
             }
           : undefined;
+    const activeChatIsGroup = activeChat ? isGroupChat(activeChat) : false;
 
     useLayoutEffect(() => {
         setPluginSnapshot(pluginSnapshot);
@@ -480,6 +488,12 @@ export function App() {
                         setMobileSidebarOpen(false);
                     }
                 }}
+                onNewGroupChat={(characterIds, title, greetingMode) => {
+                    void createGroupChat(characterIds, title, greetingMode);
+                    if (isMobileLayout) {
+                        setMobileSidebarOpen(false);
+                    }
+                }}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onOpenPersonasSettings={openPersonasSettings}
                 onOpenChange={setActiveSidebarOpen}
@@ -494,6 +508,9 @@ export function App() {
                     void removeCharacterAvatar(characterId)
                 }
                 onDeleteChat={(chatId) => void deleteChat(chatId)}
+                onChangeGroupAvatar={(chatId, file) =>
+                    void changeGroupAvatar(chatId, file)
+                }
                 onRenameChat={(chatId, title) => void renameChat(chatId, title)}
                 onSelectChat={(chatId) => {
                     void selectChat(chatId);
@@ -514,15 +531,25 @@ export function App() {
             <ChatWorkspace
                 activeChatId={activeChat?.id ?? ""}
                 characterAvatarPath={
-                    hasCharacters
+                    hasCharacters && !activeChatIsGroup
                         ? (character.avatar?.path ??
                           characterInitialAvatar(character.data.name))
                         : undefined
                 }
                 characterName={
-                    hasCharacters ? character.data.name : "No character selected"
+                    activeChatIsGroup
+                        ? activeChatTitle
+                        : hasCharacters
+                          ? character.data.name
+                          : "No character selected"
                 }
                 chatTitle={hasCharacters ? activeChatTitle : "No active chat"}
+                groupAvatarPath={
+                    activeChatIsGroup && activeChat?.group?.avatar?.type === "custom"
+                        ? activeChat.group.avatar.path
+                        : undefined
+                }
+                groupMembers={activeChatIsGroup ? activeChat?.members : undefined}
                 errorMessage={chatSession.chatError}
                 isSending={chatSession.isSending}
                 messages={chatSession.messages}
@@ -576,7 +603,19 @@ export function App() {
                 pluginSnapshot={pluginSnapshot}
             />
 
-            {hasCharacters && (
+            {hasCharacters && activeChatIsGroup && activeChat ? (
+                <GroupPanel
+                    characters={characterSummaries.characters}
+                    chat={activeChat}
+                    isOpen={characterOpen}
+                    onChange={(nextChat) => void updateActiveGroupChat(nextChat)}
+                    onChangeAvatar={(chatId, file) => void changeGroupAvatar(chatId, file)}
+                    onForceReply={(characterId) =>
+                        void chatSession.forceGroupMemberResponse(characterId)
+                    }
+                    onOpenChange={setActiveCharacterOpen}
+                />
+            ) : hasCharacters ? (
                 <CharacterPanel
                     character={character}
                     isOpen={characterOpen}
@@ -586,7 +625,7 @@ export function App() {
                     onSavedCharacter={applySavedCharacter}
                     onOpenChange={setActiveCharacterOpen}
                 />
-            )}
+            ) : null}
 
             {settingsOpen && (
                 <OptionsModal

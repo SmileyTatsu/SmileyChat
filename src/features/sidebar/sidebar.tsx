@@ -12,15 +12,21 @@ import {
     Sparkles,
     Trash2,
     UploadCloud,
+    Users,
 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
 
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
-import { chatDisplayTitle } from "#frontend/lib/chats/normalize";
+import {
+    chatDisplayTitle,
+    defaultGroupTitle,
+    isGroupChat,
+} from "#frontend/lib/chats/normalize";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type {
     CharacterSummary,
     ChatSummary,
+    GroupGreetingMode,
     PersonaSummary,
     SmileyPersona,
     UserStatus,
@@ -28,6 +34,7 @@ import type {
 
 import { PersonaBar } from "../personas/persona-bar";
 import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
+import { GroupAvatar } from "../chat/group-avatar";
 
 type SidebarProps = {
     activeChatId: string;
@@ -50,9 +57,15 @@ type SidebarProps = {
     onImportCharacterFiles: (files: File[]) => void;
     onImportChatFile: (file: File) => void;
     onNewChat: () => void;
+    onNewGroupChat: (
+        characterIds: string[],
+        title?: string,
+        greetingMode?: GroupGreetingMode,
+    ) => void;
     onOpenChange: (isOpen: boolean) => void;
     onOpenSettings: () => void;
     onOpenPersonasSettings: () => void;
+    onChangeGroupAvatar: (chatId: string, file: File) => void;
     onDeleteChat: (chatId: string) => void;
     onDeleteCharacter: (characterId: string, options?: { deleteChats?: boolean }) => void;
     onExportCharacter: (characterId: string, format: "json" | "png") => void;
@@ -85,9 +98,11 @@ export function Sidebar({
     onImportCharacterFiles,
     onImportChatFile,
     onNewChat,
+    onNewGroupChat,
     onOpenChange,
     onOpenSettings,
     onOpenPersonasSettings,
+    onChangeGroupAvatar,
     onDeleteChat,
     onDeleteCharacter,
     onExportCharacter,
@@ -100,6 +115,7 @@ export function Sidebar({
 }: SidebarProps) {
     const importInputRef = useRef<HTMLInputElement>(null);
     const chatImportInputRef = useRef<HTMLInputElement>(null);
+    const groupAvatarInputRef = useRef<HTMLInputElement>(null);
     const dragDepthRef = useRef(0);
     const [isCharacterDropActive, setIsCharacterDropActive] = useState(false);
     const [contextMenu, setContextMenu] = useState<
@@ -129,6 +145,14 @@ export function Sidebar({
     const [chatDeleteCandidate, setChatDeleteCandidate] = useState<
         ChatSummary | undefined
     >();
+    const [groupAvatarTarget, setGroupAvatarTarget] = useState<ChatSummary | undefined>();
+    const [groupCreateOpen, setGroupCreateOpen] = useState(false);
+    const [groupTitleDraft, setGroupTitleDraft] = useState("");
+    const [groupGreetingMode, setGroupGreetingMode] =
+        useState<GroupGreetingMode>("all");
+    const [selectedGroupCharacterIds, setSelectedGroupCharacterIds] = useState<
+        string[]
+    >([]);
 
     function openCharacterMenu(event: MouseEvent, character: CharacterSummary) {
         event.preventDefault();
@@ -209,6 +233,12 @@ export function Sidebar({
         setChatDeleteCandidate(chat);
     }
 
+    function requestGroupAvatarChange(chat: ChatSummary) {
+        setChatContextMenu(undefined);
+        setGroupAvatarTarget(chat);
+        groupAvatarInputRef.current?.click();
+    }
+
     function submitRename(event: SubmitEvent) {
         event.preventDefault();
 
@@ -266,6 +296,60 @@ export function Sidebar({
         onDeleteChat(chatDeleteCandidate.id);
         setChatDeleteCandidate(undefined);
     }
+
+    function openGroupCreate() {
+        setSelectedGroupCharacterIds(activeCharacterId ? [activeCharacterId] : []);
+        setGroupTitleDraft("");
+        setGroupGreetingMode("all");
+        setGroupCreateOpen(true);
+    }
+
+    function toggleGroupCharacter(characterId: string) {
+        setSelectedGroupCharacterIds((current) =>
+            current.includes(characterId)
+                ? current.filter((item) => item !== characterId)
+                : [...current, characterId],
+        );
+    }
+
+    function submitGroupCreate(event: SubmitEvent) {
+        event.preventDefault();
+
+        if (selectedGroupCharacterIds.length === 0) {
+            return;
+        }
+
+        onNewGroupChat(selectedGroupCharacterIds, groupTitleDraft, groupGreetingMode);
+        setGroupCreateOpen(false);
+        setGroupTitleDraft("");
+    }
+
+    const selectedGroupMembers = selectedGroupCharacterIds
+        .map((characterId, index) => {
+            const character = characters.find((item) => item.id === characterId);
+
+            if (!character) {
+                return undefined;
+            }
+
+            return {
+                characterId: character.id,
+                name: character.name,
+                ...(character.avatar?.path ? { avatarPath: character.avatar.path } : {}),
+                order: index,
+            };
+        })
+        .filter((member): member is NonNullable<typeof member> => Boolean(member));
+    const groupDefaultTitle = selectedGroupMembers.length
+        ? defaultGroupTitle(selectedGroupMembers)
+        : "Group: choose at least one character";
+    const groupChats = chats.filter(isGroupChat);
+    const activeGroupChat = groupChats.some((chat) => chat.id === activeChatId);
+    const directChats = activeGroupChat
+        ? groupChats.filter((chat) => chat.id === activeChatId)
+        : chats.filter(
+              (chat) => !isGroupChat(chat) && chat.characterId === activeCharacterId,
+          );
 
     if (!isOpen) {
         return (
@@ -325,6 +409,17 @@ export function Sidebar({
             >
                 <MessageSquare size={16} />
                 New chat
+            </button>
+
+            <button
+                className="new-chat-button secondary"
+                type="button"
+                title="Start a group chat"
+                disabled={!hasCharacters}
+                onClick={openGroupCreate}
+            >
+                <Users size={16} />
+                New group
             </button>
 
             <section className="rail-section">
@@ -394,7 +489,9 @@ export function Sidebar({
                         characters.map((character) => (
                             <button
                                 className={`character-row ${
-                                    character.id === activeCharacterId ? "active" : ""
+                                    character.id === activeCharacterId && !activeGroupChat
+                                        ? "active"
+                                        : ""
                                 }`}
                                 key={character.id}
                                 type="button"
@@ -429,6 +526,36 @@ export function Sidebar({
                             <strong>No characters yet</strong>
                             <span>Create one or import a character card.</span>
                         </div>
+                    )}
+                    {groupChats.length > 0 && (
+                        <>
+                            <div className="rail-subtitle">Group chats</div>
+                            {groupChats.map((chat) => (
+                                <button
+                                    className={`character-row group-chat-row ${
+                                        chat.id === activeChatId ? "active" : ""
+                                    }`}
+                                    key={chat.id}
+                                    type="button"
+                                    onClick={() => onSelectChat(chat.id)}
+                                    onContextMenu={(event) => openChatMenu(event, chat)}
+                                >
+                                    <GroupAvatar
+                                        className="avatar"
+                                        customPath={
+                                            chat.group?.avatar?.type === "custom"
+                                                ? chat.group.avatar.path
+                                                : undefined
+                                        }
+                                        members={chat.members ?? []}
+                                    />
+                                    <span>
+                                        <strong>{chatDisplayTitle(chat)}</strong>
+                                        <small>{formatChatMeta(chat)}</small>
+                                    </span>
+                                </button>
+                            ))}
+                        </>
                     )}
                 </div>
                 {characterImportStatus && (
@@ -470,6 +597,23 @@ export function Sidebar({
                                 input.value = "";
                             }}
                         />
+                        <input
+                            ref={groupAvatarInputRef}
+                            hidden
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={(event) => {
+                                const input = event.currentTarget as HTMLInputElement;
+                                const file = input.files?.[0];
+
+                                if (file && groupAvatarTarget) {
+                                    onChangeGroupAvatar(groupAvatarTarget.id, file);
+                                }
+
+                                setGroupAvatarTarget(undefined);
+                                input.value = "";
+                            }}
+                        />
                         <button
                             className="rail-icon-button"
                             type="button"
@@ -479,11 +623,20 @@ export function Sidebar({
                         >
                             <Plus size={14} />
                         </button>
+                        <button
+                            className="rail-icon-button"
+                            type="button"
+                            title="New group chat"
+                            disabled={!hasCharacters}
+                            onClick={openGroupCreate}
+                        >
+                            <Users size={14} />
+                        </button>
                     </span>
                 </div>
                 <div className="chat-list">
-                    {chats.length > 0 ? (
-                        chats.map((chat) => (
+                    {directChats.length > 0 ? (
+                        directChats.map((chat) => (
                             <button
                                 className={`chat-row ${chat.id === activeChatId ? "active" : ""}`}
                                 key={chat.id}
@@ -491,6 +644,21 @@ export function Sidebar({
                                 onClick={() => onSelectChat(chat.id)}
                                 onContextMenu={(event) => openChatMenu(event, chat)}
                             >
+                                {isGroupChat(chat) ? (
+                                    <GroupAvatar
+                                        className="chat-row-avatar"
+                                        customPath={
+                                            chat.group?.avatar?.type === "custom"
+                                                ? chat.group.avatar.path
+                                                : undefined
+                                        }
+                                        members={chat.members ?? []}
+                                    />
+                                ) : (
+                                    <span className="chat-row-avatar direct-chat-avatar">
+                                        <MessageSquare size={15} />
+                                    </span>
+                                )}
                                 <span>
                                     <strong>{chatDisplayTitle(chat)}</strong>
                                     <small>{formatChatMeta(chat)}</small>
@@ -502,8 +670,8 @@ export function Sidebar({
                             <strong>No chats yet</strong>
                             <span>
                                 {hasCharacters
-                                    ? "Start a chat when you are ready."
-                                    : "Create a character before starting a chat."}
+                                      ? "Start a chat when you are ready."
+                                      : "Create a character before starting a chat."}
                             </span>
                         </div>
                     )}
@@ -632,6 +800,18 @@ export function Sidebar({
                             <PencilLine size={14} />
                             Rename
                         </button>
+                        {isGroupChat(chatContextMenu.chat) && (
+                            <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() =>
+                                    requestGroupAvatarChange(chatContextMenu.chat)
+                                }
+                            >
+                                <ImageOff size={14} />
+                                Change group image
+                            </button>
+                        )}
                         <button
                             className="danger-menu-item"
                             type="button"
@@ -851,6 +1031,103 @@ export function Sidebar({
                             </button>
                         </div>
                     </section>
+                </div>
+            )}
+
+            {groupCreateOpen && (
+                <div
+                    className="message-confirm-backdrop"
+                    role="presentation"
+                    onClick={() => setGroupCreateOpen(false)}
+                >
+                    <form
+                        className="message-confirm-dialog group-create-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Create group chat"
+                        onClick={(event) => event.stopPropagation()}
+                        onSubmit={submitGroupCreate}
+                    >
+                        <header>
+                            <Users size={19} />
+                            <h2>Create group chat</h2>
+                        </header>
+                        <label>
+                            <span>Title</span>
+                            <input
+                                autoFocus
+                                value={groupTitleDraft}
+                                placeholder={groupDefaultTitle}
+                                onInput={(event) =>
+                                    setGroupTitleDraft(
+                                        (event.currentTarget as HTMLInputElement).value,
+                                    )
+                                }
+                            />
+                        </label>
+                        <div className="group-create-preview">
+                            <GroupAvatar members={selectedGroupMembers} />
+                            <span>{groupTitleDraft.trim() || groupDefaultTitle}</span>
+                        </div>
+                        <label>
+                            <span>Default greetings</span>
+                            <select
+                                value={groupGreetingMode}
+                                onChange={(event) =>
+                                    setGroupGreetingMode(
+                                        event.currentTarget.value as GroupGreetingMode,
+                                    )
+                                }
+                            >
+                                <option value="all">All member greetings</option>
+                                <option value="first">First member only</option>
+                                <option value="none">No default greeting</option>
+                            </select>
+                        </label>
+                        <div className="group-member-picker">
+                            {characters.map((character) => (
+                                <label
+                                    className="group-member-option"
+                                    key={character.id}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedGroupCharacterIds.includes(
+                                            character.id,
+                                        )}
+                                        onChange={() =>
+                                            toggleGroupCharacter(character.id)
+                                        }
+                                    />
+                                    <img
+                                        className="avatar image-avatar"
+                                        src={
+                                            character.avatar?.path ||
+                                            characterInitialAvatar(character.name)
+                                        }
+                                        alt=""
+                                    />
+                                    <span>{character.name}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <p>Choose at least one character. Leave the title empty to use the group member names.</p>
+                        <div className="message-confirm-actions">
+                            <button
+                                type="button"
+                                onClick={() => setGroupCreateOpen(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={selectedGroupCharacterIds.length === 0}
+                            >
+                                <Users size={15} />
+                                Create group
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </aside>

@@ -1,5 +1,6 @@
 import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
+import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import { getMessageCreatedAt } from "#frontend/lib/messages";
 
 import type {
@@ -10,7 +11,14 @@ import type {
     MessageSwipe,
 } from "#frontend/types";
 
-import type { ChatSession, ChatSummary, ChatSummaryCollection } from "./types";
+import type {
+    ChatGroup,
+    ChatGroupMember,
+    ChatKind,
+    ChatSession,
+    ChatSummary,
+    ChatSummaryCollection,
+} from "./types";
 
 export function normalizeChat(value: unknown): ChatSession | undefined {
     if (!isRecord(value)) {
@@ -19,13 +27,19 @@ export function normalizeChat(value: unknown): ChatSession | undefined {
 
     const now = new Date().toISOString();
     const id = asString(value.id) || createId("chat");
-    const characterId = asString(value.characterId);
+    const kind = normalizeChatKind(value.kind);
+    const members = normalizeGroupMembers(value.members);
+    const characterId = asString(value.characterId) || members[0]?.characterId || "";
 
     if (!characterId) {
         return undefined;
     }
 
-    const defaultTitle = asString(value.defaultTitle).trim() || "New chat";
+    const isGroup = kind === "group" && members.length > 0;
+    const group = isGroup ? normalizeGroup(value.group) : undefined;
+    const defaultTitle =
+        asString(value.defaultTitle).trim() ||
+        (isGroup ? defaultGroupTitle(members) : "New chat");
     const title = asString(value.title).trim();
     const messages = Array.isArray(value.messages)
         ? value.messages
@@ -36,6 +50,7 @@ export function normalizeChat(value: unknown): ChatSession | undefined {
     return {
         id,
         version: 1,
+        ...(isGroup ? { kind: "group" as const, members, group } : {}),
         characterId,
         defaultTitle,
         ...(title ? { title } : {}),
@@ -52,8 +67,14 @@ export function normalizeChatSummary(value: unknown): ChatSummary | undefined {
     }
 
     const id = asString(value.id);
-    const characterId = asString(value.characterId);
-    const defaultTitle = asString(value.defaultTitle).trim() || "New chat";
+    const kind = normalizeChatKind(value.kind);
+    const members = normalizeGroupMembers(value.members);
+    const characterId = asString(value.characterId) || members[0]?.characterId || "";
+    const isGroup = kind === "group" && members.length > 0;
+    const group = isGroup ? normalizeGroup(value.group) : undefined;
+    const defaultTitle =
+        asString(value.defaultTitle).trim() ||
+        (isGroup ? defaultGroupTitle(members) : "New chat");
     const title = asString(value.title).trim();
 
     if (!id || !characterId) {
@@ -62,6 +83,7 @@ export function normalizeChatSummary(value: unknown): ChatSummary | undefined {
 
     return {
         id,
+        ...(isGroup ? { kind: "group" as const, members, group } : {}),
         characterId,
         defaultTitle,
         ...(title ? { title } : {}),
@@ -89,13 +111,15 @@ export function normalizeChatSummaryCollection(value: unknown): ChatSummaryColle
               .map(normalizeChatSummary)
               .filter((chat): chat is ChatSummary => Boolean(chat))
         : [];
-    const chatIds = new Set(chats.map((chat) => chat.id));
+    const chatIds = new Set(
+        chats.filter((chat) => !isGroupChat(chat)).map((chat) => chat.id),
+    );
     const activeChatIdsByCharacter = normalizeActiveChatIds(
         value.activeChatIdsByCharacter,
         chatIds,
     );
 
-    for (const chat of chats) {
+    for (const chat of chats.filter((chat) => !isGroupChat(chat))) {
         if (!activeChatIdsByCharacter[chat.characterId]) {
             activeChatIdsByCharacter[chat.characterId] = chat.id;
         }
@@ -111,6 +135,9 @@ export function normalizeChatSummaryCollection(value: unknown): ChatSummaryColle
 export function chatToSummary(chat: ChatSession): ChatSummary {
     return {
         id: chat.id,
+        ...(isGroupChat(chat)
+            ? { kind: "group" as const, members: chat.members, group: chat.group }
+            : {}),
         characterId: chat.characterId,
         defaultTitle: chat.defaultTitle,
         ...(chat.title ? { title: chat.title } : {}),
@@ -128,6 +155,21 @@ export function chatDisplayTitle(
     return chat.title?.trim() || chat.defaultTitle;
 }
 
+export function isGroupChat(
+    chat: Pick<ChatSession | ChatSummary, "kind" | "members">,
+) {
+    return chat.kind === "group" && Boolean(chat.members?.length);
+}
+
+export function defaultGroupTitle(members: ChatGroupMember[]) {
+    const names = members
+        .slice()
+        .sort((left, right) => left.order - right.order)
+        .map((member) => member.name.trim() || "Character");
+
+    return `Group: ${names.join(", ")}`;
+}
+
 export function chatLastMessageAt(chat: Pick<ChatSession, "messages">) {
     const lastMessage = chat.messages[chat.messages.length - 1];
     return lastMessage ? getMessageCreatedAt(lastMessage) : "";
@@ -142,6 +184,7 @@ function normalizeMessage(value: unknown): Message | undefined {
     const role =
         value.role === "user" || value.role === "character" ? value.role : undefined;
     const author = asString(value.author);
+    const authorCharacterId = asString(value.authorCharacterId);
     const authorAvatarPath = asString(value.authorAvatarPath);
     const authorPersonaId = asString(value.authorPersonaId);
     const metadata = normalizeMessageMetadata(value.metadata);
@@ -174,6 +217,7 @@ function normalizeMessage(value: unknown): Message | undefined {
     return {
         id,
         author,
+        ...(authorCharacterId ? { authorCharacterId } : {}),
         ...(authorAvatarPath ? { authorAvatarPath } : {}),
         ...(authorPersonaId ? { authorPersonaId } : {}),
         ...(metadata ? { metadata } : {}),
@@ -267,6 +311,107 @@ function normalizeMode(value: unknown): ChatMode {
     return value === "rp" ? "rp" : "chat";
 }
 
+function normalizeChatKind(value: unknown): ChatKind {
+    return value === "group" ? "group" : "direct";
+}
+
+function normalizeGroupMembers(value: unknown): ChatGroupMember[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    const seen = new Set<string>();
+    const members: ChatGroupMember[] = [];
+
+    for (let index = 0; index < value.length; index += 1) {
+        const item = value[index];
+
+        if (!isRecord(item)) {
+            continue;
+        }
+
+        const characterId = asString(item.characterId);
+        if (!characterId || seen.has(characterId)) {
+            continue;
+        }
+
+        seen.add(characterId);
+        const name = asString(item.name).trim() || "Character";
+        const avatarPath = asString(item.avatarPath);
+        const talkativeness =
+            typeof item.talkativeness === "number" && Number.isFinite(item.talkativeness)
+                ? Math.min(1, Math.max(0, item.talkativeness))
+                : undefined;
+
+        members.push({
+            characterId,
+            name,
+            ...(avatarPath ? { avatarPath } : {}),
+            ...(typeof item.muted === "boolean" ? { muted: item.muted } : {}),
+            order: asNonNegativeInteger(item.order) || index,
+            ...(talkativeness !== undefined ? { talkativeness } : {}),
+        });
+    }
+
+    return members.sort((left, right) => left.order - right.order);
+}
+
+function normalizeGroup(value: unknown): ChatGroup {
+    const record = isRecord(value) ? value : {};
+    const title = asString(record.title).trim();
+    const avatar = normalizeGroupAvatar(record.avatar);
+    const joinPrefix = asString(record.joinPrefix);
+    const scenarioOverride = asString(record.scenarioOverride).trim();
+
+    return {
+        ...(title ? { title } : {}),
+        ...(avatar ? { avatar } : { avatar: { type: "collage" as const } }),
+        autoResponses: normalizeAutoResponses(record.autoResponses),
+        replyOrder:
+            record.replyOrder === "natural" || record.replyOrder === "pooled"
+                ? record.replyOrder
+                : "list",
+        generationMode:
+            record.generationMode === "join-character-cards"
+                ? "join-character-cards"
+                : "swap-character-cards",
+        ...(typeof record.allowSelfResponses === "boolean"
+            ? { allowSelfResponses: record.allowSelfResponses }
+            : {}),
+        greetingMode:
+            record.greetingMode === "first" || record.greetingMode === "none"
+                ? record.greetingMode
+                : "all",
+        joinPrefix,
+        ...(scenarioOverride ? { scenarioOverride } : {}),
+    };
+}
+
+function normalizeAutoResponses(value: unknown): NonNullable<ChatGroup["autoResponses"]> {
+    const record = isRecord(value) ? value : {};
+
+    return {
+        enabled: record.enabled === true,
+        chance: clampNumber(record.chance, 0, 1, 0.35),
+        delayMs: Math.round(clampNumber(record.delayMs, 0, 10000, 900)),
+        maxTurns: Math.round(clampNumber(record.maxTurns, 1, 8, 2)),
+    };
+}
+
+function normalizeGroupAvatar(value: unknown): ChatGroup["avatar"] | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const type = value.type === "custom" ? "custom" : "collage";
+    const path = asString(value.path);
+
+    return {
+        type,
+        ...(path ? { path } : {}),
+    };
+}
+
 function normalizeActiveChatIds(value: unknown, chatIds: Set<string>) {
     if (!isRecord(value)) {
         return {};
@@ -297,12 +442,4 @@ function asIsoString(value: unknown) {
 
 function asNonNegativeInteger(value: unknown) {
     return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
-}
-
-function clampInteger(value: unknown, min: number, max: number) {
-    if (!Number.isInteger(value)) {
-        return min;
-    }
-
-    return Math.min(max, Math.max(min, Number(value)));
 }

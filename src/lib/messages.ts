@@ -31,8 +31,19 @@ export function createCharacterMessage(
     author: string,
     content: string,
     attachments?: ChatAttachment[],
+    character?: Pick<SmileyCharacter, "id" | "avatar">,
 ): Message {
-    return createMessage("character", author, content, undefined, undefined, attachments);
+    return createMessage(
+        "character",
+        author,
+        content,
+        {
+            authorAvatarPath: character?.avatar?.path,
+            authorCharacterId: character?.id,
+        },
+        undefined,
+        attachments,
+    );
 }
 
 export function createInjectedMessage(
@@ -92,9 +103,10 @@ export function createInjectedMessage(
         "character",
         options.authorName?.trim() || options.activeCharacter.data.name,
         content,
-        {
-            authorAvatarPath: options.avatarPath || options.activeCharacter.avatar?.path,
-        },
+            {
+                authorAvatarPath: options.avatarPath || options.activeCharacter.avatar?.path,
+                authorCharacterId: options.activeCharacter.id,
+            },
         undefined,
         undefined,
         pluginMessageMetadata(options.pluginId, {
@@ -130,6 +142,8 @@ export function createCharacterGreetingMessage(
     return {
         id: createId("character-greeting"),
         author: character.data.name,
+        authorCharacterId: character.id,
+        ...(character.avatar?.path ? { authorAvatarPath: character.avatar.path } : {}),
         role: "character",
         createdAt,
         activeSwipeIndex: 0,
@@ -306,7 +320,10 @@ function createMessage(
     role: Message["role"],
     author: string,
     content: string,
-    authorMetadata?: Pick<Message, "authorAvatarPath" | "authorPersonaId">,
+    authorMetadata?: Pick<
+        Message,
+        "authorAvatarPath" | "authorCharacterId" | "authorPersonaId"
+    >,
     status?: MessageSwipe["status"],
     attachments?: ChatAttachment[],
     metadata?: MessageMetadata,
@@ -318,6 +335,9 @@ function createMessage(
         author,
         ...(authorMetadata?.authorAvatarPath
             ? { authorAvatarPath: authorMetadata.authorAvatarPath }
+            : {}),
+        ...(authorMetadata?.authorCharacterId
+            ? { authorCharacterId: authorMetadata.authorCharacterId }
             : {}),
         ...(authorMetadata?.authorPersonaId
             ? { authorPersonaId: authorMetadata.authorPersonaId }

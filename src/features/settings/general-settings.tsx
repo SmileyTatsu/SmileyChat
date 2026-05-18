@@ -6,6 +6,7 @@ import type {
     FontScale,
     MessageDensity,
 } from "#frontend/lib/preferences/types";
+import { clampInteger } from "#frontend/lib/common/math";
 import type { ChatMode } from "#frontend/types";
 
 type GeneralSettingsProps = {
@@ -308,7 +309,7 @@ function NumberInput({
             value={value}
             onBlur={(event) => {
                 const input = event.currentTarget as HTMLInputElement;
-                const nextValue = clampNumber(input.valueAsNumber, min, max);
+                const nextValue = clampInteger(input.valueAsNumber, min, max);
 
                 input.value = String(nextValue);
                 onChange(nextValue);
@@ -317,19 +318,11 @@ function NumberInput({
                 const nextValue = (event.currentTarget as HTMLInputElement).valueAsNumber;
 
                 if (Number.isFinite(nextValue)) {
-                    onChange(clampNumber(nextValue, min, max));
+                    onChange(clampInteger(nextValue, min, max));
                 }
             }}
         />
     );
-}
-
-function clampNumber(value: number, min: number, max: number) {
-    if (!Number.isFinite(value)) {
-        return min;
-    }
-
-    return Math.min(max, Math.max(min, Math.round(value)));
 }
 
 function SegmentedControl<T extends string>({

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
     chatLastMessageAt,
     chatToSummary,
+    isGroupChat,
     normalizeChat,
     normalizeChatSummaryCollection,
 } from "#frontend/lib/chats/normalize";
@@ -57,10 +58,12 @@ export async function createChat(value: unknown) {
         : [chat.id, ...index.chatIds];
     const nextIndex = {
         version: 1 as const,
-        activeChatIdsByCharacter: {
-            ...index.activeChatIdsByCharacter,
-            [chat.characterId]: chat.id,
-        },
+        activeChatIdsByCharacter: isGroupChat(chat)
+            ? index.activeChatIdsByCharacter
+            : {
+                  ...index.activeChatIdsByCharacter,
+                  [chat.characterId]: chat.id,
+              },
         chatIds,
     };
 
@@ -100,12 +103,14 @@ export async function writeChatById(chatId: string, value: unknown) {
         : [chat.id, ...index.chatIds];
     await writeJsonAtomic(chatIndexPath, {
         version: 1,
-        activeChatIdsByCharacter: {
-            ...index.activeChatIdsByCharacter,
-            ...(index.activeChatIdsByCharacter[chat.characterId]
-                ? {}
-                : { [chat.characterId]: chat.id }),
-        },
+        activeChatIdsByCharacter: isGroupChat(chat)
+            ? index.activeChatIdsByCharacter
+            : {
+                  ...index.activeChatIdsByCharacter,
+                  ...(index.activeChatIdsByCharacter[chat.characterId]
+                      ? {}
+                      : { [chat.characterId]: chat.id }),
+              },
         chatIds,
     });
 
@@ -144,7 +149,15 @@ export async function deleteChatsByCharacterId(characterId: string) {
     const index = await readChatIndex();
     const chats = await readChatsFromIndex(index);
     const deleteIds = new Set(
-        chats.filter((chat) => chat.characterId === characterId).map((chat) => chat.id),
+        chats
+            .filter((chat) =>
+                isGroupChat(chat)
+                    ? (chat.members ?? []).some(
+                          (member) => member.characterId === characterId,
+                      )
+                    : chat.characterId === characterId,
+            )
+            .map((chat) => chat.id),
     );
 
     if (deleteIds.size === 0) {
@@ -185,7 +198,13 @@ export async function updateChatIndex(value: unknown) {
     const activeChatIdsByCharacter = { ...current.activeChatIdsByCharacter };
 
     for (const [characterId, chatId] of Object.entries(requestedActive)) {
-        if (typeof chatId === "string" && current.chatIds.includes(chatId)) {
+        if (typeof chatId !== "string" || !current.chatIds.includes(chatId)) {
+            continue;
+        }
+
+        const chat = await readChatById(chatId);
+
+        if (chat && !isGroupChat(chat)) {
             activeChatIdsByCharacter[characterId] = chatId;
         }
     }
@@ -239,10 +258,10 @@ async function repairChatIndex(index: ChatIndex): Promise<ChatIndex> {
         return index;
     }
 
-    const chatIdsSet = new Set(chatIds);
+    const directChatIds = await directChatIdsFromIndex(chatIds);
     const activeChatIdsByCharacter = Object.fromEntries(
         Object.entries(index.activeChatIdsByCharacter).filter(([, chatId]) =>
-            chatIdsSet.has(chatId),
+            directChatIds.has(chatId),
         ),
     );
     const repairedIndex = {
@@ -305,12 +324,26 @@ async function readActiveChatIds(chats: ChatSession[]) {
     const activeChatIdsByCharacter: Record<string, string> = {};
 
     for (const chat of sortChats(chats)) {
-        if (!activeChatIdsByCharacter[chat.characterId]) {
+        if (!isGroupChat(chat) && !activeChatIdsByCharacter[chat.characterId]) {
             activeChatIdsByCharacter[chat.characterId] = chat.id;
         }
     }
 
     return activeChatIdsByCharacter;
+}
+
+async function directChatIdsFromIndex(chatIds: string[]) {
+    const directChatIds = new Set<string>();
+
+    for (const chatId of chatIds) {
+        const chat = await readChatById(chatId);
+
+        if (chat && !isGroupChat(chat)) {
+            directChatIds.add(chatId);
+        }
+    }
+
+    return directChatIds;
 }
 
 function normalizeChatIndex(value: unknown): ChatIndex {

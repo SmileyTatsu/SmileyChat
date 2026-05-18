@@ -16,6 +16,7 @@ import {
     saveCharacterIndex,
     saveChat,
     saveChatIndex,
+    uploadChatAttachments,
 } from "#frontend/lib/api/client";
 import { defaultCharacter } from "#frontend/lib/characters/defaults";
 import {
@@ -24,10 +25,15 @@ import {
     normalizeCharacter,
     normalizeCharacterSummaryCollection,
 } from "#frontend/lib/characters/normalize";
-import { createChatSession } from "#frontend/lib/chats/defaults";
+import {
+    createChatSession,
+    createGroupChatSession,
+} from "#frontend/lib/chats/defaults";
 import {
     chatDisplayTitle,
     chatToSummary,
+    defaultGroupTitle,
+    isGroupChat,
     normalizeChat,
     normalizeChatSummaryCollection,
 } from "#frontend/lib/chats/normalize";
@@ -40,6 +46,7 @@ import type {
     ChatSession,
     ChatSummary,
     ChatSummaryCollection,
+    GroupGreetingMode,
     SmileyCharacter,
     SmileyPersona,
     UserStatus,
@@ -70,6 +77,7 @@ export function useCharacterChats({
         chats: [],
     });
     const [character, setCharacter] = useState<SmileyCharacter>(defaultCharacter);
+    const [groupCharacters, setGroupCharacters] = useState<SmileyCharacter[]>([]);
     const [activeChat, setActiveChat] = useState<ChatSession | undefined>();
     const [characterLoadError, setCharacterLoadError] = useState("");
     const [chatLoadError, setChatLoadError] = useState("");
@@ -77,6 +85,7 @@ export function useCharacterChats({
     const [chatImportStatus, setChatImportStatus] = useState("");
     const [chatImportStatusFading, setChatImportStatusFading] = useState(false);
     const latestCharacterRef = useRef(character);
+    const latestGroupCharactersRef = useRef(groupCharacters);
     const latestCharacterSummariesRef = useRef(characterSummaries);
     const latestChatRef = useRef(activeChat);
     const latestChatSummariesRef = useRef(chatSummaries);
@@ -88,6 +97,7 @@ export function useCharacterChats({
     const chatSaveRequestIdRef = useRef(0);
 
     latestCharacterRef.current = character;
+    latestGroupCharactersRef.current = groupCharacters;
     latestCharacterSummariesRef.current = characterSummaries;
     latestChatRef.current = activeChat;
     latestChatSummariesRef.current = chatSummaries;
@@ -171,6 +181,8 @@ export function useCharacterChats({
                 latestChatSummariesRef.current = chatSummaries;
                 setCharacter(defaultCharacter);
                 latestCharacterRef.current = defaultCharacter;
+                setGroupCharacters([]);
+                latestGroupCharactersRef.current = [];
                 setActiveChat(undefined);
                 latestChatRef.current = undefined;
                 setMode(defaultNewChatMode);
@@ -199,14 +211,19 @@ export function useCharacterChats({
         latestChatSummariesRef.current = summaries;
 
         const characterChats = summaries.chats.filter(
-            (chat) => chat.characterId === nextCharacter.id,
+            (chat) => chat.characterId === nextCharacter.id && !isGroupChat(chat),
         );
+        const mappedActiveChatId = summaries.activeChatIdsByCharacter[nextCharacter.id];
         const activeChatId =
-            summaries.activeChatIdsByCharacter[nextCharacter.id] ?? characterChats[0]?.id;
+            characterChats.some((chat) => chat.id === mappedActiveChatId)
+                ? mappedActiveChatId
+                : characterChats[0]?.id;
 
         if (!activeChatId) {
             setActiveChat(undefined);
             latestChatRef.current = undefined;
+            setGroupCharacters([]);
+            latestGroupCharactersRef.current = [];
             setMode(defaultNewChatMode);
             setChatLoadError("");
             return;
@@ -225,6 +242,8 @@ export function useCharacterChats({
             if (!fallbackChat) {
                 setActiveChat(undefined);
                 latestChatRef.current = undefined;
+                setGroupCharacters([]);
+                latestGroupCharactersRef.current = [];
                 setMode(defaultNewChatMode);
                 setChatLoadError("");
                 return;
@@ -232,6 +251,7 @@ export function useCharacterChats({
 
             setActiveChat(fallbackChat);
             latestChatRef.current = fallbackChat;
+            await activateGroupCharactersForChat(fallbackChat);
             setMode(fallbackChat.mode);
             setChatLoadError("");
             return;
@@ -239,8 +259,89 @@ export function useCharacterChats({
 
         setActiveChat(loadedChat);
         latestChatRef.current = loadedChat;
+        await activateGroupCharactersForChat(loadedChat);
         setMode(loadedChat.mode);
         setChatLoadError("");
+    }
+
+    async function activateGroupCharactersForChat(chat: ChatSession | undefined) {
+        if (!chat || !isGroupChat(chat)) {
+            setGroupCharacters([]);
+            latestGroupCharactersRef.current = [];
+            return;
+        }
+
+        const characters = await fetchGroupCharacters(chat);
+        setGroupCharacters(characters);
+        latestGroupCharactersRef.current = characters;
+        syncGroupMemberMetadata(chat, characters);
+
+        if (characters[0]) {
+            setCharacter(characters[0]);
+            latestCharacterRef.current = characters[0];
+        }
+    }
+
+    async function fetchGroupCharacters(chat: ChatSession) {
+        const members = chat.members ?? [];
+        const characters = await Promise.all(
+            members.map((member) => fetchCharacterById(member.characterId)),
+        );
+
+        return characters.filter((item) =>
+            members.some((member) => member.characterId === item.id),
+        );
+    }
+
+    function syncGroupMemberMetadata(
+        chat: ChatSession,
+        sourceCharacters: SmileyCharacter[],
+    ) {
+        if (!isGroupChat(chat) || !chat.members?.length) {
+            return;
+        }
+
+        const characterById = new Map(
+            sourceCharacters.map((sourceCharacter) => [sourceCharacter.id, sourceCharacter]),
+        );
+        let changed = false;
+        const members = chat.members.map((member) => {
+            const sourceCharacter = characterById.get(member.characterId);
+
+            if (!sourceCharacter) {
+                return member;
+            }
+
+            const nextName = sourceCharacter.data.name || "Character";
+            const nextAvatarPath = sourceCharacter.avatar?.path;
+            const nextMember = {
+                ...member,
+                name: nextName,
+                ...(nextAvatarPath ? { avatarPath: nextAvatarPath } : {}),
+            };
+
+            if (!nextAvatarPath) {
+                delete nextMember.avatarPath;
+            }
+
+            changed =
+                changed ||
+                member.name !== nextMember.name ||
+                member.avatarPath !== nextMember.avatarPath;
+
+            return nextMember;
+        });
+
+        if (!changed) {
+            return;
+        }
+
+        queueChatSave({
+            ...chat,
+            members,
+            defaultTitle: chat.title ? chat.defaultTitle : defaultGroupTitle(members),
+            updatedAt: new Date().toISOString(),
+        });
     }
 
     async function createChatForCharacter(
@@ -262,6 +363,77 @@ export function useCharacterChats({
 
             setActiveChat(createdChat);
             latestChatRef.current = createdChat;
+            await activateGroupCharactersForChat(createdChat);
+            setMode(createdChat.mode);
+
+            if (result.chats) {
+                const summaries = normalizeChatSummaryCollection(result.chats);
+                setChatSummaries(summaries);
+                latestChatSummariesRef.current = summaries;
+            } else {
+                updateChatSummary(chatToSummary(createdChat));
+            }
+
+            setChatLoadError("");
+            return createdChat;
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+            return undefined;
+        }
+    }
+
+    async function createGroupChat(
+        characterIds: string[],
+        title?: string,
+        greetingMode: GroupGreetingMode = "all",
+    ) {
+        const uniqueIds = Array.from(new Set(characterIds)).filter(Boolean);
+
+        if (uniqueIds.length === 0) {
+            setChatLoadError("Choose at least one character before creating a group chat.");
+            return;
+        }
+
+        beginChatImportStatusFade();
+        await flushPendingChatAutosaveWithoutStateUpdate();
+
+        try {
+            const selectedCharacters = await Promise.all(
+                uniqueIds.map((characterId) => fetchCharacterById(characterId)),
+            );
+            const safeCharacters = selectedCharacters.filter((item) =>
+                latestCharacterSummariesRef.current.characters.some(
+                    (summary) => summary.id === item.id,
+                ),
+            );
+
+            if (safeCharacters.length === 0) {
+                throw new Error("Choose at least one saved character.");
+            }
+
+            const chat = createGroupChatSession({
+                characters: safeCharacters,
+                greetingMode,
+                messages: createGroupGreetingMessages(
+                    safeCharacters,
+                    defaultNewChatMode,
+                    greetingMode,
+                ),
+                mode: defaultNewChatMode,
+                title,
+            });
+            const result = (await createChatRequest(chat)) as {
+                chat: ChatSession;
+                chats?: ChatSummaryCollection;
+            };
+            const createdChat = normalizeChat(result.chat) ?? chat;
+
+            setActiveChat(createdChat);
+            latestChatRef.current = createdChat;
+            setGroupCharacters(safeCharacters);
+            latestGroupCharactersRef.current = safeCharacters;
+            setCharacter(safeCharacters[0]);
+            latestCharacterRef.current = safeCharacters[0];
             setMode(createdChat.mode);
 
             if (result.chats) {
@@ -290,6 +462,23 @@ export function useCharacterChats({
                 personaName: latestPersonaRef.current.name,
                 userStatus,
             }),
+        );
+    }
+
+    function createGroupGreetingMessages(
+        sourceCharacters: SmileyCharacter[],
+        chatMode: ChatMode,
+        greetingMode: GroupGreetingMode,
+    ) {
+        if (greetingMode === "none") {
+            return [];
+        }
+
+        const greetingCharacters =
+            greetingMode === "first" ? sourceCharacters.slice(0, 1) : sourceCharacters;
+
+        return greetingCharacters.map((sourceCharacter) =>
+            createGreetingMessage(sourceCharacter, chatMode),
         );
     }
 
@@ -621,6 +810,7 @@ export function useCharacterChats({
 
             setActiveChat(importedChat);
             latestChatRef.current = importedChat;
+            await activateGroupCharactersForChat(importedChat);
             setMode(importedChat.mode);
             setChatLoadError("");
             setChatImportStatusMessage(
@@ -704,6 +894,8 @@ export function useCharacterChats({
             latestChatSummariesRef.current = nextChatSummaries;
             setCharacter(nextCharacter);
             latestCharacterRef.current = nextCharacter;
+            setGroupCharacters([]);
+            latestGroupCharactersRef.current = [];
 
             if (wasActiveCharacter && summaries.characters.length > 0) {
                 await activateChatForCharacter(nextCharacter);
@@ -759,12 +951,15 @@ export function useCharacterChats({
 
     function updateChatSummary(summary: ChatSummary) {
         setChatSummaries((current) => {
+            const activeChatIdsByCharacter = isGroupChat(summary)
+                ? current.activeChatIdsByCharacter
+                : {
+                      ...current.activeChatIdsByCharacter,
+                      [summary.characterId]: summary.id,
+                  };
             const summaries = normalizeChatSummaryCollection({
                 ...current,
-                activeChatIdsByCharacter: {
-                    ...current.activeChatIdsByCharacter,
-                    [summary.characterId]: summary.id,
-                },
+                activeChatIdsByCharacter,
                 chats: current.chats.some((chat) => chat.id === summary.id)
                     ? current.chats.map((chat) =>
                           chat.id === summary.id ? summary : chat,
@@ -790,14 +985,17 @@ export function useCharacterChats({
 
             setActiveChat(loadedChat);
             latestChatRef.current = loadedChat;
+            await activateGroupCharactersForChat(loadedChat);
             setMode(loadedChat.mode);
 
             const nextSummaries = normalizeChatSummaryCollection({
                 ...latestChatSummariesRef.current,
-                activeChatIdsByCharacter: {
-                    ...latestChatSummariesRef.current.activeChatIdsByCharacter,
-                    [loadedChat.characterId]: loadedChat.id,
-                },
+                activeChatIdsByCharacter: isGroupChat(loadedChat)
+                    ? latestChatSummariesRef.current.activeChatIdsByCharacter
+                    : {
+                          ...latestChatSummariesRef.current.activeChatIdsByCharacter,
+                          [loadedChat.characterId]: loadedChat.id,
+                      },
             });
 
             setChatSummaries(nextSummaries);
@@ -845,14 +1043,60 @@ export function useCharacterChats({
         }
     }
 
+    async function changeGroupAvatar(chatId: string, file: File) {
+        await flushPendingChatAutosaveWithoutStateUpdate();
+
+        try {
+            const currentChat =
+                latestChatRef.current?.id === chatId
+                    ? latestChatRef.current
+                    : normalizeChat(await loadChat(chatId));
+
+            if (!currentChat || !isGroupChat(currentChat)) {
+                throw new Error("Group chat not found.");
+            }
+
+            const result = await uploadChatAttachments(chatId, [file]);
+            const avatarPath = result.attachments[0]?.url;
+
+            if (!avatarPath) {
+                throw new Error("Group image upload failed.");
+            }
+
+            await persistChat(
+                {
+                    ...currentChat,
+                    group: {
+                        ...currentChat.group,
+                        avatar: {
+                            type: "custom",
+                            path: avatarPath,
+                        },
+                        replyOrder: currentChat.group?.replyOrder ?? "list",
+                        generationMode:
+                            currentChat.group?.generationMode ??
+                            "swap-character-cards",
+                    },
+                    updatedAt: new Date().toISOString(),
+                },
+                currentChat.id === latestChatRef.current?.id,
+            );
+            setChatLoadError("");
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+        }
+    }
+
     async function deleteChat(chatId: string) {
         await flushPendingChatAutosaveWithoutStateUpdate();
 
         try {
             const deletedActiveChat = latestChatRef.current?.id === chatId;
+            const deletedChatSummary = latestChatSummariesRef.current.chats.find(
+                (chat) => chat.id === chatId,
+            );
             const deletedCharacterId =
-                latestChatSummariesRef.current.chats.find((chat) => chat.id === chatId)
-                    ?.characterId ?? latestCharacterRef.current.id;
+                deletedChatSummary?.characterId ?? latestCharacterRef.current.id;
             const result = (await deleteChatRequest(chatId)) as {
                 chats?: ChatSummaryCollection;
             };
@@ -862,10 +1106,22 @@ export function useCharacterChats({
             latestChatSummariesRef.current = summaries;
 
             if (deletedActiveChat) {
+                if (deletedChatSummary && isGroupChat(deletedChatSummary)) {
+                    setActiveChat(undefined);
+                    latestChatRef.current = undefined;
+                    setGroupCharacters([]);
+                    latestGroupCharactersRef.current = [];
+                    setMode(defaultNewChatMode);
+                    setChatLoadError("");
+                    return;
+                }
+
                 const nextChatId =
                     summaries.activeChatIdsByCharacter[deletedCharacterId] ??
                     summaries.chats.find(
-                        (chat) => chat.characterId === deletedCharacterId,
+                        (chat) =>
+                            chat.characterId === deletedCharacterId &&
+                            !isGroupChat(chat),
                     )?.id;
 
                 if (nextChatId) {
@@ -874,11 +1130,14 @@ export function useCharacterChats({
                     if (nextChat) {
                         setActiveChat(nextChat);
                         latestChatRef.current = nextChat;
+                        await activateGroupCharactersForChat(nextChat);
                         setMode(nextChat.mode);
                     }
                 } else {
                     setActiveChat(undefined);
                     latestChatRef.current = undefined;
+                    setGroupCharacters([]);
+                    latestGroupCharactersRef.current = [];
                     setMode(defaultNewChatMode);
                 }
             }
@@ -904,6 +1163,23 @@ export function useCharacterChats({
         });
     }
 
+    async function updateActiveGroupChat(nextChat: ChatSession) {
+        queueChatSave(nextChat);
+
+        if (!isGroupChat(nextChat)) {
+            return;
+        }
+
+        const characters = await fetchGroupCharacters(nextChat);
+        setGroupCharacters(characters);
+        latestGroupCharactersRef.current = characters;
+
+        if (characters[0]) {
+            setCharacter(characters[0]);
+            latestCharacterRef.current = characters[0];
+        }
+    }
+
     async function prepareCharacterAvatarUpload() {
         await flushPendingCharacterAutosaveWithoutStateUpdate();
     }
@@ -927,14 +1203,19 @@ export function useCharacterChats({
         setCharacterLoadError("");
     }
 
-    const activeCharacterChats = chatSummaries.chats.filter(
-        (chat) => chat.characterId === character.id,
-    );
+    const activeCharacterChats = chatSummaries.chats;
     const chatCountsByCharacterId = chatSummaries.chats.reduce<Record<string, number>>(
-        (counts, chat) => ({
-            ...counts,
-            [chat.characterId]: (counts[chat.characterId] ?? 0) + 1,
-        }),
+        (counts, chat) => {
+            const characterIds = isGroupChat(chat)
+                ? (chat.members ?? []).map((member) => member.characterId)
+                : [chat.characterId];
+
+            for (const characterId of characterIds) {
+                counts[characterId] = (counts[characterId] ?? 0) + 1;
+            }
+
+            return counts;
+        },
         {},
     );
     const activeChatTitle = activeChat ? chatDisplayTitle(activeChat) : "Current chat";
@@ -944,7 +1225,9 @@ export function useCharacterChats({
         activeChat,
         activeChatTitle,
         chatCountsByCharacterId,
+        groupCharacters,
         applySavedCharacter,
+        changeGroupAvatar,
         changeMode,
         character,
         characterImportStatus,
@@ -954,6 +1237,7 @@ export function useCharacterChats({
         chatImportStatusFading,
         chatLoadError,
         createCharacter,
+        createGroupChat,
         deleteCharacter,
         deleteChat,
         exportCharacter,
@@ -967,6 +1251,7 @@ export function useCharacterChats({
         selectCharacter,
         selectChat,
         startNewChat,
+        updateActiveGroupChat,
         updateActiveCharacter,
     };
 }

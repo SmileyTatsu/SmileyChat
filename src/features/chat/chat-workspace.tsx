@@ -3,7 +3,7 @@ import type {
     PluginComposerStatePatch,
 } from "#frontend/lib/plugins/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
-import type { ChatMode, Message } from "#frontend/types";
+import type { ChatGroupMember, ChatMode, Message } from "#frontend/types";
 
 import { ChatHeader } from "./chat-header";
 import { MessageComposer } from "./message-composer";
@@ -14,6 +14,8 @@ type ChatWorkspaceProps = {
     characterAvatarPath?: string;
     characterName: string;
     chatTitle: string;
+    groupAvatarPath?: string;
+    groupMembers?: ChatGroupMember[];
     errorMessage?: string;
     isSending?: boolean;
     messages: Message[];
@@ -44,6 +46,8 @@ export function ChatWorkspace({
     characterAvatarPath,
     characterName,
     chatTitle,
+    groupAvatarPath,
+    groupMembers,
     errorMessage,
     isSending,
     messages,
@@ -69,6 +73,8 @@ export function ChatWorkspace({
                 characterAvatarPath={characterAvatarPath}
                 characterName={characterName}
                 chatTitle={chatTitle}
+                groupAvatarPath={groupAvatarPath}
+                groupMembers={groupMembers}
                 mode={mode}
                 pluginSnapshot={pluginSnapshot}
                 onModeChange={onModeChange}

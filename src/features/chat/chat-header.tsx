@@ -2,12 +2,16 @@ import { Menu, User } from "lucide-preact";
 
 import { getPluginHeaderActions } from "#frontend/lib/plugins/registry";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
-import type { ChatMode } from "#frontend/types";
+import type { ChatGroupMember, ChatMode } from "#frontend/types";
+
+import { GroupAvatar } from "./group-avatar";
 
 type ChatHeaderProps = {
     characterAvatarPath?: string;
     characterName: string;
     chatTitle: string;
+    groupMembers?: ChatGroupMember[];
+    groupAvatarPath?: string;
     mode: ChatMode;
     pluginSnapshot: PluginAppSnapshot;
     onModeChange: (mode: ChatMode) => void;
@@ -29,10 +33,30 @@ function CharacterAvatar(props: { characterAvatarPath?: string }) {
     );
 }
 
+function HeaderAvatar(props: {
+    characterAvatarPath?: string;
+    groupAvatarPath?: string;
+    groupMembers?: ChatGroupMember[];
+}) {
+    if (props.groupMembers?.length) {
+        return (
+            <GroupAvatar
+                className="header-avatar"
+                customPath={props.groupAvatarPath}
+                members={props.groupMembers}
+            />
+        );
+    }
+
+    return <CharacterAvatar characterAvatarPath={props.characterAvatarPath} />;
+}
+
 export function ChatHeader({
     characterAvatarPath,
     characterName,
     chatTitle,
+    groupMembers,
+    groupAvatarPath,
     mode,
     pluginSnapshot,
     onModeChange,
@@ -40,6 +64,7 @@ export function ChatHeader({
     onToggleCharacter,
 }: ChatHeaderProps) {
     const pluginHeaderActions = getPluginHeaderActions();
+    const isGroupChat = Boolean(groupMembers?.length);
 
     return (
         <header className="chat-header">
@@ -56,15 +81,27 @@ export function ChatHeader({
                     </button>
                 )}
 
-                <CharacterAvatar characterAvatarPath={characterAvatarPath} />
+                <HeaderAvatar
+                    characterAvatarPath={characterAvatarPath}
+                    groupAvatarPath={groupAvatarPath}
+                    groupMembers={groupMembers}
+                />
 
-                <div className="chat-character-header" data-mode={mode}>
-                    <h1 className="chat-character-title">{characterName}</h1>
+                <div
+                    className="chat-character-header"
+                    data-group={isGroupChat ? "true" : "false"}
+                    data-mode={mode}
+                >
+                    {!(isGroupChat && mode === "rp") && (
+                        <h1 className="chat-character-title">{characterName}</h1>
+                    )}
 
-                    <div className="session-kicker">
-                        <span className="status-dot"></span>
-                        <span className="status-title">Online</span>
-                    </div>
+                    {!isGroupChat && (
+                        <div className="session-kicker">
+                            <span className="status-dot"></span>
+                            <span className="status-title">Online</span>
+                        </div>
+                    )}
 
                     {mode === "rp" && <div className="rp-chat-title">{chatTitle}</div>}
                 </div>
