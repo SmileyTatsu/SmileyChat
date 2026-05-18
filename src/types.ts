@@ -15,10 +15,20 @@ export type Message = {
     author: string;
     authorAvatarPath?: string;
     authorPersonaId?: string;
+    metadata?: MessageMetadata;
     role: "character" | "user";
     createdAt: string;
     activeSwipeIndex: number;
     swipes: MessageSwipe[];
+};
+
+export type MessageMetadata = {
+    origin?: "plugin";
+    pluginId?: string;
+    displayRole?: "system";
+    includeInPrompt?: boolean;
+    promptRole?: "assistant" | "user" | "system" | "none";
+    canGenerateSwipe?: boolean;
 };
 
 export type ChatAttachment = {

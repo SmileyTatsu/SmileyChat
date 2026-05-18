@@ -15,6 +15,7 @@ type MessageComposerProps = {
     enterToSend: boolean;
     isGenerating?: boolean;
     mode: ChatMode;
+    placeholder?: string;
     resetKey: string;
     onAbortGeneration?: () => void;
     onSubmit: (draft: string, images?: File[]) => void | Promise<void>;
@@ -33,6 +34,7 @@ export function MessageComposer({
     enterToSend,
     isGenerating,
     mode,
+    placeholder,
     resetKey,
     onAbortGeneration,
     onSubmit,
@@ -286,9 +288,10 @@ export function MessageComposer({
                     value={draft}
                     rows={1}
                     placeholder={
-                        mode === "chat"
+                        placeholder ||
+                        (mode === "chat"
                             ? `Message ${characterName}...`
-                            : "Write your next line, action, or narration..."
+                            : "Write your next line, action, or narration...")
                     }
                     onInput={(event) =>
                         setDraft((event.currentTarget as HTMLTextAreaElement).value)

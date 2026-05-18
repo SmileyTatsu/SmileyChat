@@ -66,10 +66,18 @@ export type PluginAppSnapshot = {
     activeChat?: ChatSession;
     messages: Message[];
     character: SmileyCharacter;
+    characterPresence: PluginCharacterPresence;
     persona: SmileyPersona;
     userStatus: UserStatus;
     connectionSettings: ConnectionSettings;
     presetCollection: PresetCollection;
+};
+
+export type PluginCharacterPresenceStatus = UserStatus;
+
+export type PluginCharacterPresence = {
+    status: PluginCharacterPresenceStatus;
+    sourcePluginIds: string[];
 };
 
 export type PluginSettingsPanelProps = {
@@ -212,10 +220,30 @@ export type PluginEventsApi = {
 
 export type PluginActionsApi = {
     sendMessage(content: string, options?: { images?: File[] }): Promise<void>;
+    injectMessage(
+        role: PluginInjectMessageRole,
+        content: string,
+        options?: PluginInjectMessageOptions,
+    ): Promise<void>;
     generateResponse(): Promise<void>;
     switchCharacter(characterId: string): Promise<void>;
+    setCharacterPresence(status: PluginCharacterPresenceStatus): void;
     setDraft(text: string): void;
     insertDraft(text: string): void;
+};
+
+export type PluginInjectMessageRole = "character" | "system" | "user";
+
+export type PluginInjectMessageOptions = {
+    authorName?: string;
+    avatarPath?: string;
+    includeInPrompt?: boolean;
+    promptRole?: "assistant" | "user" | "system" | "none";
+};
+
+export type PluginComposerStatePatch = {
+    disabled?: boolean;
+    placeholder?: string;
 };
 
 export type PluginModelGenerateRequest = {
@@ -275,6 +303,7 @@ export type SmileyPluginApi = {
         registerHeaderAction(action: PluginHeaderAction): void;
         openModal(modal: PluginModal): () => void;
         addStyles(cssText: string): void;
+        setComposerState(state: PluginComposerStatePatch): void;
     };
     chat: {
         registerInputMiddleware(middleware: ChatInputMiddleware): void;

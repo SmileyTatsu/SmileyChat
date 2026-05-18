@@ -12,6 +12,7 @@ import {
     appendMessageSwipe,
     createCharacterErrorMessage,
     createCharacterMessage,
+    createInjectedMessage,
     createUserMessage,
     isActiveSwipeError,
     updateActiveSwipeAttachments,
@@ -313,6 +314,46 @@ export function useChatSession({
             endGenerationController(chatId, abortController);
             endChatPending(chatId);
         }
+    }
+
+    async function injectMessage(
+        role: "character" | "system" | "user",
+        content: string,
+        options: {
+            authorName?: string;
+            avatarPath?: string;
+            includeInPrompt?: boolean;
+            pluginId: string;
+            promptRole?: "assistant" | "user" | "system" | "none";
+        },
+    ) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        const text = resolveChatMacros(content.trim(), sourceChat.messages);
+
+        if (!text) {
+            return;
+        }
+
+        updateChatMessages(
+            [
+                ...sourceChat.messages,
+                createInjectedMessage(role, text, {
+                    activeCharacter: character,
+                    authorName: options.authorName,
+                    avatarPath: options.avatarPath,
+                    includeInPrompt: options.includeInPrompt,
+                    persona,
+                    pluginId: options.pluginId,
+                    promptRole: options.promptRole,
+                }),
+            ],
+            sourceChat,
+        );
     }
 
     function deleteMessage(messageId: string) {
@@ -948,6 +989,7 @@ export function useChatSession({
         deleteMessage,
         editMessage,
         isSending: activeChatId ? pendingChatIds.includes(activeChatId) : false,
+        injectMessage,
         messages: chat?.messages ?? [],
         nextSwipe,
         pendingSwipeMessageId: activeChatId

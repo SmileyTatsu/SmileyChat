@@ -74,3 +74,31 @@ export function activate(api) {
 ```
 
 This requires the `ui:settings` permission. Use `api.storage` for plugin-owned settings and data.
+
+## Runtime Actions
+
+Plugins with the `actions` permission can add messages to the active chat without calling the AI provider.
+
+```js
+export function activate(api) {
+    api.actions.setCharacterPresence("away");
+
+    api.actions.injectMessage("system", "The character stepped away.", {
+        authorName: "Presence",
+        includeInPrompt: false,
+    });
+}
+```
+
+Plugins with `ui:composer-state` can temporarily change the composer UI.
+
+```js
+export function activate(api) {
+    api.ui.setComposerState({
+        disabled: true,
+        placeholder: "Character is away...",
+    });
+
+    return () => api.ui.setComposerState({});
+}
+```

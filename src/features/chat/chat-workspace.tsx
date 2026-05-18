@@ -1,4 +1,7 @@
-import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type {
+    PluginAppSnapshot,
+    PluginComposerStatePatch,
+} from "#frontend/lib/plugins/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type { ChatMode, Message } from "#frontend/types";
 
@@ -32,6 +35,7 @@ type ChatWorkspaceProps = {
     onSendMessage: (draft: string, images?: File[]) => void | Promise<void>;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
+    pluginComposerState?: PluginComposerStatePatch;
     pluginSnapshot: PluginAppSnapshot;
 };
 
@@ -56,6 +60,7 @@ export function ChatWorkspace({
     onSendMessage,
     onToggleSidebar,
     onToggleCharacter,
+    pluginComposerState,
     pluginSnapshot,
 }: ChatWorkspaceProps) {
     return (
@@ -118,10 +123,15 @@ export function ChatWorkspace({
             {!emptyState && (
                 <MessageComposer
                     characterName={characterName}
-                    disabled={isSending || Boolean(pendingSwipeMessageId)}
+                    disabled={
+                        pluginComposerState?.disabled ||
+                        isSending ||
+                        Boolean(pendingSwipeMessageId)
+                    }
                     mode={mode}
                     enterToSend={preferences.chat.enterToSend}
                     isGenerating={Boolean(isSending)}
+                    placeholder={pluginComposerState?.placeholder}
                     resetKey={activeChatId}
                     onAbortGeneration={onAbortGeneration}
                     onSubmit={onSendMessage}

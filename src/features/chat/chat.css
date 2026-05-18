@@ -262,6 +262,19 @@
     background: rgba(255, 255, 255, 0.045);
 }
 
+.message.system-message {
+    background: rgba(132, 148, 176, 0.06);
+}
+
+.message.system-message .message-avatar {
+    background: #27303d;
+    color: #b7c0d4;
+}
+
+.message.system-message .message-meta .character-title {
+    color: #c5cce0;
+}
+
 .message-avatar {
     grid-area: avatar;
     background: #303645;

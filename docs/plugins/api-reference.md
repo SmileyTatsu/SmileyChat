@@ -35,6 +35,7 @@ These permissions are currently enforced:
 | `api.ui.registerMessageRenderer`                 | `ui:messages`           |
 | `api.ui.registerMessageAction`                   | `ui:message-actions`    |
 | `api.ui.registerComposerAction`                  | `ui:composer`           |
+| `api.ui.setComposerState`                        | `ui:composer-state`     |
 | `api.ui.registerHeaderAction`                    | `ui:header`             |
 | `api.ui.openModal`                               | `ui:modals`             |
 | `api.ui.addStyles` and manifest `styles` loading | `ui:styles`             |
@@ -75,6 +76,7 @@ Snapshot contains:
 - `activeChat`
 - `messages`
 - `character`
+- `characterPresence`
 - `persona`
 - `userStatus`
 - `connectionSettings`
@@ -88,13 +90,60 @@ Programmatic app actions.
 
 ```js
 await api.actions.sendMessage("Hello");
+await api.actions.injectMessage("system", "Luna went offline.", {
+    authorName: "SmileyChat",
+    includeInPrompt: false,
+});
 await api.actions.generateResponse();
 await api.actions.switchCharacter("character-id");
+api.actions.setCharacterPresence("away");
 api.actions.setDraft("Draft text");
 api.actions.insertDraft(" appended text");
 ```
 
 Requires `actions`.
+
+### `api.actions.injectMessage`
+
+Adds a message to the active chat without calling the active provider/model.
+
+```js
+await api.actions.injectMessage("character", "I need a moment.");
+await api.actions.injectMessage("user", "Plugin-inserted user note.");
+await api.actions.injectMessage("system", "Character is offline.", {
+    authorName: "Presence",
+    avatarPath: "/plugins/example-plugin/assets/presence.png",
+    includeInPrompt: false,
+});
+```
+
+Roles:
+
+- `character`: appears as the active character by default.
+- `user`: appears as the active persona by default.
+- `system`: appears as an unregistered system-style speaker with optional custom name and avatar.
+
+Options:
+
+- `authorName`: override the visible message author.
+- `avatarPath`: override the visible avatar path. Plugin asset URLs should use `/plugins/{pluginFolder}/...`.
+- `includeInPrompt`: controls whether the message is included in future compiled prompts. Defaults to `true` for `character` and `user`, and `false` for `system`.
+- `promptRole`: optional prompt role when included: `assistant`, `user`, `system`, or `none`.
+
+Injected messages are stored in the active chat JSON using normal chat autosave. System messages are represented as visible message metadata, not as registered characters.
+
+### `api.actions.setCharacterPresence`
+
+Sets a runtime presence override for the active character.
+
+```js
+api.actions.setCharacterPresence("offline");
+api.actions.setCharacterPresence("away");
+api.actions.setCharacterPresence("dnd");
+api.actions.setCharacterPresence("online");
+```
+
+Presence is UI/runtime state and is not saved to `userData`. Multiple plugins can set presence; the effective priority is `offline`, then `dnd`, then `away`, then `online`. A plugin's override is removed when that plugin is deactivated.
 
 ## `api.model.generate`
 
@@ -260,6 +309,26 @@ Context includes:
 - `snapshot`
 
 Requires `ui:composer`.
+
+## `api.ui.setComposerState`
+
+Overrides the composer UI while the plugin is active.
+
+```js
+api.ui.setComposerState({
+    disabled: true,
+    placeholder: "Character is offline...",
+});
+```
+
+Supported fields:
+
+- `disabled`: disables message entry and sending when `true`.
+- `placeholder`: replaces the composer placeholder text.
+
+Composer state is runtime-only, scoped to the plugin, and cleared when the plugin is deactivated. If multiple plugins set composer state, any `disabled: true` disables the composer and the latest active placeholder wins.
+
+Requires `ui:composer-state`.
 
 ## `api.ui.registerHeaderAction`
 

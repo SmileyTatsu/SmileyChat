@@ -9,6 +9,9 @@ import type {
     MessageRenderer,
     PluginActionsApi,
     PluginAppSnapshot,
+    PluginCharacterPresence,
+    PluginCharacterPresenceStatus,
+    PluginComposerStatePatch,
     PluginComposerAction,
     PluginConnectionProvider,
     PluginEventsApi,
@@ -59,13 +62,26 @@ const listeners = new Set<Listener>();
 const snapshotListeners = new Set<OwnedSnapshotListener>();
 const eventListeners = new Map<string, Set<OwnedEventListener>>();
 const pluginDisposers = new Map<string, () => void>();
+const characterPresenceOverrides = new Map<string, PluginCharacterPresenceStatus>();
+const composerStateOverrides = new Map<string, PluginComposerStatePatch>();
 
 let latestSnapshot: PluginAppSnapshot | undefined;
-let appActionHandlers: Partial<
-    Pick<PluginActionsApi, "generateResponse" | "sendMessage" | "switchCharacter">
-> = {};
+let appActionHandlers: Partial<PluginAppActionHandlers> = {};
 let draftActionHandlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">> = {};
 let modelHandlers: Partial<PluginModelApi> = {};
+
+type PluginAppActionHandlers = Pick<
+    PluginActionsApi,
+    "generateResponse" | "sendMessage" | "switchCharacter"
+> & {
+    injectMessage: (
+        role: Parameters<PluginActionsApi["injectMessage"]>[0],
+        content: string,
+        options: Parameters<PluginActionsApi["injectMessage"]>[2] & {
+            pluginId: string;
+        },
+    ) => Promise<void>;
+};
 
 export function subscribeToPluginRegistry(listener: Listener) {
     listeners.add(listener);
@@ -152,6 +168,8 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedItems(modalInstances, pluginId);
     removeOwnedMapValues(macroResolvers, pluginId);
     removeOwnedMapValues(connectionProviders, pluginId);
+    characterPresenceOverrides.delete(pluginId);
+    composerStateOverrides.delete(pluginId);
 
     for (const listenersForEvent of eventListeners.values()) {
         for (const item of [...listenersForEvent]) {
@@ -250,11 +268,7 @@ export function getPluginConnectionProviders() {
     return enabledValues([...connectionProviders.values()]);
 }
 
-export function setPluginAppActionHandlers(
-    handlers: Partial<
-        Pick<PluginActionsApi, "generateResponse" | "sendMessage" | "switchCharacter">
-    >,
-) {
+export function setPluginAppActionHandlers(handlers: Partial<PluginAppActionHandlers>) {
     appActionHandlers = handlers;
 }
 
@@ -266,6 +280,40 @@ export function setPluginDraftActionHandlers(
 
 export function setPluginModelHandlers(handlers: Partial<PluginModelApi>) {
     modelHandlers = handlers;
+}
+
+export function getPluginCharacterPresence(): PluginCharacterPresence {
+    const activeOverrides = [...characterPresenceOverrides.entries()].filter(
+        ([pluginId]) => isPluginEnabled(pluginId),
+    );
+
+    for (const status of ["offline", "dnd", "away", "online"] as const) {
+        const sourcePluginIds = activeOverrides
+            .filter(([, value]) => value === status)
+            .map(([pluginId]) => pluginId);
+
+        if (sourcePluginIds.length > 0) {
+            return { status, sourcePluginIds };
+        }
+    }
+
+    return { status: "online", sourcePluginIds: [] };
+}
+
+export function getPluginComposerState(): PluginComposerStatePatch {
+    const activeOverrides = [...composerStateOverrides.entries()].filter(([pluginId]) =>
+        isPluginEnabled(pluginId),
+    );
+    const disabled = activeOverrides.some(([, state]) => state.disabled === true);
+    const placeholders = activeOverrides
+        .map(([, state]) => state.placeholder)
+        .filter((value): value is string => typeof value === "string");
+    const placeholder = placeholders[placeholders.length - 1];
+
+    return {
+        ...(disabled ? { disabled } : {}),
+        ...(placeholder ? { placeholder } : {}),
+    };
 }
 
 export function createPluginApi(
@@ -388,6 +436,24 @@ export function createPluginApi(
                 style.textContent = cssText;
                 document.head.append(style);
             },
+            setComposerState(state) {
+                requirePluginPermission(manifest, "ui:composer-state");
+                const nextState = {
+                    ...(typeof state.disabled === "boolean"
+                        ? { disabled: state.disabled }
+                        : {}),
+                    ...(typeof state.placeholder === "string"
+                        ? { placeholder: state.placeholder }
+                        : {}),
+                };
+
+                if (Object.keys(nextState).length === 0) {
+                    composerStateOverrides.delete(manifest.id);
+                } else {
+                    composerStateOverrides.set(manifest.id, nextState);
+                }
+                notifyRegistryChanged();
+            },
         },
         chat: {
             registerInputMiddleware(middleware) {
@@ -462,6 +528,19 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
 
             await handler(content, options);
         },
+        async injectMessage(role, content, options) {
+            requirePluginPermission(manifest, "actions");
+            const handler = appActionHandlers.injectMessage;
+
+            if (!handler) {
+                throw new Error("Plugin injectMessage action is not available.");
+            }
+
+            await handler(role, content, {
+                ...options,
+                pluginId: manifest.id,
+            });
+        },
         async generateResponse() {
             requirePluginPermission(manifest, "actions");
             const handler = appActionHandlers.generateResponse;
@@ -481,6 +560,16 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             }
 
             await handler(characterId);
+        },
+        setCharacterPresence(status) {
+            requirePluginPermission(manifest, "actions");
+
+            if (!["online", "away", "dnd", "offline"].includes(status)) {
+                throw new Error(`Unsupported character presence status: ${status}`);
+            }
+
+            characterPresenceOverrides.set(manifest.id, status);
+            notifyRegistryChanged();
         },
         setDraft(text) {
             requirePluginPermission(manifest, "actions");

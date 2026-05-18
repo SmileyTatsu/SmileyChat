@@ -48,7 +48,9 @@ export function compilePresetMessages(
                 role: "system",
                 content: compileFallbackContext(context.character),
             },
-            ...context.messages.map((message) => toGenerationMessage(message, context)),
+            ...context.messages
+                .filter(isMessageIncludedInPrompt)
+                .map((message) => toGenerationMessage(message, context)),
         ];
     }
 
@@ -123,6 +125,7 @@ function contentForPrompt(
         return (
             resolvedContent.trim() ||
             context.messages
+                .filter(isMessageIncludedInPrompt)
                 .map(
                     (message) =>
                         `${message.author}: ${messageContentForPrompt(message, context)}`,
@@ -220,7 +223,9 @@ function injectConversationMessages(
     injectedPrompts: Array<{ prompt: PresetPrompt; content: string }>,
     context: CompilePresetContext,
 ) {
-    if (sourceMessages.length === 0) {
+    const promptMessages = sourceMessages.filter(isMessageIncludedInPrompt);
+
+    if (promptMessages.length === 0) {
         return injectedPrompts.map(({ prompt, content }) =>
             toPromptMessage(prompt, content),
         );
@@ -228,12 +233,12 @@ function injectConversationMessages(
 
     const output: ChatGenerationMessage[] = [];
 
-    for (let index = 0; index < sourceMessages.length; index += 1) {
+    for (let index = 0; index < promptMessages.length; index += 1) {
         for (const injectedPrompt of injectedPrompts) {
             if (
                 injectedPrompt.prompt.injectionPosition === "before" &&
                 injectionTargetIndex(
-                    sourceMessages,
+                    promptMessages,
                     injectedPrompt.prompt.injectionDepth,
                 ) === index
             ) {
@@ -243,13 +248,13 @@ function injectConversationMessages(
             }
         }
 
-        output.push(toGenerationMessage(sourceMessages[index], context));
+        output.push(toGenerationMessage(promptMessages[index], context));
 
         for (const injectedPrompt of injectedPrompts) {
             if (
                 injectedPrompt.prompt.injectionPosition === "after" &&
                 injectionTargetIndex(
-                    sourceMessages,
+                    promptMessages,
                     injectedPrompt.prompt.injectionDepth,
                 ) === index
             ) {
@@ -283,11 +288,32 @@ function toGenerationMessage(
     const reasoningDetails = getMessageReasoningDetails(message);
 
     return {
-        role: message.role === "user" ? "user" : "assistant",
+        role: promptRoleForMessage(message),
         content: messageContentWithAttachments(message, context),
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
     };
+}
+
+function isMessageIncludedInPrompt(message: Message) {
+    return (
+        message.metadata?.includeInPrompt !== false &&
+        message.metadata?.promptRole !== "none"
+    );
+}
+
+function promptRoleForMessage(message: Message): ChatGenerationMessage["role"] {
+    const metadataRole = message.metadata?.promptRole;
+
+    if (
+        metadataRole === "assistant" ||
+        metadataRole === "user" ||
+        metadataRole === "system"
+    ) {
+        return metadataRole;
+    }
+
+    return message.role === "user" ? "user" : "assistant";
 }
 
 function messageContentForPrompt(message: Message, context: CompilePresetContext) {

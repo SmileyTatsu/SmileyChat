@@ -1,6 +1,7 @@
 import type {
     ChatAttachment,
     Message,
+    MessageMetadata,
     MessageSwipe,
     SmileyCharacter,
     SmileyPersona,
@@ -32,6 +33,76 @@ export function createCharacterMessage(
     attachments?: ChatAttachment[],
 ): Message {
     return createMessage("character", author, content, undefined, undefined, attachments);
+}
+
+export function createInjectedMessage(
+    role: "character" | "system" | "user",
+    content: string,
+    options: {
+        activeCharacter: SmileyCharacter;
+        persona: SmileyPersona;
+        pluginId: string;
+        authorName?: string;
+        avatarPath?: string;
+        includeInPrompt?: boolean;
+        promptRole?: MessageMetadata["promptRole"];
+    },
+): Message {
+    if (role === "user") {
+        return createMessage(
+            "user",
+            options.authorName?.trim() || options.persona.name.trim() || "Anon",
+            content,
+            {
+                authorAvatarPath: options.avatarPath || options.persona.avatar?.path,
+                authorPersonaId: options.persona.id,
+            },
+            undefined,
+            undefined,
+            pluginMessageMetadata(options.pluginId, {
+                includeInPrompt: options.includeInPrompt ?? true,
+                promptRole: options.promptRole ?? "user",
+                canGenerateSwipe: false,
+            }),
+        );
+    }
+
+    if (role === "system") {
+        return createMessage(
+            "character",
+            options.authorName?.trim() || "System",
+            content,
+            {
+                authorAvatarPath: options.avatarPath,
+            },
+            undefined,
+            undefined,
+            pluginMessageMetadata(options.pluginId, {
+                displayRole: "system",
+                includeInPrompt: options.includeInPrompt ?? false,
+                promptRole:
+                    options.promptRole ??
+                    (options.includeInPrompt === true ? "system" : "none"),
+                canGenerateSwipe: false,
+            }),
+        );
+    }
+
+    return createMessage(
+        "character",
+        options.authorName?.trim() || options.activeCharacter.data.name,
+        content,
+        {
+            authorAvatarPath: options.avatarPath || options.activeCharacter.avatar?.path,
+        },
+        undefined,
+        undefined,
+        pluginMessageMetadata(options.pluginId, {
+            includeInPrompt: options.includeInPrompt ?? true,
+            promptRole: options.promptRole ?? "assistant",
+            canGenerateSwipe: false,
+        }),
+    );
 }
 
 export function createCharacterErrorMessage(author: string, content: string): Message {
@@ -238,6 +309,7 @@ function createMessage(
     authorMetadata?: Pick<Message, "authorAvatarPath" | "authorPersonaId">,
     status?: MessageSwipe["status"],
     attachments?: ChatAttachment[],
+    metadata?: MessageMetadata,
 ): Message {
     const createdAt = new Date().toISOString();
 
@@ -250,6 +322,7 @@ function createMessage(
         ...(authorMetadata?.authorPersonaId
             ? { authorPersonaId: authorMetadata.authorPersonaId }
             : {}),
+        ...(metadata ? { metadata } : {}),
         role,
         createdAt,
         activeSwipeIndex: 0,
@@ -262,5 +335,16 @@ function createMessage(
                 ...(status ? { status } : {}),
             },
         ],
+    };
+}
+
+function pluginMessageMetadata(
+    pluginId: string,
+    metadata: Omit<MessageMetadata, "origin" | "pluginId">,
+): MessageMetadata {
+    return {
+        origin: "plugin",
+        pluginId,
+        ...metadata,
     };
 }

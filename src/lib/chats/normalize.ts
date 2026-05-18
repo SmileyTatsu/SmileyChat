@@ -2,7 +2,13 @@ import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
 import { getMessageCreatedAt } from "#frontend/lib/messages";
 
-import type { ChatAttachment, ChatMode, Message, MessageSwipe } from "#frontend/types";
+import type {
+    ChatAttachment,
+    ChatMode,
+    Message,
+    MessageMetadata,
+    MessageSwipe,
+} from "#frontend/types";
 
 import type { ChatSession, ChatSummary, ChatSummaryCollection } from "./types";
 
@@ -138,6 +144,7 @@ function normalizeMessage(value: unknown): Message | undefined {
     const author = asString(value.author);
     const authorAvatarPath = asString(value.authorAvatarPath);
     const authorPersonaId = asString(value.authorPersonaId);
+    const metadata = normalizeMessageMetadata(value.metadata);
 
     if (!role || !author) {
         return undefined;
@@ -169,11 +176,43 @@ function normalizeMessage(value: unknown): Message | undefined {
         author,
         ...(authorAvatarPath ? { authorAvatarPath } : {}),
         ...(authorPersonaId ? { authorPersonaId } : {}),
+        ...(metadata ? { metadata } : {}),
         role,
         createdAt,
         activeSwipeIndex,
         swipes: safeSwipes,
     };
+}
+
+function normalizeMessageMetadata(value: unknown): MessageMetadata | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const origin = value.origin === "plugin" ? "plugin" : undefined;
+    const pluginId = asString(value.pluginId);
+    const displayRole = value.displayRole === "system" ? "system" : undefined;
+    const promptRole =
+        value.promptRole === "assistant" ||
+        value.promptRole === "user" ||
+        value.promptRole === "system" ||
+        value.promptRole === "none"
+            ? value.promptRole
+            : undefined;
+    const metadata: MessageMetadata = {
+        ...(origin ? { origin } : {}),
+        ...(pluginId ? { pluginId } : {}),
+        ...(displayRole ? { displayRole } : {}),
+        ...(typeof value.includeInPrompt === "boolean"
+            ? { includeInPrompt: value.includeInPrompt }
+            : {}),
+        ...(promptRole ? { promptRole } : {}),
+        ...(typeof value.canGenerateSwipe === "boolean"
+            ? { canGenerateSwipe: value.canGenerateSwipe }
+            : {}),
+    };
+
+    return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
 function normalizeSwipe(value: unknown): MessageSwipe | undefined {

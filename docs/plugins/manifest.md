@@ -59,6 +59,7 @@ Recommended labels:
 - `ui:messages`
 - `ui:message-actions`
 - `ui:composer`
+- `ui:composer-state`
 - `ui:styles`
 - `actions`
 - `model:generate`

@@ -15,11 +15,13 @@ Current plugin surfaces:
 - Plugin profiles for switching sets of enabled plugins and saved plugin configuration.
 - Message rendering and message actions.
 - Composer actions.
+- Runtime composer state controls.
 - Programmatic app actions.
 - Custom active-model requests.
 - Guarded outbound network fetch through the local server.
 - Sidebar panels, header actions, and app-hosted modals.
 - Chat input, prompt, and output middleware.
+- Runtime character presence and direct message injection.
 - Custom preset macros.
 - Connection provider registration.
 - Plugin-owned JSON storage.

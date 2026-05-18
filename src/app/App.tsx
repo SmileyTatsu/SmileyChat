@@ -37,6 +37,8 @@ import {
 } from "#frontend/lib/preferences/types";
 
 import {
+    getPluginCharacterPresence,
+    getPluginComposerState,
     setPluginAppActionHandlers,
     setPluginModelHandlers,
     setPluginSnapshot,
@@ -83,7 +85,7 @@ export function App() {
     const [preferencesSaveStatus, setPreferencesSaveStatus] = useState("");
     const [localApiWarning, setLocalApiWarning] = useState("");
     const [preferencesInitialized, setPreferencesInitialized] = useState(false);
-    const [, setPluginRegistryRevision] = useState(0);
+    const [pluginRegistryRevision, setPluginRegistryRevision] = useState(0);
     const {
         applySavedPersona,
         createPersona,
@@ -226,6 +228,8 @@ export function App() {
     useEffect(() => {
         setPluginAppActionHandlers({
             generateResponse: () => chatSession.sendMessage(""),
+            injectMessage: (role, content, options) =>
+                chatSession.injectMessage(role, content, options),
             sendMessage: (content, options) =>
                 chatSession.sendMessage(content, options?.images),
             switchCharacter: selectCharacter,
@@ -242,10 +246,19 @@ export function App() {
         return () => setPluginModelHandlers({});
     });
 
+    const characterPresence = useMemo(
+        () => getPluginCharacterPresence(),
+        [pluginRegistryRevision],
+    );
+    const pluginComposerState = useMemo(
+        () => getPluginComposerState(),
+        [pluginRegistryRevision],
+    );
     const pluginSnapshot: PluginAppSnapshot = useMemo(
         () => ({
             activeChat,
             character,
+            characterPresence,
             connectionSettings: sanitizeConnectionSettings(connectionSettings),
             messages: chatSession.messages,
             mode,
@@ -256,6 +269,7 @@ export function App() {
         [
             activeChat,
             character,
+            characterPresence,
             chatSession.messages,
             connectionSettings,
             mode,
@@ -558,6 +572,7 @@ export function App() {
                           }
                         : undefined
                 }
+                pluginComposerState={pluginComposerState}
                 pluginSnapshot={pluginSnapshot}
             />
 

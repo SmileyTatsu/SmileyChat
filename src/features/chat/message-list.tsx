@@ -332,16 +332,25 @@ export function MessageList({
                     const isFailedSwipe = isActiveSwipeError(message);
 
                     const canPagePrevious = message.activeSwipeIndex > 0;
-                    const canPageForward = message.role === "character";
+                    const canPageForward =
+                        message.role === "character" &&
+                        message.metadata?.canGenerateSwipe !== false;
 
                     const showSwipeControls =
                         message.role === "character" &&
+                        message.metadata?.canGenerateSwipe !== false &&
                         message === messages[messages.length - 1];
                     const showRpMessageAvatar = mode === "rp" && showRpCharacterImages;
 
                     const avatar =
                         message.role === "character"
-                            ? { path: characterAvatarPath, alt: "Character Avatar" }
+                            ? {
+                                  path: message.authorAvatarPath ?? characterAvatarPath,
+                                  alt:
+                                      message.metadata?.displayRole === "system"
+                                          ? "System Avatar"
+                                          : "Character Avatar",
+                              }
                             : {
                                   path: message.authorAvatarPath,
                                   alt: "User Persona Avatar",
@@ -354,6 +363,8 @@ export function MessageList({
                                 "failed-swipe": isFailedSwipe,
                                 "generating-swipe": isPendingSwipe,
                                 "show-rp-message-avatar": showRpMessageAvatar,
+                                "system-message":
+                                    message.metadata?.displayRole === "system",
                             })}
                         >
                             <div className="message-avatar">
