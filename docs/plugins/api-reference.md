@@ -35,6 +35,7 @@ These permissions are currently enforced:
 | `api.ui.registerMessageRenderer`                 | `ui:messages`           |
 | `api.ui.registerMessageAction`                   | `ui:message-actions`    |
 | `api.ui.registerComposerAction`                  | `ui:composer`           |
+| `api.ui.registerComposerOption`                  | `ui:composer`           |
 | `api.ui.setComposerState`                        | `ui:composer-state`     |
 | `api.ui.registerHeaderAction`                    | `ui:header`             |
 | `api.ui.openModal`                               | `ui:modals`             |
@@ -303,6 +304,31 @@ api.ui.registerComposerAction({
 ```
 
 Context includes:
+
+- `draft`
+- `setDraft`
+- `insertText`
+- `submit`
+- `snapshot`
+
+Requires `ui:composer`.
+
+## `api.ui.registerComposerOption`
+
+Adds items to the composer options menu.
+
+```js
+api.ui.registerComposerOption({
+    id: "insert-scene-break",
+    label: "Scene break",
+    renderIcon: () => api.ui.h("span", { "aria-hidden": "true" }, "+"),
+    run: ({ insertText }) => {
+        insertText("\n\n---\n\n");
+    },
+});
+```
+
+Context matches `registerComposerAction`:
 
 - `draft`
 - `setDraft`

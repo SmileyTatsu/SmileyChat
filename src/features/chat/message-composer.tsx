@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
     getPluginComposerActions,
+    getPluginComposerOptions,
     setPluginDraftActionHandlers,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
@@ -251,6 +252,14 @@ export function MessageComposer({
     }
 
     const pluginActions = getPluginComposerActions();
+    const pluginOptions = getPluginComposerOptions();
+    const composerActionContext = {
+        draft,
+        insertText,
+        setDraft,
+        snapshot: pluginSnapshot,
+        submit: submitDraft,
+    };
 
     return (
         <form className="composer" onSubmit={handleSubmit}>
@@ -273,13 +282,7 @@ export function MessageComposer({
                             title={action.label}
                             disabled={disabled}
                             onClick={() =>
-                                void action.run({
-                                    draft,
-                                    insertText,
-                                    setDraft,
-                                    snapshot: pluginSnapshot,
-                                    submit: submitDraft,
-                                })
+                                void action.run(composerActionContext)
                             }
                         >
                             {action.renderIcon ? action.renderIcon() : action.label}
@@ -327,9 +330,35 @@ export function MessageComposer({
                                 title="Attach images"
                                 onClick={openImagePicker}
                             >
-                                <ImagePlus size={17} />
+                                <span
+                                    className="composer-options-menu-icon"
+                                    aria-hidden="true"
+                                >
+                                    <ImagePlus size={17} />
+                                </span>
                                 <span>Attach images</span>
                             </button>
+
+                            {pluginOptions.map((option) => (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    role="menuitem"
+                                    title={option.label}
+                                    onClick={() => {
+                                        setIsOptionsOpen(false);
+                                        void option.run(composerActionContext);
+                                    }}
+                                >
+                                    <span
+                                        className="composer-options-menu-icon"
+                                        aria-hidden="true"
+                                    >
+                                        {option.renderIcon ? option.renderIcon() : null}
+                                    </span>
+                                    <span>{option.label}</span>
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>

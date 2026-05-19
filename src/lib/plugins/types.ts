@@ -153,6 +153,13 @@ export type PluginComposerAction = {
     run: (context: PluginComposerActionContext) => void | Promise<void>;
 };
 
+export type PluginComposerOption = {
+    id: string;
+    label: string;
+    renderIcon?: () => VNode;
+    run: (context: PluginComposerActionContext) => void | Promise<void>;
+};
+
 export type PluginHeaderActionContext = {
     snapshot: PluginAppSnapshot;
 };
@@ -310,6 +317,7 @@ export type SmileyPluginApi = {
         registerMessageRenderer(renderer: MessageRenderer): void;
         registerMessageAction(action: PluginMessageAction): void;
         registerComposerAction(action: PluginComposerAction): void;
+        registerComposerOption(option: PluginComposerOption): void;
         registerHeaderAction(action: PluginHeaderAction): void;
         openModal(modal: PluginModal): () => void;
         addStyles(cssText: string): void;

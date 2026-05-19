@@ -13,6 +13,7 @@ import type {
     PluginCharacterPresenceStatus,
     PluginComposerStatePatch,
     PluginComposerAction,
+    PluginComposerOption,
     PluginConnectionProvider,
     PluginEventsApi,
     PluginHeaderAction,
@@ -52,6 +53,7 @@ const sidebarPanels: Array<Owned<PluginSidebarPanel>> = [];
 const messageRenderers: Array<Owned<MessageRenderer>> = [];
 const messageActions: Array<Owned<PluginMessageAction>> = [];
 const composerActions: Array<Owned<PluginComposerAction>> = [];
+const composerOptions: Array<Owned<PluginComposerOption>> = [];
 const headerActions: Array<Owned<PluginHeaderAction>> = [];
 const inputMiddlewares: Array<Owned<ChatInputMiddleware>> = [];
 const promptContextMiddlewares: Array<Owned<PluginPromptContextMiddleware>> = [];
@@ -165,6 +167,7 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedItems(messageRenderers, pluginId);
     removeOwnedItems(messageActions, pluginId);
     removeOwnedItems(composerActions, pluginId);
+    removeOwnedItems(composerOptions, pluginId);
     removeOwnedItems(headerActions, pluginId);
     removeOwnedItems(inputMiddlewares, pluginId);
     removeOwnedItems(promptContextMiddlewares, pluginId);
@@ -224,6 +227,10 @@ export function getPluginMessageActions() {
 
 export function getPluginComposerActions() {
     return enabledValues(composerActions);
+}
+
+export function getPluginComposerOptions() {
+    return enabledValues(composerOptions);
 }
 
 export function getPluginHeaderActions() {
@@ -410,6 +417,18 @@ export function createPluginApi(
                 composerActions.push({
                     pluginId: manifest.id,
                     value: { ...action, id: pluginScopedId(manifest.id, action.id) },
+                });
+                notifyRegistryChanged();
+            },
+            registerComposerOption(option) {
+                requirePluginPermission(manifest, "ui:composer");
+                const optionId = pluginScopedId(manifest.id, option.id);
+                upsertOwnedItem(composerOptions, manifest.id, optionId, {
+                    pluginId: manifest.id,
+                    value: {
+                        ...option,
+                        id: optionId,
+                    },
                 });
                 notifyRegistryChanged();
             },

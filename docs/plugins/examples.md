@@ -60,6 +60,23 @@ export function activate(api) {
 }
 ```
 
+## Add A Composer Option
+
+Requires `ui:composer`.
+
+```js
+export function activate(api) {
+    api.ui.registerComposerOption({
+        id: "insert-scene-break",
+        label: "Scene break",
+        renderIcon: () => api.ui.h("span", { "aria-hidden": "true" }, "+"),
+        run: ({ insertText }) => {
+            insertText("\n\n---\n\n");
+        },
+    });
+}
+```
+
 ## Add A Prompt Macro
 
 Requires `presets:macros`.

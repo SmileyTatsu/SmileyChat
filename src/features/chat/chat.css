@@ -978,6 +978,14 @@
         }
     }
 
+    .composer-options-menu-icon {
+        display: grid;
+        flex: 0 0 18px;
+        width: 18px;
+        place-items: center;
+        color: #b9bfd0;
+    }
+
     textarea {
         max-height: 200px;
         font-size: var(--message-font-size);
