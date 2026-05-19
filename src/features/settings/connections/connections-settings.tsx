@@ -153,44 +153,6 @@ export function ConnectionsSettings({
         isAnthropicProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
     ]);
 
-    useEffect(() => {
-        if (!activeProfile) return;
-        if (
-            isOpenAICompatibleProfile(activeProfile) &&
-            activeProfile.config.model.source === "api" &&
-            activeProfile.config.baseUrl.trim().length > 0
-        ) {
-            void loadModels();
-            return;
-        }
-        if (
-            isOpenRouterProfile(activeProfile) &&
-            activeProfile.config.model.source === "api"
-        ) {
-            void loadModels();
-            return;
-        }
-        if (
-            isGoogleAIProfile(activeProfile) &&
-            activeProfile.config.model.source === "api" &&
-            activeProfile.config.baseUrl.trim().length > 0
-        ) {
-            void loadModels();
-            return;
-        }
-        if (
-            isAnthropicProfile(activeProfile) &&
-            activeProfile.config.model.source === "api" &&
-            activeProfile.config.baseUrl.trim().length > 0
-        ) {
-            void loadModels();
-        }
-        // loadModels is intentionally omitted — we only want to auto-fetch
-        // when the active profile id changes (panel open / profile switch),
-        // not on every keystroke in baseUrl / apiKey.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeProfile?.id]);
-
     async function saveSettings(nextSettings = settings) {
         setRequestState("loading");
 
@@ -664,7 +626,7 @@ export function ConnectionsSettings({
                 config: nextProfile.config,
             }),
         );
-        setStatusMessage("Changed provider. Save to keep this profile.");
+        setStatusMessage("Changed provider. Saving automatically.");
         setRequestState("success");
     }
 
@@ -733,7 +695,7 @@ export function ConnectionsSettings({
             delete next[activeProfile.id];
             return next;
         });
-        setStatusMessage("Deleted connection profile. Save to remove it from disk.");
+        setStatusMessage("Deleted connection profile. Saving automatically.");
         setRequestState("success");
     }
 
@@ -843,7 +805,6 @@ export function ConnectionsSettings({
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
-                            onSave={() => void saveSettings()}
                             onTest={testConnection}
                         />
                     ) : isOpenRouterProfile(activeProfile) ? (
@@ -854,7 +815,6 @@ export function ConnectionsSettings({
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
-                            onSave={() => void saveSettings()}
                             onTest={testConnection}
                         />
                     ) : isGoogleAIProfile(activeProfile) ? (
@@ -865,7 +825,6 @@ export function ConnectionsSettings({
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
-                            onSave={() => void saveSettings()}
                             onTest={testConnection}
                         />
                     ) : isAnthropicProfile(activeProfile) ? (
@@ -876,7 +835,6 @@ export function ConnectionsSettings({
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
-                            onSave={() => void saveSettings()}
                             onTest={testConnection}
                         />
                     ) : activePluginProvider?.renderSettings ? (
@@ -895,13 +853,6 @@ export function ConnectionsSettings({
                                     : "This plugin provider is not currently loaded."}
                             </p>
                             <div className="button-row">
-                                <button
-                                    type="button"
-                                    disabled={isBusy}
-                                    onClick={() => void saveSettings()}
-                                >
-                                    Save
-                                </button>
                                 <button
                                     type="button"
                                     disabled={isBusy}

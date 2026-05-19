@@ -19,7 +19,6 @@ type OpenAICompatibleConnectionProps = {
     onChange: (config: OpenAICompatibleConnectionConfig) => void;
     onClearApiKey: () => void;
     onLoadModels: () => void;
-    onSave: () => void;
     onTest: () => void;
 };
 
@@ -30,7 +29,6 @@ export function OpenAICompatibleConnection({
     onChange,
     onClearApiKey,
     onLoadModels,
-    onSave,
     onTest,
 }: OpenAICompatibleConnectionProps) {
     function updateConfig(nextConfig: Partial<OpenAICompatibleConnectionConfig>) {
@@ -151,7 +149,7 @@ export function OpenAICompatibleConnection({
                     </label>
                 </div>
             </div>
-            <ConnectionActions disabled={disabled} onSave={onSave} onTest={onTest} />
+            <ConnectionActions disabled={disabled} onTest={onTest} />
         </section>
     );
 }

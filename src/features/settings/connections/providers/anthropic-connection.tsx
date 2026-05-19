@@ -19,7 +19,6 @@ type AnthropicConnectionProps = {
     onChange: (config: AnthropicConnectionConfig) => void;
     onClearApiKey: () => void;
     onLoadModels: () => void;
-    onSave: () => void;
     onTest: () => void;
 };
 
@@ -32,7 +31,6 @@ export function AnthropicConnection({
     onChange,
     onClearApiKey,
     onLoadModels,
-    onSave,
     onTest,
 }: AnthropicConnectionProps) {
     const thinking = config.thinking ?? { mode: "off" as const };
@@ -238,7 +236,7 @@ export function AnthropicConnection({
                     thinking for current Opus and Sonnet models.
                 </p>
             </div>
-            <ConnectionActions disabled={disabled} onSave={onSave} onTest={onTest} />
+            <ConnectionActions disabled={disabled} onTest={onTest} />
         </section>
     );
 }

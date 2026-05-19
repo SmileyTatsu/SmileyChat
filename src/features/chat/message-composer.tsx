@@ -1,4 +1,4 @@
-import { ImagePlus, SendHorizonal, Square, X } from "lucide-preact";
+import { ImagePlus, Menu, SendHorizonal, Square, X } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
@@ -42,9 +42,11 @@ export function MessageComposer({
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const optionsRef = useRef<HTMLDivElement>(null);
 
     const [draft, setDraft] = useState("");
     const [, setRegistryRevision] = useState(0);
+    const [isOptionsOpen, setIsOptionsOpen] = useState(false);
     const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
 
     const hasMessageContent = draft.trim().length > 0 || stagedImages.length > 0;
@@ -79,6 +81,7 @@ export function MessageComposer({
     useEffect(() => {
         setDraft("");
         clearStagedImages();
+        setIsOptionsOpen(false);
     }, [resetKey]);
 
     useEffect(function () {
@@ -86,6 +89,32 @@ export function MessageComposer({
             clearStagedImages();
         };
     }, []);
+
+    useEffect(() => {
+        if (!isOptionsOpen) {
+            return;
+        }
+
+        function handlePointerDown(event: PointerEvent) {
+            if (!optionsRef.current?.contains(event.target as Node)) {
+                setIsOptionsOpen(false);
+            }
+        }
+
+        function handleDocumentKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setIsOptionsOpen(false);
+            }
+        }
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleDocumentKeyDown);
+
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleDocumentKeyDown);
+        };
+    }, [isOptionsOpen]);
 
     function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
@@ -147,6 +176,11 @@ export function MessageComposer({
 
     function abortGeneration() {
         onAbortGeneration?.();
+    }
+
+    function openImagePicker() {
+        setIsOptionsOpen(false);
+        fileInputRef.current?.click();
     }
 
     function stageImages(files: File[]) {
@@ -272,15 +306,33 @@ export function MessageComposer({
                 </div>
             )}
             <div className="chat-composer-area">
-                <button
-                    type="button"
-                    title="Attach images"
-                    disabled={disabled}
-                    className="attachment-button"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    <ImagePlus size={18} />
-                </button>
+                <div className="composer-options" ref={optionsRef}>
+                    <button
+                        type="button"
+                        title="Composer options"
+                        aria-label="Composer options"
+                        aria-expanded={isOptionsOpen}
+                        disabled={disabled}
+                        className="composer-options-button"
+                        onClick={() => setIsOptionsOpen((current) => !current)}
+                    >
+                        <Menu size={18} />
+                    </button>
+
+                    {isOptionsOpen && (
+                        <div className="composer-options-menu" role="menu">
+                            <button
+                                type="button"
+                                role="menuitem"
+                                title="Attach images"
+                                onClick={openImagePicker}
+                            >
+                                <ImagePlus size={17} />
+                                <span>Attach images</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 <textarea
                     ref={composerRef}

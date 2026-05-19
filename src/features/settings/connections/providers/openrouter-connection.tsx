@@ -21,7 +21,6 @@ type OpenRouterConnectionProps = {
     onChange: (config: OpenRouterConnectionConfig) => void;
     onClearApiKey: () => void;
     onLoadModels: () => void;
-    onSave: () => void;
     onTest: () => void;
 };
 
@@ -34,7 +33,6 @@ export function OpenRouterConnection({
     onChange,
     onClearApiKey,
     onLoadModels,
-    onSave,
     onTest,
 }: OpenRouterConnectionProps) {
     const [modelSearch, setModelSearch] = useState("");
@@ -421,7 +419,7 @@ export function OpenRouterConnection({
                     </label>
                 </div>
             </div>
-            <ConnectionActions disabled={disabled} onSave={onSave} onTest={onTest} />
+            <ConnectionActions disabled={disabled} onTest={onTest} />
         </section>
     );
 }

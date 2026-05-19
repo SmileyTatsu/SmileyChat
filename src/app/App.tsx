@@ -17,6 +17,8 @@ import {
     loadPresetCollection as loadPresetCollectionRequest,
     localApiErrorEventName,
     saveAppPreferences,
+    saveConnectionSecrets,
+    saveConnectionSettings,
 } from "#frontend/lib/api/client";
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
@@ -24,8 +26,10 @@ import { messageFromError } from "#frontend/lib/common/errors";
 import {
     applyConnectionSecrets,
     defaultConnectionSettings,
+    extractConnectionSecrets,
     normalizeConnectionSecrets,
     normalizeConnectionSettings,
+    sanitizeConnectionSecrets,
     sanitizeConnectionSettings,
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
@@ -86,8 +90,14 @@ export function App() {
     const [preferencesLoadError, setPreferencesLoadError] = useState("");
     const [preferencesSaveStatus, setPreferencesSaveStatus] = useState("");
     const [localApiWarning, setLocalApiWarning] = useState("");
+    const [connectionSettingsLoaded, setConnectionSettingsLoaded] = useState(false);
     const [preferencesInitialized, setPreferencesInitialized] = useState(false);
     const [pluginRegistryRevision, setPluginRegistryRevision] = useState(0);
+    const latestConnectionSettingsRef =
+        useRef<ConnectionSettings>(defaultConnectionSettings);
+    const connectionSettingsLoadedRef = useRef(false);
+    const queuedConnectionSettingsSaveRef = useRef<ConnectionSettings | undefined>();
+    const connectionSettingsSaveInFlightRef = useRef(false);
     const {
         applySavedPersona,
         createPersona,
@@ -193,6 +203,30 @@ export function App() {
 
         return () => {
             window.removeEventListener(localApiErrorEventName, handleLocalApiError);
+        };
+    }, []);
+
+    useEffect(() => {
+        latestConnectionSettingsRef.current = connectionSettings;
+    }, [connectionSettings]);
+
+    useEffect(() => {
+        connectionSettingsLoadedRef.current = connectionSettingsLoaded;
+    }, [connectionSettingsLoaded]);
+
+    useEffect(() => {
+        function flushConnectionSettingsBeforeUnload() {
+            if (!connectionSettingsLoadedRef.current) {
+                return;
+            }
+
+            persistConnectionSettingsWithKeepAlive(latestConnectionSettingsRef.current);
+        }
+
+        window.addEventListener("pagehide", flushConnectionSettingsBeforeUnload);
+
+        return () => {
+            window.removeEventListener("pagehide", flushConnectionSettingsBeforeUnload);
         };
     }, []);
 
@@ -319,9 +353,80 @@ export function App() {
             const secrets = normalizeConnectionSecrets(secretsResponse);
             setConnectionSettings(applyConnectionSecrets(settings, secrets));
             setConnectionLoadError("");
+            setConnectionSettingsLoaded(true);
+        } catch (error) {
+            setConnectionLoadError(messageFromError(error));
+            setConnectionSettingsLoaded(false);
+        }
+    }
+
+    function closeSettings() {
+        if (connectionSettingsLoaded) {
+            queueConnectionSettingsSave(connectionSettings);
+        }
+        setSettingsOpen(false);
+    }
+
+    function updateConnectionSettings(nextSettings: ConnectionSettings) {
+        setConnectionSettings(nextSettings);
+
+        if (connectionSettingsLoadedRef.current) {
+            queueConnectionSettingsSave(nextSettings);
+        }
+    }
+
+    function queueConnectionSettingsSave(settings: ConnectionSettings) {
+        queuedConnectionSettingsSaveRef.current = settings;
+
+        if (!connectionSettingsSaveInFlightRef.current) {
+            void flushQueuedConnectionSettingsSave();
+        }
+    }
+
+    async function flushQueuedConnectionSettingsSave() {
+        connectionSettingsSaveInFlightRef.current = true;
+
+        try {
+            while (queuedConnectionSettingsSaveRef.current) {
+                const settings = queuedConnectionSettingsSaveRef.current;
+                queuedConnectionSettingsSaveRef.current = undefined;
+                await persistConnectionSettings(settings);
+            }
+        } finally {
+            connectionSettingsSaveInFlightRef.current = false;
+        }
+    }
+
+    async function persistConnectionSettings(settings: ConnectionSettings) {
+        try {
+            await Promise.all([
+                saveConnectionSettings(sanitizeConnectionSettings(settings)),
+                saveConnectionSecrets(
+                    sanitizeConnectionSecrets(extractConnectionSecrets(settings)),
+                ),
+            ]);
+            setConnectionLoadError("");
         } catch (error) {
             setConnectionLoadError(messageFromError(error));
         }
+    }
+
+    function persistConnectionSettingsWithKeepAlive(settings: ConnectionSettings) {
+        const safeSettings = sanitizeConnectionSettings(settings);
+        const secrets = sanitizeConnectionSecrets(extractConnectionSecrets(settings));
+
+        void fetch("/api/connections", {
+            body: JSON.stringify(safeSettings),
+            headers: { "Content-Type": "application/json" },
+            keepalive: true,
+            method: "PUT",
+        });
+        void fetch("/api/connections/secrets", {
+            body: JSON.stringify(secrets),
+            headers: { "Content-Type": "application/json" },
+            keepalive: true,
+            method: "PUT",
+        });
     }
 
     async function loadPresetCollection() {
@@ -645,8 +750,8 @@ export function App() {
                     personaLoadError={personaLoadError}
                     pluginSnapshot={pluginSnapshot}
                     onCategoryChange={setActiveSettingsCategory}
-                    onClose={() => setSettingsOpen(false)}
-                    onConnectionSettingsChange={setConnectionSettings}
+                    onClose={closeSettings}
+                    onConnectionSettingsChange={updateConnectionSettings}
                     onCreatePersona={() => void createPersona()}
                     onDeletePersona={(personaId) => void deletePersona(personaId)}
                     onPersonaChange={(nextPersona) => void updatePersona(nextPersona)}

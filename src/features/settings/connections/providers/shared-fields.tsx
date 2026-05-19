@@ -47,7 +47,6 @@ type CatalogModelFieldProps<TModel> = {
 
 type ConnectionActionsProps = {
     disabled?: boolean;
-    onSave: () => void;
     onTest: () => void;
 };
 
@@ -151,8 +150,21 @@ export function CatalogModelField<TModel>({
                             )
                         }
                     >
+                        {!hasLoadedApiModels &&
+                            defaultModelCategories.map((category) => (
+                                <optgroup key={category.id} label={category.label}>
+                                    {category.models.map((defaultModel) => (
+                                        <option
+                                            key={defaultModel.id}
+                                            value={`default:${defaultModel.id}`}
+                                        >
+                                            {defaultModel.label}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            ))}
                         {hasLoadedApiModels ? (
-                            <optgroup label="Loaded from API">
+                            <optgroup label="Other">
                                 {apiModels.map((apiModel) => {
                                     const id = getApiModelId(apiModel);
 
@@ -163,32 +175,17 @@ export function CatalogModelField<TModel>({
                                     );
                                 })}
                             </optgroup>
-                        ) : savedApiModelId ? (
-                            <optgroup label="Loaded from API">
-                                <option value={`api:${savedApiModelId}`}>
-                                    {savedApiModelId}
+                        ) : (
+                            <optgroup label="Other">
+                                {savedApiModelId && (
+                                    <option value={`api:${savedApiModelId}`}>
+                                        Selected API model: {savedApiModelId}
+                                    </option>
+                                )}
+                                <option disabled value="api:">
+                                    Load models to fill this category
                                 </option>
                             </optgroup>
-                        ) : (
-                            <>
-                                {defaultModelCategories.map((category) => (
-                                    <optgroup key={category.id} label={category.label}>
-                                        {category.models.map((defaultModel) => (
-                                            <option
-                                                key={defaultModel.id}
-                                                value={`default:${defaultModel.id}`}
-                                            >
-                                                {defaultModel.label}
-                                            </option>
-                                        ))}
-                                    </optgroup>
-                                ))}
-                                <optgroup label="Loaded from API">
-                                    <option disabled value="api:">
-                                        Load models to fill this category
-                                    </option>
-                                </optgroup>
-                            </>
                         )}
                         <option value="custom:">Custom model...</option>
                     </select>
@@ -215,12 +212,9 @@ export function CatalogModelField<TModel>({
     );
 }
 
-export function ConnectionActions({ disabled, onSave, onTest }: ConnectionActionsProps) {
+export function ConnectionActions({ disabled, onTest }: ConnectionActionsProps) {
     return (
         <div className="connection-actions">
-            <button type="button" disabled={disabled} onClick={onSave}>
-                Save
-            </button>
             <button type="button" disabled={disabled} onClick={onTest}>
                 Test connection
             </button>

@@ -19,7 +19,6 @@ type GoogleAIConnectionProps = {
     onChange: (config: GoogleAIConnectionConfig) => void;
     onClearApiKey: () => void;
     onLoadModels: () => void;
-    onSave: () => void;
     onTest: () => void;
 };
 
@@ -30,7 +29,6 @@ export function GoogleAIConnection({
     onChange,
     onClearApiKey,
     onLoadModels,
-    onSave,
     onTest,
 }: GoogleAIConnectionProps) {
     function updateConfig(nextConfig: Partial<GoogleAIConnectionConfig>) {
@@ -141,7 +139,7 @@ export function GoogleAIConnection({
                     />
                 </label>
             </fieldset>
-            <ConnectionActions disabled={disabled} onSave={onSave} onTest={onTest} />
+            <ConnectionActions disabled={disabled} onTest={onTest} />
         </section>
     );
 }

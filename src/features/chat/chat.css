@@ -934,10 +934,46 @@
 .chat-composer-area {
     @apply flex w-full items-start gap-4 p-2;
 
-    .attachment-button {
+    .composer-options {
+        @apply relative flex flex-none;
+    }
+
+    .composer-options-button {
         @apply flex items-center justify-center rounded-md border-none bg-transparent p-2 transition-colors outline-none;
 
         &:hover:not(:disabled) {
+            background: #242833;
+        }
+    }
+
+    .composer-options-menu {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 0;
+        z-index: 10;
+        min-width: 178px;
+        border: 1px solid #303440;
+        border-radius: 8px;
+        background: #171a20;
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+        padding: 6px;
+    }
+
+    .composer-options-menu button {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 9px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #e6e8ef;
+        padding: 8px 9px;
+        text-align: left;
+        font-size: 0.9rem;
+        line-height: 1.2;
+
+        &:hover {
             background: #242833;
         }
     }
