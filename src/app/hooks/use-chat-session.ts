@@ -53,7 +53,10 @@ import {
 } from "#frontend/lib/presets/context-budget-constants";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type { PresetCollection } from "#frontend/lib/presets/types";
-import { buildPromptForGeneration } from "#frontend/lib/prompt/build";
+import {
+    assertPromptMessagesWithinBudget,
+    buildPromptForGeneration,
+} from "#frontend/lib/prompt/build";
 import type { PromptGenerationTrigger } from "#frontend/lib/prompt/types";
 import type {
     ChatMode,
@@ -1152,6 +1155,7 @@ export function useChatSession({
             sourceMode,
             sourceUserStatus,
         );
+        assertPromptMessagesWithinBudget(promptMessages, contextTokenBudget);
         const materializedPromptMessages =
             await materializeChatGenerationMessageImages(promptMessages);
         const result = await connection.generate({

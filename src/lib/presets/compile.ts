@@ -72,6 +72,7 @@ export function compilePresetMessagesWithMetadata(
             },
             ...context.messages.filter(isMessageIncludedInPrompt).map((message) => ({
                 message: toGenerationMessage(message, context),
+                messageId: message.id,
                 source: "history" as const,
             })),
         ];
@@ -273,6 +274,7 @@ function injectConversationMessages(
 
         output.push({
             message: toGenerationMessage(promptMessages[index], context),
+            messageId: promptMessages[index].id,
             source: "history",
         });
 

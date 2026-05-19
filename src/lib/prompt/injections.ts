@@ -4,12 +4,26 @@ import type { PromptAnchor, PromptInjection } from "./types";
 
 type AnchoredPromptMessage = {
     anchor?: PromptAnchor;
+    injectionId?: string;
+    injectionOrder?: number;
+    injectionPriority?: number;
+    messageId?: string;
     message: ChatGenerationMessage;
     promptId?: string;
     source: "history" | "injection" | "preset";
+    tokenBudgetBehavior?: PromptInjection["tokenBudgetBehavior"];
 };
 
 export function applyPromptInjections(
+    messages: AnchoredPromptMessage[],
+    injections: PromptInjection[],
+) {
+    return applyPromptInjectionsWithMetadata(messages, injections).map(
+        (item) => item.message,
+    );
+}
+
+export function applyPromptInjectionsWithMetadata(
     messages: AnchoredPromptMessage[],
     injections: PromptInjection[],
 ) {
@@ -22,7 +36,7 @@ export function applyPromptInjections(
         insertPromptInjection(output, injection);
     }
 
-    return output.map((item) => item.message);
+    return output;
 }
 
 function insertPromptInjection(
@@ -30,8 +44,12 @@ function insertPromptInjection(
     injection: PromptInjection,
 ) {
     const message = {
+        injectionId: injection.id,
+        injectionOrder: injection.order,
+        injectionPriority: injection.priority,
         message: promptInjectionToMessage(injection),
         source: "injection" as const,
+        tokenBudgetBehavior: injection.tokenBudgetBehavior,
     };
 
     if (injection.anchor === "at-depth") {
