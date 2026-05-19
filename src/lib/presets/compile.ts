@@ -13,6 +13,9 @@ import { dynamicPromptIds } from "./defaults";
 import { formatCharacterBook, resolvePresetMacros } from "./macros";
 import { messageAuthorForPrompt } from "./message-format";
 import type { PresetPrompt, SmileyPreset } from "./types";
+import type { AnchoredPromptMessage } from "../prompt/injections";
+import type { PromptOutletRegistry } from "../prompt/outlets";
+import type { PromptGenerationContext } from "../prompt/types";
 
 type CompilePresetContext = {
     character: SmileyCharacter;
@@ -20,8 +23,11 @@ type CompilePresetContext = {
         joinPrefix?: string;
         memberIds?: string[];
     };
+    generation?: PromptGenerationContext;
+    metadata?: Record<string, unknown>;
     messages: Message[];
     mode: ChatMode;
+    outlets?: PromptOutletRegistry;
     personaDescription: string;
     personaName: string;
     userStatus: UserStatus;
@@ -47,15 +53,27 @@ export function compilePresetMessages(
     preset: SmileyPreset | undefined,
     context: CompilePresetContext,
 ): ChatGenerationMessage[] {
+    return compilePresetMessagesWithMetadata(preset, context).map((item) => item.message);
+}
+
+export function compilePresetMessagesWithMetadata(
+    preset: SmileyPreset | undefined,
+    context: CompilePresetContext,
+): AnchoredPromptMessage[] {
     if (!preset) {
         return [
             {
-                role: "system",
-                content: compileFallbackContext(context.character),
+                anchor: "after-character",
+                message: {
+                    role: "system",
+                    content: compileFallbackContext(context.character),
+                },
+                source: "preset",
             },
-            ...context.messages
-                .filter(isMessageIncludedInPrompt)
-                .map((message) => toGenerationMessage(message, context)),
+            ...context.messages.filter(isMessageIncludedInPrompt).map((message) => ({
+                message: toGenerationMessage(message, context),
+                source: "history" as const,
+            })),
         ];
     }
 
@@ -65,7 +83,7 @@ export function compilePresetMessages(
         .map((entry) => promptById.get(entry.promptId))
         .filter((prompt): prompt is PresetPrompt => Boolean(prompt));
     const chatHistoryPromptId = selectChatHistoryPromptId(orderedPrompts);
-    const messages: ChatGenerationMessage[] = [];
+    const messages: AnchoredPromptMessage[] = [];
     const injectedPrompts = orderedPrompts
         .filter((prompt) => isInjectedPrompt(prompt, chatHistoryPromptId))
         .map((prompt) => ({
@@ -87,7 +105,7 @@ export function compilePresetMessages(
         const content = contentForPrompt(prompt.id, prompt.content, context).trim();
 
         if (content) {
-            messages.push(toPromptMessage(prompt, content));
+            messages.push(toAnchoredPromptMessage(prompt, content));
         }
     }
 
@@ -203,10 +221,10 @@ function injectChatHistoryPrompt(
         prompt.content.slice(match.index + match[0].length),
         context,
     ).trim();
-    const output: ChatGenerationMessage[] = [];
+    const output: AnchoredPromptMessage[] = [];
 
     if (before) {
-        output.push(toPromptMessage(prompt, before));
+        output.push(toAnchoredPromptMessage(prompt, before));
     }
 
     output.push(
@@ -214,7 +232,7 @@ function injectChatHistoryPrompt(
     );
 
     if (after) {
-        output.push(toPromptMessage(prompt, after));
+        output.push(toAnchoredPromptMessage(prompt, after));
     }
 
     return output;
@@ -229,11 +247,11 @@ function injectConversationMessages(
 
     if (promptMessages.length === 0) {
         return injectedPrompts.map(({ prompt, content }) =>
-            toPromptMessage(prompt, content),
+            toAnchoredPromptMessage(prompt, content),
         );
     }
 
-    const output: ChatGenerationMessage[] = [];
+    const output: AnchoredPromptMessage[] = [];
 
     for (let index = 0; index < promptMessages.length; index += 1) {
         for (const injectedPrompt of injectedPrompts) {
@@ -245,12 +263,18 @@ function injectConversationMessages(
                 ) === index
             ) {
                 output.push(
-                    toPromptMessage(injectedPrompt.prompt, injectedPrompt.content),
+                    toAnchoredPromptMessage(
+                        injectedPrompt.prompt,
+                        injectedPrompt.content,
+                    ),
                 );
             }
         }
 
-        output.push(toGenerationMessage(promptMessages[index], context));
+        output.push({
+            message: toGenerationMessage(promptMessages[index], context),
+            source: "history",
+        });
 
         for (const injectedPrompt of injectedPrompts) {
             if (
@@ -261,7 +285,10 @@ function injectConversationMessages(
                 ) === index
             ) {
                 output.push(
-                    toPromptMessage(injectedPrompt.prompt, injectedPrompt.content),
+                    toAnchoredPromptMessage(
+                        injectedPrompt.prompt,
+                        injectedPrompt.content,
+                    ),
                 );
             }
         }
@@ -279,6 +306,18 @@ function toPromptMessage(prompt: PresetPrompt, content: string): ChatGenerationM
     return {
         role: prompt.role,
         content,
+    };
+}
+
+function toAnchoredPromptMessage(
+    prompt: PresetPrompt,
+    content: string,
+): AnchoredPromptMessage {
+    return {
+        anchor: prompt.anchor,
+        message: toPromptMessage(prompt, content),
+        promptId: prompt.id,
+        source: "preset",
     };
 }
 

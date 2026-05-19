@@ -44,7 +44,9 @@ export function GroupPanel({
     onOpenChange,
 }: GroupPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
-    const members = (chat.members ?? []).slice().sort((left, right) => left.order - right.order);
+    const members = (chat.members ?? [])
+        .slice()
+        .sort((left, right) => left.order - right.order);
     const availableCharacters = characters.filter(
         (character) => !members.some((member) => member.characterId === character.id),
     );
@@ -187,7 +189,9 @@ export function GroupPanel({
                         </button>
                         <div>
                             <h3>{chat.title || defaultTitle}</h3>
-                            <p>{members.length} member{members.length === 1 ? "" : "s"}</p>
+                            <p>
+                                {members.length} member{members.length === 1 ? "" : "s"}
+                            </p>
                             {group.avatar?.type === "custom" && (
                                 <button
                                     className="text-action danger-text-action"
@@ -224,7 +228,9 @@ export function GroupPanel({
                                 value={chat.title ?? ""}
                                 placeholder={defaultTitle}
                                 onInput={(event) =>
-                                    setTitle((event.currentTarget as HTMLInputElement).value)
+                                    setTitle(
+                                        (event.currentTarget as HTMLInputElement).value,
+                                    )
                                 }
                             />
                         </label>
@@ -236,7 +242,8 @@ export function GroupPanel({
                                 onChange={(event) =>
                                     updateGroup({
                                         ...group,
-                                        replyOrder: event.currentTarget.value as ChatGroup["replyOrder"],
+                                        replyOrder: event.currentTarget
+                                            .value as ChatGroup["replyOrder"],
                                     })
                                 }
                             >
@@ -253,12 +260,17 @@ export function GroupPanel({
                                 onChange={(event) =>
                                     updateGroup({
                                         ...group,
-                                        generationMode: event.currentTarget.value as ChatGroup["generationMode"],
+                                        generationMode: event.currentTarget
+                                            .value as ChatGroup["generationMode"],
                                     })
                                 }
                             >
-                                <option value="swap-character-cards">Swap character cards</option>
-                                <option value="join-character-cards">Join character cards</option>
+                                <option value="swap-character-cards">
+                                    Swap character cards
+                                </option>
+                                <option value="join-character-cards">
+                                    Join character cards
+                                </option>
                             </select>
                         </label>
 
@@ -283,9 +295,8 @@ export function GroupPanel({
                                 onChange={(event) =>
                                     updateGroup({
                                         ...group,
-                                        greetingMode:
-                                            event.currentTarget
-                                                .value as GroupGreetingMode,
+                                        greetingMode: event.currentTarget
+                                            .value as GroupGreetingMode,
                                     })
                                 }
                             >
@@ -338,7 +349,11 @@ export function GroupPanel({
                                 )}
                             <label className="group-talkativeness group-setting-range">
                                 <span>
-                                    Chance {Math.round((group.autoResponses?.chance ?? 0.35) * 100)}%
+                                    Chance{" "}
+                                    {Math.round(
+                                        (group.autoResponses?.chance ?? 0.35) * 100,
+                                    )}
+                                    %
                                 </span>
                                 <input
                                     type="range"
@@ -372,7 +387,9 @@ export function GroupPanel({
                                                 autoResponses: {
                                                     ...defaultAutoResponses(),
                                                     ...group.autoResponses,
-                                                    maxTurns: Number(event.currentTarget.value),
+                                                    maxTurns: Number(
+                                                        event.currentTarget.value,
+                                                    ),
                                                 },
                                             })
                                         }
@@ -392,7 +409,9 @@ export function GroupPanel({
                                                 autoResponses: {
                                                     ...defaultAutoResponses(),
                                                     ...group.autoResponses,
-                                                    delayMs: Number(event.currentTarget.value),
+                                                    delayMs: Number(
+                                                        event.currentTarget.value,
+                                                    ),
                                                 },
                                             })
                                         }
@@ -420,7 +439,10 @@ export function GroupPanel({
                             <h3>Current members</h3>
                             <div className="group-member-list">
                                 {members.map((member, index) => (
-                                    <div className="group-member-row" key={member.characterId}>
+                                    <div
+                                        className="group-member-row"
+                                        key={member.characterId}
+                                    >
                                         <img
                                             className="avatar image-avatar"
                                             src={
@@ -439,7 +461,9 @@ export function GroupPanel({
                                             type="button"
                                             title="Move up"
                                             disabled={index === 0}
-                                            onClick={() => moveMember(member.characterId, -1)}
+                                            onClick={() =>
+                                                moveMember(member.characterId, -1)
+                                            }
                                         >
                                             <ChevronUp size={15} />
                                         </button>
@@ -447,13 +471,19 @@ export function GroupPanel({
                                             type="button"
                                             title="Move down"
                                             disabled={index === members.length - 1}
-                                            onClick={() => moveMember(member.characterId, 1)}
+                                            onClick={() =>
+                                                moveMember(member.characterId, 1)
+                                            }
                                         >
                                             <ChevronDown size={15} />
                                         </button>
                                         <button
                                             type="button"
-                                            title={member.muted ? "Unmute member" : "Mute member"}
+                                            title={
+                                                member.muted
+                                                    ? "Unmute member"
+                                                    : "Mute member"
+                                            }
                                             onClick={() =>
                                                 updateMember(member.characterId, {
                                                     muted: !member.muted,
@@ -469,7 +499,9 @@ export function GroupPanel({
                                         <button
                                             type="button"
                                             title="Force reply"
-                                            onClick={() => onForceReply(member.characterId)}
+                                            onClick={() =>
+                                                onForceReply(member.characterId)
+                                            }
                                         >
                                             <Megaphone size={15} />
                                         </button>
@@ -478,12 +510,20 @@ export function GroupPanel({
                                             type="button"
                                             title="Remove member"
                                             disabled={members.length <= 1}
-                                            onClick={() => removeMember(member.characterId)}
+                                            onClick={() =>
+                                                removeMember(member.characterId)
+                                            }
                                         >
                                             <Trash2 size={15} />
                                         </button>
                                         <label className="group-talkativeness">
-                                            <span>Talkativeness {Math.round((member.talkativeness ?? 0.5) * 100)}%</span>
+                                            <span>
+                                                Talkativeness{" "}
+                                                {Math.round(
+                                                    (member.talkativeness ?? 0.5) * 100,
+                                                )}
+                                                %
+                                            </span>
                                             <input
                                                 type="range"
                                                 min="0"

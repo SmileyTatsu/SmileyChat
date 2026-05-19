@@ -63,10 +63,7 @@ async function renameWithRetry(sourcePath: string, targetPath: string) {
             await rename(sourcePath, targetPath);
             return;
         } catch (error) {
-            if (
-                attempt >= renameRetryDelaysMs.length ||
-                !isTransientRenameError(error)
-            ) {
+            if (attempt >= renameRetryDelaysMs.length || !isTransientRenameError(error)) {
                 throw error;
             }
 

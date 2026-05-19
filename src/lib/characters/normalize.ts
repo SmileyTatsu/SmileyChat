@@ -91,6 +91,7 @@ export function normalizeCharacter(value: unknown): SmileyCharacter | undefined 
     const id = asString(value.id) || createId("character");
     const avatar = normalizeImageAvatar(value.avatar);
     const importedFrom = normalizeImportedFrom(value.importedFrom);
+    const metadata = normalizeMetadata(value.metadata);
     const timestamps = normalizeTimestamps(value, now);
 
     return {
@@ -99,6 +100,7 @@ export function normalizeCharacter(value: unknown): SmileyCharacter | undefined 
         data: normalizeTavernCardData(value.data),
         ...(avatar ? { avatar } : {}),
         ...(importedFrom ? { importedFrom } : {}),
+        ...(metadata ? { metadata } : {}),
         ...timestamps,
     };
 }
@@ -291,6 +293,14 @@ function normalizeImportedFrom(
         fingerprint: asString(value.fingerprint) || undefined,
         importedAt: asString(value.importedAt) || undefined,
     };
+}
+
+function normalizeMetadata(value: unknown): SmileyCharacter["metadata"] | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    return { ...value };
 }
 
 function asImportFormat(value: unknown): CharacterImportFormat | undefined {

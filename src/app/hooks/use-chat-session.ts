@@ -34,17 +34,20 @@ import { isGroupChat } from "#frontend/lib/chats/normalize";
 import {
     getInputMiddlewares,
     getOutputMiddlewares,
+    getPromptContextMiddlewares,
+    getPromptInjectors,
     getPromptMiddlewares,
 } from "#frontend/lib/plugins/registry";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { compilePresetMessages } from "#frontend/lib/presets/compile";
-import { preparePresetContextForBudget } from "#frontend/lib/presets/context-budget";
 import {
     defaultContextTokenBudget,
     normalizeContextTokenBudget,
 } from "#frontend/lib/presets/context-budget-constants";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type { PresetCollection } from "#frontend/lib/presets/types";
+import { buildPromptForGeneration } from "#frontend/lib/prompt/build";
+import type { PromptGenerationTrigger } from "#frontend/lib/prompt/types";
 import type {
     ChatMode,
     ChatAttachment,
@@ -284,7 +287,9 @@ export function useChatSession({
                         sourceChat,
                         generationCharacter,
                     ),
+                    sourceChat: pendingChat,
                     stream: preferences.chat.streaming,
+                    trigger: options.autoTurnCount ? "auto-group" : "send",
                     onToken: streamingReply
                         ? (token) => {
                               if (abortController.signal.aborted) {
@@ -589,7 +594,10 @@ export function useChatSession({
                         sourceChat,
                         generationCharacter,
                     ),
+                    sourceChat,
                     stream: preferences.chat.streaming,
+                    targetMessageId: messageId,
+                    trigger: "swipe",
                     onToken: preferences.chat.streaming
                         ? (token) => {
                               if (abortController.signal.aborted) {
@@ -1070,31 +1078,52 @@ export function useChatSession({
             onReasoningToken?: (token: string) => void;
             onToken?: (token: string) => void;
             signal?: AbortSignal;
+            sourceChat?: ChatSession;
             stream?: boolean;
+            targetMessageId?: string;
+            trigger?: PromptGenerationTrigger;
         } = {},
     ) {
         const sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );
-        const budgetedContext = preparePresetContextForBudget({
+        const promptCharacter = options.promptCharacter ?? sourceCharacter;
+        const promptChat = options.sourceChat ?? latestChatRef.current;
+
+        if (!promptChat) {
+            throw new Error("No active chat is available for prompt generation.");
+        }
+
+        const promptBuild = await buildPromptForGeneration({
             context: {
-                character: options.promptCharacter ?? sourceCharacter,
+                chat: promptChat,
+                character: promptCharacter,
                 group: groupPromptContext(latestChatRef.current),
+                groupCharacters,
+                generation: {
+                    activeCharacterId: sourceCharacter.id,
+                    stream: options.stream === true,
+                    ...(options.targetMessageId
+                        ? { targetMessageId: options.targetMessageId }
+                        : {}),
+                    trigger: options.trigger ?? "send",
+                },
                 messages: sourceGenerationMessages,
                 mode: sourceMode,
-                personaDescription: persona.description,
-                personaName: persona.name,
+                persona,
+                preset: activePreset,
+                tokenBudget: contextTokenBudget,
                 userStatus: sourceUserStatus,
             },
-            preset: activePreset,
-            tokenBudget: contextTokenBudget,
+            contextMiddlewares: getPromptContextMiddlewares(),
+            injectors: getPromptInjectors(),
         });
-        const generationMessages = budgetedContext.messages;
+        const generationMessages = promptBuild.messages;
         const connection = getAdapterForSettings(sourceConnectionSettings);
         const promptMessages = await applyPromptMiddlewares(
-            budgetedContext.promptMessages,
+            promptBuild.promptMessages,
             generationMessages,
-            options.promptCharacter ?? sourceCharacter,
+            promptCharacter,
             sourceMode,
             sourceUserStatus,
         );
@@ -1102,6 +1131,7 @@ export function useChatSession({
             await materializeChatGenerationMessageImages(promptMessages);
         const result = await connection.generate({
             messages: generationMessages,
+            debug: promptBuild.debug,
             onImage: options.onImage,
             onReasoningToken: options.onReasoningToken,
             onToken: options.onToken,

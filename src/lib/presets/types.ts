@@ -1,6 +1,13 @@
 export type PresetPromptRole = "system" | "user" | "assistant";
 
 export type PresetInjectionPosition = "none" | "before" | "after";
+export type PresetPromptAnchor =
+    | "after-character"
+    | "after-history"
+    | "after-scenario"
+    | "before-character"
+    | "before-history"
+    | "before-scenario";
 
 export type PresetPrompt = {
     id: string;
@@ -12,6 +19,7 @@ export type PresetPrompt = {
     injectionPosition: PresetInjectionPosition;
     injectionDepth: number;
     forbidOverrides: boolean;
+    anchor?: PresetPromptAnchor;
 };
 
 export type PresetPromptOrderEntry = {
@@ -24,6 +32,8 @@ export type SmileyPreset = {
     title: string;
     prompts: PresetPrompt[];
     promptOrder: PresetPromptOrderEntry[];
+    metadata?: Record<string, unknown>;
+    extensions?: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
 };

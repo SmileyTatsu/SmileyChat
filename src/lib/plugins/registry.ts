@@ -26,6 +26,8 @@ import type {
     PluginSettingsPanel,
     PluginStorageApi,
     PromptMiddleware,
+    PluginPromptContextMiddleware,
+    PluginPromptInjector,
     SmileyPluginApi,
 } from "./types";
 
@@ -52,6 +54,8 @@ const messageActions: Array<Owned<PluginMessageAction>> = [];
 const composerActions: Array<Owned<PluginComposerAction>> = [];
 const headerActions: Array<Owned<PluginHeaderAction>> = [];
 const inputMiddlewares: Array<Owned<ChatInputMiddleware>> = [];
+const promptContextMiddlewares: Array<Owned<PluginPromptContextMiddleware>> = [];
+const promptInjectors: Array<Owned<PluginPromptInjector>> = [];
 const promptMiddlewares: Array<Owned<PromptMiddleware>> = [];
 const outputMiddlewares: Array<Owned<ChatOutputMiddleware>> = [];
 const modalInstances: Array<Owned<PluginModalInstance>> = [];
@@ -163,6 +167,8 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedItems(composerActions, pluginId);
     removeOwnedItems(headerActions, pluginId);
     removeOwnedItems(inputMiddlewares, pluginId);
+    removeOwnedItems(promptContextMiddlewares, pluginId);
+    removeOwnedItems(promptInjectors, pluginId);
     removeOwnedItems(promptMiddlewares, pluginId);
     removeOwnedItems(outputMiddlewares, pluginId);
     removeOwnedItems(modalInstances, pluginId);
@@ -243,6 +249,14 @@ export function getInputMiddlewares() {
 
 export function getPromptMiddlewares() {
     return enabledValues(promptMiddlewares);
+}
+
+export function getPromptContextMiddlewares() {
+    return enabledValues(promptContextMiddlewares);
+}
+
+export function getPromptInjectors() {
+    return enabledValues(promptInjectors);
 }
 
 export function getOutputMiddlewares() {
@@ -459,6 +473,17 @@ export function createPluginApi(
             registerInputMiddleware(middleware) {
                 requirePluginPermission(manifest, "chat:input");
                 inputMiddlewares.push({ pluginId: manifest.id, value: middleware });
+            },
+            registerPromptContextMiddleware(middleware) {
+                requirePluginPermission(manifest, "chat:prompt-context");
+                promptContextMiddlewares.push({
+                    pluginId: manifest.id,
+                    value: middleware,
+                });
+            },
+            registerPromptInjector(injector) {
+                requirePluginPermission(manifest, "chat:prompt-inject");
+                promptInjectors.push({ pluginId: manifest.id, value: injector });
             },
             registerPromptMiddleware(middleware) {
                 requirePluginPermission(manifest, "chat:prompt");

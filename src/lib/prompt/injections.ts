@@ -1,0 +1,115 @@
+import type { ChatGenerationMessage } from "../connections/types";
+import { promptInjectionToMessage, sortPromptInjections } from "./outlets";
+import type { PromptAnchor, PromptInjection } from "./types";
+
+type AnchoredPromptMessage = {
+    anchor?: PromptAnchor;
+    message: ChatGenerationMessage;
+    promptId?: string;
+    source: "history" | "injection" | "preset";
+};
+
+export function applyPromptInjections(
+    messages: AnchoredPromptMessage[],
+    injections: PromptInjection[],
+) {
+    const output = [...messages];
+    const automaticInjections = sortPromptInjections(
+        injections.filter((injection) => injection.anchor !== "outlet"),
+    );
+
+    for (const injection of automaticInjections) {
+        insertPromptInjection(output, injection);
+    }
+
+    return output.map((item) => item.message);
+}
+
+function insertPromptInjection(
+    messages: AnchoredPromptMessage[],
+    injection: PromptInjection,
+) {
+    const message = {
+        message: promptInjectionToMessage(injection),
+        source: "injection" as const,
+    };
+
+    if (injection.anchor === "at-depth") {
+        messages.splice(atDepthIndex(messages, injection.depth ?? 0), 0, message);
+        return;
+    }
+
+    const targetIndex = anchorTargetIndex(messages, injection.anchor);
+
+    if (targetIndex < 0) {
+        messages.push(message);
+        return;
+    }
+
+    if (isBeforeAnchor(injection.anchor)) {
+        messages.splice(targetIndex, 0, message);
+    } else {
+        messages.splice(targetIndex + 1, 0, message);
+    }
+}
+
+function anchorTargetIndex(messages: AnchoredPromptMessage[], anchor: PromptAnchor) {
+    switch (anchor) {
+        case "before-character":
+        case "after-character":
+        case "before-examples":
+        case "after-examples":
+            return messages.findIndex((item) => item.anchor === "after-character");
+        case "before-scenario":
+        case "after-scenario":
+            return messages.findIndex((item) => item.anchor === "after-scenario");
+        case "before-history":
+            return firstHistoryIndex(messages);
+        case "after-history":
+            return lastHistoryIndex(messages);
+        default:
+            return -1;
+    }
+}
+
+function firstHistoryIndex(messages: AnchoredPromptMessage[]) {
+    const index = messages.findIndex((item) => item.source === "history");
+    return index >= 0 ? index : messages.length;
+}
+
+function lastHistoryIndex(messages: AnchoredPromptMessage[]) {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        if (messages[index].source === "history") {
+            return index;
+        }
+    }
+
+    return messages.length - 1;
+}
+
+function atDepthIndex(messages: AnchoredPromptMessage[], depth: number) {
+    const historyIndexes = messages
+        .map((message, index) => (message.source === "history" ? index : -1))
+        .filter((index) => index >= 0);
+
+    if (historyIndexes.length === 0) {
+        return messages.length;
+    }
+
+    const safeDepth = Number.isFinite(depth) ? Math.max(0, Math.floor(depth)) : 0;
+    const targetHistoryIndex =
+        historyIndexes[Math.max(0, historyIndexes.length - 1 - safeDepth)];
+
+    return targetHistoryIndex;
+}
+
+function isBeforeAnchor(anchor: PromptAnchor) {
+    return (
+        anchor === "before-character" ||
+        anchor === "before-examples" ||
+        anchor === "before-scenario" ||
+        anchor === "before-history"
+    );
+}
+
+export type { AnchoredPromptMessage };

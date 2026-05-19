@@ -95,6 +95,11 @@ export type SmileyCharacter = {
         fingerprint?: string;
         importedAt?: string;
     };
+    metadata?: {
+        lorebookIds?: string[];
+        primaryLorebookId?: string;
+        [key: string]: unknown;
+    };
     createdAt: string;
     updatedAt: string;
 };

@@ -15,6 +15,7 @@ import type {
     ChatGroup,
     ChatGroupMember,
     ChatKind,
+    ChatMetadata,
     ChatSession,
     ChatSummary,
     ChatSummaryCollection,
@@ -55,6 +56,9 @@ export function normalizeChat(value: unknown): ChatSession | undefined {
         defaultTitle,
         ...(title ? { title } : {}),
         mode: normalizeMode(value.mode),
+        ...(normalizeMetadata(value.metadata)
+            ? { metadata: normalizeMetadata(value.metadata) }
+            : {}),
         messages,
         createdAt: asIsoString(value.createdAt) || now,
         updatedAt: asIsoString(value.updatedAt) || now,
@@ -88,6 +92,9 @@ export function normalizeChatSummary(value: unknown): ChatSummary | undefined {
         defaultTitle,
         ...(title ? { title } : {}),
         mode: normalizeMode(value.mode),
+        ...(normalizeMetadata(value.metadata)
+            ? { metadata: normalizeMetadata(value.metadata) }
+            : {}),
         messageCount: asNonNegativeInteger(value.messageCount),
         ...(asIsoString(value.lastMessageAt)
             ? { lastMessageAt: asIsoString(value.lastMessageAt) }
@@ -142,6 +149,7 @@ export function chatToSummary(chat: ChatSession): ChatSummary {
         defaultTitle: chat.defaultTitle,
         ...(chat.title ? { title: chat.title } : {}),
         mode: chat.mode,
+        ...(chat.metadata ? { metadata: chat.metadata } : {}),
         messageCount: chat.messages.length,
         ...(chatLastMessageAt(chat) ? { lastMessageAt: chatLastMessageAt(chat) } : {}),
         createdAt: chat.createdAt,
@@ -155,9 +163,7 @@ export function chatDisplayTitle(
     return chat.title?.trim() || chat.defaultTitle;
 }
 
-export function isGroupChat(
-    chat: Pick<ChatSession | ChatSummary, "kind" | "members">,
-) {
+export function isGroupChat(chat: Pick<ChatSession | ChatSummary, "kind" | "members">) {
     return chat.kind === "group" && Boolean(chat.members?.length);
 }
 
@@ -426,6 +432,14 @@ function normalizeActiveChatIds(value: unknown, chatIds: Set<string>) {
     }
 
     return output;
+}
+
+function normalizeMetadata(value: unknown): ChatMetadata | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    return { ...value };
 }
 
 function asString(value: unknown) {

@@ -30,6 +30,7 @@ export function normalizePersona(value: unknown): SmileyPersona | undefined {
     const id = asString(value.id) || createId("persona");
     const name = asString(value.name).trim() || "Anon";
     const avatar = normalizeImageAvatar(value.avatar);
+    const metadata = normalizeMetadata(value.metadata);
     const timestamps = normalizeTimestamps(value, now);
 
     return {
@@ -38,6 +39,7 @@ export function normalizePersona(value: unknown): SmileyPersona | undefined {
         name,
         description: asString(value.description),
         ...(avatar ? { avatar } : {}),
+        ...(metadata ? { metadata } : {}),
         ...timestamps,
     };
 }
@@ -109,4 +111,12 @@ export function normalizePersonaIndex(value: unknown): PersonaIndex {
         ),
         personaIds: safePersonaIds,
     };
+}
+
+function normalizeMetadata(value: unknown): SmileyPersona["metadata"] | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    return { ...value };
 }

@@ -37,6 +37,27 @@ export type ChatGroup = {
     scenarioOverride?: string;
 };
 
+export type ChatRuntimeState = {
+    lorebooks?: {
+        entries: Record<
+            string,
+            {
+                activationCount?: number;
+                cooldownUntilTurn?: number;
+                delayedUntilTurn?: number;
+                lastActivatedTurn?: number;
+                stickyUntilTurn?: number;
+            }
+        >;
+    };
+};
+
+export type ChatMetadata = {
+    lorebookIds?: string[];
+    loreState?: ChatRuntimeState["lorebooks"];
+    [key: string]: unknown;
+};
+
 export type ChatSession = {
     id: string;
     version: 1;
@@ -47,6 +68,7 @@ export type ChatSession = {
     defaultTitle: string;
     title?: string;
     mode: ChatMode;
+    metadata?: ChatMetadata;
     messages: Message[];
     createdAt: string;
     updatedAt: string;
@@ -61,6 +83,7 @@ export type ChatSummary = {
     defaultTitle: string;
     title?: string;
     mode: ChatMode;
+    metadata?: ChatMetadata;
     messageCount: number;
     lastMessageAt?: string;
     createdAt: string;

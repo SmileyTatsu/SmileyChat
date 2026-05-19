@@ -103,10 +103,10 @@ export function createInjectedMessage(
         "character",
         options.authorName?.trim() || options.activeCharacter.data.name,
         content,
-            {
-                authorAvatarPath: options.avatarPath || options.activeCharacter.avatar?.path,
-                authorCharacterId: options.activeCharacter.id,
-            },
+        {
+            authorAvatarPath: options.avatarPath || options.activeCharacter.avatar?.path,
+            authorCharacterId: options.activeCharacter.id,
+        },
         undefined,
         undefined,
         pluginMessageMetadata(options.pluginId, {

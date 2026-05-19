@@ -609,7 +609,9 @@ export function App() {
                     chat={activeChat}
                     isOpen={characterOpen}
                     onChange={(nextChat) => void updateActiveGroupChat(nextChat)}
-                    onChangeAvatar={(chatId, file) => void changeGroupAvatar(chatId, file)}
+                    onChangeAvatar={(chatId, file) =>
+                        void changeGroupAvatar(chatId, file)
+                    }
                     onForceReply={(characterId) =>
                         void chatSession.forceGroupMemberResponse(characterId)
                     }

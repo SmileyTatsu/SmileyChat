@@ -37,10 +37,7 @@ export async function readFileBackedIndex<TIndex>({
     return rebuildIndex();
 }
 
-export async function writeFileBackedIndex<TIndex>(
-    indexPath: string,
-    index: TIndex,
-) {
+export async function writeFileBackedIndex<TIndex>(indexPath: string, index: TIndex) {
     await writeJsonAtomic(indexPath, index);
 }
 

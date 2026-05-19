@@ -148,11 +148,10 @@ export function Sidebar({
     const [groupAvatarTarget, setGroupAvatarTarget] = useState<ChatSummary | undefined>();
     const [groupCreateOpen, setGroupCreateOpen] = useState(false);
     const [groupTitleDraft, setGroupTitleDraft] = useState("");
-    const [groupGreetingMode, setGroupGreetingMode] =
-        useState<GroupGreetingMode>("all");
-    const [selectedGroupCharacterIds, setSelectedGroupCharacterIds] = useState<
-        string[]
-    >([]);
+    const [groupGreetingMode, setGroupGreetingMode] = useState<GroupGreetingMode>("all");
+    const [selectedGroupCharacterIds, setSelectedGroupCharacterIds] = useState<string[]>(
+        [],
+    );
 
     function openCharacterMenu(event: MouseEvent, character: CharacterSummary) {
         event.preventDefault();
@@ -670,8 +669,8 @@ export function Sidebar({
                             <strong>No chats yet</strong>
                             <span>
                                 {hasCharacters
-                                      ? "Start a chat when you are ready."
-                                      : "Create a character before starting a chat."}
+                                    ? "Start a chat when you are ready."
+                                    : "Create a character before starting a chat."}
                             </span>
                         </div>
                     )}
@@ -1086,10 +1085,7 @@ export function Sidebar({
                         </label>
                         <div className="group-member-picker">
                             {characters.map((character) => (
-                                <label
-                                    className="group-member-option"
-                                    key={character.id}
-                                >
+                                <label className="group-member-option" key={character.id}>
                                     <input
                                         type="checkbox"
                                         checked={selectedGroupCharacterIds.includes(
@@ -1111,7 +1107,10 @@ export function Sidebar({
                                 </label>
                             ))}
                         </div>
-                        <p>Choose at least one character. Leave the title empty to use the group member names.</p>
+                        <p>
+                            Choose at least one character. Leave the title empty to use
+                            the group member names.
+                        </p>
                         <div className="message-confirm-actions">
                             <button
                                 type="button"

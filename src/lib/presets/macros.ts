@@ -5,6 +5,8 @@ import { formatDate, formatDateTime, formatShortTime } from "../common/time";
 import { getMessageContent } from "../messages";
 import { getPluginMacroValue } from "../plugins/registry";
 import { messageTextForHistory } from "./message-format";
+import type { PromptOutletRegistry } from "../prompt/outlets";
+import type { PromptGenerationContext } from "../prompt/types";
 
 export type MacroContext = {
     character: SmileyCharacter;
@@ -14,6 +16,9 @@ export type MacroContext = {
     };
     messages: Message[];
     mode: ChatMode;
+    generation?: PromptGenerationContext;
+    metadata?: Record<string, unknown>;
+    outlets?: PromptOutletRegistry;
     personaName: string;
     personaDescription: string;
     userStatus: UserStatus;
@@ -73,6 +78,12 @@ function resolvePresetMacrosInternal(
 }
 
 function valueForMacro(key: string, context: MacroContext): MacroValue | undefined {
+    const outletName = outletMacroName(key);
+
+    if (outletName !== undefined) {
+        return { recursive: true, value: context.outlets?.render(outletName) ?? "" };
+    }
+
     switch (key) {
         // Character card fields
         case "char":
@@ -156,6 +167,11 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
         default:
             return pluginMacroValue(key, context);
     }
+}
+
+function outletMacroName(key: string) {
+    const match = /^outlet::(.+)$/i.exec(key.trim());
+    return match ? match[1].trim() : undefined;
 }
 
 function pluginMacroValue(key: string, context: MacroContext) {

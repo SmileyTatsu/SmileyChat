@@ -5,10 +5,7 @@ import type { MacroContext } from "./macros";
 
 export type PromptGroupContext = MacroContext["group"];
 
-export function messageAuthorForPrompt(
-    message: Message,
-    group: PromptGroupContext,
-) {
+export function messageAuthorForPrompt(message: Message, group: PromptGroupContext) {
     if (
         message.role !== "character" ||
         !message.authorCharacterId ||

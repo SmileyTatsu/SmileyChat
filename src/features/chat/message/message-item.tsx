@@ -210,11 +210,7 @@ export const MessageItem = memo(function MessageItem({
                             aria-haspopup="menu"
                             aria-expanded={isMenuOpen}
                             onClick={(event) =>
-                                onToggleMenu(
-                                    message.id,
-                                    event.currentTarget,
-                                    isMenuOpen,
-                                )
+                                onToggleMenu(message.id, event.currentTarget, isMenuOpen)
                             }
                         >
                             <MoreHorizontal size={15} />

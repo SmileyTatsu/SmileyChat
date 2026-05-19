@@ -7,6 +7,10 @@ export type SmileyPersona = {
         type: "png" | "jpeg" | "webp";
         path: string;
     };
+    metadata?: {
+        lorebookIds?: string[];
+        [key: string]: unknown;
+    };
     createdAt: string;
     updatedAt: string;
 };

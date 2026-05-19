@@ -169,11 +169,7 @@ export function MessageList({
     }, []);
 
     const toggleMessageMenu = useCallback(
-        (
-            messageId: string,
-            trigger: HTMLButtonElement,
-            isCurrentlyOpen: boolean,
-        ) => {
+        (messageId: string, trigger: HTMLButtonElement, isCurrentlyOpen: boolean) => {
             if (isCurrentlyOpen) {
                 setOpenMenuMessageId("");
                 return;

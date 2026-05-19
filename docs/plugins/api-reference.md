@@ -40,6 +40,8 @@ These permissions are currently enforced:
 | `api.ui.openModal`                               | `ui:modals`             |
 | `api.ui.addStyles` and manifest `styles` loading | `ui:styles`             |
 | `api.chat.registerInputMiddleware`               | `chat:input`            |
+| `api.chat.registerPromptContextMiddleware`       | `chat:prompt-context`   |
+| `api.chat.registerPromptInjector`                | `chat:prompt-inject`    |
 | `api.chat.registerPromptMiddleware`              | `chat:prompt`           |
 | `api.chat.registerOutputMiddleware`              | `chat:output`           |
 | `api.presets.registerMacro`                      | `presets:macros`        |
@@ -423,6 +425,41 @@ Messages use chat-completion roles:
 - `assistant`
 
 Requires `chat:prompt`.
+
+## `api.chat.registerPromptContextMiddleware`
+
+Runs before prompt budgeting and preset compilation. This is for trusted extensions that
+need to adjust the structured prompt build context before history trimming.
+
+```js
+api.chat.registerPromptContextMiddleware((context) => ({
+    ...context,
+    messages: context.messages.slice(-20),
+}));
+```
+
+Requires `chat:prompt-context`.
+
+## `api.chat.registerPromptInjector`
+
+Registers structured prompt injections before history budgeting. Injections are counted
+against the active context budget unless `tokenBudgetBehavior` is set to
+`"ignore-budget"`.
+
+```js
+api.chat.registerPromptInjector(() => [
+    {
+        id: "example-lore",
+        source: "plugin",
+        role: "system",
+        content: "The city is built under glass.",
+        anchor: "before-history",
+        order: 100,
+    },
+]);
+```
+
+Requires `chat:prompt-inject`.
 
 ## `api.chat.registerOutputMiddleware`
 

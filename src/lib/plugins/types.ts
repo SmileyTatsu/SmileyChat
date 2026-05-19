@@ -17,6 +17,12 @@ import type {
 } from "../connections/types";
 import type { MacroContext } from "../presets/macros";
 import type { PresetCollection } from "../presets/types";
+import type {
+    PromptBuildContext,
+    PromptContextMiddleware,
+    PromptInjection,
+    PromptInjector,
+} from "../prompt/types";
 
 export const PLUGIN_CATEGORIES = [
     "interface",
@@ -180,6 +186,10 @@ export type PromptMiddleware = (
     context: PromptMiddlewareContext,
 ) => ChatGenerationMessage[] | Promise<ChatGenerationMessage[]>;
 
+export type PluginPromptContextMiddleware = PromptContextMiddleware;
+
+export type PluginPromptInjector = PromptInjector;
+
 export type ChatOutputMiddleware = (
     content: string,
     context: ChatPipelineContext & {
@@ -307,6 +317,8 @@ export type SmileyPluginApi = {
     };
     chat: {
         registerInputMiddleware(middleware: ChatInputMiddleware): void;
+        registerPromptContextMiddleware(middleware: PluginPromptContextMiddleware): void;
+        registerPromptInjector(injector: PluginPromptInjector): void;
         registerPromptMiddleware(middleware: PromptMiddleware): void;
         registerOutputMiddleware(middleware: ChatOutputMiddleware): void;
     };
@@ -318,6 +330,13 @@ export type SmileyPluginApi = {
     };
     storage: PluginStorageApi;
     events: PluginEventsApi;
+};
+
+export type {
+    PromptBuildContext,
+    PromptContextMiddleware,
+    PromptInjection,
+    PromptInjector,
 };
 
 export type SmileyPluginModule = {

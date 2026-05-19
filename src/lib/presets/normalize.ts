@@ -5,6 +5,7 @@ import { createDefaultPreset, defaultPresetCollection } from "./defaults";
 import type {
     PresetCollection,
     PresetInjectionPosition,
+    PresetPromptAnchor,
     PresetPrompt,
     PresetPromptOrderEntry,
     PresetPromptRole,
@@ -133,6 +134,12 @@ export function normalizePreset(value: unknown): SmileyPreset {
         title: stringOrFallback(preset.title, "Untitled preset"),
         prompts,
         promptOrder,
+        ...(normalizeRecord(preset.metadata)
+            ? { metadata: normalizeRecord(preset.metadata) }
+            : {}),
+        ...(normalizeRecord(preset.extensions)
+            ? { extensions: normalizeRecord(preset.extensions) }
+            : {}),
         createdAt: stringOrFallback(preset.createdAt, now),
         updatedAt: stringOrFallback(preset.updatedAt, now),
     };
@@ -214,6 +221,7 @@ export function createBlankPrompt(): PresetPrompt {
         injectionPosition: "none",
         injectionDepth: 4,
         forbidOverrides: false,
+        anchor: undefined,
     };
 }
 
@@ -245,6 +253,9 @@ function normalizePrompt(value: unknown): PresetPrompt {
         injectionPosition: normalizeInjectionPosition(prompt.injectionPosition),
         injectionDepth: numberOrFallback(prompt.injectionDepth, 4),
         forbidOverrides: prompt.forbidOverrides === true,
+        ...(normalizePromptAnchor(prompt.anchor)
+            ? { anchor: normalizePromptAnchor(prompt.anchor) }
+            : {}),
     };
 }
 
@@ -272,6 +283,9 @@ function normalizeSillyTavernPrompt(value: unknown, index: number): PresetPrompt
         ),
         injectionDepth: numberOrFallback(prompt.injection_depth, 4),
         forbidOverrides: prompt.forbid_overrides === true,
+        ...(normalizePromptAnchor(prompt.anchor)
+            ? { anchor: normalizePromptAnchor(prompt.anchor) }
+            : {}),
     };
 }
 
@@ -332,12 +346,30 @@ function normalizeSillyTavernInjectionPosition(value: unknown): PresetInjectionP
     return "none";
 }
 
+function normalizePromptAnchor(value: unknown): PresetPromptAnchor | undefined {
+    switch (value) {
+        case "after-character":
+        case "after-history":
+        case "after-scenario":
+        case "before-character":
+        case "before-history":
+        case "before-scenario":
+            return value;
+        default:
+            return undefined;
+    }
+}
+
 function stringOrFallback(value: unknown, fallback: string) {
     return typeof value === "string" && value.trim() ? value : fallback;
 }
 
 function numberOrFallback(value: unknown, fallback: number) {
     return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeRecord(value: unknown): Record<string, unknown> | undefined {
+    return isRecord(value) ? { ...value } : undefined;
 }
 
 function dedupePromptEntries(entries: NormalizedPromptEntry[]) {

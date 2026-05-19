@@ -54,6 +54,7 @@ export function createDefaultPreset(now = new Date().toISOString()): SmileyPrese
             injectionPosition: "none",
             injectionDepth: 4,
             forbidOverrides: false,
+            anchor: "after-character",
         },
         {
             id: dynamicPromptIds.scenario,
@@ -73,6 +74,7 @@ export function createDefaultPreset(now = new Date().toISOString()): SmileyPrese
             injectionPosition: "none",
             injectionDepth: 4,
             forbidOverrides: false,
+            anchor: "after-scenario",
         },
         {
             id: dynamicPromptIds.chatHistory,
@@ -84,6 +86,7 @@ export function createDefaultPreset(now = new Date().toISOString()): SmileyPrese
             injectionPosition: "none",
             injectionDepth: 4,
             forbidOverrides: false,
+            anchor: "before-history",
         },
     ];
 
