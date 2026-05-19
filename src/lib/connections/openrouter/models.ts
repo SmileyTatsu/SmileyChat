@@ -1,4 +1,4 @@
-import { safeResponseText } from "../http";
+import { fetchProviderApi } from "../http";
 
 import { createOpenRouterHeaders } from "./adapter";
 import type {
@@ -13,20 +13,13 @@ export async function listOpenRouterModels(
     config: Pick<OpenRouterConnectionConfig, "apiKey">,
 ): Promise<OpenRouterModel[]> {
     const targetUrl = `${openRouterBaseUrl}/models`;
-    const response = await fetch(targetUrl, {
+    const data = await fetchProviderApi<OpenRouterListModelsResponse>(targetUrl, {
         headers: createOpenRouterHeaders({
             ...config,
             model: { source: "api", id: "" },
             providerPreferences: {},
         }),
+        errorPrefix: "OpenRouter model list failed",
     });
-
-    if (!response.ok) {
-        throw new Error(
-            `OpenRouter model list failed: ${response.status} ${await safeResponseText(response)}`,
-        );
-    }
-
-    const data = (await response.json()) as OpenRouterListModelsResponse;
     return Array.isArray(data.data) ? data.data : [];
 }

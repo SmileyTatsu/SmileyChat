@@ -1,28 +1,21 @@
-import defaultAnthropicModels from "#frontend/data/default-anthropic-models.json";
-import defaultGoogleAIModels from "#frontend/data/default-google-ai-models.json";
-import defaultOpenAIModels from "#frontend/data/default-openai-models.json";
-
 import { isRecord } from "../common/guards";
 import {
     defaultContextTokenBudget,
     normalizeContextTokenBudget,
 } from "../presets/context-budget-constants";
+import { stringOrUndefined } from "./config-utils";
+import { defaultAnthropicConfig, normalizeAnthropicConfig } from "./anthropic/config";
 
-import type {
-    AnthropicConnectionConfig,
-    AnthropicThinkingConfig,
-} from "./anthropic/types";
-import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./google-ai/types";
-import type {
-    OpenAICompatibleConnectionConfig,
-    OpenAICompatibleReasoningConfig,
-} from "./openai-compatible/types";
-import type {
-    OpenRouterConnectionConfig,
-    OpenRouterProviderPreferences,
-    OpenRouterReasoningConfig,
-    OpenRouterSort,
-} from "./openrouter/types";
+import type { AnthropicConnectionConfig } from "./anthropic/types";
+import { defaultGoogleAIConfig, normalizeGoogleAIConfig } from "./google-ai/config";
+import type { GoogleAIConnectionConfig } from "./google-ai/types";
+import {
+    defaultOpenAICompatibleConfig,
+    normalizeOpenAICompatibleConfig,
+} from "./openai-compatible/config";
+import type { OpenAICompatibleConnectionConfig } from "./openai-compatible/types";
+import { defaultOpenRouterConfig, normalizeOpenRouterConfig } from "./openrouter/config";
+import type { OpenRouterConnectionConfig } from "./openrouter/types";
 
 export type ConnectionProviderId =
     | "openai-compatible"
@@ -109,42 +102,11 @@ export type ConnectionSecrets = {
 
 const migratedOpenAIProfileId = "profile-openai-compatible-default";
 
-export const defaultOpenAICompatibleConfig: OpenAICompatibleConnectionConfig = {
-    baseUrl: "https://api.openai.com/v1",
-    model: {
-        source: "default",
-        id: defaultOpenAIModels[0]?.models[0]?.id ?? "",
-    },
-};
-
-export const defaultOpenRouterConfig: OpenRouterConnectionConfig = {
-    model: {
-        source: "api",
-        id: "",
-    },
-    providerPreferences: {
-        allow_fallbacks: true,
-        data_collection: "allow",
-    },
-};
-
-export const defaultGoogleAIConfig: GoogleAIConnectionConfig = {
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-    model: {
-        source: "default",
-        id: defaultGoogleAIModels[0]?.models[1]?.id ?? "gemini-3.1-flash-lite",
-    },
-};
-
-export const defaultAnthropicConfig: AnthropicConnectionConfig = {
-    baseUrl: "https://api.anthropic.com/v1",
-    model: {
-        source: "default",
-        id: defaultAnthropicModels[0]?.models[1]?.id ?? "claude-sonnet-4-6",
-    },
-    thinking: {
-        mode: "off",
-    },
+export {
+    defaultAnthropicConfig,
+    defaultGoogleAIConfig,
+    defaultOpenAICompatibleConfig,
+    defaultOpenRouterConfig,
 };
 
 export const defaultConnectionSettings: ConnectionSettings = {
@@ -408,92 +370,6 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
     } as ConnectionProfile;
 }
 
-function normalizeOpenRouterConfig(value: unknown): OpenRouterConnectionConfig {
-    const config = isRecord(value) ? value : {};
-    const model = isRecord(config.model) ? config.model : {};
-
-    return {
-        apiKey: stringOrUndefined(config.apiKey),
-        model: {
-            source: "api",
-            id: typeof model.id === "string" ? model.id : "",
-        },
-        providerPreferences: normalizeOpenRouterProviderPreferences(
-            config.providerPreferences,
-        ),
-        reasoning: normalizeOpenRouterReasoningConfig(config.reasoning),
-    };
-}
-
-function normalizeOpenRouterReasoningConfig(
-    value: unknown,
-): OpenRouterReasoningConfig | undefined {
-    const reasoning = isRecord(value) ? value : {};
-    const effort = normalizeOpenRouterReasoningEffort(reasoning.effort);
-    const maxTokens =
-        typeof reasoning.max_tokens === "number" &&
-        Number.isInteger(reasoning.max_tokens) &&
-        reasoning.max_tokens > 0
-            ? reasoning.max_tokens
-            : undefined;
-    const exclude =
-        typeof reasoning.exclude === "boolean" ? reasoning.exclude : undefined;
-
-    if (!effort && !maxTokens && exclude === undefined) {
-        return undefined;
-    }
-
-    return {
-        ...(effort ? { effort } : {}),
-        ...(maxTokens ? { max_tokens: maxTokens } : {}),
-        ...(exclude !== undefined ? { exclude } : {}),
-    };
-}
-
-function normalizeOpenRouterProviderPreferences(
-    value: unknown,
-): OpenRouterProviderPreferences {
-    const preferences = isRecord(value) ? value : {};
-    const sort = normalizeOpenRouterSort(preferences.sort);
-    const dataCollection = preferences.data_collection === "deny" ? "deny" : "allow";
-
-    return {
-        ...(sort ? { sort } : {}),
-        allow_fallbacks:
-            typeof preferences.allow_fallbacks === "boolean"
-                ? preferences.allow_fallbacks
-                : true,
-        require_parameters:
-            typeof preferences.require_parameters === "boolean"
-                ? preferences.require_parameters
-                : false,
-        data_collection: dataCollection,
-        zdr: typeof preferences.zdr === "boolean" ? preferences.zdr : false,
-        order: normalizeStringList(preferences.order),
-        only: normalizeStringList(preferences.only),
-        ignore: normalizeStringList(preferences.ignore),
-    };
-}
-
-function normalizeOpenRouterSort(value: unknown): OpenRouterSort | undefined {
-    return value === "price" || value === "throughput" || value === "latency"
-        ? value
-        : undefined;
-}
-
-function normalizeOpenRouterReasoningEffort(
-    value: unknown,
-): OpenRouterReasoningConfig["effort"] | undefined {
-    return value === "xhigh" ||
-        value === "high" ||
-        value === "medium" ||
-        value === "low" ||
-        value === "minimal" ||
-        value === "none"
-        ? value
-        : undefined;
-}
-
 function migrateLegacySettings(settings: Record<string, unknown>): ConnectionSettings {
     const providers = isRecord(settings.providers) ? settings.providers : {};
     const openAIConfig = isRecord(providers["openai-compatible"])
@@ -526,251 +402,12 @@ function migrateLegacySecrets(secrets: Record<string, unknown>): ConnectionSecre
     };
 }
 
-function normalizeOpenAICompatibleConfig(
-    value: unknown,
-): OpenAICompatibleConnectionConfig {
-    const config = isRecord(value) ? value : {};
-    const model = isRecord(config.model) ? config.model : {};
-    const modelSource =
-        model.source === "api" || model.source === "custom" ? model.source : "default";
-
-    return {
-        baseUrl:
-            typeof config.baseUrl === "string" && config.baseUrl.trim()
-                ? config.baseUrl
-                : defaultOpenAICompatibleConfig.baseUrl,
-        apiKey: stringOrUndefined(config.apiKey),
-        model: {
-            source: modelSource,
-            id:
-                typeof model.id === "string"
-                    ? model.id
-                    : defaultOpenAICompatibleConfig.model.id,
-        },
-        reasoning: normalizeOpenAICompatibleReasoningConfig(config.reasoning),
-    };
-}
-
-function normalizeOpenAICompatibleReasoningConfig(
-    value: unknown,
-): OpenAICompatibleReasoningConfig | undefined {
-    const reasoning = isRecord(value) ? value : {};
-
-    if (reasoning.enabled !== true) {
-        return undefined;
-    }
-
-    const effort = normalizeOpenAICompatibleReasoningEffort(reasoning.effort);
-
-    if (!effort) {
-        return undefined;
-    }
-
-    return {
-        enabled: true,
-        effort,
-        wireFormat:
-            reasoning.wireFormat === "chat-reasoning-object"
-                ? "chat-reasoning-object"
-                : "chat-reasoning-effort",
-    };
-}
-
-function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
-    const config = isRecord(value) ? value : {};
-    const model = isRecord(config.model) ? config.model : {};
-    const modelSource =
-        model.source === "api" || model.source === "custom" ? model.source : "default";
-    const thinking = normalizeGoogleAIThinkingConfig(config.thinking);
-
-    return {
-        baseUrl:
-            typeof config.baseUrl === "string" && config.baseUrl.trim()
-                ? config.baseUrl
-                : defaultGoogleAIConfig.baseUrl,
-        apiKey: stringOrUndefined(config.apiKey),
-        model: {
-            source: modelSource,
-            id: typeof model.id === "string" ? model.id : defaultGoogleAIConfig.model.id,
-        },
-        ...(thinking ? { thinking } : {}),
-    };
-}
-
-function normalizeAnthropicConfig(value: unknown): AnthropicConnectionConfig {
-    const config = isRecord(value) ? value : {};
-    const model = isRecord(config.model) ? config.model : {};
-    const modelSource =
-        model.source === "api" || model.source === "custom" ? model.source : "default";
-    const thinking = normalizeAnthropicThinkingConfig(config.thinking);
-
-    return {
-        baseUrl:
-            typeof config.baseUrl === "string" && config.baseUrl.trim()
-                ? config.baseUrl
-                : defaultAnthropicConfig.baseUrl,
-        apiKey: stringOrUndefined(config.apiKey),
-        model: {
-            source: modelSource,
-            id: typeof model.id === "string" ? model.id : defaultAnthropicConfig.model.id,
-        },
-        ...(thinking ? { thinking } : {}),
-    };
-}
-
-function normalizeAnthropicThinkingConfig(
-    value: unknown,
-): AnthropicThinkingConfig | undefined {
-    const thinking = isRecord(value) ? value : {};
-    const mode = normalizeAnthropicThinkingMode(thinking.mode);
-
-    if (mode === "adaptive") {
-        const effort = normalizeAnthropicThinkingEffort(thinking.effort);
-        const display = normalizeAnthropicThinkingDisplay(thinking.display);
-
-        return {
-            mode,
-            ...(effort ? { effort } : {}),
-            ...(display ? { display } : {}),
-        };
-    }
-
-    if (mode === "enabled") {
-        const budgetTokens =
-            typeof thinking.budgetTokens === "number" &&
-            Number.isInteger(thinking.budgetTokens) &&
-            thinking.budgetTokens > 0
-                ? thinking.budgetTokens
-                : undefined;
-        const display = normalizeAnthropicThinkingDisplay(thinking.display);
-
-        return {
-            mode,
-            ...(budgetTokens ? { budgetTokens } : {}),
-            ...(display ? { display } : {}),
-        };
-    }
-
-    if (mode === "off") {
-        return { mode };
-    }
-
-    return undefined;
-}
-
-function normalizeAnthropicThinkingMode(
-    value: unknown,
-): AnthropicThinkingConfig["mode"] | undefined {
-    return value === "off" || value === "adaptive" || value === "enabled"
-        ? value
-        : undefined;
-}
-
-function normalizeAnthropicThinkingEffort(
-    value: unknown,
-): Extract<AnthropicThinkingConfig, { mode: "adaptive" }>["effort"] | undefined {
-    return value === "medium" || value === "high" || value === "xhigh" || value === "max"
-        ? value
-        : undefined;
-}
-
-function normalizeAnthropicThinkingDisplay(
-    value: unknown,
-):
-    | Extract<AnthropicThinkingConfig, { mode: "adaptive" | "enabled" }>["display"]
-    | undefined {
-    return value === "summarized" || value === "omitted" ? value : undefined;
-}
-
-function normalizeGoogleAIThinkingConfig(
-    value: unknown,
-): GoogleAIThinkingConfig | undefined {
-    const thinking = isRecord(value) ? value : {};
-    const includeThoughts =
-        typeof thinking.includeThoughts === "boolean"
-            ? thinking.includeThoughts
-            : undefined;
-    const mode = normalizeGoogleAIThinkingMode(thinking.mode);
-    const thinkingLevel = normalizeGoogleAIThinkingLevel(thinking.thinkingLevel);
-    const thinkingBudget = normalizeGoogleAIThinkingBudget(thinking.thinkingBudget);
-
-    if (
-        includeThoughts === undefined &&
-        !mode &&
-        !thinkingLevel &&
-        thinkingBudget === undefined
-    ) {
-        return undefined;
-    }
-
-    return {
-        ...(includeThoughts !== undefined ? { includeThoughts } : {}),
-        ...(mode ? { mode } : {}),
-        ...(thinkingLevel ? { thinkingLevel } : {}),
-        ...(thinkingBudget !== undefined ? { thinkingBudget } : {}),
-    };
-}
-
-function normalizeGoogleAIThinkingMode(
-    value: unknown,
-): GoogleAIThinkingConfig["mode"] | undefined {
-    return value === "level" || value === "budget" || value === "auto"
-        ? value
-        : undefined;
-}
-
-function normalizeGoogleAIThinkingLevel(
-    value: unknown,
-): GoogleAIThinkingConfig["thinkingLevel"] | undefined {
-    return value === "minimal" ||
-        value === "low" ||
-        value === "medium" ||
-        value === "high"
-        ? value
-        : undefined;
-}
-
-function normalizeGoogleAIThinkingBudget(value: unknown): number | undefined {
-    if (typeof value !== "number" || !Number.isInteger(value)) {
-        return undefined;
-    }
-
-    return value === -1 || value >= 0 ? value : undefined;
-}
-
 function normalizeProvider(value: unknown): ConnectionProviderId | undefined {
     return typeof value === "string" && value.trim() ? value : undefined;
 }
 
-function normalizeOpenAICompatibleReasoningEffort(
-    value: unknown,
-): OpenAICompatibleReasoningConfig["effort"] | undefined {
-    return value === "xhigh" ||
-        value === "high" ||
-        value === "medium" ||
-        value === "low" ||
-        value === "minimal" ||
-        value === "none"
-        ? value
-        : undefined;
-}
-
 function normalizePluginConfig(value: unknown): Record<string, unknown> {
     return isRecord(value) ? { ...value, apiKey: stringOrUndefined(value.apiKey) } : {};
-}
-
-function normalizeStringList(value: unknown) {
-    if (!Array.isArray(value)) {
-        return [];
-    }
-
-    return Array.from(
-        new Set(
-            value
-                .map((item) => (typeof item === "string" ? item.trim() : ""))
-                .filter(Boolean),
-        ),
-    );
 }
 
 function createConnectionProfileId() {
@@ -783,8 +420,4 @@ function createConnectionProfileId() {
 
 function stringOrFallback(value: unknown, fallback: string) {
     return typeof value === "string" && value.trim() ? value : fallback;
-}
-
-function stringOrUndefined(value: unknown) {
-    return typeof value === "string" && value.trim() ? value : undefined;
 }

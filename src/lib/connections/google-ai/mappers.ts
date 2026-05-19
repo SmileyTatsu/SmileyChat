@@ -1,12 +1,10 @@
-import { getMessageContent } from "#frontend/lib/messages";
-import type { Message } from "#frontend/types";
-
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
     ChatGenerationResult,
 } from "../types";
 import { messageContentToText, parseDataImageUrl } from "../images";
+import { legacyMessages } from "../legacy-messages";
 import type {
     GoogleAIContent,
     GoogleAIGenerateContentRequest,
@@ -363,27 +361,4 @@ function isGoogleAIInlineData(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function toPromptMessage(message: Message): ChatGenerationMessage {
-    return {
-        role: message.role === "user" ? "user" : "assistant",
-        content: getMessageContent(message),
-    };
-}
-
-function legacyMessages(request: ChatGenerationRequest): ChatGenerationMessage[] {
-    const messages = request.messages.map(toPromptMessage);
-
-    if (!request.context?.trim()) {
-        return messages;
-    }
-
-    return [
-        {
-            role: "system",
-            content: request.context,
-        },
-        ...messages,
-    ];
 }

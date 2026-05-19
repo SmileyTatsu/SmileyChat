@@ -1,4 +1,4 @@
-import { safeResponseText, trimTrailingSlash } from "../http";
+import { fetchProviderApi, trimTrailingSlash } from "../http";
 import { createAnthropicHeaders } from "./adapter";
 import type { AnthropicListModelsResponse, AnthropicModel } from "./types";
 
@@ -12,17 +12,11 @@ export async function listAnthropicModels({
     const targetUrl = new URL(`${trimTrailingSlash(baseUrl)}/models`);
     targetUrl.searchParams.set("limit", "1000");
     const displayUrl = targetUrl.toString();
-    const response = await fetch(displayUrl, {
+    const data = await fetchProviderApi<AnthropicListModelsResponse>(displayUrl, {
         headers: createAnthropicHeaders({ apiKey }),
+        errorPrefix: "Anthropic model list failed",
+        displayUrl,
     });
-
-    if (!response.ok) {
-        throw new Error(
-            `Anthropic model list failed at ${displayUrl}: ${response.status} ${await safeResponseText(response)}`,
-        );
-    }
-
-    const data = (await response.json()) as AnthropicListModelsResponse;
 
     return data.data ?? [];
 }

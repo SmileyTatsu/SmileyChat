@@ -1,4 +1,4 @@
-import { safeResponseText, trimTrailingSlash } from "../http";
+import { fetchProviderApi, trimTrailingSlash } from "../http";
 
 import type { OpenAICompatibleListModelsResponse, OpenAICompatibleModel } from "./types";
 
@@ -16,16 +16,10 @@ export async function listOpenAICompatibleModels({
         headers.Authorization = `Bearer ${apiKey.trim()}`;
     }
 
-    const response = await fetch(targetUrl, {
+    const data = await fetchProviderApi<OpenAICompatibleListModelsResponse>(targetUrl, {
         headers,
+        errorPrefix: "OpenAI-compatible model list failed",
+        displayUrl: targetUrl,
     });
-
-    if (!response.ok) {
-        throw new Error(
-            `OpenAI-compatible model list failed at ${targetUrl}: ${response.status} ${await safeResponseText(response)}`,
-        );
-    }
-
-    const data = (await response.json()) as OpenAICompatibleListModelsResponse;
     return data.data;
 }

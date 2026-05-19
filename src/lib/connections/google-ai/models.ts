@@ -1,4 +1,4 @@
-import { safeResponseText, trimTrailingSlash } from "../http";
+import { fetchProviderApi, trimTrailingSlash } from "../http";
 
 import type { GoogleAIListModelsResponse, GoogleAIModel } from "./types";
 
@@ -11,15 +11,10 @@ export async function listGoogleAIModels({
 }): Promise<GoogleAIModel[]> {
     const displayUrl = `${trimTrailingSlash(baseUrl)}/models`;
     const targetUrl = withApiKey(displayUrl, apiKey);
-    const response = await fetch(targetUrl);
-
-    if (!response.ok) {
-        throw new Error(
-            `Google AI model list failed at ${displayUrl}: ${response.status} ${await safeResponseText(response)}`,
-        );
-    }
-
-    const data = (await response.json()) as GoogleAIListModelsResponse;
+    const data = await fetchProviderApi<GoogleAIListModelsResponse>(targetUrl, {
+        errorPrefix: "Google AI model list failed",
+        displayUrl,
+    });
 
     return (data.models ?? []).filter((model) =>
         model.supportedGenerationMethods?.includes("generateContent"),
