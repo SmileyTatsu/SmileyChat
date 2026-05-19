@@ -849,6 +849,268 @@
     min-height: 360px;
 }
 
+.lorebook-editor {
+    display: grid;
+    grid-template-columns: minmax(190px, 0.62fr) minmax(0, 1.38fr);
+    gap: 14px;
+    min-height: 360px;
+}
+
+.lorebook-list,
+.lorebook-detail-panel,
+.lorebook-entry-preview {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-height: 0;
+}
+
+.empty-lorebook-state {
+    display: grid;
+    grid-template-columns: auto minmax(0, max-content);
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 120px;
+    border: 1px dashed #303440;
+    border-radius: 8px;
+    color: #aab0bf;
+    padding: 12px;
+    text-align: center;
+}
+
+.empty-lorebook-state svg {
+    display: block;
+}
+
+.empty-lorebook-state p {
+    max-width: 140px;
+    margin: 0;
+    line-height: 1.35;
+    text-align: left;
+}
+
+.lorebook-extension-notice {
+    gap: 0;
+}
+
+.lorebook-empty-detail p {
+    margin: 0;
+    color: #aeb5c5;
+}
+
+.export-menu-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.export-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 5;
+    display: grid;
+    min-width: 150px;
+    overflow: hidden;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+}
+
+.export-menu button {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 34px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #e5e7ee;
+    padding: 0 11px;
+    text-align: left;
+}
+
+.export-menu button:hover {
+    background: #242832;
+}
+
+.lorebook-list {
+    max-height: 520px;
+    overflow: auto;
+    padding-right: 6px;
+}
+
+.lorebook-list-section {
+    display: grid;
+    gap: 7px;
+}
+
+.lorebook-list-section + .lorebook-list-section {
+    border-top: 1px solid #292c35;
+    margin-top: 6px;
+    padding-top: 10px;
+}
+
+.lorebook-list-section > h3 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    color: #b4bbcc;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.lorebook-list-section > h3 span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    border-radius: 999px;
+    background: #232838;
+    color: #c2c8d6;
+    font-size: 0.66rem;
+    padding: 1px 6px;
+}
+
+.lorebook-list-section > p {
+    margin: 0;
+    color: #8f96a6;
+    font-size: 0.78rem;
+}
+
+.lorebook-list-section > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 56px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 7px 8px;
+}
+
+.lorebook-list-section > div:hover,
+.lorebook-list-section > div.active {
+    border-color: #53627c;
+    background: #242832;
+}
+
+.lorebook-list-section > div > button {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #ececf1;
+    padding: 0;
+    text-align: left;
+}
+
+.lorebook-list-section > div > button:hover {
+    color: #fff;
+}
+
+.lorebook-toggle {
+    font-size: 0.72rem;
+}
+
+.lorebook-list strong,
+.lorebook-list small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lorebook-list small {
+    color: #9da3b4;
+    font-size: 0.75rem;
+}
+
+.lorebook-entry-preview article {
+    display: grid;
+    gap: 5px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 10px;
+}
+
+.lorebook-entry-preview article header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.lorebook-entry-preview article header > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.lorebook-entry-preview article strong,
+.lorebook-entry-preview article small,
+.lorebook-entry-preview article p {
+    min-width: 0;
+    margin: 0;
+}
+
+.lorebook-entry-preview article small {
+    color: #9da3b4;
+    font-size: 0.76rem;
+}
+
+.lorebook-entry-preview article p {
+    color: #cfd3df;
+    font-size: 0.84rem;
+    line-height: 1.42;
+    white-space: pre-wrap;
+}
+
+.entry-toggle {
+    flex: 0 0 auto;
+    font-size: 0.76rem;
+}
+
+.lorebook-entry-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 2px 0;
+}
+
+.lorebook-entry-meta div {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 999px;
+    background: #20242d;
+    padding: 4px 8px;
+}
+
+.lorebook-entry-meta dt {
+    color: #8f96a6;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.lorebook-entry-meta dd {
+    margin: 0;
+    color: #dce2f4;
+    font-size: 0.74rem;
+}
+
 .personas-list,
 .persona-detail-panel {
     display: grid;

@@ -7,6 +7,9 @@ import {
     chatAssetsDir,
     chatOrphanedDir,
     chatSessionsDir,
+    lorebookBooksDir,
+    lorebookImportsDir,
+    lorebookOrphanedDir,
     personaAssetsDir,
     personaCardsDir,
     personaOrphanedDir,
@@ -15,7 +18,15 @@ import {
 } from "./paths";
 
 export function ensureUserData() {
-    const folders = ["characters", "chats", "personas", "presets", "settings", "plugins"];
+    const folders = [
+        "characters",
+        "chats",
+        "personas",
+        "presets",
+        "settings",
+        "plugins",
+        "lorebooks",
+    ];
 
     for (const folder of folders) {
         const target = join(userDataDir, folder);
@@ -31,6 +42,9 @@ export function ensureUserData() {
         chatAssetsDir,
         chatSessionsDir,
         chatOrphanedDir,
+        lorebookBooksDir,
+        lorebookImportsDir,
+        lorebookOrphanedDir,
         personaCardsDir,
         personaAssetsDir,
         personaOrphanedDir,

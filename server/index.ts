@@ -35,6 +35,17 @@ import { startEnvWatcher } from "./config/env-watcher";
 import { getHost, getPort } from "./config/runtime-config";
 import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 import { HttpError, json, readJsonBody } from "./http";
+import {
+    createLorebook,
+    deleteLorebookById,
+    exportLorebook,
+    importUploadedLorebooks,
+    lorebookNotFoundResponse,
+    readLorebookById,
+    readLorebookCollection,
+    updateLorebookIndex,
+    writeLorebookById,
+} from "./lorebook-store";
 import { userDataDir } from "./paths";
 import { writePersonaAvatar } from "./persona-avatar";
 import { servePersonaAsset } from "./persona-images";
@@ -225,6 +236,71 @@ const server = Bun.serve({
             PUT: api(async (request) => {
                 const presets = await writePresetCollection(await readJsonBody(request));
                 return json({ ok: true, presets });
+            }),
+        },
+
+        "/api/lorebooks": {
+            GET: api(async () => {
+                return json(await readLorebookCollection());
+            }),
+
+            POST: api(async (request) => {
+                const result = await createLorebook(await readJsonBody(request));
+                return json({ ok: true, ...result });
+            }),
+        },
+
+        "/api/lorebooks/index": {
+            PUT: api(async (request) => {
+                const index = await updateLorebookIndex(await readJsonBody(request));
+                const lorebooks = await readLorebookCollection();
+
+                return json({ ok: true, index, lorebooks });
+            }),
+        },
+
+        "/api/lorebooks/import": {
+            POST: api(async (request, routeServer) => {
+                routeServer.timeout(request, 60);
+                const result = await importUploadedLorebooks(request);
+
+                return json({ ok: true, ...result });
+            }),
+        },
+
+        "/api/lorebooks/:lorebookId/export.smiley.json": {
+            GET: api(async (request) => {
+                return exportLorebook(request.params.lorebookId, "smiley");
+            }),
+        },
+
+        "/api/lorebooks/:lorebookId/export.json": {
+            GET: api(async (request) => {
+                return exportLorebook(request.params.lorebookId, "st");
+            }),
+        },
+
+        "/api/lorebooks/:lorebookId": {
+            GET: api(async (request) => {
+                const lorebook = await readLorebookById(request.params.lorebookId);
+                return lorebook ? json(lorebook) : lorebookNotFoundResponse();
+            }),
+
+            PUT: api(async (request) => {
+                const lorebook = await writeLorebookById(
+                    request.params.lorebookId,
+                    await readJsonBody(request),
+                );
+                const lorebooks = await readLorebookCollection();
+
+                return json({ ok: true, lorebook, lorebooks });
+            }),
+
+            DELETE: api(async (request) => {
+                const result = await deleteLorebookById(request.params.lorebookId);
+                return result
+                    ? json({ ok: true, ...result })
+                    : lorebookNotFoundResponse();
             }),
         },
 

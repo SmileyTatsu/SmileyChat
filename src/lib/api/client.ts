@@ -13,6 +13,11 @@ import type { PluginProfile, PluginProfilesState } from "../plugins/profiles";
 import type { PluginManifest } from "../plugins/types";
 import type { AppPreferences } from "../preferences/types";
 import type { PresetCollection } from "../presets/types";
+import type {
+    Lorebook,
+    LorebookCollection,
+    LorebookImportResult,
+} from "../lorebooks/types";
 
 const csrfHeaderName = "x-smileychat-csrf";
 const csrfMagicHeaderName = "x-smileychat-csrf-magic";
@@ -287,6 +292,61 @@ export function savePresetCollection(presets: PresetCollection) {
         "/api/presets",
         jsonInit("PUT", presets),
     );
+}
+
+export function loadLorebookSummaries() {
+    return requestJson<LorebookCollection>("/api/lorebooks");
+}
+
+export function loadLorebook(lorebookId: string) {
+    return requestJson<Lorebook>(`/api/lorebooks/${encodeURIComponent(lorebookId)}`);
+}
+
+export function createLorebook(lorebook: Lorebook) {
+    return requestJson<{
+        ok: true;
+        lorebook: Lorebook;
+        lorebooks?: LorebookCollection;
+    }>("/api/lorebooks", jsonInit("POST", lorebook));
+}
+
+export function saveLorebook(lorebook: Lorebook) {
+    return requestJson<{
+        ok: true;
+        lorebook: Lorebook;
+        lorebooks?: LorebookCollection;
+    }>(`/api/lorebooks/${encodeURIComponent(lorebook.id)}`, jsonInit("PUT", lorebook));
+}
+
+export function deleteLorebook(lorebookId: string) {
+    return requestJson<{
+        ok: true;
+        lorebooks?: LorebookCollection;
+    }>(`/api/lorebooks/${encodeURIComponent(lorebookId)}`, {
+        method: "DELETE",
+    });
+}
+
+export function importLorebookFiles(formData: FormData) {
+    return requestJson<LorebookImportResult & { ok: true }>("/api/lorebooks/import", {
+        method: "POST",
+        body: formData,
+    });
+}
+
+export async function exportLorebook(lorebookId: string, format: "json" | "smiley") {
+    const suffix = format === "smiley" ? "export.smiley.json" : "export.json";
+    const response = await localApiFetch(
+        `/api/lorebooks/${encodeURIComponent(lorebookId)}/${suffix}`,
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Export LoreBook failed: ${response.status}${await responseErrorSuffix(response)}`,
+        );
+    }
+
+    return response;
 }
 
 export function loadChatSummaries() {

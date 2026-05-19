@@ -2,6 +2,7 @@ import {
     ChevronsLeft,
     ChevronsRight,
     KeyRound,
+    LibraryBig,
     Puzzle,
     Settings,
     SlidersHorizontal,
@@ -27,6 +28,7 @@ import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 
 import { ConnectionsSettings } from "./connections/connections-settings";
 import { GeneralSettings } from "./general-settings";
+import { LorebooksSettings } from "./lorebooks-settings";
 import { PersonasSettings } from "./personas/personas-settings";
 import { PluginsSettings } from "./plugins-settings";
 import { PresetSettings } from "./preset-settings";
@@ -64,6 +66,7 @@ type OptionsModalProps = {
 const settingsCategories = [
     { id: "connections", label: "Connections", icon: KeyRound },
     { id: "preset", label: "Preset", icon: SlidersHorizontal },
+    { id: "lorebooks", label: "LoreBooks", icon: LibraryBig },
     { id: "personas", label: "Personas", icon: Users },
     { id: "plugins", label: "Plugins", icon: Puzzle },
     { id: "settings", label: "Settings", icon: Settings },
@@ -285,6 +288,7 @@ export function OptionsModal({
                                 onSetActivePersona={onSetActivePersona}
                             />
                         )}
+                        {activeCategory === "lorebooks" && <LorebooksSettings />}
                         {activeCategory === "plugins" && (
                             <PluginsSettings pluginSnapshot={pluginSnapshot} />
                         )}

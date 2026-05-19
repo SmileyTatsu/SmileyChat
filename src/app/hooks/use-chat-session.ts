@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { uploadChatAttachments } from "#frontend/lib/api/client";
+import {
+    loadLorebook,
+    loadLorebookSummaries,
+    uploadChatAttachments,
+} from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import {
@@ -31,6 +35,9 @@ import {
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
+import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
+import { isLorebookEnabled } from "#frontend/lib/lorebooks/normalize";
+import type { Lorebook } from "#frontend/lib/lorebooks/types";
 import {
     getInputMiddlewares,
     getOutputMiddlewares,
@@ -1094,6 +1101,7 @@ export function useChatSession({
             throw new Error("No active chat is available for prompt generation.");
         }
 
+        const nativeLorebooks = await loadNativeLorebooks(promptChat, promptCharacter);
         const promptBuild = await buildPromptForGeneration({
             context: {
                 chat: promptChat,
@@ -1116,7 +1124,24 @@ export function useChatSession({
                 userStatus: sourceUserStatus,
             },
             contextMiddlewares: getPromptContextMiddlewares(),
-            injectors: getPromptInjectors(),
+            injectors: [
+                (context) =>
+                    createLorebookPromptInjections(nativeLorebooks, {
+                        generation: context.generation,
+                        messages: context.messages,
+                        resolveContent: (content) =>
+                            resolvePresetMacros(content, {
+                                character: context.character,
+                                group: context.group,
+                                messages: context.messages,
+                                mode: context.mode,
+                                personaDescription: context.persona.description,
+                                personaName: context.persona.name,
+                                userStatus: context.userStatus,
+                            }),
+                    }),
+                ...getPromptInjectors(),
+            ],
         });
         const generationMessages = promptBuild.messages;
         const connection = getAdapterForSettings(sourceConnectionSettings);
@@ -1149,6 +1174,43 @@ export function useChatSession({
         );
 
         return { ...result, message };
+    }
+
+    async function loadNativeLorebooks(
+        sourceChat: ChatSession,
+        sourceCharacter: SmileyCharacter,
+    ): Promise<Lorebook[]> {
+        try {
+            const collection = await loadLorebookSummaries();
+            const lorebookIds = Array.from(
+                new Set(
+                    [
+                        collection.activeLorebookId,
+                        ...(sourceChat.metadata?.lorebookIds ?? []),
+                        sourceCharacter.metadata?.primaryLorebookId,
+                        ...(sourceCharacter.metadata?.lorebookIds ?? []),
+                        ...(persona.metadata?.lorebookIds ?? []),
+                    ].filter((id): id is string => Boolean(id)),
+                ),
+            );
+
+            const lorebooks = await Promise.all(
+                lorebookIds.map(async (lorebookId) => {
+                    try {
+                        return await loadLorebook(lorebookId);
+                    } catch {
+                        return undefined;
+                    }
+                }),
+            );
+
+            return lorebooks
+                .filter((item): item is Lorebook => Boolean(item))
+                .filter(isLorebookEnabled);
+        } catch (error) {
+            console.warn("Failed to load native LoreBooks:", error);
+            return [];
+        }
     }
 
     async function applyInputMiddlewares(
