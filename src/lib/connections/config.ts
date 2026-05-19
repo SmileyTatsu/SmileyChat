@@ -1,3 +1,4 @@
+import defaultAnthropicModels from "#frontend/data/default-anthropic-models.json";
 import defaultGoogleAIModels from "#frontend/data/default-google-ai-models.json";
 import defaultOpenAIModels from "#frontend/data/default-openai-models.json";
 
@@ -7,6 +8,10 @@ import {
     normalizeContextTokenBudget,
 } from "../presets/context-budget-constants";
 
+import type {
+    AnthropicConnectionConfig,
+    AnthropicThinkingConfig,
+} from "./anthropic/types";
 import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./google-ai/types";
 import type {
     OpenAICompatibleConnectionConfig,
@@ -23,6 +28,7 @@ export type ConnectionProviderId =
     | "openai-compatible"
     | "openrouter"
     | "google-ai"
+    | "anthropic"
     | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
@@ -55,12 +61,22 @@ export type GoogleAIConnectionProfile = {
     updatedAt: string;
 };
 
+export type AnthropicConnectionProfile = {
+    id: string;
+    name: string;
+    provider: "anthropic";
+    contextTokenBudget: number;
+    config: AnthropicConnectionConfig;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type PluginConnectionProfile = {
     id: string;
     name: string;
     provider: Exclude<
         ConnectionProviderId,
-        "openai-compatible" | "openrouter" | "google-ai"
+        "openai-compatible" | "openrouter" | "google-ai" | "anthropic"
     >;
     contextTokenBudget: number;
     config: Record<string, unknown>;
@@ -72,6 +88,7 @@ export type ConnectionProfile =
     | OpenAICompatibleConnectionProfile
     | OpenRouterConnectionProfile
     | GoogleAIConnectionProfile
+    | AnthropicConnectionProfile
     | PluginConnectionProfile;
 
 export type ConnectionSettings = {
@@ -116,6 +133,17 @@ export const defaultGoogleAIConfig: GoogleAIConnectionConfig = {
     model: {
         source: "default",
         id: defaultGoogleAIModels[0]?.models[1]?.id ?? "gemini-3.1-flash-lite",
+    },
+};
+
+export const defaultAnthropicConfig: AnthropicConnectionConfig = {
+    baseUrl: "https://api.anthropic.com/v1",
+    model: {
+        source: "default",
+        id: defaultAnthropicModels[0]?.models[1]?.id ?? "claude-sonnet-4-6",
+    },
+    thinking: {
+        mode: "off",
     },
 };
 
@@ -259,6 +287,18 @@ export function createConnectionProfile(
         };
     }
 
+    if (provider === "anthropic") {
+        return {
+            id: createConnectionProfileId(),
+            name,
+            provider,
+            contextTokenBudget: defaultContextTokenBudget,
+            config: normalizeAnthropicConfig(defaultConfig ?? defaultAnthropicConfig),
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
     if (provider !== "openai-compatible") {
         return {
             id: createConnectionProfileId(),
@@ -309,6 +349,12 @@ export function isGoogleAIProfile(
     return profile?.provider === "google-ai";
 }
 
+export function isAnthropicProfile(
+    profile: ConnectionProfile | undefined,
+): profile is AnthropicConnectionProfile {
+    return profile?.provider === "anthropic";
+}
+
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {
     const sourceProfiles = Array.isArray(settings.profiles) ? settings.profiles : [];
     const profiles = sourceProfiles
@@ -354,7 +400,9 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                   ? normalizeOpenRouterConfig(profile.config)
                   : provider === "google-ai"
                     ? normalizeGoogleAIConfig(profile.config)
-                    : normalizePluginConfig(profile.config),
+                    : provider === "anthropic"
+                      ? normalizeAnthropicConfig(profile.config)
+                      : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;
@@ -547,6 +595,91 @@ function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
         },
         ...(thinking ? { thinking } : {}),
     };
+}
+
+function normalizeAnthropicConfig(value: unknown): AnthropicConnectionConfig {
+    const config = isRecord(value) ? value : {};
+    const model = isRecord(config.model) ? config.model : {};
+    const modelSource =
+        model.source === "api" || model.source === "custom" ? model.source : "default";
+    const thinking = normalizeAnthropicThinkingConfig(config.thinking);
+
+    return {
+        baseUrl:
+            typeof config.baseUrl === "string" && config.baseUrl.trim()
+                ? config.baseUrl
+                : defaultAnthropicConfig.baseUrl,
+        apiKey: stringOrUndefined(config.apiKey),
+        model: {
+            source: modelSource,
+            id: typeof model.id === "string" ? model.id : defaultAnthropicConfig.model.id,
+        },
+        ...(thinking ? { thinking } : {}),
+    };
+}
+
+function normalizeAnthropicThinkingConfig(
+    value: unknown,
+): AnthropicThinkingConfig | undefined {
+    const thinking = isRecord(value) ? value : {};
+    const mode = normalizeAnthropicThinkingMode(thinking.mode);
+
+    if (mode === "adaptive") {
+        const effort = normalizeAnthropicThinkingEffort(thinking.effort);
+        const display = normalizeAnthropicThinkingDisplay(thinking.display);
+
+        return {
+            mode,
+            ...(effort ? { effort } : {}),
+            ...(display ? { display } : {}),
+        };
+    }
+
+    if (mode === "enabled") {
+        const budgetTokens =
+            typeof thinking.budgetTokens === "number" &&
+            Number.isInteger(thinking.budgetTokens) &&
+            thinking.budgetTokens > 0
+                ? thinking.budgetTokens
+                : undefined;
+        const display = normalizeAnthropicThinkingDisplay(thinking.display);
+
+        return {
+            mode,
+            ...(budgetTokens ? { budgetTokens } : {}),
+            ...(display ? { display } : {}),
+        };
+    }
+
+    if (mode === "off") {
+        return { mode };
+    }
+
+    return undefined;
+}
+
+function normalizeAnthropicThinkingMode(
+    value: unknown,
+): AnthropicThinkingConfig["mode"] | undefined {
+    return value === "off" || value === "adaptive" || value === "enabled"
+        ? value
+        : undefined;
+}
+
+function normalizeAnthropicThinkingEffort(
+    value: unknown,
+): Extract<AnthropicThinkingConfig, { mode: "adaptive" }>["effort"] | undefined {
+    return value === "medium" || value === "high" || value === "xhigh" || value === "max"
+        ? value
+        : undefined;
+}
+
+function normalizeAnthropicThinkingDisplay(
+    value: unknown,
+):
+    | Extract<AnthropicThinkingConfig, { mode: "adaptive" | "enabled" }>["display"]
+    | undefined {
+    return value === "summarized" || value === "omitted" ? value : undefined;
 }
 
 function normalizeGoogleAIThinkingConfig(

@@ -7,6 +7,7 @@ import {
     createConnectionProfile,
     extractConnectionSecrets,
     getActiveConnectionProfile,
+    isAnthropicProfile,
     isGoogleAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
@@ -15,6 +16,12 @@ import {
     type ConnectionProfile,
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
+import {
+    createAnthropicConnection,
+    createAnthropicMessagesUrl,
+} from "#frontend/lib/connections/anthropic/adapter";
+import { listAnthropicModels } from "#frontend/lib/connections/anthropic/models";
+import type { AnthropicModel } from "#frontend/lib/connections/anthropic/types";
 import {
     createGoogleAIConnection,
     createGoogleAIGenerateUrl,
@@ -45,6 +52,7 @@ import {
 } from "#frontend/lib/plugins/registry";
 
 import { GoogleAIConnection } from "./providers/google-ai-connection";
+import { AnthropicConnection } from "./providers/anthropic-connection";
 import { OpenAICompatibleConnection } from "./providers/openai-compatible-connection";
 import { OpenRouterConnection } from "./providers/openrouter-connection";
 
@@ -70,6 +78,9 @@ export function ConnectionsSettings({
     const [googleAIModelsByProfileId, setGoogleAIModelsByProfileId] = useState<
         Record<string, GoogleAIModel[]>
     >({});
+    const [anthropicModelsByProfileId, setAnthropicModelsByProfileId] = useState<
+        Record<string, AnthropicModel[]>
+    >({});
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
     const [, setRegistryRevision] = useState(0);
@@ -82,6 +93,9 @@ export function ConnectionsSettings({
         : [];
     const activeGoogleAIModels = activeProfile
         ? (googleAIModelsByProfileId[activeProfile.id] ?? [])
+        : [];
+    const activeAnthropicModels = activeProfile
+        ? (anthropicModelsByProfileId[activeProfile.id] ?? [])
         : [];
     const pluginProviders = getPluginConnectionProviders();
     const activePluginProvider = activeProfile
@@ -120,6 +134,10 @@ export function ConnectionsSettings({
             ...current,
             [activeProfile.id]: [],
         }));
+        setAnthropicModelsByProfileId((current) => ({
+            ...current,
+            [activeProfile.id]: [],
+        }));
     }, [
         activeProfile?.id,
         isOpenAICompatibleProfile(activeProfile)
@@ -131,6 +149,8 @@ export function ConnectionsSettings({
         isOpenRouterProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
         isGoogleAIProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
         isGoogleAIProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
+        isAnthropicProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
+        isAnthropicProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
     ]);
 
     useEffect(() => {
@@ -152,6 +172,14 @@ export function ConnectionsSettings({
         }
         if (
             isGoogleAIProfile(activeProfile) &&
+            activeProfile.config.model.source === "api" &&
+            activeProfile.config.baseUrl.trim().length > 0
+        ) {
+            void loadModels();
+            return;
+        }
+        if (
+            isAnthropicProfile(activeProfile) &&
             activeProfile.config.model.source === "api" &&
             activeProfile.config.baseUrl.trim().length > 0
         ) {
@@ -265,6 +293,36 @@ export function ConnectionsSettings({
 
                     setStatusMessage(
                         `Google AI connection test succeeded: ${result.message}`,
+                    );
+                    setRequestState("success");
+                } catch (error) {
+                    setStatusMessage(
+                        messageFromError(error, "Unexpected connection error."),
+                    );
+                    setRequestState("error");
+                }
+
+                return;
+            }
+
+            if (isAnthropicProfile(activeProfile)) {
+                const targetUrl = createAnthropicMessagesUrl(activeProfile.config);
+
+                setRequestState("loading");
+                setStatusMessage(`Testing POST ${targetUrl}`);
+
+                try {
+                    const adapter = createAnthropicConnection({
+                        ...activeProfile.config,
+                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    });
+                    const result = await adapter.generate({
+                        context: "Reply briefly to confirm the connection works.",
+                        messages: [createUserMessage("hello", defaultPersona)],
+                    });
+
+                    setStatusMessage(
+                        `Anthropic connection test succeeded: ${result.message}`,
                     );
                     setRequestState("success");
                 } catch (error) {
@@ -414,6 +472,50 @@ export function ConnectionsSettings({
             return;
         }
 
+        if (isAnthropicProfile(activeProfile)) {
+            setRequestState("loading");
+            setStatusMessage(
+                `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
+            );
+
+            try {
+                const nextModels = await listAnthropicModels({
+                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    baseUrl: activeProfile.config.baseUrl,
+                });
+
+                setAnthropicModelsByProfileId((current) => ({
+                    ...current,
+                    [activeProfile.id]: nextModels,
+                }));
+
+                if (nextModels[0] && activeProfile.config.model.source !== "custom") {
+                    const currentId = activeProfile.config.model.id;
+                    const currentIsLoaded =
+                        activeProfile.config.model.source === "api" &&
+                        nextModels.some((model) => model.id === currentId);
+
+                    if (!currentIsLoaded) {
+                        updateActiveProfileConfig({
+                            ...activeProfile.config,
+                            model: {
+                                source: "api",
+                                id: nextModels[0].id,
+                            },
+                        });
+                    }
+                }
+
+                setStatusMessage(`Loaded ${nextModels.length} Anthropic model(s).`);
+                setRequestState("success");
+            } catch (error) {
+                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setRequestState("error");
+            }
+
+            return;
+        }
+
         if (!isOpenAICompatibleProfile(activeProfile)) {
             return;
         }
@@ -540,7 +642,8 @@ export function ConnectionsSettings({
         const config =
             providerId === "openai-compatible" ||
             providerId === "openrouter" ||
-            providerId === "google-ai"
+            providerId === "google-ai" ||
+            providerId === "anthropic"
                 ? undefined
                 : (provider?.defaultConfig ?? {});
         const nextProfile = createConnectionProfile(
@@ -549,7 +652,9 @@ export function ConnectionsSettings({
                 ? "OpenRouter"
                 : providerId === "google-ai"
                   ? "Google AI"
-                  : (provider?.label ?? "OpenAI compatible"),
+                  : providerId === "anthropic"
+                    ? "Anthropic"
+                    : (provider?.label ?? "OpenAI compatible"),
             config,
         );
 
@@ -619,6 +724,11 @@ export function ConnectionsSettings({
             return next;
         });
         setGoogleAIModelsByProfileId((current) => {
+            const next = { ...current };
+            delete next[activeProfile.id];
+            return next;
+        });
+        setAnthropicModelsByProfileId((current) => {
             const next = { ...current };
             delete next[activeProfile.id];
             return next;
@@ -707,6 +817,7 @@ export function ConnectionsSettings({
                                 </option>
                                 <option value="openrouter">OpenRouter</option>
                                 <option value="google-ai">Google AI</option>
+                                <option value="anthropic">Anthropic</option>
                                 {pluginProviders.map((provider) => (
                                     <option key={provider.id} value={provider.id}>
                                         {provider.label}
@@ -751,6 +862,17 @@ export function ConnectionsSettings({
                             config={activeProfile.config}
                             disabled={isBusy}
                             models={activeGoogleAIModels}
+                            onChange={(config) => updateActiveProfileConfig(config)}
+                            onClearApiKey={clearApiKey}
+                            onLoadModels={loadModels}
+                            onSave={() => void saveSettings()}
+                            onTest={testConnection}
+                        />
+                    ) : isAnthropicProfile(activeProfile) ? (
+                        <AnthropicConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            models={activeAnthropicModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}

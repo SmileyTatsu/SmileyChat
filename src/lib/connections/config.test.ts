@@ -96,4 +96,70 @@ describe("connection config normalization", () => {
 
         expect(settings.profiles[0]?.config).not.toHaveProperty("thinking");
     });
+
+    test("normalizes valid Anthropic thinking config", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-anthropic",
+            profiles: [
+                {
+                    id: "profile-anthropic",
+                    name: "Anthropic",
+                    provider: "anthropic",
+                    config: {
+                        baseUrl: "https://api.anthropic.com/v1",
+                        model: {
+                            source: "default",
+                            id: "claude-sonnet-4-6",
+                        },
+                        thinking: {
+                            mode: "adaptive",
+                            effort: "high",
+                            display: "summarized",
+                        },
+                    },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.config).toMatchObject({
+            thinking: {
+                mode: "adaptive",
+                effort: "high",
+                display: "summarized",
+            },
+        });
+    });
+
+    test("drops invalid Anthropic thinking config values", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-anthropic",
+            profiles: [
+                {
+                    id: "profile-anthropic",
+                    name: "Anthropic",
+                    provider: "anthropic",
+                    config: {
+                        baseUrl: "https://api.anthropic.com/v1",
+                        model: {
+                            source: "default",
+                            id: "claude-sonnet-4-6",
+                        },
+                        thinking: {
+                            mode: "deep",
+                            effort: "extreme",
+                            display: "full",
+                        },
+                    },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.config).not.toHaveProperty("thinking");
+    });
 });

@@ -220,24 +220,26 @@ function firstRemovableHistoryIndex(
 }
 
 function firstRemovableInjectionIndex(messages: AnchoredPromptMessage[]) {
-    return messages
-        .map((message, index) => ({ index, message }))
-        .filter(
-            ({ message }) =>
-                message.source === "injection" &&
-                message.tokenBudgetBehavior !== "ignore-budget",
-        )
-        .sort((a, b) => {
-            const priority =
-                (a.message.injectionPriority ?? 0) -
-                (b.message.injectionPriority ?? 0);
+    return (
+        messages
+            .map((message, index) => ({ index, message }))
+            .filter(
+                ({ message }) =>
+                    message.source === "injection" &&
+                    message.tokenBudgetBehavior !== "ignore-budget",
+            )
+            .sort((a, b) => {
+                const priority =
+                    (a.message.injectionPriority ?? 0) -
+                    (b.message.injectionPriority ?? 0);
 
-            if (priority !== 0) {
-                return priority;
-            }
+                if (priority !== 0) {
+                    return priority;
+                }
 
-            return (a.message.injectionOrder ?? 0) - (b.message.injectionOrder ?? 0);
-        })[0]?.index ?? -1;
+                return (a.message.injectionOrder ?? 0) - (b.message.injectionOrder ?? 0);
+            })[0]?.index ?? -1
+    );
 }
 
 function estimateAnchoredPromptMessages(messages: AnchoredPromptMessage[]) {
