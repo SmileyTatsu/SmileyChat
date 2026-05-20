@@ -8,7 +8,7 @@
 //      add their settings. Runs once on boot.
 //
 //   2. reloadRuntimeEnv(): re-parse .env and propagate the diff to
-//      process.env. Keys removed from the file are deleted so unsetting
+//      Bun.env. Keys removed from the file are deleted so unsetting
 //      e.g. SMILEYCHAT_BASIC_AUTH_PASS takes effect immediately. Called
 //      by env-watcher when the file's mtime/size changes.
 
@@ -80,8 +80,8 @@ export function loadRuntimeEnv() {
     for (const [key, value] of Object.entries(parsed)) {
         // Don't clobber values that were already exported in the shell.
         // Bun's built-in dotenv loader uses the same precedence.
-        if (process.env[key] === undefined) {
-            process.env[key] = value;
+        if (Bun.env[key] === undefined) {
+            Bun.env[key] = value;
         }
     }
     envFileKeys = new Set(Object.keys(parsed));
@@ -91,7 +91,7 @@ export function reloadRuntimeEnv(): EnvReloadResult {
     if (!existsSync(envFilePath)) {
         const removed = [...envFileKeys];
         for (const key of removed) {
-            delete process.env[key];
+            delete Bun.env[key];
         }
         envFileKeys = new Set();
         return { added: [], updated: [], removed, unchanged: [] };
@@ -106,13 +106,13 @@ export function reloadRuntimeEnv(): EnvReloadResult {
     const removed: string[] = [];
 
     for (const [key, value] of Object.entries(parsed)) {
-        const previous = process.env[key];
+        const previous = Bun.env[key];
         if (!envFileKeys.has(key)) {
             added.push(key);
-            process.env[key] = value;
+            Bun.env[key] = value;
         } else if (previous !== value) {
             updated.push(key);
-            process.env[key] = value;
+            Bun.env[key] = value;
         } else {
             unchanged.push(key);
         }
@@ -121,7 +121,7 @@ export function reloadRuntimeEnv(): EnvReloadResult {
     for (const key of envFileKeys) {
         if (!newKeys.has(key)) {
             removed.push(key);
-            delete process.env[key];
+            delete Bun.env[key];
         }
     }
 

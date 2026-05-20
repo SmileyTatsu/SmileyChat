@@ -67,7 +67,7 @@ async function renameWithRetry(sourcePath: string, targetPath: string) {
                 throw error;
             }
 
-            await delay(renameRetryDelaysMs[attempt]);
+            await Bun.sleep(renameRetryDelaysMs[attempt]);
         }
     }
 }
@@ -79,10 +79,6 @@ function isTransientRenameError(error: unknown) {
         typeof error.code === "string" &&
         transientRenameErrorCodes.has(error.code)
     );
-}
-
-function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function json(data: unknown, status = 200) {

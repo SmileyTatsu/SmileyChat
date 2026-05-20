@@ -51,90 +51,90 @@ function parsePort(value: string | undefined, fallback: number) {
 }
 
 export function getHost() {
-    return normalizeEnvValue(process.env.SMILEYCHAT_HOST) ?? DEFAULT_HOST;
+    return normalizeEnvValue(Bun.env.SMILEYCHAT_HOST) ?? DEFAULT_HOST;
 }
 
 export function getPort() {
     return parsePort(
-        process.env.SMILEYCHAT_PORT ?? process.env.SMILEYCHAT_API_PORT,
+        Bun.env.SMILEYCHAT_PORT ?? Bun.env.SMILEYCHAT_API_PORT,
         DEFAULT_PORT,
     );
 }
 
 export function getFrontendPort() {
-    return parsePort(process.env.SMILEYCHAT_FRONTEND_PORT, DEFAULT_FRONTEND_PORT);
+    return parsePort(Bun.env.SMILEYCHAT_FRONTEND_PORT, DEFAULT_FRONTEND_PORT);
 }
 
 export function getCsrfTrustedOrigins() {
-    return parseCsv(process.env.SMILEYCHAT_TRUSTED_ORIGINS);
+    return parseCsv(Bun.env.SMILEYCHAT_TRUSTED_ORIGINS);
 }
 
 export function getIpAllowlist() {
-    if (isDisabledFlag(process.env.SMILEYCHAT_IP_ALLOWLIST_ENABLED)) return null;
-    return normalizeEnvValue(process.env.SMILEYCHAT_IP_ALLOWLIST);
+    if (isDisabledFlag(Bun.env.SMILEYCHAT_IP_ALLOWLIST_ENABLED)) return null;
+    return normalizeEnvValue(Bun.env.SMILEYCHAT_IP_ALLOWLIST);
 }
 
 export function getTrustedPrivateNetworksOverride() {
-    return normalizeEnvValue(process.env.SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS);
+    return normalizeEnvValue(Bun.env.SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS);
 }
 
 export function getBasicAuthConfig() {
     return {
-        user: normalizeEnvValue(process.env.SMILEYCHAT_BASIC_AUTH_USER),
-        pass: normalizeEnvValue(process.env.SMILEYCHAT_BASIC_AUTH_PASS),
+        user: normalizeEnvValue(Bun.env.SMILEYCHAT_BASIC_AUTH_USER),
+        pass: normalizeEnvValue(Bun.env.SMILEYCHAT_BASIC_AUTH_PASS),
         realm:
-            normalizeEnvValue(process.env.SMILEYCHAT_BASIC_AUTH_REALM) ??
+            normalizeEnvValue(Bun.env.SMILEYCHAT_BASIC_AUTH_REALM) ??
             DEFAULT_BASIC_AUTH_REALM,
     };
 }
 
 export function isUnauthenticatedPrivateNetworkAllowed() {
-    return isEnabledFlag(process.env.SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK);
+    return isEnabledFlag(Bun.env.SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK);
 }
 
 export function isUnauthenticatedRemoteAllowed() {
-    return isEnabledFlag(process.env.SMILEYCHAT_ALLOW_UNAUTHENTICATED_REMOTE);
+    return isEnabledFlag(Bun.env.SMILEYCHAT_ALLOW_UNAUTHENTICATED_REMOTE);
 }
 
 // Default-on: Tailscale CGNAT traffic skips both the IP allowlist and
 // Basic Auth, the same way loopback does. Set the env var to false/0/no/off
 // to require auth from your Tailnet as well.
 export function isTailscaleBypassEnabled() {
-    return !isDisabledFlag(process.env.SMILEYCHAT_BYPASS_AUTH_TAILSCALE);
+    return !isDisabledFlag(Bun.env.SMILEYCHAT_BYPASS_AUTH_TAILSCALE);
 }
 
 // Default-on: Docker bridge IPs are unreachable from outside the host.
 // External traffic is NAT'd through the bridge gateway, so bypassing auth
 // for containers is generally safe.
 export function isDockerBypassEnabled() {
-    return !isDisabledFlag(process.env.SMILEYCHAT_BYPASS_AUTH_DOCKER);
+    return !isDisabledFlag(Bun.env.SMILEYCHAT_BYPASS_AUTH_DOCKER);
 }
 
 export function isRateLimitEnabled() {
-    return !isDisabledFlag(process.env.SMILEYCHAT_RATE_LIMIT_ENABLED);
+    return !isDisabledFlag(Bun.env.SMILEYCHAT_RATE_LIMIT_ENABLED);
 }
 
 export function getDefaultRateLimit() {
     return parsePort(
-        process.env.SMILEYCHAT_RATE_LIMIT_DEFAULT,
+        Bun.env.SMILEYCHAT_RATE_LIMIT_DEFAULT,
         DEFAULT_RATE_LIMIT_PER_MINUTE,
     );
 }
 
 export function getAdminSecret() {
-    return normalizeEnvValue(process.env.SMILEYCHAT_ADMIN_SECRET);
+    return normalizeEnvValue(Bun.env.SMILEYCHAT_ADMIN_SECRET);
 }
 
 export function isAdminSecretRequiredOnLoopback() {
-    return isEnabledFlag(process.env.SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK);
+    return isEnabledFlag(Bun.env.SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK);
 }
 
 export function isPluginsOutboundFetchAllowed() {
-    return isEnabledFlag(process.env.SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH);
+    return isEnabledFlag(Bun.env.SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH);
 }
 
 export function getLogLevel() {
-    return normalizeEnvValue(process.env.SMILEYCHAT_LOG_LEVEL) ?? "info";
+    return normalizeEnvValue(Bun.env.SMILEYCHAT_LOG_LEVEL) ?? "info";
 }
 
 export { isEnabledFlag, isDisabledFlag };
