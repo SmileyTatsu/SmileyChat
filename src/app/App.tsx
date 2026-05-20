@@ -164,12 +164,19 @@ export function App() {
         presetCollection,
         userStatus,
     });
+    const latestChatSessionForPluginsRef = useRef(chatSession);
+    const latestSelectCharacterForPluginsRef = useRef(selectCharacter);
+    const latestGenerateModelForPluginsRef = useRef(generatePluginModelResponse);
     const isMobileLayout = viewportWidth <= MOBILE_SIDEBAR_BREAKPOINT;
     const isCharacterDrawerLayout = viewportWidth <= CHARACTER_DRAWER_BREAKPOINT;
     const sidebarOpen = isMobileLayout ? mobileSidebarOpen : desktopSidebarOpen;
     const characterOpen = isCharacterDrawerLayout
         ? mobileCharacterOpen
         : desktopCharacterOpen;
+
+    latestChatSessionForPluginsRef.current = chatSession;
+    latestSelectCharacterForPluginsRef.current = selectCharacter;
+    latestGenerateModelForPluginsRef.current = generatePluginModelResponse;
 
     useEffect(() => {
         void loadConnectionSettings();
@@ -269,24 +276,33 @@ export function App() {
 
     useEffect(() => {
         setPluginAppActionHandlers({
-            generateResponse: () => chatSession.sendMessage(""),
+            generateResponse: () =>
+                latestChatSessionForPluginsRef.current.sendMessage(""),
             injectMessage: (role, content, options) =>
-                chatSession.injectMessage(role, content, options),
+                latestChatSessionForPluginsRef.current.injectMessage(
+                    role,
+                    content,
+                    options,
+                ),
             sendMessage: (content, options) =>
-                chatSession.sendMessage(content, options?.images),
-            switchCharacter: selectCharacter,
+                latestChatSessionForPluginsRef.current.sendMessage(
+                    content,
+                    options?.images,
+                ),
+            switchCharacter: (characterId) =>
+                latestSelectCharacterForPluginsRef.current(characterId),
         });
 
         return () => setPluginAppActionHandlers({});
-    });
+    }, []);
 
     useEffect(() => {
         setPluginModelHandlers({
-            generate: generatePluginModelResponse,
+            generate: (request) => latestGenerateModelForPluginsRef.current(request),
         });
 
         return () => setPluginModelHandlers({});
-    });
+    }, []);
 
     const characterPresence = useMemo(
         () => getPluginCharacterPresence(),
