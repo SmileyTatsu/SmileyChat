@@ -8,6 +8,7 @@ This folder contains developer-facing documentation and architectural insights f
 - [Development Guide](development.md)
 - [Providers & AI Setup](providers.md)
 - [Core Architecture](architecture.md)
+- [Preset Macros](macros.md)
 
 ## Plugin System
 
