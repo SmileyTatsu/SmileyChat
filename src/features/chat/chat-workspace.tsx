@@ -1,3 +1,5 @@
+import { memo } from "preact/compat";
+
 import type {
     PluginAppSnapshot,
     PluginComposerStatePatch,
@@ -41,7 +43,7 @@ type ChatWorkspaceProps = {
     pluginSnapshot: PluginAppSnapshot;
 };
 
-export function ChatWorkspace({
+export const ChatWorkspace = memo(function ChatWorkspace({
     activeChatId,
     characterAvatarPath,
     characterName,
@@ -146,4 +148,4 @@ export function ChatWorkspace({
             )}
         </section>
     );
-}
+});

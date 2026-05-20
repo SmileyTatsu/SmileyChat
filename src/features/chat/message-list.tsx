@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowDown, Trash2 } from "lucide-preact";
+import { memo } from "preact/compat";
 import {
     useCallback,
     useEffect,
@@ -41,7 +42,7 @@ type MessageListProps = {
     pluginSnapshot: PluginAppSnapshot;
 };
 
-export function MessageList({
+export const MessageList = memo(function MessageList({
     autoScroll,
     characterAvatarPath,
     characterName,
@@ -461,7 +462,7 @@ export function MessageList({
 
         list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
     }
-}
+});
 
 const LOAD_EARLIER_BATCH_SIZE = 50;
 

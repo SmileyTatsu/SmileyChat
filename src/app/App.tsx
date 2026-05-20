@@ -1,6 +1,13 @@
 import "./App.css";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "preact/hooks";
 
 import { CharacterPanel } from "#frontend/features/characters/character-panel";
 import { GroupPanel } from "#frontend/features/characters/group-panel";
@@ -165,6 +172,9 @@ export function App() {
         userStatus,
     });
     const latestChatSessionForPluginsRef = useRef(chatSession);
+    const latestChangeModeForWorkspaceRef = useRef(changeMode);
+    const latestCreateCharacterForWorkspaceRef = useRef(createCharacter);
+    const latestStartNewChatForWorkspaceRef = useRef(startNewChat);
     const latestSelectCharacterForPluginsRef = useRef(selectCharacter);
     const latestGenerateModelForPluginsRef = useRef(generatePluginModelResponse);
     const isMobileLayout = viewportWidth <= MOBILE_SIDEBAR_BREAKPOINT;
@@ -175,6 +185,9 @@ export function App() {
         : desktopCharacterOpen;
 
     latestChatSessionForPluginsRef.current = chatSession;
+    latestChangeModeForWorkspaceRef.current = changeMode;
+    latestCreateCharacterForWorkspaceRef.current = createCharacter;
+    latestStartNewChatForWorkspaceRef.current = startNewChat;
     latestSelectCharacterForPluginsRef.current = selectCharacter;
     latestGenerateModelForPluginsRef.current = generatePluginModelResponse;
 
@@ -336,24 +349,100 @@ export function App() {
             userStatus,
         ],
     );
+    const handleCreateCharacterFromEmptyState = useCallback(() => {
+        void latestCreateCharacterForWorkspaceRef.current();
+    }, []);
+    const handleStartNewChatFromEmptyState = useCallback(() => {
+        latestStartNewChatForWorkspaceRef.current();
+    }, []);
+    const handleAbortGeneration = useCallback(() => {
+        latestChatSessionForPluginsRef.current.stopGeneration();
+    }, []);
+    const handleDeleteMessage = useCallback((messageId: string) => {
+        latestChatSessionForPluginsRef.current.deleteMessage(messageId);
+    }, []);
+    const handleEditMessage = useCallback((messageId: string, content: string) => {
+        latestChatSessionForPluginsRef.current.editMessage(messageId, content);
+    }, []);
+    const handleModeChange = useCallback((nextMode: ChatMode) => {
+        latestChangeModeForWorkspaceRef.current(nextMode);
+    }, []);
+    const handleNextSwipe = useCallback((messageId: string) => {
+        void latestChatSessionForPluginsRef.current.nextSwipe(messageId);
+    }, []);
+    const handlePreviousSwipe = useCallback((messageId: string) => {
+        latestChatSessionForPluginsRef.current.previousSwipe(messageId);
+    }, []);
+    const handleSendMessage = useCallback((draft: string, images?: File[]) => {
+        return latestChatSessionForPluginsRef.current.sendMessage(draft, images);
+    }, []);
+    const handleToggleSidebar = useCallback(() => {
+        if (isMobileLayout) {
+            setMobileSidebarOpen((prev) => !prev);
+            setMobileCharacterOpen(false);
+            return;
+        }
+
+        setDesktopSidebarOpen((prev) => !prev);
+
+        if (isCharacterDrawerLayout) {
+            setMobileCharacterOpen(false);
+        } else {
+            setDesktopCharacterOpen(false);
+        }
+    }, [isCharacterDrawerLayout, isMobileLayout]);
+    const handleToggleCharacter = useMemo(() => {
+        if (!characterSummaries.characters.length) {
+            return undefined;
+        }
+
+        return () => {
+            if (isCharacterDrawerLayout) {
+                setMobileCharacterOpen((prev) => !prev);
+
+                if (isMobileLayout) {
+                    setMobileSidebarOpen(false);
+                } else {
+                    setDesktopSidebarOpen(false);
+                }
+
+                return;
+            }
+
+            setDesktopCharacterOpen((prev) => !prev);
+            setDesktopSidebarOpen(false);
+        };
+    }, [characterSummaries.characters.length, isCharacterDrawerLayout, isMobileLayout]);
     const hasCharacters = characterSummaries.characters.length > 0;
-    const chatEmptyState = !hasCharacters
-        ? {
-              title: "No characters yet",
-              description:
-                  "Create or import a character to start chatting and roleplaying.",
-              actionLabel: "Create character",
-              onAction: () => void createCharacter(),
-          }
-        : !activeChat
-          ? {
+    const chatEmptyState = useMemo(() => {
+        if (!hasCharacters) {
+            return {
+                title: "No characters yet",
+                description:
+                    "Create or import a character to start chatting and roleplaying.",
+                actionLabel: "Create character",
+                onAction: handleCreateCharacterFromEmptyState,
+            };
+        }
+
+        if (!activeChat) {
+            return {
                 title: `No chats with ${character.data.name}`,
                 description:
                     "Start a new chat when you want this character to have a saved conversation.",
                 actionLabel: "Start new chat",
-                onAction: startNewChat,
-            }
-          : undefined;
+                onAction: handleStartNewChatFromEmptyState,
+            };
+        }
+
+        return undefined;
+    }, [
+        activeChat,
+        character.data.name,
+        handleCreateCharacterFromEmptyState,
+        handleStartNewChatFromEmptyState,
+        hasCharacters,
+    ]);
     const activeChatIsGroup = activeChat ? isGroupChat(activeChat) : false;
 
     useLayoutEffect(() => {
@@ -679,48 +768,15 @@ export function App() {
                 preferences={preferences}
                 pendingSwipeMessageId={chatSession.pendingSwipeMessageId}
                 emptyState={chatEmptyState}
-                onAbortGeneration={chatSession.stopGeneration}
-                onDeleteMessage={chatSession.deleteMessage}
-                onEditMessage={chatSession.editMessage}
-                onModeChange={changeMode}
-                onNextSwipe={(messageId) => void chatSession.nextSwipe(messageId)}
-                onPreviousSwipe={chatSession.previousSwipe}
-                onSendMessage={chatSession.sendMessage}
-                onToggleSidebar={() => {
-                    if (isMobileLayout) {
-                        setMobileSidebarOpen((prev) => !prev);
-                        setMobileCharacterOpen(false);
-                        return;
-                    }
-
-                    setDesktopSidebarOpen((prev) => !prev);
-
-                    if (isCharacterDrawerLayout) {
-                        setMobileCharacterOpen(false);
-                    } else {
-                        setDesktopCharacterOpen(false);
-                    }
-                }}
-                onToggleCharacter={
-                    hasCharacters
-                        ? () => {
-                              if (isCharacterDrawerLayout) {
-                                  setMobileCharacterOpen((prev) => !prev);
-
-                                  if (isMobileLayout) {
-                                      setMobileSidebarOpen(false);
-                                  } else {
-                                      setDesktopSidebarOpen(false);
-                                  }
-
-                                  return;
-                              }
-
-                              setDesktopCharacterOpen((prev) => !prev);
-                              setDesktopSidebarOpen(false);
-                          }
-                        : undefined
-                }
+                onAbortGeneration={handleAbortGeneration}
+                onDeleteMessage={handleDeleteMessage}
+                onEditMessage={handleEditMessage}
+                onModeChange={handleModeChange}
+                onNextSwipe={handleNextSwipe}
+                onPreviousSwipe={handlePreviousSwipe}
+                onSendMessage={handleSendMessage}
+                onToggleSidebar={handleToggleSidebar}
+                onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
                 pluginSnapshot={pluginSnapshot}
             />
