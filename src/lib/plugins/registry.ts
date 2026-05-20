@@ -14,6 +14,7 @@ import type {
     PluginComposerStatePatch,
     PluginComposerAction,
     PluginComposerOption,
+    PluginAppDataChangedEvent,
     PluginConnectionProvider,
     PluginEventsApi,
     PluginHeaderAction,
@@ -106,6 +107,31 @@ export function setPluginSnapshot(snapshot: PluginAppSnapshot) {
 
 export function getPluginSnapshot() {
     return latestSnapshot;
+}
+
+export function subscribeToPluginEvent(
+    eventName: string,
+    listener: (payload: unknown) => void,
+    pluginId = "app",
+) {
+    const listenersForEvent = eventListeners.get(eventName) ?? new Set();
+    const item = { pluginId, listener };
+    listenersForEvent.add(item);
+    eventListeners.set(eventName, listenersForEvent);
+
+    return () => listenersForEvent.delete(item);
+}
+
+export function emitPluginEvent(eventName: string, payload?: unknown) {
+    for (const item of eventListeners.get(eventName) ?? []) {
+        if (item.pluginId === "app" || isPluginEnabled(item.pluginId)) {
+            item.listener(payload);
+        }
+    }
+}
+
+export function emitAppDataChanged(type: PluginAppDataChangedEvent["type"]) {
+    emitPluginEvent("app:data-changed", { type } satisfies PluginAppDataChangedEvent);
 }
 
 export function initializePluginEnabledStates(manifests: PluginManifest[]) {
@@ -642,20 +668,11 @@ function pluginEvents(manifest: PluginManifest): PluginEventsApi {
     return {
         on(eventName, listener) {
             requirePluginPermission(manifest, "events");
-            const listenersForEvent = eventListeners.get(eventName) ?? new Set();
-            const item = { pluginId: manifest.id, listener };
-            listenersForEvent.add(item);
-            eventListeners.set(eventName, listenersForEvent);
-
-            return () => listenersForEvent.delete(item);
+            return subscribeToPluginEvent(eventName, listener, manifest.id);
         },
         emit(eventName, payload) {
             requirePluginPermission(manifest, "events");
-            for (const item of eventListeners.get(eventName) ?? []) {
-                if (isPluginEnabled(item.pluginId)) {
-                    item.listener(payload);
-                }
-            }
+            emitPluginEvent(eventName, payload);
         },
     };
 }

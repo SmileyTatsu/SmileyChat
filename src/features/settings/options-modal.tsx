@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import type { ConnectionSettings } from "#frontend/lib/connections/config";
+import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
@@ -40,6 +41,9 @@ type OptionsModalProps = {
     character: SmileyCharacter;
     messages: Message[];
     mode: ChatMode;
+    lorebookCollection: LorebookCollection;
+    lorebookLoadError?: string;
+    onLorebookCollectionChange: (collection: LorebookCollection) => void;
     onCategoryChange: (category: SettingsCategory) => void;
     onClose: () => void;
     onConnectionSettingsChange: (settings: ConnectionSettings) => void;
@@ -81,6 +85,8 @@ export function OptionsModal({
     connectionLoadError,
     connectionSettings,
     character,
+    lorebookCollection,
+    lorebookLoadError,
     messages,
     mode,
     onCategoryChange,
@@ -88,6 +94,7 @@ export function OptionsModal({
     onConnectionSettingsChange,
     onCreatePersona,
     onDeletePersona,
+    onLorebookCollectionChange,
     onPersonaChange,
     onPersonaSaved,
     onPersonaSelect,
@@ -288,7 +295,13 @@ export function OptionsModal({
                                 onSetActivePersona={onSetActivePersona}
                             />
                         )}
-                        {activeCategory === "lorebooks" && <LorebooksSettings />}
+                        {activeCategory === "lorebooks" && (
+                            <LorebooksSettings
+                                collection={lorebookCollection}
+                                loadError={lorebookLoadError}
+                                onCollectionChange={onLorebookCollectionChange}
+                            />
+                        )}
                         {activeCategory === "plugins" && (
                             <PluginsSettings pluginSnapshot={pluginSnapshot} />
                         )}

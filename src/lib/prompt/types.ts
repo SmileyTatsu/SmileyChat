@@ -8,6 +8,8 @@ import type {
 } from "#frontend/types";
 
 import type { ChatGenerationMessage } from "../connections/types";
+import type { Lorebook } from "../lorebooks/types";
+import type { AppPreferences } from "../preferences/types";
 import type { SmileyPreset } from "../presets/types";
 
 export type PromptGenerationTrigger =
@@ -48,10 +50,12 @@ export type PromptBuildContext = {
     };
     groupCharacters: SmileyCharacter[];
     generation: PromptGenerationContext;
+    lorebooks: Lorebook[];
     metadata?: Record<string, unknown>;
     messages: Message[];
     mode: ChatMode;
     persona: SmileyPersona;
+    preferences: AppPreferences;
     preset: SmileyPreset | undefined;
     tokenBudget: number;
     userStatus: UserStatus;

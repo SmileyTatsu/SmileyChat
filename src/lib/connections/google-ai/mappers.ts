@@ -24,8 +24,7 @@ export function createGoogleAIGenerateBody(
     const messages = request.promptMessages?.length
         ? request.promptMessages
         : legacyMessages(request);
-    const { systemText, conversationMessages } =
-        splitLeadingSystemMessages(messages);
+    const { systemText, conversationMessages } = splitLeadingSystemMessages(messages);
     const contents = mergeConsecutiveContents(
         conversationMessages
             .map(toGoogleAIContent)

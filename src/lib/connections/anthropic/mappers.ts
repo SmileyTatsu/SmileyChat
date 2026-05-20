@@ -24,8 +24,7 @@ export function createAnthropicMessageBody(
     const promptMessages = request.promptMessages?.length
         ? request.promptMessages
         : legacyMessages(request);
-    const { system, conversationMessages } =
-        splitLeadingSystemMessages(promptMessages);
+    const { system, conversationMessages } = splitLeadingSystemMessages(promptMessages);
     const messages = mergeConsecutiveMessages(
         conversationMessages
             .map(toAnthropicMessage)

@@ -6,21 +6,25 @@ import {
     exportLorebook,
     importLorebookFiles,
     loadLorebook,
-    loadLorebookSummaries,
     saveLorebook,
 } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import type { Lorebook, LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { LorebookEntry } from "#frontend/lib/lorebooks/types";
 
-export function LorebooksSettings() {
-    const [collection, setCollection] = useState<LorebookCollection>({
-        version: 1,
-        activeLorebookId: "",
-        lorebooks: [],
-    });
+type LorebooksSettingsProps = {
+    collection: LorebookCollection;
+    loadError?: string;
+    onCollectionChange: (collection: LorebookCollection) => void;
+};
+
+export function LorebooksSettings({
+    collection,
+    loadError,
+    onCollectionChange,
+}: LorebooksSettingsProps) {
     const [activeLorebook, setActiveLorebook] = useState<Lorebook | undefined>();
-    const [loadError, setLoadError] = useState("");
+    const [detailLoadError, setDetailLoadError] = useState("");
     const [status, setStatus] = useState("");
     const [isBusy, setIsBusy] = useState(false);
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -47,10 +51,6 @@ export function LorebooksSettings() {
         : selectedSummary?.enabled !== false;
 
     useEffect(() => {
-        void refresh();
-    }, []);
-
-    useEffect(() => {
         if (!selectedId) {
             setActiveLorebook(undefined);
             return;
@@ -59,23 +59,17 @@ export function LorebooksSettings() {
         void selectLorebook(selectedId);
     }, [selectedId]);
 
-    async function refresh() {
+    async function selectLorebook(lorebookId: string) {
         try {
-            setLoadError("");
-            const nextCollection = await loadLorebookSummaries();
-            setCollection(nextCollection);
+            setDetailLoadError("");
+            setActiveLorebook(await loadLorebook(lorebookId));
         } catch (error) {
-            setLoadError(messageFromError(error, "Failed to load LoreBooks."));
+            setDetailLoadError(messageFromError(error, "Failed to load LoreBook."));
         }
     }
 
-    async function selectLorebook(lorebookId: string) {
-        try {
-            setLoadError("");
-            setActiveLorebook(await loadLorebook(lorebookId));
-        } catch (error) {
-            setLoadError(messageFromError(error, "Failed to load LoreBook."));
-        }
+    function applyCollection(nextCollection: LorebookCollection) {
+        onCollectionChange(nextCollection);
     }
 
     async function handleImport(files: FileList | null) {
@@ -94,7 +88,9 @@ export function LorebooksSettings() {
             setStatus("");
             const result = await importLorebookFiles(formData);
 
-            setCollection(result.lorebooks ?? collection);
+            if (result.lorebooks) {
+                applyCollection(result.lorebooks);
+            }
             setStatus(
                 `Imported ${result.imported} LoreBook${result.imported === 1 ? "" : "s"}.`,
             );
@@ -150,7 +146,7 @@ export function LorebooksSettings() {
             setIsBusy(true);
             const result = await deleteLorebook(activeLorebook.id);
 
-            setCollection(
+            applyCollection(
                 result.lorebooks ?? {
                     version: 1,
                     activeLorebookId: "",
@@ -185,7 +181,7 @@ export function LorebooksSettings() {
             const result = await saveLorebook(updatedLorebook);
             setActiveLorebook(result.lorebook);
             if (result.lorebooks) {
-                setCollection(result.lorebooks);
+                applyCollection(result.lorebooks);
             }
             setStatus(enabled ? "Enabled entry." : "Disabled entry.");
         } catch (error) {
@@ -224,7 +220,7 @@ export function LorebooksSettings() {
                 setActiveLorebook(result.lorebook);
             }
             if (result.lorebooks) {
-                setCollection(result.lorebooks);
+                applyCollection(result.lorebooks);
             }
             setStatus(enabled ? "Enabled LoreBook." : "Disabled LoreBook.");
         } catch (error) {
@@ -327,6 +323,9 @@ export function LorebooksSettings() {
             </header>
 
             {loadError && <p className="connection-status error">{loadError}</p>}
+            {detailLoadError && (
+                <p className="connection-status error">{detailLoadError}</p>
+            )}
             {status && <p className="connection-status">{status}</p>}
 
             <div className="lorebook-editor">

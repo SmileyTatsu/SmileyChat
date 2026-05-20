@@ -20,6 +20,7 @@ import {
     loadAppPreferences,
     loadConnectionSecrets,
     loadConnectionSettings as loadConnectionSettingsRequest,
+    loadLorebookSummaries,
     loadPluginManifests,
     loadPresetCollection as loadPresetCollectionRequest,
     localApiErrorEventName,
@@ -55,11 +56,16 @@ import {
     setPluginAppActionHandlers,
     setPluginModelHandlers,
     setPluginSnapshot,
+    subscribeToPluginEvent,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
 import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
-import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type {
+    PluginAppDataChangedEvent,
+    PluginAppSnapshot,
+} from "#frontend/lib/plugins/types";
 
+import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
@@ -96,8 +102,14 @@ export function App() {
     const [presetCollection, setPresetCollection] = useState<PresetCollection>(
         defaultPresetCollection,
     );
+    const [lorebookCollection, setLorebookCollection] = useState<LorebookCollection>({
+        version: 1,
+        activeLorebookId: "",
+        lorebooks: [],
+    });
     const [preferences, setPreferences] = useState<AppPreferences>(defaultAppPreferences);
     const [connectionLoadError, setConnectionLoadError] = useState("");
+    const [lorebookLoadError, setLorebookLoadError] = useState("");
     const [presetLoadError, setPresetLoadError] = useState("");
     const [preferencesLoadError, setPreferencesLoadError] = useState("");
     const [preferencesSaveStatus, setPreferencesSaveStatus] = useState("");
@@ -171,6 +183,7 @@ export function App() {
         connectionSettings,
         mode,
         onChatChange: queueChatSave,
+        lorebookCollection,
         persona,
         preferences,
         presetCollection,
@@ -198,11 +211,46 @@ export function App() {
 
     useEffect(() => {
         void loadConnectionSettings();
+        void loadLorebookCollection();
         void loadPresetCollection();
-        void loadPreferences();
+        void loadPreferences({ applyStartupLayout: true });
         void loadPersonaCollection();
         void loadPlugins();
     }, []);
+
+    useEffect(
+        () =>
+            subscribeToPluginEvent("app:data-changed", (payload) => {
+                if (!isPluginAppDataChangedEvent(payload)) {
+                    return;
+                }
+
+                if (payload.type === "characters") {
+                    void loadCharacterCollection();
+                    return;
+                }
+
+                if (payload.type === "lorebooks") {
+                    void loadLorebookCollection();
+                    return;
+                }
+
+                if (payload.type === "personas") {
+                    void loadPersonaCollection();
+                    return;
+                }
+
+                if (payload.type === "preferences") {
+                    void loadPreferences({ applyStartupLayout: false });
+                    return;
+                }
+
+                if (payload.type === "presets") {
+                    void loadPresetCollection();
+                }
+            }),
+        [],
+    );
 
     useEffect(() => {
         function updateViewportWidth() {
@@ -336,9 +384,11 @@ export function App() {
             character,
             characterPresence,
             connectionSettings: sanitizeConnectionSettings(connectionSettings),
+            lorebooks: lorebookCollection,
             messages: chatSession.messages,
             mode,
             persona,
+            preferences,
             presetCollection,
             userStatus,
         }),
@@ -348,8 +398,10 @@ export function App() {
             characterPresence,
             chatSession.messages,
             connectionSettings,
+            lorebookCollection,
             mode,
             persona,
+            preferences,
             presetCollection,
             userStatus,
         ],
@@ -567,15 +619,32 @@ export function App() {
         }
     }
 
-    async function loadPreferences() {
+    async function loadLorebookCollection() {
+        try {
+            setLorebookCollection(await loadLorebookSummaries());
+            setLorebookLoadError("");
+        } catch (error) {
+            setLorebookLoadError(messageFromError(error, "Failed to load LoreBooks."));
+        }
+    }
+
+    async function loadPreferences({
+        applyStartupLayout,
+    }: {
+        applyStartupLayout: boolean;
+    }) {
         try {
             const loadedPreferences = normalizeAppPreferences(await loadAppPreferences());
             setPreferences(loadedPreferences);
-            setMode(loadedPreferences.chat.defaultMode);
 
-            setDesktopCharacterOpen(loadedPreferences.layout.characterPanelOpenByDefault);
-            setMobileCharacterOpen(false);
-            setMobileSidebarOpen(false);
+            if (applyStartupLayout) {
+                setMode(loadedPreferences.chat.defaultMode);
+                setDesktopCharacterOpen(
+                    loadedPreferences.layout.characterPanelOpenByDefault,
+                );
+                setMobileCharacterOpen(false);
+                setMobileSidebarOpen(false);
+            }
 
             setPreferencesLoadError("");
         } catch (error) {
@@ -841,6 +910,8 @@ export function App() {
                     preferences={preferences}
                     preferencesLoadError={preferencesLoadError}
                     preferencesSaveStatus={preferencesSaveStatus}
+                    lorebookCollection={lorebookCollection}
+                    lorebookLoadError={lorebookLoadError}
                     persona={personaEditorPersona}
                     personaCollection={personaSummaries}
                     personaLoadError={personaLoadError}
@@ -850,6 +921,7 @@ export function App() {
                     onConnectionSettingsChange={updateConnectionSettings}
                     onCreatePersona={() => void createPersona()}
                     onDeletePersona={(personaId) => void deletePersona(personaId)}
+                    onLorebookCollectionChange={setLorebookCollection}
                     onPersonaChange={(nextPersona) => void updatePersona(nextPersona)}
                     onPersonaSelect={(personaId) =>
                         void selectPersonaForEditing(personaId)
@@ -866,5 +938,22 @@ export function App() {
 
             <PluginModalHost snapshot={pluginSnapshot} />
         </main>
+    );
+}
+
+function isPluginAppDataChangedEvent(
+    payload: unknown,
+): payload is PluginAppDataChangedEvent {
+    if (!payload || typeof payload !== "object") {
+        return false;
+    }
+
+    const type = (payload as { type?: unknown }).type;
+    return (
+        type === "characters" ||
+        type === "lorebooks" ||
+        type === "personas" ||
+        type === "preferences" ||
+        type === "presets"
     );
 }

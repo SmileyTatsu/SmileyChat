@@ -15,6 +15,8 @@ import type {
     ChatGenerationResult,
     ConnectionAdapter,
 } from "../connections/types";
+import type { LorebookCollection } from "../lorebooks/types";
+import type { AppPreferences } from "../preferences/types";
 import type { MacroContext } from "../presets/macros";
 import type { PresetCollection } from "../presets/types";
 import type {
@@ -76,6 +78,8 @@ export type PluginAppSnapshot = {
     persona: SmileyPersona;
     userStatus: UserStatus;
     connectionSettings: ConnectionSettings;
+    lorebooks: LorebookCollection;
+    preferences: AppPreferences;
     presetCollection: PresetCollection;
 };
 
@@ -233,6 +237,17 @@ export type PluginStorageApi = {
 export type PluginEventsApi = {
     on(eventName: string, listener: (payload: unknown) => void): () => void;
     emit(eventName: string, payload?: unknown): void;
+};
+
+export type PluginAppDataChangedType =
+    | "characters"
+    | "lorebooks"
+    | "personas"
+    | "preferences"
+    | "presets";
+
+export type PluginAppDataChangedEvent = {
+    type: PluginAppDataChangedType;
 };
 
 export type PluginActionsApi = {

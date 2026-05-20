@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import {
-    loadLorebook,
-    loadLorebookSummaries,
-    uploadChatAttachments,
-} from "#frontend/lib/api/client";
+import { loadLorebook, uploadChatAttachments } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import {
@@ -37,7 +33,7 @@ import {
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
 import { isLorebookEnabled } from "#frontend/lib/lorebooks/normalize";
-import type { Lorebook } from "#frontend/lib/lorebooks/types";
+import type { Lorebook, LorebookCollection } from "#frontend/lib/lorebooks/types";
 import {
     getInputMiddlewares,
     getOutputMiddlewares,
@@ -57,10 +53,7 @@ import {
     assertPromptMessagesWithinBudget,
     buildPromptForGeneration,
 } from "#frontend/lib/prompt/build";
-import type {
-    PromptGenerationTrigger,
-    PromptInjector,
-} from "#frontend/lib/prompt/types";
+import type { PromptGenerationTrigger, PromptInjector } from "#frontend/lib/prompt/types";
 import type {
     ChatMode,
     ChatAttachment,
@@ -76,6 +69,7 @@ type UseChatSessionOptions = {
     character: SmileyCharacter;
     connectionSettings: ConnectionSettings;
     groupCharacters?: SmileyCharacter[];
+    lorebookCollection: LorebookCollection;
     mode: ChatMode;
     onChatChange: (chat: ChatSession) => void;
     persona: SmileyPersona;
@@ -104,6 +98,7 @@ export function useChatSession({
     character,
     connectionSettings,
     groupCharacters = [],
+    lorebookCollection,
     mode,
     onChatChange,
     persona,
@@ -1162,9 +1157,11 @@ export function useChatSession({
                         : {}),
                     trigger: options.trigger ?? "send",
                 },
+                lorebooks: nativeLorebooks,
                 messages: sourceGenerationMessages,
                 mode: sourceMode,
                 persona,
+                preferences,
                 preset: activePreset,
                 tokenBudget: contextTokenBudget,
                 userStatus: sourceUserStatus,
@@ -1229,11 +1226,10 @@ export function useChatSession({
         sourceCharacter: SmileyCharacter,
     ): Promise<Lorebook[]> {
         try {
-            const collection = await loadLorebookSummaries();
             const lorebookIds = Array.from(
                 new Set(
                     [
-                        collection.activeLorebookId,
+                        lorebookCollection.activeLorebookId,
                         ...(sourceChat.metadata?.lorebookIds ?? []),
                         sourceCharacter.metadata?.primaryLorebookId,
                         ...(sourceCharacter.metadata?.lorebookIds ?? []),

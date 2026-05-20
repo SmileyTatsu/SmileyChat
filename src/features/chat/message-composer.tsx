@@ -77,7 +77,9 @@ export function MessageComposer({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const optionsRef = useRef<HTMLDivElement>(null);
     const authorNoteSaveTimerRef = useRef<number | undefined>();
-    const lastSavedAuthorNoteKeyRef = useRef(authorNoteKey(authorNoteFromProp(authorNote)));
+    const lastSavedAuthorNoteKeyRef = useRef(
+        authorNoteKey(authorNoteFromProp(authorNote)),
+    );
 
     const [draft, setDraft] = useState("");
     const [, setRegistryRevision] = useState(0);

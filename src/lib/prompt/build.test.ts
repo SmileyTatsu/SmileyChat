@@ -8,6 +8,7 @@ import type {
 } from "#frontend/types";
 
 import { defaultCharacterData } from "../characters/defaults";
+import { defaultAppPreferences } from "../preferences/types";
 import { createDefaultPreset } from "../presets/defaults";
 import type { SmileyPreset } from "../presets/types";
 import type { PromptBuildContext } from "./types";
@@ -218,9 +219,11 @@ function createPromptContext(
             stream: false,
             trigger: "send",
         },
+        lorebooks: [],
         messages,
         mode: "chat",
         persona,
+        preferences: defaultAppPreferences,
         preset: createDefaultPreset("2026-01-01T00:00:00.000Z"),
         tokenBudget: 10000,
         userStatus: "online",
