@@ -5,7 +5,13 @@ import type {
     PluginComposerStatePatch,
 } from "#frontend/lib/plugins/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
-import type { ChatGroupMember, ChatMode, Message } from "#frontend/types";
+import type {
+    ChatAuthorNote,
+    ChatGroupMember,
+    ChatMetadata,
+    ChatMode,
+    Message,
+} from "#frontend/types";
 
 import { ChatHeader } from "./chat-header";
 import { MessageComposer } from "./message-composer";
@@ -15,6 +21,7 @@ type ChatWorkspaceProps = {
     activeChatId: string;
     characterAvatarPath?: string;
     characterName: string;
+    chatMetadata?: ChatMetadata;
     chatTitle: string;
     groupAvatarPath?: string;
     groupMembers?: ChatGroupMember[];
@@ -37,6 +44,7 @@ type ChatWorkspaceProps = {
     onPreviousSwipe: (messageId: string) => void;
     onAbortGeneration: () => void;
     onSendMessage: (draft: string, images?: File[]) => void | Promise<void>;
+    onUpdateChatMetadata: (metadata: ChatMetadata) => void;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
     pluginComposerState?: PluginComposerStatePatch;
@@ -47,6 +55,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     activeChatId,
     characterAvatarPath,
     characterName,
+    chatMetadata,
     chatTitle,
     groupAvatarPath,
     groupMembers,
@@ -64,6 +73,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     onPreviousSwipe,
     onAbortGeneration,
     onSendMessage,
+    onUpdateChatMetadata,
     onToggleSidebar,
     onToggleCharacter,
     pluginComposerState,
@@ -142,6 +152,10 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     placeholder={pluginComposerState?.placeholder}
                     resetKey={activeChatId}
                     onAbortGeneration={onAbortGeneration}
+                    authorNote={chatMetadata?.authorNote}
+                    onUpdateAuthorNote={(authorNote: ChatAuthorNote) =>
+                        onUpdateChatMetadata({ authorNote })
+                    }
                     onSubmit={onSendMessage}
                     pluginSnapshot={pluginSnapshot}
                 />

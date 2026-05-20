@@ -50,9 +50,11 @@ export type MessageSwipe = {
 };
 
 export type {
+    ChatAuthorNote,
     ChatGroup,
     ChatGroupMember,
     ChatKind,
+    ChatMetadata,
     ChatSession,
     ChatSummary,
     ChatSummaryCollection,

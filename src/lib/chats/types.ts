@@ -52,7 +52,15 @@ export type ChatRuntimeState = {
     };
 };
 
+export type ChatAuthorNote = {
+    content: string;
+    depth?: number;
+    role?: "system" | "user" | "assistant";
+    isEnabled?: boolean;
+};
+
 export type ChatMetadata = {
+    authorNote?: ChatAuthorNote;
     lorebookIds?: string[];
     loreState?: ChatRuntimeState["lorebooks"];
     [key: string]: unknown;

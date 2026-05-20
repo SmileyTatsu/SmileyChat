@@ -64,7 +64,12 @@ import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 
-import type { ChatMode, SettingsCategory, UserStatus } from "#frontend/types";
+import type {
+    ChatMetadata,
+    ChatMode,
+    SettingsCategory,
+    UserStatus,
+} from "#frontend/types";
 
 import { useCharacterChats } from "./hooks/use-character-chats";
 import { useChatSession } from "./hooks/use-chat-session";
@@ -376,6 +381,22 @@ export function App() {
     const handleSendMessage = useCallback((draft: string, images?: File[]) => {
         return latestChatSessionForPluginsRef.current.sendMessage(draft, images);
     }, []);
+    const handleUpdateChatMetadata = useCallback(
+        (metadata: ChatMetadata) => {
+            if (!activeChat) {
+                return;
+            }
+
+            queueChatSave({
+                ...activeChat,
+                metadata: {
+                    ...(activeChat.metadata ?? {}),
+                    ...metadata,
+                },
+            });
+        },
+        [activeChat, queueChatSave],
+    );
     const handleToggleSidebar = useCallback(() => {
         if (isMobileLayout) {
             setMobileSidebarOpen((prev) => !prev);
@@ -755,6 +776,7 @@ export function App() {
                           : "No character selected"
                 }
                 chatTitle={hasCharacters ? activeChatTitle : "No active chat"}
+                chatMetadata={activeChat?.metadata}
                 groupAvatarPath={
                     activeChatIsGroup && activeChat?.group?.avatar?.type === "custom"
                         ? activeChat.group.avatar.path
@@ -775,6 +797,7 @@ export function App() {
                 onNextSwipe={handleNextSwipe}
                 onPreviousSwipe={handlePreviousSwipe}
                 onSendMessage={handleSendMessage}
+                onUpdateChatMetadata={handleUpdateChatMetadata}
                 onToggleSidebar={handleToggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}

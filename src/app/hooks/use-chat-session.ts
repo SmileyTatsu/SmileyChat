@@ -57,7 +57,10 @@ import {
     assertPromptMessagesWithinBudget,
     buildPromptForGeneration,
 } from "#frontend/lib/prompt/build";
-import type { PromptGenerationTrigger } from "#frontend/lib/prompt/types";
+import type {
+    PromptGenerationTrigger,
+    PromptInjector,
+} from "#frontend/lib/prompt/types";
 import type {
     ChatMode,
     ChatAttachment,
@@ -162,6 +165,46 @@ export function useChatSession({
             personaName: persona.name,
             userStatus,
         });
+    }
+
+    function createAuthorNotePromptInjector(): PromptInjector {
+        return (context) => {
+            const authorNote = context.chat.metadata?.authorNote;
+            const content = authorNote?.content?.trim();
+
+            if (!authorNote || authorNote.isEnabled === false || !content) {
+                return [];
+            }
+
+            const role =
+                authorNote.role === "user" || authorNote.role === "assistant"
+                    ? authorNote.role
+                    : "system";
+            const depth =
+                typeof authorNote.depth === "number" && Number.isFinite(authorNote.depth)
+                    ? Math.max(0, Math.floor(authorNote.depth))
+                    : 0;
+
+            return [
+                {
+                    id: "core.author-note",
+                    source: "core",
+                    role,
+                    content: resolvePresetMacros(content, {
+                        character: context.character,
+                        group: context.group,
+                        messages: context.messages,
+                        mode: context.mode,
+                        personaDescription: context.persona.description,
+                        personaName: context.persona.name,
+                        userStatus: context.userStatus,
+                    }),
+                    anchor: "at-depth",
+                    depth,
+                    order: 1000,
+                },
+            ];
+        };
     }
 
     async function sendMessage(draft: string, images: File[] = []) {
@@ -1128,6 +1171,7 @@ export function useChatSession({
             },
             contextMiddlewares: getPromptContextMiddlewares(),
             injectors: [
+                createAuthorNotePromptInjector(),
                 (context) =>
                     createLorebookPromptInjections(nativeLorebooks, {
                         generation: context.generation,
