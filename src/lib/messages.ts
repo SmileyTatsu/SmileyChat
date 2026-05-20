@@ -151,7 +151,7 @@ export function createCharacterGreetingMessage(
     };
 }
 
-export function createMessageSwipe(
+function createMessageSwipe(
     content: string,
     status?: MessageSwipe["status"],
 ): MessageSwipe {
@@ -163,7 +163,7 @@ export function createMessageSwipe(
     };
 }
 
-export function getActiveSwipe(message: Message): MessageSwipe {
+function getActiveSwipe(message: Message): MessageSwipe {
     return message.swipes[message.activeSwipeIndex] ?? message.swipes[0];
 }
 

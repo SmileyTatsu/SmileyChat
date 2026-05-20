@@ -58,24 +58,6 @@ export async function readCharacterCollection(): Promise<CharacterCollection> {
     });
 }
 
-export async function writeCharacterCollection(characters: unknown) {
-    const safeCharacters = normalizeCharacterCollection(characters);
-    const entries: CharacterIndexEntry[] = [];
-
-    for (const character of safeCharacters.characters) {
-        const stored = await writeCharacterToLibrary(character);
-        entries.push(characterToIndexEntry(stored.character, stored.basePath));
-    }
-
-    await writeCharacterIndex({
-        version: 1,
-        activeCharacterId: safeCharacters.activeCharacterId,
-        characters: entries,
-    });
-
-    return safeCharacters;
-}
-
 export async function readCharacterSummaryCollection(): Promise<CharacterSummaryCollection> {
     const index = await readCharacterIndex();
 
@@ -236,11 +218,6 @@ export async function deleteCharacterById(characterId: string) {
 
 export async function characterBasePathById(characterId: string) {
     return (await findCharacterIndexEntry(characterId))?.basePath ?? "";
-}
-
-export async function characterDataPathById(characterId: string) {
-    const basePath = await characterBasePathById(characterId);
-    return basePath ? characterDataPath(basePath) : "";
 }
 
 export async function writeCharacterWithBasePath(

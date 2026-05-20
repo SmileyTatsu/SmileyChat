@@ -302,14 +302,6 @@ export function loadLorebook(lorebookId: string) {
     return requestJson<Lorebook>(`/api/lorebooks/${encodeURIComponent(lorebookId)}`);
 }
 
-export function createLorebook(lorebook: Lorebook) {
-    return requestJson<{
-        ok: true;
-        lorebook: Lorebook;
-        lorebooks?: LorebookCollection;
-    }>("/api/lorebooks", jsonInit("POST", lorebook));
-}
-
 export function saveLorebook(lorebook: Lorebook) {
     return requestJson<{
         ok: true;
@@ -415,28 +407,6 @@ export function deleteChatAttachment(chatId: string, fileName: string) {
         `/api/chats/${encodeURIComponent(chatId)}/attachments/${encodeURIComponent(fileName)}`,
         { method: "DELETE" },
     );
-}
-
-export async function exportGroupChat(chatId: string) {
-    const response = await localApiFetch(
-        `/api/chats/${encodeURIComponent(chatId)}/export-group.json`,
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            `Export group failed: ${response.status}${await responseErrorSuffix(response)}`,
-        );
-    }
-
-    return response;
-}
-
-export function importGroupChat(definition: unknown) {
-    return requestJson<{
-        ok: true;
-        chat: ChatSession;
-        chats?: ChatSummaryCollection;
-    }>("/api/chats/import-group", jsonInit("POST", definition));
 }
 
 export function saveChatIndex(chats: ChatSummaryCollection) {

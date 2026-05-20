@@ -16,7 +16,7 @@ export async function writeChatAssets(chatId: string, files: File[]) {
     return attachments;
 }
 
-export async function writeChatAsset(
+async function writeChatAsset(
     chatId: string,
     file: File,
 ): Promise<ChatAttachment> {

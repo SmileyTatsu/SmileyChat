@@ -10,7 +10,7 @@ export function characterDataPath(basePath: string) {
     return join(characterBaseDirectoryPath(basePath), characterDataFileName);
 }
 
-export function characterAvatarFileName(type: "png" | "jpeg" | "webp") {
+function characterAvatarFileName(type: "png" | "jpeg" | "webp") {
     return `avatar.${type === "jpeg" ? "jpg" : type}`;
 }
 
@@ -44,7 +44,7 @@ export function safeFileStem(value: string) {
     return value.replace(/[^a-zA-Z0-9_.-]/g, "_") || "character";
 }
 
-export function slugCharacterName(value: string) {
+function slugCharacterName(value: string) {
     const slug = value
         .trim()
         .toLowerCase()
@@ -55,7 +55,7 @@ export function slugCharacterName(value: string) {
     return slug || "character";
 }
 
-export function shortCharacterId(characterId: string) {
+function shortCharacterId(characterId: string) {
     const withoutPrefix = characterId.replace(/^character[-_]?/i, "");
     return withoutPrefix.split(/[-_.]/)[0]?.slice(0, 8) || characterId.slice(0, 8);
 }
