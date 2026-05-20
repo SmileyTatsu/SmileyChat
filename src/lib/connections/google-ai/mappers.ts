@@ -24,14 +24,10 @@ export function createGoogleAIGenerateBody(
     const messages = request.promptMessages?.length
         ? request.promptMessages
         : legacyMessages(request);
-    const systemText = messages
-        .filter((message) => message.role === "developer" || message.role === "system")
-        .map((message) => messageContentToText(message.content).trim())
-        .filter(Boolean)
-        .join("\n\n");
+    const { systemText, conversationMessages } =
+        splitLeadingSystemMessages(messages);
     const contents = mergeConsecutiveContents(
-        messages
-            .filter((message) => message.role === "user" || message.role === "assistant")
+        conversationMessages
             .map(toGoogleAIContent)
             .filter((content) => content.parts.some(hasVisiblePart)),
     );
@@ -59,6 +55,39 @@ export function createGoogleAIGenerateBody(
                   },
               }
             : {}),
+    };
+}
+
+function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
+    const systemMessages: string[] = [];
+    const conversationMessages: ChatGenerationMessage[] = [];
+    let conversationStarted = false;
+
+    for (const message of messages) {
+        const isSystemInstruction =
+            message.role === "developer" || message.role === "system";
+
+        if (
+            !conversationStarted &&
+            (message.role === "user" || message.role === "assistant")
+        ) {
+            conversationStarted = true;
+        }
+
+        if (isSystemInstruction && !conversationStarted) {
+            const text = messageContentToText(message.content).trim();
+            if (text) {
+                systemMessages.push(text);
+            }
+            continue;
+        }
+
+        conversationMessages.push(message);
+    }
+
+    return {
+        systemText: systemMessages.join("\n\n"),
+        conversationMessages,
     };
 }
 

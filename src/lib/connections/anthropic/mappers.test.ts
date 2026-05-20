@@ -28,6 +28,42 @@ describe("Anthropic connection mappers", () => {
         ]);
     });
 
+    test("keeps interspersed system and developer messages in history", () => {
+        const body = createAnthropicMessageBody(
+            {
+                promptMessages: [
+                    { role: "system", content: "System prompt" },
+                    { role: "user", content: "First user" },
+                    { role: "system", content: "Author note" },
+                    { role: "assistant", content: "First assistant" },
+                    { role: "developer", content: "Depth instruction" },
+                    { role: "user", content: "Second user" },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-sonnet-4-6" },
+            },
+        );
+
+        expect(body.system).toBe("System prompt");
+        expect(body.messages).toEqual([
+            {
+                role: "user",
+                content: "First user\nAuthor note",
+            },
+            {
+                role: "assistant",
+                content: "First assistant",
+            },
+            {
+                role: "user",
+                content: "Depth instruction\nSecond user",
+            },
+        ]);
+    });
+
     test("merges consecutive same-role turns", () => {
         const body = createAnthropicMessageBody(
             {

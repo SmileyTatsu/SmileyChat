@@ -24,14 +24,10 @@ export function createAnthropicMessageBody(
     const promptMessages = request.promptMessages?.length
         ? request.promptMessages
         : legacyMessages(request);
-    const system = promptMessages
-        .filter((message) => message.role === "developer" || message.role === "system")
-        .map((message) => messageContentToText(message.content).trim())
-        .filter(Boolean)
-        .join("\n\n");
+    const { system, conversationMessages } =
+        splitLeadingSystemMessages(promptMessages);
     const messages = mergeConsecutiveMessages(
-        promptMessages
-            .filter((message) => message.role === "user" || message.role === "assistant")
+        conversationMessages
             .map(toAnthropicMessage)
             .filter((message) => hasVisibleContent(message.content)),
     );
@@ -50,6 +46,39 @@ export function createAnthropicMessageBody(
         messages,
         stream: request.stream === true,
         ...(thinking ? { thinking } : {}),
+    };
+}
+
+function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
+    const systemMessages: string[] = [];
+    const conversationMessages: ChatGenerationMessage[] = [];
+    let conversationStarted = false;
+
+    for (const message of messages) {
+        const isSystemInstruction =
+            message.role === "developer" || message.role === "system";
+
+        if (
+            !conversationStarted &&
+            (message.role === "user" || message.role === "assistant")
+        ) {
+            conversationStarted = true;
+        }
+
+        if (isSystemInstruction && !conversationStarted) {
+            const text = messageContentToText(message.content).trim();
+            if (text) {
+                systemMessages.push(text);
+            }
+            continue;
+        }
+
+        conversationMessages.push(message);
+    }
+
+    return {
+        system: systemMessages.join("\n\n"),
+        conversationMessages,
     };
 }
 

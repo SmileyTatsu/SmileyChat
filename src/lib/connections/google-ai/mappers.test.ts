@@ -30,6 +30,42 @@ describe("Google AI connection mappers", () => {
         ]);
     });
 
+    test("keeps interspersed system and developer messages in history", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [
+                    { role: "system", content: "System prompt" },
+                    { role: "user", content: "First user" },
+                    { role: "system", content: "Author note" },
+                    { role: "assistant", content: "First model" },
+                    { role: "developer", content: "Depth instruction" },
+                    { role: "user", content: "Second user" },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.systemInstruction?.parts[0]?.text).toBe("System prompt");
+        expect(body.contents).toEqual([
+            {
+                role: "user",
+                parts: [{ text: "First user\nAuthor note" }],
+            },
+            {
+                role: "model",
+                parts: [{ text: "First model" }],
+            },
+            {
+                role: "user",
+                parts: [{ text: "Depth instruction\nSecond user" }],
+            },
+        ]);
+    });
+
     test("merges consecutive same-role turns for Gemini alternation", () => {
         const body = createGoogleAIGenerateBody(
             {
