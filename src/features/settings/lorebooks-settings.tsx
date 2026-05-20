@@ -374,7 +374,9 @@ export function LorebooksSettings({
                                     </header>
                                     <button
                                         type="button"
-                                        onClick={() => openLorebookManager(activeLorebook.id)}
+                                        onClick={() =>
+                                            openLorebookManager(activeLorebook.id)
+                                        }
                                     >
                                         Edit in LoreBook Manager
                                     </button>
@@ -418,7 +420,9 @@ export function LorebooksSettings({
                                             <button
                                                 type="button"
                                                 role="menuitem"
-                                                onClick={() => void handleExport("smiley")}
+                                                onClick={() =>
+                                                    void handleExport("smiley")
+                                                }
                                             >
                                                 Smiley JSON
                                             </button>

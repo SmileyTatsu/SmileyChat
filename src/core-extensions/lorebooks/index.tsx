@@ -11,10 +11,7 @@ import type {
     LorebookInsertionPosition,
     LorebookSettings,
 } from "#frontend/lib/lorebooks/types";
-import type {
-    PluginAppSnapshot,
-    SmileyPluginApi,
-} from "#frontend/lib/plugins/types";
+import type { PluginAppSnapshot, SmileyPluginApi } from "#frontend/lib/plugins/types";
 
 import { lorebooksManifest } from "./manifest";
 
@@ -273,9 +270,14 @@ function LorebookManager({
                                 className={`lbm-entry-row ${selection === entry.id ? "active" : ""}`}
                                 key={entry.id}
                             >
-                                <button type="button" onClick={() => setSelection(entry.id)}>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelection(entry.id)}
+                                >
                                     <strong>{entry.title || "Untitled entry"}</strong>
-                                    <small>{entry.keys.join(", ") || "No primary keys"}</small>
+                                    <small>
+                                        {entry.keys.join(", ") || "No primary keys"}
+                                    </small>
                                 </button>
                                 <label title={entry.enabled ? "Disable" : "Enable"}>
                                     <input
@@ -312,7 +314,11 @@ function LorebookManager({
                 <header className="lbm-editor-header">
                     <div>
                         <h3>{activeLorebook?.title ?? "No LoreBook selected"}</h3>
-                        <p>{status || activeLorebook?.description || "Native LoreBook editor."}</p>
+                        <p>
+                            {status ||
+                                activeLorebook?.description ||
+                                "Native LoreBook editor."}
+                        </p>
                     </div>
                     <div>
                         <button
@@ -373,9 +379,7 @@ function lorebookIdFromPayload(payload: unknown) {
             ? (payload as { lorebookId?: unknown }).lorebookId
             : undefined;
 
-    return typeof lorebookId === "string" && lorebookId.trim()
-        ? lorebookId
-        : undefined;
+    return typeof lorebookId === "string" && lorebookId.trim() ? lorebookId : undefined;
 }
 
 function GlobalSettingsForm({
@@ -714,9 +718,8 @@ function EntryEditor({
                                 value={entry.role}
                                 onInput={(event) =>
                                     onChange({
-                                        role: (
-                                            event.currentTarget as HTMLSelectElement
-                                        ).value as LorebookEntry["role"],
+                                        role: (event.currentTarget as HTMLSelectElement)
+                                            .value as LorebookEntry["role"],
                                     })
                                 }
                             >
@@ -876,7 +879,11 @@ function splitList(value: string) {
     );
 }
 
-function numericValue(input: HTMLInputElement, min: number, max = Number.MAX_SAFE_INTEGER) {
+function numericValue(
+    input: HTMLInputElement,
+    min: number,
+    max = Number.MAX_SAFE_INTEGER,
+) {
     const value = Number(input.value);
 
     if (!Number.isFinite(value)) {

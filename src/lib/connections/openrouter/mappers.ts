@@ -1,4 +1,5 @@
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
+import { defaultOutputTokenLimit } from "../output-tokens";
 import {
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
@@ -26,6 +27,7 @@ export function createOpenRouterChatCompletionBody(
     return {
         model: config.model.id,
         messages,
+        max_completion_tokens: config.maxCompletionTokens ?? defaultOutputTokenLimit,
         stream: request.stream === true,
         ...(provider ? { provider } : {}),
         ...(reasoning ? { reasoning } : {}),

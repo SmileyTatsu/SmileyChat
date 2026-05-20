@@ -2,6 +2,7 @@ import {
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
 } from "../chat-completions";
+import { defaultOutputTokenLimit } from "../output-tokens";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 import type {
     OpenAICompatibleChatCompletionRequest,
@@ -27,6 +28,7 @@ export function createChatCompletionBody(
     return {
         model: config.model.id,
         messages,
+        max_completion_tokens: config.maxCompletionTokens ?? defaultOutputTokenLimit,
         ...(reasoning?.wireFormat === "chat-reasoning-effort"
             ? { reasoning_effort: reasoning.effort }
             : {}),

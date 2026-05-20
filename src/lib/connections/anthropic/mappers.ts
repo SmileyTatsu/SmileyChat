@@ -14,8 +14,7 @@ import type {
     AnthropicRuntimeConfig,
     AnthropicThinkingConfig,
 } from "./types";
-
-const defaultMaxTokens = 1024;
+import { defaultOutputTokenLimit } from "../output-tokens";
 
 export function createAnthropicMessageBody(
     request: ChatGenerationRequest,
@@ -30,7 +29,8 @@ export function createAnthropicMessageBody(
             .map(toAnthropicMessage)
             .filter((message) => hasVisibleContent(message.content)),
     );
-    const thinking = cleanAnthropicThinkingConfig(config.thinking, defaultMaxTokens);
+    const maxTokens = config.maxTokens ?? defaultOutputTokenLimit;
+    const thinking = cleanAnthropicThinkingConfig(config.thinking, maxTokens);
 
     if (messages.length === 0) {
         throw new Error(
@@ -40,7 +40,7 @@ export function createAnthropicMessageBody(
 
     return {
         model: config.model.id,
-        max_tokens: defaultMaxTokens,
+        max_tokens: maxTokens,
         ...(system ? { system } : {}),
         messages,
         stream: request.stream === true,
@@ -155,9 +155,13 @@ export function createAnthropicReasoningDetails(
 
 export function cleanAnthropicThinkingConfig(
     thinking: AnthropicThinkingConfig | undefined,
-    maxTokens = defaultMaxTokens,
+    maxTokens: number,
 ): AnthropicCreateMessageRequest["thinking"] | undefined {
     if (!thinking || thinking.mode === "off") {
+        return undefined;
+    }
+
+    if (maxTokens <= 1) {
         return undefined;
     }
 

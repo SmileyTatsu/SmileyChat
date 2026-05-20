@@ -2,11 +2,13 @@ import defaultAnthropicModels from "#frontend/data/default-anthropic-models.json
 
 import { isRecord } from "../../common/guards";
 import { stringOrUndefined } from "../config-utils";
+import { defaultOutputTokenLimit, normalizeOutputTokenLimit } from "../output-tokens";
 
 import type { AnthropicConnectionConfig, AnthropicThinkingConfig } from "./types";
 
 export const defaultAnthropicConfig: AnthropicConnectionConfig = {
     baseUrl: "https://api.anthropic.com/v1",
+    maxTokens: defaultOutputTokenLimit,
     model: {
         source: "default",
         id: defaultAnthropicModels[0]?.models[1]?.id ?? "claude-sonnet-4-6",
@@ -29,6 +31,7 @@ export function normalizeAnthropicConfig(value: unknown): AnthropicConnectionCon
                 ? config.baseUrl
                 : defaultAnthropicConfig.baseUrl,
         apiKey: stringOrUndefined(config.apiKey),
+        maxTokens: normalizeOutputTokenLimit(config.maxTokens, 0),
         model: {
             source: modelSource,
             id: typeof model.id === "string" ? model.id : defaultAnthropicConfig.model.id,

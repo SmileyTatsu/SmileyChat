@@ -5,6 +5,7 @@ import type {
 } from "../types";
 import { messageContentToText, parseDataImageUrl } from "../images";
 import { legacyMessages } from "../legacy-messages";
+import { defaultOutputTokenLimit } from "../output-tokens";
 import type {
     GoogleAIContent,
     GoogleAIGenerateContentRequest,
@@ -31,6 +32,10 @@ export function createGoogleAIGenerateBody(
             .filter((content) => content.parts.some(hasVisiblePart)),
     );
     const thinkingConfig = cleanThinkingConfig(config.thinking);
+    const generationConfig: GoogleAIGenerateContentRequest["generationConfig"] = {
+        maxOutputTokens: config.maxOutputTokens ?? defaultOutputTokenLimit,
+        ...(thinkingConfig ? { thinkingConfig } : {}),
+    };
 
     if (contents.length === 0) {
         throw new Error(
@@ -47,13 +52,7 @@ export function createGoogleAIGenerateBody(
               }
             : {}),
         contents,
-        ...(thinkingConfig
-            ? {
-                  generationConfig: {
-                      thinkingConfig,
-                  },
-              }
-            : {}),
+        generationConfig,
     };
 }
 

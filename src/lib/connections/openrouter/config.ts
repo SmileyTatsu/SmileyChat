@@ -1,5 +1,6 @@
 import { isRecord } from "../../common/guards";
 import { normalizeStringList, stringOrUndefined } from "../config-utils";
+import { defaultOutputTokenLimit, normalizeOutputTokenLimit } from "../output-tokens";
 
 import type {
     OpenRouterConnectionConfig,
@@ -9,6 +10,7 @@ import type {
 } from "./types";
 
 export const defaultOpenRouterConfig: OpenRouterConnectionConfig = {
+    maxCompletionTokens: defaultOutputTokenLimit,
     model: {
         source: "api",
         id: "",
@@ -25,6 +27,7 @@ export function normalizeOpenRouterConfig(value: unknown): OpenRouterConnectionC
 
     return {
         apiKey: stringOrUndefined(config.apiKey),
+        maxCompletionTokens: normalizeOutputTokenLimit(config.maxCompletionTokens, 16),
         model: {
             source: "api",
             id: typeof model.id === "string" ? model.id : "",

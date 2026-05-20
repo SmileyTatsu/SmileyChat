@@ -3,6 +3,7 @@ import type { ChatGenerationMessageContentPart } from "../types";
 export type OpenAICompatibleConnectionConfig = {
     baseUrl: string;
     apiKey?: string;
+    maxCompletionTokens?: number;
     model: OpenAICompatibleModelSelection;
     reasoning?: OpenAICompatibleReasoningConfig;
 };
@@ -39,6 +40,7 @@ export type OpenAICompatibleChatMessage = {
 export type OpenAICompatibleChatCompletionRequest = {
     model: string;
     messages: OpenAICompatibleChatMessage[];
+    max_completion_tokens: number;
     reasoning?: {
         effort?: OpenAICompatibleReasoningConfig["effort"];
     };

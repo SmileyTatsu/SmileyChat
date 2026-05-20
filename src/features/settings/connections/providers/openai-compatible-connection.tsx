@@ -90,6 +90,27 @@ export function OpenAICompatibleConnection({
                 getApiModelId={(model) => model.id}
                 getApiModelLabel={(model) => model.id}
             />
+            <label>
+                Max completion tokens
+                <input
+                    type="number"
+                    min={16}
+                    step={1}
+                    value={config.maxCompletionTokens ?? 1000}
+                    onInput={(event) =>
+                        updateConfig({
+                            maxCompletionTokens: Math.max(
+                                16,
+                                Math.floor(
+                                    Number(
+                                        (event.currentTarget as HTMLInputElement).value,
+                                    ) || 16,
+                                ),
+                            ),
+                        })
+                    }
+                />
+            </label>
             <div className="connection-card">
                 <h4>Reasoning / Thinking Tokens</h4>
                 <div className="preset-toggle-row">

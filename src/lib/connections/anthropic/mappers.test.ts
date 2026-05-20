@@ -20,12 +20,29 @@ describe("Anthropic connection mappers", () => {
         );
 
         expect(body.system).toBe("System prompt\n\nDeveloper prompt");
+        expect(body.max_tokens).toBe(1000);
         expect(body.messages).toEqual([
             {
                 role: "user",
                 content: "Hello",
             },
         ]);
+    });
+
+    test("uses configured max_tokens", () => {
+        const body = createAnthropicMessageBody(
+            {
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                maxTokens: 250,
+                model: { source: "default", id: "claude-sonnet-4-6" },
+            },
+        );
+
+        expect(body.max_tokens).toBe(250);
     });
 
     test("keeps interspersed system and developer messages in history", () => {

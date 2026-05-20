@@ -68,6 +68,27 @@ export function GoogleAIConnection({
                 getApiModelId={(model) => model.baseModelId ?? model.name}
                 getApiModelLabel={modelLabel}
             />
+            <label>
+                Max output tokens
+                <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={config.maxOutputTokens ?? 1000}
+                    onInput={(event) =>
+                        updateConfig({
+                            maxOutputTokens: Math.max(
+                                1,
+                                Math.floor(
+                                    Number(
+                                        (event.currentTarget as HTMLInputElement).value,
+                                    ) || 1,
+                                ),
+                            ),
+                        })
+                    }
+                />
+            </label>
             <fieldset className="connection-fieldset">
                 <legend>Thinking</legend>
                 <label className="checkbox-field">

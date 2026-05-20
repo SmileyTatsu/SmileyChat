@@ -3,6 +3,7 @@ import type { ChatGenerationMessage } from "../types";
 export type AnthropicConnectionConfig = {
     baseUrl: string;
     apiKey?: string;
+    maxTokens?: number;
     model: AnthropicModelSelection;
     thinking?: AnthropicThinkingConfig;
 };

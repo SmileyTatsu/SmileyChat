@@ -22,12 +22,29 @@ describe("Google AI connection mappers", () => {
         expect(body.systemInstruction?.parts[0]?.text).toBe(
             "System prompt\n\nDeveloper prompt",
         );
+        expect(body.generationConfig?.maxOutputTokens).toBe(1000);
         expect(body.contents).toEqual([
             {
                 role: "user",
                 parts: [{ text: "Hello" }],
             },
         ]);
+    });
+
+    test("uses configured maxOutputTokens", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                maxOutputTokens: 250,
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.generationConfig?.maxOutputTokens).toBe(250);
     });
 
     test("keeps interspersed system and developer messages in history", () => {

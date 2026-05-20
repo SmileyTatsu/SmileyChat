@@ -116,6 +116,27 @@ export function AnthropicConnection({
                 getApiModelId={(model) => model.id}
                 getApiModelLabel={modelLabel}
             />
+            <label>
+                Max tokens
+                <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={config.maxTokens ?? 1000}
+                    onInput={(event) =>
+                        updateConfig({
+                            maxTokens: Math.max(
+                                0,
+                                Math.floor(
+                                    Number(
+                                        (event.currentTarget as HTMLInputElement).value,
+                                    ) || 0,
+                                ),
+                            ),
+                        })
+                    }
+                />
+            </label>
             {selectedModel && (
                 <dl className="openrouter-model-meta">
                     <div>

@@ -2,6 +2,7 @@ import type { ChatGenerationMessageContentPart } from "../types";
 
 export type OpenRouterConnectionConfig = {
     apiKey?: string;
+    maxCompletionTokens?: number;
     model: OpenRouterModelSelection;
     providerPreferences: OpenRouterProviderPreferences;
     reasoning?: OpenRouterReasoningConfig;
@@ -51,6 +52,7 @@ export type OpenRouterChatCompletionRequest = {
     model: string;
     messages: OpenRouterChatMessage[];
     modalities?: string[];
+    max_completion_tokens: number;
     stream: boolean;
     provider?: OpenRouterProviderPreferences;
     reasoning?: OpenRouterReasoningConfig;

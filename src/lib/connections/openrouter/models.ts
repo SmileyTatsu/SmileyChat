@@ -15,9 +15,7 @@ export async function listOpenRouterModels(
     const targetUrl = `${openRouterBaseUrl}/models`;
     const data = await fetchProviderApi<OpenRouterListModelsResponse>(targetUrl, {
         headers: createOpenRouterHeaders({
-            ...config,
-            model: { source: "api", id: "" },
-            providerPreferences: {},
+            apiKey: config.apiKey,
         }),
         errorPrefix: "OpenRouter model list failed",
     });

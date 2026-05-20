@@ -53,7 +53,7 @@ export function createOpenRouterConnection(
     };
 }
 
-export function createOpenRouterHeaders(config: OpenRouterRuntimeConfig) {
+export function createOpenRouterHeaders(config: Pick<OpenRouterRuntimeConfig, "apiKey">) {
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         "HTTP-Referer": appReferer,

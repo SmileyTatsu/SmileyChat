@@ -2,6 +2,7 @@ import defaultOpenAIModels from "#frontend/data/default-openai-models.json";
 
 import { isRecord } from "../../common/guards";
 import { stringOrUndefined } from "../config-utils";
+import { defaultOutputTokenLimit, normalizeOutputTokenLimit } from "../output-tokens";
 
 import type {
     OpenAICompatibleConnectionConfig,
@@ -10,6 +11,7 @@ import type {
 
 export const defaultOpenAICompatibleConfig: OpenAICompatibleConnectionConfig = {
     baseUrl: "https://api.openai.com/v1",
+    maxCompletionTokens: defaultOutputTokenLimit,
     model: {
         source: "default",
         id: defaultOpenAIModels[0]?.models[0]?.id ?? "",
@@ -30,6 +32,7 @@ export function normalizeOpenAICompatibleConfig(
                 ? config.baseUrl
                 : defaultOpenAICompatibleConfig.baseUrl,
         apiKey: stringOrUndefined(config.apiKey),
+        maxCompletionTokens: normalizeOutputTokenLimit(config.maxCompletionTokens, 16),
         model: {
             source: modelSource,
             id:

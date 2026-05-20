@@ -1,6 +1,7 @@
 export type GoogleAIConnectionConfig = {
     baseUrl: string;
     apiKey?: string;
+    maxOutputTokens?: number;
     model: GoogleAIModelSelection;
     thinking?: GoogleAIThinkingConfig;
 };
@@ -52,6 +53,7 @@ export type GoogleAIGenerateContentRequest = {
     contents: GoogleAIContent[];
     systemInstruction?: GoogleAISystemInstruction;
     generationConfig?: {
+        maxOutputTokens?: number;
         thinkingConfig?: {
             includeThoughts?: boolean;
             thinkingLevel?: GoogleAIThinkingConfig["thinkingLevel"];

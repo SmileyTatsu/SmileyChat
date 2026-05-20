@@ -2,11 +2,13 @@ import defaultGoogleAIModels from "#frontend/data/default-google-ai-models.json"
 
 import { isRecord } from "../../common/guards";
 import { stringOrUndefined } from "../config-utils";
+import { defaultOutputTokenLimit, normalizeOutputTokenLimit } from "../output-tokens";
 
 import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./types";
 
 export const defaultGoogleAIConfig: GoogleAIConnectionConfig = {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    maxOutputTokens: defaultOutputTokenLimit,
     model: {
         source: "default",
         id: defaultGoogleAIModels[0]?.models[1]?.id ?? "gemini-3.1-flash-lite",
@@ -26,6 +28,7 @@ export function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfi
                 ? config.baseUrl
                 : defaultGoogleAIConfig.baseUrl,
         apiKey: stringOrUndefined(config.apiKey),
+        maxOutputTokens: normalizeOutputTokenLimit(config.maxOutputTokens, 1),
         model: {
             source: modelSource,
             id: typeof model.id === "string" ? model.id : defaultGoogleAIConfig.model.id,

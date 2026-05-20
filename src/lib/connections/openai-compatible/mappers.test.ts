@@ -19,8 +19,25 @@ describe("OpenAI-compatible connection mappers", () => {
             },
         );
 
+        expect(body.max_completion_tokens).toBe(1000);
         expect(body.reasoning_effort).toBe("high");
         expect(body.reasoning).toBeUndefined();
+    });
+
+    test("uses configured max_completion_tokens", () => {
+        const body = createChatCompletionBody(
+            {
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+            },
+            {
+                baseUrl: "https://api.openai.com/v1",
+                maxCompletionTokens: 250,
+                model: { source: "default", id: "gpt-5.5" },
+            },
+        );
+
+        expect(body.max_completion_tokens).toBe(250);
     });
 
     test("adds root reasoning object and preserves reasoning history in compatible mode", () => {
