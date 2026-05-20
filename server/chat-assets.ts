@@ -16,10 +16,7 @@ export async function writeChatAssets(chatId: string, files: File[]) {
     return attachments;
 }
 
-async function writeChatAsset(
-    chatId: string,
-    file: File,
-): Promise<ChatAttachment> {
+async function writeChatAsset(chatId: string, file: File): Promise<ChatAttachment> {
     const cleanChatId = safePathSegment(chatId);
 
     if (!cleanChatId) {

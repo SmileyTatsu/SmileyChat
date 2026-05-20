@@ -25,6 +25,7 @@ import type {
     PluginMessageAction,
 } from "#frontend/lib/plugins/types";
 import {
+    getStreamingMessageDraft,
     getStreamingMessageDraftSignal,
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
@@ -96,13 +97,8 @@ export const MessageItem = memo(function MessageItem({
 }: MessageItemProps) {
     const wasEditingRef = useRef(false);
     const [editingDraft, setEditingDraft] = useState("");
-    const streamingDraft = getStreamingMessageDraftSignal(message.id).value;
-    const renderedMessage = applyStreamingDraftForRender(message, streamingDraft);
-    const content = getMessageContent(renderedMessage);
-    const reasoning = getMessageReasoning(renderedMessage);
-    const attachments = getMessageAttachments(renderedMessage);
-    const isFailedSwipe =
-        streamingDraft?.status === "error" || isActiveSwipeError(renderedMessage);
+    const content = getMessageContent(message);
+    const isFailedSwipe = isActiveSwipeError(message);
 
     const canPagePrevious = message.activeSwipeIndex > 0;
     const canPageForward =
@@ -127,18 +123,6 @@ export const MessageItem = memo(function MessageItem({
                   path: message.authorAvatarPath,
                   alt: "User Persona Avatar",
               };
-    const draftScrollVersion = [
-        streamingDraft?.content?.length ?? 0,
-        streamingDraft?.reasoning?.length ?? 0,
-        streamingDraft?.attachments?.length ?? 0,
-    ].join(":");
-
-    useLayoutEffect(() => {
-        if (streamingDraft) {
-            onVisibleContentChange();
-        }
-    }, [draftScrollVersion, streamingDraft]);
-
     useEffect(() => {
         if (isEditing && !wasEditingRef.current) {
             setEditingDraft(content);
@@ -162,7 +146,7 @@ export const MessageItem = memo(function MessageItem({
             </div>
 
             <MessageHeader
-                message={renderedMessage}
+                message={message}
                 characterAvatarPath={characterAvatarPath}
                 showTimestamps={showTimestamps}
             >
@@ -221,7 +205,10 @@ export const MessageItem = memo(function MessageItem({
                                     type="button"
                                     role="menuitem"
                                     onClick={() => {
-                                        setEditingDraft(content);
+                                        const latestMessage =
+                                            getMessageWithLatestStreamingDraft(message);
+
+                                        setEditingDraft(getMessageContent(latestMessage));
                                         onStartEditing(message.id);
                                     }}
                                 >
@@ -231,7 +218,11 @@ export const MessageItem = memo(function MessageItem({
                                 <button
                                     type="button"
                                     role="menuitem"
-                                    onClick={() => void onCopyMessage(renderedMessage)}
+                                    onClick={() =>
+                                        void onCopyMessage(
+                                            getMessageWithLatestStreamingDraft(message),
+                                        )
+                                    }
                                 >
                                     <Copy size={14} />
                                     Copy
@@ -242,10 +233,15 @@ export const MessageItem = memo(function MessageItem({
                                         type="button"
                                         role="menuitem"
                                         onClick={() => {
+                                            const latestMessage =
+                                                getMessageWithLatestStreamingDraft(
+                                                    message,
+                                                );
+
                                             onCloseMenu();
                                             void action.run({
-                                                content,
-                                                message: renderedMessage,
+                                                content: getMessageContent(latestMessage),
+                                                message: latestMessage,
                                                 snapshot: pluginSnapshot,
                                             });
                                         }}
@@ -258,7 +254,11 @@ export const MessageItem = memo(function MessageItem({
                                     className="danger-menu-item"
                                     type="button"
                                     role="menuitem"
-                                    onClick={() => onDeleteMessage(renderedMessage)}
+                                    onClick={() =>
+                                        onDeleteMessage(
+                                            getMessageWithLatestStreamingDraft(message),
+                                        )
+                                    }
                                 >
                                     <Trash2 size={14} />
                                     Delete
@@ -297,19 +297,14 @@ export const MessageItem = memo(function MessageItem({
                 )}
 
                 {!isEditing && (
-                    <>
-                        <MessageReasoning reasoning={reasoning} />
-                        <MessageAttachments attachments={attachments} />
-
-                        <MessageContent
-                            renderer={renderer}
-                            characterAvatarPath={characterAvatarPath}
-                            characterName={characterName}
-                            content={content}
-                            message={renderedMessage}
-                            mode={mode}
-                        />
-                    </>
+                    <MessageLiveContent
+                        characterAvatarPath={characterAvatarPath}
+                        characterName={characterName}
+                        message={message}
+                        mode={mode}
+                        renderer={renderer}
+                        onVisibleContentChange={onVisibleContentChange}
+                    />
                 )}
             </div>
         </article>
@@ -336,6 +331,61 @@ function areMessageItemPropsEqual(
         previous.showRpCharacterImages === next.showRpCharacterImages &&
         previous.showTimestamps === next.showTimestamps
     );
+}
+
+type MessageLiveContentProps = {
+    characterAvatarPath?: string;
+    characterName: string;
+    message: Message;
+    mode: ChatMode;
+    renderer?: MessageRenderer;
+    onVisibleContentChange: () => void;
+};
+
+function MessageLiveContent({
+    characterAvatarPath,
+    characterName,
+    message,
+    mode,
+    renderer,
+    onVisibleContentChange,
+}: MessageLiveContentProps) {
+    const streamingDraft = getStreamingMessageDraftSignal(message.id).value;
+    const renderedMessage = applyStreamingDraftForRender(message, streamingDraft);
+    const content = getMessageContent(renderedMessage);
+    const reasoning = getMessageReasoning(renderedMessage);
+    const attachments = getMessageAttachments(renderedMessage);
+    const draftScrollVersion = [
+        streamingDraft?.content?.length ?? 0,
+        streamingDraft?.reasoning?.length ?? 0,
+        streamingDraft?.attachments?.length ?? 0,
+    ].join(":");
+
+    useLayoutEffect(() => {
+        if (streamingDraft) {
+            onVisibleContentChange();
+        }
+    }, [draftScrollVersion, streamingDraft, onVisibleContentChange]);
+
+    return (
+        <>
+            <MessageReasoning reasoning={reasoning} />
+            <MessageAttachments attachments={attachments} />
+
+            <MessageContent
+                renderer={renderer}
+                characterAvatarPath={characterAvatarPath}
+                characterName={characterName}
+                content={content}
+                message={renderedMessage}
+                mode={mode}
+            />
+        </>
+    );
+}
+
+function getMessageWithLatestStreamingDraft(message: Message) {
+    return applyStreamingDraftForRender(message, getStreamingMessageDraft(message.id));
 }
 
 function applyStreamingDraftForRender(

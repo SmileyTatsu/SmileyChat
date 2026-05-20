@@ -93,8 +93,9 @@ export function App() {
     const [connectionSettingsLoaded, setConnectionSettingsLoaded] = useState(false);
     const [preferencesInitialized, setPreferencesInitialized] = useState(false);
     const [pluginRegistryRevision, setPluginRegistryRevision] = useState(0);
-    const latestConnectionSettingsRef =
-        useRef<ConnectionSettings>(defaultConnectionSettings);
+    const latestConnectionSettingsRef = useRef<ConnectionSettings>(
+        defaultConnectionSettings,
+    );
     const connectionSettingsLoadedRef = useRef(false);
     const queuedConnectionSettingsSaveRef = useRef<ConnectionSettings | undefined>();
     const connectionSettingsSaveInFlightRef = useRef(false);

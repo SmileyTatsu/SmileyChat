@@ -281,9 +281,7 @@ export function MessageComposer({
                             type="button"
                             title={action.label}
                             disabled={disabled}
-                            onClick={() =>
-                                void action.run(composerActionContext)
-                            }
+                            onClick={() => void action.run(composerActionContext)}
                         >
                             {action.renderIcon ? action.renderIcon() : action.label}
                         </button>
