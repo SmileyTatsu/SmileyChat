@@ -43,6 +43,7 @@ type OptionsModalProps = {
     mode: ChatMode;
     lorebookCollection: LorebookCollection;
     lorebookLoadError?: string;
+    isLorebooksPluginEnabled: boolean;
     onLorebookCollectionChange: (collection: LorebookCollection) => void;
     onCategoryChange: (category: SettingsCategory) => void;
     onClose: () => void;
@@ -87,6 +88,7 @@ export function OptionsModal({
     character,
     lorebookCollection,
     lorebookLoadError,
+    isLorebooksPluginEnabled,
     messages,
     mode,
     onCategoryChange,
@@ -298,7 +300,9 @@ export function OptionsModal({
                         {activeCategory === "lorebooks" && (
                             <LorebooksSettings
                                 collection={lorebookCollection}
+                                isLorebooksPluginEnabled={isLorebooksPluginEnabled}
                                 loadError={lorebookLoadError}
+                                onClose={onClose}
                                 onCollectionChange={onLorebookCollectionChange}
                             />
                         )}

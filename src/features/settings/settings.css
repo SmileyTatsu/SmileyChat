@@ -857,8 +857,7 @@
 }
 
 .lorebook-list,
-.lorebook-detail-panel,
-.lorebook-entry-preview {
+.lorebook-detail-panel {
     display: grid;
     align-content: start;
     gap: 10px;
@@ -890,13 +889,56 @@
     text-align: left;
 }
 
-.lorebook-extension-notice {
-    gap: 0;
-}
-
 .lorebook-empty-detail p {
     margin: 0;
     color: #aeb5c5;
+}
+
+.lorebook-manager-bridge {
+    display: grid;
+    gap: 11px;
+    border: 1px solid #485678;
+    border-radius: 8px;
+    background: #202634;
+    padding: 12px;
+}
+
+.lorebook-manager-bridge header {
+    display: flex;
+    align-items: start;
+    gap: 10px;
+}
+
+.lorebook-manager-bridge header svg {
+    flex: 0 0 auto;
+    color: #dce4ff;
+    margin-top: 1px;
+}
+
+.lorebook-manager-bridge h3,
+.lorebook-manager-bridge p {
+    margin: 0;
+}
+
+.lorebook-manager-bridge h3 {
+    font-size: 0.94rem;
+}
+
+.lorebook-manager-bridge p {
+    color: #c9d0df;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.lorebook-manager-bridge button {
+    justify-content: center;
+    min-height: 36px;
+    border: 1px solid #8ea0ca;
+    border-radius: 8px;
+    background: #e1e7ff;
+    color: #15171d;
+    font-weight: 800;
+    padding: 0 12px;
 }
 
 .export-menu-wrap {
@@ -1031,84 +1073,6 @@
 .lorebook-list small {
     color: #9da3b4;
     font-size: 0.75rem;
-}
-
-.lorebook-entry-preview article {
-    display: grid;
-    gap: 5px;
-    border: 1px solid #303440;
-    border-radius: 8px;
-    background: #191b21;
-    padding: 10px;
-}
-
-.lorebook-entry-preview article header {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.lorebook-entry-preview article header > div {
-    display: grid;
-    gap: 4px;
-    min-width: 0;
-}
-
-.lorebook-entry-preview article strong,
-.lorebook-entry-preview article small,
-.lorebook-entry-preview article p {
-    min-width: 0;
-    margin: 0;
-}
-
-.lorebook-entry-preview article small {
-    color: #9da3b4;
-    font-size: 0.76rem;
-}
-
-.lorebook-entry-preview article p {
-    color: #cfd3df;
-    font-size: 0.84rem;
-    line-height: 1.42;
-    white-space: pre-wrap;
-}
-
-.entry-toggle {
-    flex: 0 0 auto;
-    font-size: 0.76rem;
-}
-
-.lorebook-entry-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 2px 0;
-}
-
-.lorebook-entry-meta div {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-    border: 1px solid #303440;
-    border-radius: 999px;
-    background: #20242d;
-    padding: 4px 8px;
-}
-
-.lorebook-entry-meta dt {
-    color: #8f96a6;
-    font-size: 0.66rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.lorebook-entry-meta dd {
-    margin: 0;
-    color: #dce2f4;
-    font-size: 0.74rem;
 }
 
 .personas-list,

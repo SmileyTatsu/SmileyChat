@@ -53,6 +53,7 @@ import {
 import {
     getPluginCharacterPresence,
     getPluginComposerState,
+    isPluginEnabled,
     setPluginAppActionHandlers,
     setPluginModelHandlers,
     setPluginSnapshot,
@@ -252,6 +253,17 @@ export function App() {
         [],
     );
 
+    useEffect(
+        () =>
+            subscribeToPluginEvent("app:open-settings", (payload) => {
+                if (payload === "lorebooks") {
+                    setActiveSettingsCategory("lorebooks");
+                    setSettingsOpen(true);
+                }
+            }),
+        [],
+    );
+
     useEffect(() => {
         function updateViewportWidth() {
             setViewportWidth(window.innerWidth);
@@ -376,6 +388,10 @@ export function App() {
     );
     const pluginComposerState = useMemo(
         () => getPluginComposerState(),
+        [pluginRegistryRevision],
+    );
+    const isLorebooksPluginEnabled = useMemo(
+        () => isPluginEnabled("lorebooks"),
         [pluginRegistryRevision],
     );
     const pluginSnapshot: PluginAppSnapshot = useMemo(
@@ -912,6 +928,7 @@ export function App() {
                     preferencesSaveStatus={preferencesSaveStatus}
                     lorebookCollection={lorebookCollection}
                     lorebookLoadError={lorebookLoadError}
+                    isLorebooksPluginEnabled={isLorebooksPluginEnabled}
                     persona={personaEditorPersona}
                     personaCollection={personaSummaries}
                     personaLoadError={personaLoadError}

@@ -1,4 +1,4 @@
-import { BookOpen, Download, FileJson, Info, Trash2, Upload } from "lucide-preact";
+import { BookOpen, Download, FileJson, Trash2, Upload } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import {
@@ -10,17 +10,21 @@ import {
 } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import type { Lorebook, LorebookCollection } from "#frontend/lib/lorebooks/types";
-import type { LorebookEntry } from "#frontend/lib/lorebooks/types";
+import { emitPluginEvent } from "#frontend/lib/plugins/registry";
 
 type LorebooksSettingsProps = {
     collection: LorebookCollection;
+    isLorebooksPluginEnabled: boolean;
     loadError?: string;
+    onClose: () => void;
     onCollectionChange: (collection: LorebookCollection) => void;
 };
 
 export function LorebooksSettings({
     collection,
+    isLorebooksPluginEnabled,
     loadError,
+    onClose,
     onCollectionChange,
 }: LorebooksSettingsProps) {
     const [activeLorebook, setActiveLorebook] = useState<Lorebook | undefined>();
@@ -162,36 +166,6 @@ export function LorebooksSettings({
         }
     }
 
-    async function toggleEntry(entryId: string, enabled: boolean) {
-        if (!activeLorebook) {
-            return;
-        }
-
-        const updatedLorebook: Lorebook = {
-            ...activeLorebook,
-            entries: activeLorebook.entries.map((entry) =>
-                entry.id === entryId ? { ...entry, enabled } : entry,
-            ),
-            updatedAt: new Date().toISOString(),
-        };
-
-        setActiveLorebook(updatedLorebook);
-        try {
-            setIsBusy(true);
-            const result = await saveLorebook(updatedLorebook);
-            setActiveLorebook(result.lorebook);
-            if (result.lorebooks) {
-                applyCollection(result.lorebooks);
-            }
-            setStatus(enabled ? "Enabled entry." : "Disabled entry.");
-        } catch (error) {
-            setActiveLorebook(activeLorebook);
-            setStatus(messageFromError(error, "Failed to update entry."));
-        } finally {
-            setIsBusy(false);
-        }
-    }
-
     async function toggleLorebook(lorebookId: string, enabled: boolean) {
         const previousLorebook = activeLorebook;
 
@@ -234,6 +208,13 @@ export function LorebooksSettings({
     function fallbackExportName(format: "json" | "smiley") {
         const base = activeLorebook?.title || selectedSummary?.title || "lorebook";
         return `${base}.${format === "smiley" ? "smiley-lorebook" : "worldinfo"}.json`;
+    }
+
+    function openLorebookManager(lorebookId: string) {
+        onClose();
+        window.setTimeout(() => {
+            emitPluginEvent("app:open-lorebook-manager", { lorebookId });
+        }, 0);
     }
 
     function renderLorebookSection(
@@ -297,10 +278,7 @@ export function LorebooksSettings({
             <header className="settings-section-heading">
                 <div>
                     <h2>LoreBooks</h2>
-                    <p>
-                        Native storage, import, and export are ready. Detailed editing
-                        will be handled by the LoreBooks extension.
-                    </p>
+                    <p>Import, export, enable, and delete native LoreBooks.</p>
                 </div>
                 <div className="button-row">
                     <input
@@ -344,180 +322,127 @@ export function LorebooksSettings({
                 </aside>
 
                 <section className="lorebook-detail-panel">
-                    <div className="settings-card lorebook-extension-notice">
-                        <header>
-                            <Info size={18} />
-                            <div>
-                                <h3>Manage this with our extension</h3>
-                                <p>
-                                    Import and export work here. Full LoreBook editing,
-                                    bindings, activation previews, and prompt controls
-                                    will live in the bundled LoreBooks extension.
-                                </p>
-                            </div>
-                        </header>
-                    </div>
-
                     {activeLorebook ? (
-                        <>
-                            <div className="settings-card">
-                                <header>
-                                    <FileJson size={18} />
-                                    <div>
-                                        <h3>{activeLorebook.title}</h3>
-                                        <p>
-                                            {activeLorebook.description ||
-                                                "No description saved."}
-                                        </p>
-                                    </div>
-                                </header>
-                                <dl className="plugin-meta-grid">
-                                    <div>
-                                        <dt>Entries</dt>
-                                        <dd>{activeLorebook.entries.length}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Enabled</dt>
-                                        <dd>
-                                            {
-                                                activeLorebook.entries.filter(
-                                                    (entry) => entry.enabled,
-                                                ).length
-                                            }
-                                        </dd>
-                                    </div>
-                                    <div>
-                                        <dt>Scan depth</dt>
-                                        <dd>{activeLorebook.settings.scanDepth}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Recursive</dt>
-                                        <dd>
-                                            {activeLorebook.settings.recursive
-                                                ? "Yes"
-                                                : "No"}
-                                        </dd>
-                                    </div>
-                                </dl>
-                                <div className="button-row">
+                        <div className="settings-card">
+                            <header>
+                                <FileJson size={18} />
+                                <div>
+                                    <h3>{activeLorebook.title}</h3>
+                                    <p>
+                                        {activeLorebook.description ||
+                                            "No description saved."}
+                                    </p>
+                                </div>
+                            </header>
+                            <dl className="plugin-meta-grid">
+                                <div>
+                                    <dt>Entries</dt>
+                                    <dd>{activeLorebook.entries.length}</dd>
+                                </div>
+                                <div>
+                                    <dt>Enabled</dt>
+                                    <dd>
+                                        {
+                                            activeLorebook.entries.filter(
+                                                (entry) => entry.enabled,
+                                            ).length
+                                        }
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Scan depth</dt>
+                                    <dd>{activeLorebook.settings.scanDepth}</dd>
+                                </div>
+                                <div>
+                                    <dt>Recursive</dt>
+                                    <dd>
+                                        {activeLorebook.settings.recursive ? "Yes" : "No"}
+                                    </dd>
+                                </div>
+                            </dl>
+                            {isLorebooksPluginEnabled ? (
+                                <div className="lorebook-manager-bridge">
+                                    <header>
+                                        <BookOpen size={18} />
+                                        <div>
+                                            <h3>Edit in LoreBook Manager</h3>
+                                            <p>
+                                                Open the bundled editor for entries,
+                                                triggers, placement, and global settings.
+                                            </p>
+                                        </div>
+                                    </header>
+                                    <button
+                                        type="button"
+                                        onClick={() => openLorebookManager(activeLorebook.id)}
+                                    >
+                                        Edit in LoreBook Manager
+                                    </button>
+                                </div>
+                            ) : (
+                                <p className="connection-status">
+                                    Enable the bundled LoreBooks plugin to edit entries.
+                                </p>
+                            )}
+                            <div className="button-row">
+                                <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() =>
+                                        void toggleLorebook(
+                                            activeLorebook.id,
+                                            !activeLorebookEnabled,
+                                        )
+                                    }
+                                >
+                                    {activeLorebookEnabled ? "Disable" : "Enable"}
+                                </button>
+                                <div className="export-menu-wrap">
                                     <button
                                         type="button"
                                         disabled={isBusy}
+                                        aria-expanded={isExportMenuOpen}
                                         onClick={() =>
-                                            void toggleLorebook(
-                                                activeLorebook.id,
-                                                !activeLorebookEnabled,
-                                            )
+                                            setIsExportMenuOpen((open) => !open)
                                         }
                                     >
-                                        {activeLorebookEnabled ? "Disable" : "Enable"}
+                                        <Download size={16} />
+                                        Export
                                     </button>
-                                    <div className="export-menu-wrap">
-                                        <button
-                                            type="button"
-                                            disabled={isBusy}
-                                            aria-expanded={isExportMenuOpen}
-                                            onClick={() =>
-                                                setIsExportMenuOpen((open) => !open)
-                                            }
+                                    {isExportMenuOpen && (
+                                        <div
+                                            className="export-menu"
+                                            role="menu"
+                                            aria-label="Export LoreBook"
                                         >
-                                            <Download size={16} />
-                                            Export
-                                        </button>
-                                        {isExportMenuOpen && (
-                                            <div
-                                                className="export-menu"
-                                                role="menu"
-                                                aria-label="Export LoreBook"
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => void handleExport("smiley")}
                                             >
-                                                <button
-                                                    type="button"
-                                                    role="menuitem"
-                                                    onClick={() =>
-                                                        void handleExport("smiley")
-                                                    }
-                                                >
-                                                    Smiley JSON
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    role="menuitem"
-                                                    onClick={() =>
-                                                        void handleExport("json")
-                                                    }
-                                                >
-                                                    ST JSON
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <button
-                                        className="danger-button"
-                                        type="button"
-                                        disabled={isBusy}
-                                        onClick={() => void handleDelete()}
-                                    >
-                                        <Trash2 size={16} />
-                                        Delete
-                                    </button>
+                                                Smiley JSON
+                                            </button>
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => void handleExport("json")}
+                                            >
+                                                ST JSON
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
+                                <button
+                                    className="danger-button"
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => void handleDelete()}
+                                >
+                                    <Trash2 size={16} />
+                                    Delete
+                                </button>
                             </div>
-
-                            <div className="lorebook-entry-preview">
-                                <div className="preset-section-header">
-                                    <h3>Entry Preview</h3>
-                                </div>
-                                {activeLorebook.entries.slice(0, 8).map((entry) => (
-                                    <article key={entry.id}>
-                                        <header>
-                                            <div>
-                                                <strong>{entry.title}</strong>
-                                                <small>
-                                                    {entry.keys.join(", ") || "constant"}
-                                                </small>
-                                            </div>
-                                            <label className="plugin-toggle entry-toggle">
-                                                <span>
-                                                    {entry.enabled
-                                                        ? "Enabled"
-                                                        : "Disabled"}
-                                                </span>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={entry.enabled}
-                                                    disabled={isBusy}
-                                                    onChange={(event) =>
-                                                        void toggleEntry(
-                                                            entry.id,
-                                                            event.currentTarget.checked,
-                                                        )
-                                                    }
-                                                />
-                                                <span className="plugin-toggle-track">
-                                                    <span />
-                                                </span>
-                                            </label>
-                                        </header>
-                                        <dl className="lorebook-entry-meta">
-                                            {entryDisplayMeta(entry).map((item) => (
-                                                <div key={item.label}>
-                                                    <dt>{item.label}</dt>
-                                                    <dd>{item.value}</dd>
-                                                </div>
-                                            ))}
-                                        </dl>
-                                        <p>{entry.content || "No content."}</p>
-                                    </article>
-                                ))}
-                                {activeLorebook.entries.length > 8 && (
-                                    <p className="field-hint">
-                                        Showing 8 of {activeLorebook.entries.length}{" "}
-                                        entries. Manage this LoreBook with the extension
-                                        for full editing.
-                                    </p>
-                                )}
-                            </div>
-                        </>
+                        </div>
                     ) : (
                         <div className="settings-card lorebook-empty-detail">
                             <p>
@@ -547,43 +472,4 @@ function fileNameFromDisposition(response: Response) {
     const match = /filename="([^"]+)"/.exec(disposition);
 
     return match?.[1] ?? "";
-}
-
-function entryDisplayMeta(entry: LorebookEntry) {
-    return [
-        { label: "Insertion", value: insertionLabel(entry) },
-        { label: "Role", value: entry.role },
-        { label: "Strategy", value: entry.strategy },
-        { label: "Order", value: String(entry.insertionOrder) },
-        ...(entry.position === "at-depth"
-            ? [{ label: "Depth", value: String(entry.depth) }]
-            : []),
-        ...(entry.position === "outlet"
-            ? [{ label: "Outlet", value: entry.outletName || "Unnamed" }]
-            : []),
-        ...(entry.secondaryKeys.length
-            ? [
-                  {
-                      label: "Secondary",
-                      value: `${entry.selectiveLogic} - ${entry.secondaryKeys.join(", ")}`,
-                  },
-              ]
-            : []),
-        ...(entry.useProbability
-            ? [{ label: "Chance", value: `${entry.probability}%` }]
-            : []),
-        ...(entry.ignoreBudget ? [{ label: "Budget", value: "Ignored" }] : []),
-    ];
-}
-
-function insertionLabel(entry: LorebookEntry) {
-    if (entry.position === "outlet") {
-        return "Macro outlet";
-    }
-
-    if (entry.position === "at-depth") {
-        return "Depth injection";
-    }
-
-    return "Prompt injection";
 }

@@ -21,7 +21,7 @@ import { BadRequestError, HttpError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
 import { safeFetch } from "./security/safe-fetch";
 
-const corePluginIds = new Set(["smiley-chat-formatter"]);
+const corePluginIds = new Set(["smiley-chat-formatter", "lorebooks"]);
 const legacyCorePluginFolders: Record<string, string[]> = {
     "smiley-chat-formatter": ["chat-formatter", "smiley-chat-formatter"],
 };
@@ -451,6 +451,7 @@ async function readCorePluginManifest(pluginId: string): Promise<PluginManifest>
 
 const corePluginCategories: Record<string, PluginCategory> = {
     "smiley-chat-formatter": "interface",
+    lorebooks: "memory-lore",
 };
 
 async function readCorePluginState(pluginId: string) {

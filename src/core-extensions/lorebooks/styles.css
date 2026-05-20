@@ -1,0 +1,336 @@
+.lbm-muted {
+    margin: 0;
+    color: #9da3b4;
+    font-size: 0.78rem;
+}
+
+.lbm-add-button,
+.lbm-editor-header button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 34px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #242832;
+    color: #ececf1;
+    padding: 0 10px;
+}
+
+.plugin-modal:has(.lbm-manager) {
+    width: min(1120px, calc(100vw - 48px));
+    height: min(780px, calc(100dvh - 48px));
+}
+
+.plugin-modal:has(.lbm-manager) .plugin-modal-body {
+    overflow: hidden;
+    padding: 0;
+}
+
+.lbm-manager {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.42fr) minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+}
+
+.lbm-nav {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 0;
+    border-right: 1px solid #292c35;
+    background: #15171d;
+    padding: 14px;
+}
+
+.lbm-field,
+.lbm-check {
+    display: grid;
+    gap: 6px;
+    color: #dfe3ef;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.lbm-field input,
+.lbm-field select,
+.lbm-field textarea,
+.lbm-search input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    color: #ececf1;
+    outline: none;
+}
+
+.lbm-field input,
+.lbm-field select {
+    min-height: 38px;
+    padding: 0 10px;
+}
+
+.lbm-field textarea {
+    min-height: 320px;
+    resize: vertical;
+    padding: 10px;
+    line-height: 1.5;
+}
+
+.lbm-field.stretch {
+    align-items: stretch;
+}
+
+.lbm-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #b9bfd0;
+    padding: 0 10px;
+    text-align: left;
+}
+
+.lbm-nav-item:hover,
+.lbm-nav-item.active {
+    border-color: #303440;
+    background: #242832;
+    color: #ececf1;
+}
+
+.lbm-search {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    color: #858d9f;
+    padding: 0 9px;
+}
+
+.lbm-search input {
+    min-height: 36px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.lbm-entry-list {
+    display: grid;
+    align-content: start;
+    gap: 7px;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
+    scrollbar-gutter: stable;
+}
+
+.lbm-entry-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 7px 8px;
+}
+
+.lbm-entry-row.active,
+.lbm-entry-row:hover {
+    border-color: #53627c;
+    background: #242832;
+}
+
+.lbm-entry-row > button {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #ececf1;
+    padding: 0;
+    text-align: left;
+}
+
+.lbm-entry-row strong,
+.lbm-entry-row small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lbm-entry-row small {
+    color: #9da3b4;
+    font-size: 0.75rem;
+}
+
+.lbm-editor {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-width: 0;
+    min-height: 0;
+}
+
+.lbm-editor-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid #292c35;
+    padding: 14px 16px;
+}
+
+.lbm-editor-header h3,
+.lbm-editor-header p {
+    margin: 0;
+}
+
+.lbm-editor-header h3 {
+    font-size: 1rem;
+}
+
+.lbm-editor-header p {
+    margin-top: 3px;
+    color: #9ea4b3;
+    font-size: 0.84rem;
+}
+
+.lbm-editor-header > div:last-child {
+    display: flex;
+    gap: 8px;
+}
+
+.lbm-editor-header button.primary {
+    background: #e1e7ff;
+    color: #15171d;
+    font-weight: 800;
+}
+
+.lbm-form,
+.lbm-entry-editor {
+    min-height: 0;
+    overflow: auto;
+    padding: 16px;
+    scrollbar-gutter: stable;
+}
+
+.lbm-form {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+}
+
+.lbm-form section {
+    display: grid;
+    gap: 11px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 13px;
+}
+
+.lbm-form h4 {
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.92rem;
+}
+
+.lbm-check {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.lbm-check input {
+    width: 18px;
+    height: 18px;
+}
+
+.lbm-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 14px;
+}
+
+.lbm-tabs {
+    display: inline-flex;
+    gap: 5px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #15181e;
+    margin-bottom: 14px;
+    padding: 4px;
+}
+
+.lbm-tabs button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #b9bfd0;
+    padding: 0 10px;
+}
+
+.lbm-tabs button:hover,
+.lbm-tabs button.active {
+    background: #303440;
+    color: #ececf1;
+}
+
+.lbm-range-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    gap: 10px;
+}
+
+.lbm-range-row input[type="range"] {
+    width: 100%;
+    accent-color: #e1e7ff;
+}
+
+.lbm-empty-editor {
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    color: #aab0bf;
+}
+
+@media (max-width: 820px) {
+    .plugin-modal:has(.lbm-manager) {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 16px);
+    }
+
+    .lbm-manager {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(240px, 0.48fr) minmax(0, 1fr);
+    }
+
+    .lbm-nav {
+        border-right: 0;
+        border-bottom: 1px solid #292c35;
+    }
+
+    .lbm-editor-header {
+        flex-direction: column;
+    }
+
+    .lbm-editor-header > div:last-child {
+        width: 100%;
+    }
+
+    .lbm-editor-header button {
+        flex: 1;
+    }
+}
