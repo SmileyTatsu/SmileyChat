@@ -47,6 +47,10 @@ export function CharacterPanel({
     pluginSnapshot,
 }: CharacterPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
+    const alternateGreetingKeysRef = useRef<{
+        characterId: string;
+        keys: string[];
+    }>({ characterId: character.id, keys: [] });
     const [activeDialog, setActiveDialog] = useState<"greetings" | "details" | "">("");
     const [avatarError, setAvatarError] = useState("");
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -79,6 +83,9 @@ export function CharacterPanel({
     }
 
     function addAlternateGreeting() {
+        syncAlternateGreetingKeys();
+        alternateGreetingKeysRef.current.keys.push(createAlternateGreetingKey());
+
         updateCharacterData({
             ...character.data,
             alternate_greetings: [...character.data.alternate_greetings, ""],
@@ -86,6 +93,12 @@ export function CharacterPanel({
     }
 
     function removeAlternateGreeting(index: number) {
+        syncAlternateGreetingKeys();
+        alternateGreetingKeysRef.current.keys =
+            alternateGreetingKeysRef.current.keys.filter(
+                (_, itemIndex) => itemIndex !== index,
+            );
+
         updateCharacterData({
             ...character.data,
             alternate_greetings: character.data.alternate_greetings.filter(
@@ -96,6 +109,33 @@ export function CharacterPanel({
 
     function updateTagline(value: string) {
         updateCharacterData(setCharacterTagline(character.data, value));
+    }
+
+    function syncAlternateGreetingKeys() {
+        const keyState = alternateGreetingKeysRef.current;
+        const greetingCount = character.data.alternate_greetings.length;
+
+        if (keyState.characterId !== character.id) {
+            alternateGreetingKeysRef.current = {
+                characterId: character.id,
+                keys: character.data.alternate_greetings.map(createAlternateGreetingKey),
+            };
+            return alternateGreetingKeysRef.current.keys;
+        }
+
+        if (keyState.keys.length < greetingCount) {
+            keyState.keys = [
+                ...keyState.keys,
+                ...Array.from(
+                    { length: greetingCount - keyState.keys.length },
+                    createAlternateGreetingKey,
+                ),
+            ];
+        } else if (keyState.keys.length > greetingCount) {
+            keyState.keys = keyState.keys.slice(0, greetingCount);
+        }
+
+        return keyState.keys;
     }
 
     async function uploadAvatar(file: File) {
@@ -135,6 +175,8 @@ export function CharacterPanel({
             }
         }
     }
+
+    const alternateGreetingKeys = syncAlternateGreetingKeys();
 
     return (
         <>
@@ -356,7 +398,7 @@ export function CharacterPanel({
                                         (greeting, index) => (
                                             <div
                                                 className="numbered-greeting-field"
-                                                key={index}
+                                                key={alternateGreetingKeys[index]}
                                             >
                                                 <label>
                                                     Greeting {index + 2}
@@ -545,4 +587,8 @@ export function CharacterPanel({
             )}
         </>
     );
+}
+
+function createAlternateGreetingKey() {
+    return crypto.randomUUID();
 }
