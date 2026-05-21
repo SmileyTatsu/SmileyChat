@@ -1,6 +1,10 @@
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 import { defaultOutputTokenLimit } from "../output-tokens";
 import {
+    filterOpenRouterGenerationParameters,
+    stopSequencesForGeneration,
+} from "../generation-settings";
+import {
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
 } from "../chat-completions";
@@ -23,12 +27,36 @@ export function createOpenRouterChatCompletionBody(
     });
     const provider = cleanProviderPreferences(config.providerPreferences);
     const reasoning = cleanReasoningConfig(config.reasoning);
+    const generation = filterOpenRouterGenerationParameters(
+        request.generation,
+        config.model.supportedParameters,
+    );
 
     return {
         model: config.model.id,
         messages,
         max_completion_tokens: config.maxCompletionTokens ?? defaultOutputTokenLimit,
         stream: request.stream === true,
+        ...(typeof generation?.temperature === "number"
+            ? { temperature: generation.temperature }
+            : {}),
+        ...(typeof generation?.topP === "number" ? { top_p: generation.topP } : {}),
+        ...(typeof generation?.topK === "number" ? { top_k: generation.topK } : {}),
+        ...(typeof generation?.minP === "number" ? { min_p: generation.minP } : {}),
+        ...(typeof generation?.topA === "number" ? { top_a: generation.topA } : {}),
+        ...(typeof generation?.presencePenalty === "number"
+            ? { presence_penalty: generation.presencePenalty }
+            : {}),
+        ...(typeof generation?.frequencyPenalty === "number"
+            ? { frequency_penalty: generation.frequencyPenalty }
+            : {}),
+        ...(typeof generation?.repetitionPenalty === "number"
+            ? { repetition_penalty: generation.repetitionPenalty }
+            : {}),
+        ...(typeof generation?.seed === "number" ? { seed: generation.seed } : {}),
+        ...(stopSequencesForGeneration(generation)
+            ? { stop: stopSequencesForGeneration(generation) }
+            : {}),
         ...(provider ? { provider } : {}),
         ...(reasoning ? { reasoning } : {}),
     };

@@ -275,6 +275,7 @@ export function OptionsModal({
                         {activeCategory === "preset" && (
                             <PresetSettings
                                 character={character}
+                                connectionSettings={connectionSettings}
                                 collection={presetCollection}
                                 loadError={presetLoadError}
                                 messages={messages}

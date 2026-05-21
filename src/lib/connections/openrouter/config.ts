@@ -31,6 +31,7 @@ export function normalizeOpenRouterConfig(value: unknown): OpenRouterConnectionC
         model: {
             source: "api",
             id: typeof model.id === "string" ? model.id : "",
+            supportedParameters: normalizeStringList(model.supportedParameters),
         },
         providerPreferences: normalizeOpenRouterProviderPreferences(
             config.providerPreferences,

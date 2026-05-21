@@ -40,6 +40,40 @@ describe("OpenAI-compatible connection mappers", () => {
         expect(body.max_completion_tokens).toBe(250);
     });
 
+    test("maps standard preset generation settings", () => {
+        const body = createChatCompletionBody(
+            {
+                generation: {
+                    frequencyPenalty: 0.2,
+                    presencePenalty: 0.4,
+                    seed: 123,
+                    stopSequences: ["END"],
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.9,
+                },
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+            },
+            {
+                baseUrl: "https://api.openai.com/v1",
+                maxCompletionTokens: 250,
+                model: { source: "default", id: "gpt-5.5" },
+            },
+        );
+
+        expect(body).toMatchObject({
+            frequency_penalty: 0.2,
+            max_completion_tokens: 250,
+            presence_penalty: 0.4,
+            seed: 123,
+            stop: ["END"],
+            temperature: 0.7,
+            top_p: 0.9,
+        });
+        expect("top_k" in body).toBe(false);
+    });
+
     test("adds root reasoning object and preserves reasoning history in compatible mode", () => {
         const body = createChatCompletionBody(
             {

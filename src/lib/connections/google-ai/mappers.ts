@@ -6,6 +6,7 @@ import type {
 import { messageContentToText, parseDataImageUrl } from "../images";
 import { legacyMessages } from "../legacy-messages";
 import { defaultOutputTokenLimit } from "../output-tokens";
+import { stopSequencesForGeneration } from "../generation-settings";
 import type {
     GoogleAIContent,
     GoogleAIGenerateContentRequest,
@@ -34,6 +35,27 @@ export function createGoogleAIGenerateBody(
     const thinkingConfig = cleanThinkingConfig(config.thinking);
     const generationConfig: GoogleAIGenerateContentRequest["generationConfig"] = {
         maxOutputTokens: config.maxOutputTokens ?? defaultOutputTokenLimit,
+        ...(typeof request.generation?.temperature === "number"
+            ? { temperature: request.generation.temperature }
+            : {}),
+        ...(typeof request.generation?.topP === "number"
+            ? { topP: request.generation.topP }
+            : {}),
+        ...(typeof request.generation?.topK === "number"
+            ? { topK: request.generation.topK }
+            : {}),
+        ...(typeof request.generation?.presencePenalty === "number"
+            ? { presencePenalty: request.generation.presencePenalty }
+            : {}),
+        ...(typeof request.generation?.frequencyPenalty === "number"
+            ? { frequencyPenalty: request.generation.frequencyPenalty }
+            : {}),
+        ...(typeof request.generation?.seed === "number"
+            ? { seed: request.generation.seed }
+            : {}),
+        ...(stopSequencesForGeneration(request.generation)
+            ? { stopSequences: stopSequencesForGeneration(request.generation) }
+            : {}),
         ...(thinkingConfig ? { thinkingConfig } : {}),
     };
 

@@ -1200,6 +1200,7 @@ export function useChatSession({
         const materializedPromptMessages =
             await materializeChatGenerationMessageImages(promptMessages);
         const result = await connection.generate({
+            generation: activePreset?.generation,
             messages: generationMessages,
             debug: promptBuild.debug,
             onImage: options.onImage,

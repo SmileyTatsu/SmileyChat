@@ -15,6 +15,10 @@ import type {
     AnthropicThinkingConfig,
 } from "./types";
 import { defaultOutputTokenLimit } from "../output-tokens";
+import {
+    isClaudeOpus47OrLaterModel,
+    stopSequencesForGeneration,
+} from "../generation-settings";
 
 export function createAnthropicMessageBody(
     request: ChatGenerationRequest,
@@ -30,7 +34,13 @@ export function createAnthropicMessageBody(
             .filter((message) => hasVisibleContent(message.content)),
     );
     const maxTokens = config.maxTokens ?? defaultOutputTokenLimit;
-    const thinking = cleanAnthropicThinkingConfig(config.thinking, maxTokens);
+    const isOpus47OrLater = isClaudeOpus47OrLaterModel(config.model.id);
+    const thinking = cleanAnthropicThinkingConfig(
+        config.thinking,
+        maxTokens,
+        config.model.id,
+    );
+    const sampling = cleanAnthropicSamplingConfig(request.generation, config.model.id);
 
     if (messages.length === 0) {
         throw new Error(
@@ -44,6 +54,10 @@ export function createAnthropicMessageBody(
         ...(system ? { system } : {}),
         messages,
         stream: request.stream === true,
+        ...(stopSequencesForGeneration(request.generation)
+            ? { stop_sequences: stopSequencesForGeneration(request.generation) }
+            : {}),
+        ...(!isOpus47OrLater ? sampling : {}),
         ...(thinking ? { thinking } : {}),
     };
 }
@@ -156,6 +170,7 @@ export function createAnthropicReasoningDetails(
 export function cleanAnthropicThinkingConfig(
     thinking: AnthropicThinkingConfig | undefined,
     maxTokens: number,
+    modelId = "",
 ): AnthropicCreateMessageRequest["thinking"] | undefined {
     if (!thinking || thinking.mode === "off") {
         return undefined;
@@ -163,6 +178,16 @@ export function cleanAnthropicThinkingConfig(
 
     if (maxTokens <= 1) {
         return undefined;
+    }
+
+    if (isClaudeOpus47OrLaterModel(modelId)) {
+        return {
+            type: "adaptive",
+            ...(thinking.mode === "adaptive" && thinking.effort
+                ? { effort: thinking.effort }
+                : {}),
+            ...(thinking.display ? { display: thinking.display } : {}),
+        };
     }
 
     if (thinking.mode === "adaptive") {
@@ -185,6 +210,32 @@ export function cleanAnthropicThinkingConfig(
         budget_tokens: budgetTokens,
         ...(thinking.display ? { display: thinking.display } : {}),
     };
+}
+
+function cleanAnthropicSamplingConfig(
+    generation: ChatGenerationRequest["generation"],
+    modelId: string,
+): Pick<AnthropicCreateMessageRequest, "temperature" | "top_k" | "top_p"> {
+    if (!generation || isClaudeOpus47OrLaterModel(modelId)) {
+        return {};
+    }
+
+    const output: Pick<AnthropicCreateMessageRequest, "temperature" | "top_k" | "top_p"> =
+        {};
+
+    if (typeof generation.temperature === "number") {
+        output.temperature = Math.min(1, generation.temperature);
+    }
+
+    if (typeof generation.topP === "number" && output.temperature === undefined) {
+        output.top_p = generation.topP;
+    }
+
+    if (typeof generation.topK === "number") {
+        output.top_k = generation.topK;
+    }
+
+    return output;
 }
 
 function toAnthropicMessage(message: ChatGenerationMessage): AnthropicMessage {

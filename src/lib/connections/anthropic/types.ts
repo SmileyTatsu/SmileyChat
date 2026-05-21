@@ -87,7 +87,9 @@ export type AnthropicCreateMessageRequest = {
     max_tokens: number;
     messages: AnthropicMessage[];
     stream?: boolean;
+    stop_sequences?: string[];
     system?: string;
+    temperature?: number;
     thinking?:
         | {
               type: "adaptive";
@@ -99,6 +101,8 @@ export type AnthropicCreateMessageRequest = {
               budget_tokens: number;
               display?: "summarized" | "omitted";
           };
+    top_k?: number;
+    top_p?: number;
 };
 
 export type AnthropicCreateMessageResponse = {

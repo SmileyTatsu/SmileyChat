@@ -13,6 +13,7 @@ export type OpenRouterRuntimeConfig = OpenRouterConnectionConfig;
 export type OpenRouterModelSelection = {
     source: "api";
     id: string;
+    supportedParameters?: string[];
 };
 
 export type OpenRouterProviderPreferences = {
@@ -49,13 +50,23 @@ export type OpenRouterImage = {
 };
 
 export type OpenRouterChatCompletionRequest = {
+    frequency_penalty?: number;
+    max_completion_tokens: number;
+    min_p?: number;
     model: string;
     messages: OpenRouterChatMessage[];
     modalities?: string[];
-    max_completion_tokens: number;
-    stream: boolean;
+    presence_penalty?: number;
     provider?: OpenRouterProviderPreferences;
     reasoning?: OpenRouterReasoningConfig;
+    repetition_penalty?: number;
+    seed?: number;
+    stop?: string[];
+    stream: boolean;
+    temperature?: number;
+    top_a?: number;
+    top_k?: number;
+    top_p?: number;
 };
 
 export type OpenRouterChatCompletionResponse = {

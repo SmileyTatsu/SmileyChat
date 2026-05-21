@@ -45,6 +45,84 @@ describe("Anthropic connection mappers", () => {
         expect(body.max_tokens).toBe(250);
     });
 
+    test("maps Anthropic sampler settings and sends only temperature when top_p is also set", () => {
+        const body = createAnthropicMessageBody(
+            {
+                generation: {
+                    stopSequences: ["END"],
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.9,
+                },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                maxTokens: 250,
+                model: { source: "default", id: "claude-sonnet-4-6" },
+            },
+        );
+
+        expect(body).toMatchObject({
+            max_tokens: 250,
+            stop_sequences: ["END"],
+            temperature: 0.7,
+            top_k: 40,
+        });
+        expect(body.top_p).toBeUndefined();
+    });
+
+    test("omits sampling parameters and manual thinking budget for Claude Opus 4.7", () => {
+        const body = createAnthropicMessageBody(
+            {
+                generation: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.9,
+                },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-opus-4-7" },
+                thinking: {
+                    mode: "enabled",
+                    budgetTokens: 1024,
+                    display: "summarized",
+                },
+            },
+        );
+
+        expect(body.temperature).toBeUndefined();
+        expect(body.top_k).toBeUndefined();
+        expect(body.top_p).toBeUndefined();
+        expect(body.thinking).toEqual({
+            type: "adaptive",
+            display: "summarized",
+        });
+    });
+
+    test("sends top_p when temperature is unset", () => {
+        const body = createAnthropicMessageBody(
+            {
+                generation: {
+                    topP: 0.9,
+                },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-opus-4-1-20250805" },
+            },
+        );
+
+        expect(body.temperature).toBeUndefined();
+        expect(body.top_p).toBe(0.9);
+    });
+
     test("keeps interspersed system and developer messages in history", () => {
         const body = createAnthropicMessageBody(
             {

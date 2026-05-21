@@ -47,6 +47,40 @@ describe("Google AI connection mappers", () => {
         expect(body.generationConfig?.maxOutputTokens).toBe(250);
     });
 
+    test("maps preset generation settings into generationConfig", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                generation: {
+                    frequencyPenalty: 0.2,
+                    presencePenalty: 0.4,
+                    seed: 123,
+                    stopSequences: ["END"],
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.9,
+                },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                maxOutputTokens: 250,
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.generationConfig).toMatchObject({
+            frequencyPenalty: 0.2,
+            maxOutputTokens: 250,
+            presencePenalty: 0.4,
+            seed: 123,
+            stopSequences: ["END"],
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.9,
+        });
+    });
+
     test("keeps interspersed system and developer messages in history", () => {
         const body = createGoogleAIGenerateBody(
             {

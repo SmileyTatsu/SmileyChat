@@ -4,6 +4,7 @@ import {
     Eye,
     FilePenLine,
     Plus,
+    SlidersHorizontal,
     Trash,
     Upload,
 } from "lucide-preact";
@@ -13,9 +14,15 @@ import { messageFromError } from "#frontend/lib/common/errors";
 import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
 import {
+    getActiveConnectionProfile,
+    type ConnectionSettings,
+} from "#frontend/lib/connections/config";
+import { isClaudeOpus47OrLaterModel } from "#frontend/lib/connections/generation-settings";
+import {
     compilePresetContext,
     compilePresetMessages,
 } from "#frontend/lib/presets/compile";
+import type { PresetGenerationSettings } from "#frontend/lib/presets/types";
 import {
     createBlankPrompt,
     createPresetFromDefault,
@@ -50,6 +57,7 @@ import { usePresetAutosave } from "./presets/use-preset-autosave";
 
 type PresetSettingsProps = {
     character: SmileyCharacter;
+    connectionSettings: ConnectionSettings;
     collection: PresetCollection;
     loadError?: string;
     messages: Message[];
@@ -59,10 +67,11 @@ type PresetSettingsProps = {
     userStatus: UserStatus;
 };
 
-type PresetPanelView = "editor" | "preview";
+type PresetPanelView = "editor" | "generation" | "preview";
 
 export function PresetSettings({
     character,
+    connectionSettings,
     collection,
     loadError,
     messages,
@@ -134,6 +143,10 @@ export function PresetSettings({
         () => collectPresetWarnings(activePreset, selectedPrompt),
         [activePreset, selectedPrompt],
     );
+    const generationWarnings = useMemo(
+        () => collectGenerationWarnings(activePreset?.generation, connectionSettings),
+        [activePreset?.generation, connectionSettings],
+    );
 
     useEffect(() => {
         if (!activePreset) {
@@ -176,7 +189,7 @@ export function PresetSettings({
 
                       return {
                           preset,
-                          status: `Imported ${summary.importedPrompts} prompt(s), ${summary.enabledPrompts} enabled. Ignored ${summary.ignoredFields.length} generation field(s).`,
+                          status: `Imported ${summary.importedPrompts} prompt(s), ${summary.enabledPrompts} enabled, ${summary.importedGenerationFields.length} generation field(s). Ignored ${summary.ignoredFields.length} unsupported field(s).`,
                       };
                   })();
             const nextCollection = normalizePresetCollection({
@@ -242,6 +255,13 @@ export function PresetSettings({
             prompts: preset.prompts.map((prompt) =>
                 prompt.id === promptId ? { ...prompt, ...nextPrompt } : prompt,
             ),
+        }));
+    }
+
+    function updateGeneration(nextGeneration: PresetGenerationSettings) {
+        updateActivePreset((preset) => ({
+            ...preset,
+            generation: Object.keys(nextGeneration).length ? nextGeneration : undefined,
         }));
     }
 
@@ -486,6 +506,14 @@ export function PresetSettings({
                             Editor
                         </button>
                         <button
+                            className={activeView === "generation" ? "active" : ""}
+                            type="button"
+                            onClick={() => setActiveView("generation")}
+                        >
+                            <SlidersHorizontal size={16} />
+                            Generation
+                        </button>
+                        <button
                             className={activeView === "preview" ? "active" : ""}
                             type="button"
                             onClick={() => setActiveView("preview")}
@@ -522,6 +550,14 @@ export function PresetSettings({
                         />
                     )}
 
+                    {activeView === "generation" && (
+                        <PresetGenerationEditor
+                            generation={activePreset.generation}
+                            warnings={generationWarnings}
+                            onChange={updateGeneration}
+                        />
+                    )}
+
                     {activeView === "preview" && (
                         <PresetPreview
                             compiledContextPreview={compiledContextPreview}
@@ -544,4 +580,265 @@ export function PresetSettings({
             )}
         </section>
     );
+}
+
+type PresetGenerationEditorProps = {
+    generation: PresetGenerationSettings | undefined;
+    warnings: string[];
+    onChange: (generation: PresetGenerationSettings) => void;
+};
+
+function PresetGenerationEditor({
+    generation,
+    warnings,
+    onChange,
+}: PresetGenerationEditorProps) {
+    const settings = generation ?? {};
+
+    function updateNumber(
+        key: keyof PresetGenerationSettings,
+        value: string,
+        options: { integer?: boolean } = {},
+    ) {
+        const next = { ...settings };
+
+        if (!value.trim()) {
+            delete next[key];
+            onChange(next);
+            return;
+        }
+
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            return;
+        }
+
+        next[key] = (options.integer ? Math.trunc(parsed) : parsed) as never;
+        onChange(next);
+    }
+
+    function updateStopSequences(value: string) {
+        const stopSequences = Array.from(
+            new Set(
+                value
+                    .split("\n")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+            ),
+        );
+        const next = { ...settings };
+
+        if (stopSequences.length) {
+            next.stopSequences = stopSequences;
+        } else {
+            delete next.stopSequences;
+        }
+
+        onChange(next);
+    }
+
+    return (
+        <section className="preset-generation-panel" aria-label="Generation settings">
+            <div className="preset-section-header">
+                <h3>Generation</h3>
+                <button type="button" onClick={() => onChange({})}>
+                    Clear
+                </button>
+            </div>
+            <p className="field-hint">
+                Empty fields use the active provider or model default. SmileyChat sends
+                only the settings supported by the selected provider.
+            </p>
+            {warnings.length > 0 && (
+                <div className="preset-warning-list" role="status">
+                    {warnings.map((warning) => (
+                        <p key={warning}>
+                            <AlertTriangle size={15} />
+                            {warning}
+                        </p>
+                    ))}
+                </div>
+            )}
+            <div className="preset-generation-grid">
+                <GenerationNumberField
+                    label="Temperature"
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    value={settings.temperature}
+                    onInput={(value) => updateNumber("temperature", value)}
+                />
+                <GenerationNumberField
+                    label="Top P"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={settings.topP}
+                    onInput={(value) => updateNumber("topP", value)}
+                />
+                <GenerationNumberField
+                    label="Top K"
+                    min={0}
+                    step={1}
+                    value={settings.topK}
+                    onInput={(value) => updateNumber("topK", value, { integer: true })}
+                />
+                <GenerationNumberField
+                    label="Min P"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={settings.minP}
+                    onInput={(value) => updateNumber("minP", value)}
+                />
+                <GenerationNumberField
+                    label="Top A"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={settings.topA}
+                    onInput={(value) => updateNumber("topA", value)}
+                />
+                <GenerationNumberField
+                    label="Presence penalty"
+                    min={-2}
+                    max={2}
+                    step={0.05}
+                    value={settings.presencePenalty}
+                    onInput={(value) => updateNumber("presencePenalty", value)}
+                />
+                <GenerationNumberField
+                    label="Frequency penalty"
+                    min={-2}
+                    max={2}
+                    step={0.05}
+                    value={settings.frequencyPenalty}
+                    onInput={(value) => updateNumber("frequencyPenalty", value)}
+                />
+                <GenerationNumberField
+                    label="Repetition penalty"
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    value={settings.repetitionPenalty}
+                    onInput={(value) => updateNumber("repetitionPenalty", value)}
+                />
+                <GenerationNumberField
+                    label="Seed"
+                    step={1}
+                    value={settings.seed}
+                    onInput={(value) => updateNumber("seed", value, { integer: true })}
+                />
+            </div>
+            <label>
+                Stop sequences
+                <textarea
+                    className="preset-stop-sequences"
+                    placeholder="One sequence per line"
+                    value={settings.stopSequences?.join("\n") ?? ""}
+                    onInput={(event) =>
+                        updateStopSequences(
+                            (event.currentTarget as HTMLTextAreaElement).value,
+                        )
+                    }
+                />
+            </label>
+        </section>
+    );
+}
+
+type GenerationNumberFieldProps = {
+    label: string;
+    max?: number;
+    min?: number;
+    step?: number;
+    value: number | undefined;
+    onInput: (value: string) => void;
+};
+
+function GenerationNumberField({
+    label,
+    max,
+    min,
+    step,
+    value,
+    onInput,
+}: GenerationNumberFieldProps) {
+    return (
+        <label>
+            {label}
+            <input
+                max={max}
+                min={min}
+                step={step}
+                type="number"
+                value={value ?? ""}
+                onInput={(event) =>
+                    onInput((event.currentTarget as HTMLInputElement).value)
+                }
+            />
+        </label>
+    );
+}
+
+function collectGenerationWarnings(
+    generation: PresetGenerationSettings | undefined,
+    connectionSettings: ConnectionSettings,
+) {
+    const profile = getActiveConnectionProfile(connectionSettings);
+    const warnings: string[] = [];
+
+    if (!profile || !generation) {
+        return warnings;
+    }
+
+    if (
+        profile.provider === "openai-compatible" &&
+        (generation.topK !== undefined ||
+            generation.minP !== undefined ||
+            generation.topA !== undefined ||
+            generation.repetitionPenalty !== undefined)
+    ) {
+        warnings.push(
+            "OpenAI-compatible Chat Completions does not use Top K, Min P, Top A, or Repetition penalty. Those fields will be omitted.",
+        );
+    }
+
+    if (profile.provider === "openrouter") {
+        warnings.push(
+            "OpenRouter support is model-specific. Unsupported sampler fields are omitted when model metadata exposes supported parameters.",
+        );
+    }
+
+    if (profile.provider === "google-ai" && generation.topK !== undefined) {
+        warnings.push(
+            "Google AI Top K support depends on the selected Gemini model. If the model does not allow Top K, the request may fail.",
+        );
+    }
+
+    if (profile.provider === "anthropic") {
+        const modelId = isRecord(profile.config.model)
+            ? String(profile.config.model.id ?? "")
+            : "";
+
+        if (
+            isClaudeOpus47OrLaterModel(modelId) &&
+            (generation.temperature !== undefined ||
+                generation.topP !== undefined ||
+                generation.topK !== undefined)
+        ) {
+            warnings.push(
+                "Claude Opus 4.7 and later reject non-default temperature, Top P, and Top K. SmileyChat will omit them.",
+            );
+        } else if (
+            generation.temperature !== undefined &&
+            generation.topP !== undefined
+        ) {
+            warnings.push(
+                "Anthropic Messages requests should not send temperature and Top P together. SmileyChat will send temperature and omit Top P.",
+            );
+        }
+    }
+
+    return warnings;
 }

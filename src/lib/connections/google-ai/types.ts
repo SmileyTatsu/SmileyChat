@@ -53,12 +53,19 @@ export type GoogleAIGenerateContentRequest = {
     contents: GoogleAIContent[];
     systemInstruction?: GoogleAISystemInstruction;
     generationConfig?: {
+        frequencyPenalty?: number;
         maxOutputTokens?: number;
+        presencePenalty?: number;
+        seed?: number;
+        stopSequences?: string[];
+        temperature?: number;
         thinkingConfig?: {
             includeThoughts?: boolean;
             thinkingLevel?: GoogleAIThinkingConfig["thinkingLevel"];
             thinkingBudget?: number;
         };
+        topK?: number;
+        topP?: number;
     };
 };
 
@@ -102,6 +109,9 @@ export type GoogleAIModel = {
     inputTokenLimit?: number;
     outputTokenLimit?: number;
     supportedGenerationMethods?: string[];
+    temperature?: number;
+    topK?: number;
+    topP?: number;
 };
 
 export type GoogleAIListModelsResponse = {

@@ -196,6 +196,10 @@ export function App() {
     const latestStartNewChatForWorkspaceRef = useRef(startNewChat);
     const latestSelectCharacterForPluginsRef = useRef(selectCharacter);
     const latestGenerateModelForPluginsRef = useRef(generatePluginModelResponse);
+    const activePresetForPlugins =
+        presetCollection.presets.find(
+            (preset) => preset.id === presetCollection.activePresetId,
+        ) ?? presetCollection.presets[0];
     const isMobileLayout = viewportWidth <= MOBILE_SIDEBAR_BREAKPOINT;
     const isCharacterDrawerLayout = viewportWidth <= CHARACTER_DRAWER_BREAKPOINT;
     const sidebarOpen = isMobileLayout ? mobileSidebarOpen : desktopSidebarOpen;
@@ -711,6 +715,7 @@ export function App() {
         );
 
         return connection.generate({
+            generation: activePresetForPlugins?.generation,
             messages: [],
             onImage: request.onImage,
             onReasoningToken: request.onReasoningToken,

@@ -92,10 +92,14 @@ export function OpenRouterConnection({
         const id = value.slice(separatorIndex + 1);
 
         if (source === "api") {
+            const selected = models.find((model) => model.id === id);
+
             updateConfig({
                 model: {
                     source: "api",
                     id,
+                    supportedParameters:
+                        selected?.supported_parameters?.filter(Boolean) ?? [],
                 },
             });
             return;

@@ -1,5 +1,6 @@
 import type { Message } from "#frontend/types";
 import type { PromptBuildDebug } from "../prompt/types";
+import type { PresetGenerationSettings } from "../presets/types";
 
 export type ChatGenerationMessageContentPart =
     | { type: "text"; text: string }
@@ -15,6 +16,7 @@ export type ChatGenerationMessage = {
 export type ChatGenerationRequest = {
     context?: string;
     debug?: PromptBuildDebug;
+    generation?: PresetGenerationSettings;
     messages: Message[];
     onImage?: (url: string) => void;
     onReasoningToken?: (token: string) => void;

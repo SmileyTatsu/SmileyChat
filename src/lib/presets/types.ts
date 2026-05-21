@@ -32,10 +32,24 @@ export type SmileyPreset = {
     title: string;
     prompts: PresetPrompt[];
     promptOrder: PresetPromptOrderEntry[];
+    generation?: PresetGenerationSettings;
     metadata?: Record<string, unknown>;
     extensions?: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
+};
+
+export type PresetGenerationSettings = {
+    frequencyPenalty?: number;
+    minP?: number;
+    presencePenalty?: number;
+    repetitionPenalty?: number;
+    seed?: number;
+    stopSequences?: string[];
+    temperature?: number;
+    topA?: number;
+    topK?: number;
+    topP?: number;
 };
 
 export type PresetCollection = {
@@ -44,6 +58,7 @@ export type PresetCollection = {
 };
 
 export type SillyTavernImportSummary = {
+    importedGenerationFields: string[];
     importedPrompts: number;
     orderedPrompts: number;
     enabledPrompts: number;

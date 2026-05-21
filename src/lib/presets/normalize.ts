@@ -2,6 +2,11 @@ import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
 
 import { createDefaultPreset, defaultPresetCollection } from "./defaults";
+import {
+    normalizePresetGenerationSettings,
+    normalizeSillyTavernGenerationSettings,
+    sillyTavernGenerationFieldMap,
+} from "./generation";
 import type {
     PresetCollection,
     PresetInjectionPosition,
@@ -20,20 +25,12 @@ type NormalizedPromptEntry = {
 };
 
 const ignoredSillyTavernFields = [
-    "temperature",
-    "frequency_penalty",
-    "presence_penalty",
-    "top_p",
-    "top_k",
-    "top_a",
-    "min_p",
-    "repetition_penalty",
+    "max_tokens",
     "openai_max_context",
     "openai_max_tokens",
     "max_context_unlocked",
     "stream_openai",
     "reasoning_effort",
-    "seed",
     "n",
     "enable_web_search",
     "request_images",
@@ -134,6 +131,9 @@ export function normalizePreset(value: unknown): SmileyPreset {
         title: stringOrFallback(preset.title, "Untitled preset"),
         prompts,
         promptOrder,
+        ...(normalizePresetGenerationSettings(preset.generation)
+            ? { generation: normalizePresetGenerationSettings(preset.generation) }
+            : {}),
         ...(normalizeRecord(preset.metadata)
             ? { metadata: normalizeRecord(preset.metadata) }
             : {}),
@@ -163,6 +163,7 @@ export function importSillyTavernPreset(
     const promptIds = new Set(prompts.map((prompt) => prompt.id));
     const promptIdRewriteMap = promptIdMapFromEntries(promptEntries);
     const sourceOrder = selectSillyTavernPromptOrder(source.prompt_order);
+    const generationImport = normalizeSillyTavernGenerationSettings(source);
     const orderedPromptIds = new Set<string>();
     const promptOrder = sourceOrder
         .map((entry) => normalizeSillyTavernOrderEntry(entry))
@@ -195,6 +196,9 @@ export function importSillyTavernPreset(
         title: stringOrFallback(source.name, fallbackTitle),
         prompts,
         promptOrder,
+        ...(generationImport.generation
+            ? { generation: generationImport.generation }
+            : {}),
         createdAt: now,
         updatedAt: now,
     });
@@ -202,10 +206,13 @@ export function importSillyTavernPreset(
     return {
         preset,
         summary: {
+            importedGenerationFields: generationImport.importedFields,
             importedPrompts: preset.prompts.length,
             orderedPrompts: preset.promptOrder.length,
             enabledPrompts: preset.promptOrder.filter((entry) => entry.enabled).length,
-            ignoredFields: ignoredSillyTavernFields.filter((field) => field in source),
+            ignoredFields: ignoredSillyTavernFields.filter(
+                (field) => field in source && !(field in sillyTavernGenerationFieldMap),
+            ),
         },
     };
 }

@@ -1,4 +1,5 @@
 import type { PresetCollection, PresetPrompt, SmileyPreset } from "./types";
+import { defaultPresetGenerationSettings } from "./generation";
 
 export const dynamicPromptIds = {
     character: "charDescription",
@@ -98,6 +99,7 @@ export function createDefaultPreset(now = new Date().toISOString()): SmileyPrese
             promptId: prompt.id,
             enabled: true,
         })),
+        generation: defaultPresetGenerationSettings,
         createdAt: now,
         updatedAt: now,
     };

@@ -38,14 +38,20 @@ export type OpenAICompatibleChatMessage = {
 };
 
 export type OpenAICompatibleChatCompletionRequest = {
+    frequency_penalty?: number;
     model: string;
     messages: OpenAICompatibleChatMessage[];
     max_completion_tokens: number;
+    presence_penalty?: number;
     reasoning?: {
         effort?: OpenAICompatibleReasoningConfig["effort"];
     };
     reasoning_effort?: OpenAICompatibleReasoningConfig["effort"];
+    seed?: number;
+    stop?: string[];
     stream?: boolean;
+    temperature?: number;
+    top_p?: number;
 };
 
 export type OpenAICompatibleChatCompletionResponse = {

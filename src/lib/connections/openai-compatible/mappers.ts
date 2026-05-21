@@ -1,3 +1,4 @@
+import { stopSequencesForGeneration } from "../generation-settings";
 import {
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
@@ -29,6 +30,24 @@ export function createChatCompletionBody(
         model: config.model.id,
         messages,
         max_completion_tokens: config.maxCompletionTokens ?? defaultOutputTokenLimit,
+        ...(typeof request.generation?.temperature === "number"
+            ? { temperature: request.generation.temperature }
+            : {}),
+        ...(typeof request.generation?.topP === "number"
+            ? { top_p: request.generation.topP }
+            : {}),
+        ...(typeof request.generation?.presencePenalty === "number"
+            ? { presence_penalty: request.generation.presencePenalty }
+            : {}),
+        ...(typeof request.generation?.frequencyPenalty === "number"
+            ? { frequency_penalty: request.generation.frequencyPenalty }
+            : {}),
+        ...(typeof request.generation?.seed === "number"
+            ? { seed: request.generation.seed }
+            : {}),
+        ...(stopSequencesForGeneration(request.generation)
+            ? { stop: stopSequencesForGeneration(request.generation) }
+            : {}),
         ...(reasoning?.wireFormat === "chat-reasoning-effort"
             ? { reasoning_effort: reasoning.effort }
             : {}),

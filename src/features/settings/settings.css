@@ -476,6 +476,30 @@
     background: #2c313d;
 }
 
+.preset-generation-panel {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.preset-generation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    min-width: 0;
+}
+
+.preset-generation-grid label,
+.preset-generation-panel > label {
+    display: grid;
+    gap: 6px;
+}
+
+.preset-stop-sequences {
+    min-height: 92px;
+    resize: vertical;
+}
+
 .plugin-config-panel {
     display: grid;
     gap: 10px;
