@@ -260,6 +260,33 @@
     min-height: 0;
 }
 
+.plugins-view-switcher {
+    display: inline-flex;
+    justify-self: start;
+    gap: 4px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 4px;
+}
+
+.plugins-view-switcher button {
+    min-height: 32px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #b9bfd0;
+    font-size: 0.84rem;
+    font-weight: 700;
+    padding: 0 12px;
+}
+
+.plugins-view-switcher button:hover,
+.plugins-view-switcher button.active {
+    background: #303440;
+    color: #ececf1;
+}
+
 .plugin-card {
     display: grid;
     gap: 12px;
@@ -305,7 +332,9 @@
 .plugin-title h3 {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
+    white-space: normal;
 }
 
 .plugin-title span {
@@ -332,6 +361,38 @@
     border-color: #596a8e;
     background: #30384a;
     color: #e1e7ff;
+}
+
+.plugin-title .plugin-trust-badge,
+.plugin-title .plugin-installed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 4px 8px;
+    text-transform: uppercase;
+}
+
+.plugin-title .plugin-trust-badge.official {
+    border: 1px solid #8163b2;
+    background: #302440;
+    color: #f1d16f;
+}
+
+.plugin-title .plugin-trust-badge.verified {
+    border: 1px solid #3f6795;
+    background: #1e2a3b;
+    color: #a9d1ff;
+}
+
+.plugin-title .plugin-installed-badge {
+    border: 1px solid rgba(72, 199, 116, 0.36);
+    background: rgba(72, 199, 116, 0.1);
+    color: #9ee3b3;
 }
 
 .plugin-toggle {
@@ -474,6 +535,33 @@
 .plugin-card-actions button:hover {
     border-color: #53627c;
     background: #2c313d;
+}
+
+.plugin-install-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    border: 1px solid #8ea0ca;
+    border-radius: 8px;
+    background: #e1e7ff;
+    color: #15171d;
+    font-weight: 800;
+    padding: 0 11px;
+    white-space: nowrap;
+}
+
+.plugin-install-button:hover:not(:disabled) {
+    filter: brightness(1.06);
+}
+
+.plugin-install-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.store-plugin-card .plugin-meta-grid {
+    grid-template-columns: minmax(0, 120px) minmax(0, 1fr);
 }
 
 .preset-generation-panel {

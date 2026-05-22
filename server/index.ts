@@ -59,8 +59,10 @@ import {
 } from "./persona-store";
 import {
     deletePluginStorage,
+    installVerifiedPlugin,
     proxyPluginFetch,
     readPluginManifests,
+    readPluginRegistry,
     readPluginStorage,
     readPluginStorageSnapshot,
     servePluginAsset,
@@ -134,6 +136,18 @@ const server = Bun.serve({
         "/api/plugins": {
             GET: api(async () => {
                 return json({ plugins: await readPluginManifests() });
+            }),
+        },
+
+        "/api/plugins/registry": {
+            GET: api(async () => {
+                return readPluginRegistry();
+            }),
+        },
+
+        "/api/plugins/install": {
+            POST: api(async (request) => {
+                return installVerifiedPlugin(await readJsonBody(request));
             }),
         },
 

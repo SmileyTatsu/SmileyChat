@@ -5,6 +5,7 @@ import {
     Boxes,
     CheckCircle2,
     Copy,
+    Download,
     Layers,
     Layout,
     Pencil,
@@ -15,6 +16,7 @@ import {
     Search,
     Settings,
     Sparkles,
+    Star,
     Trash2,
     Wrench,
     XCircle,
@@ -25,10 +27,13 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { mergeCoreAndUserPluginManifests } from "#frontend/core-extensions";
 import {
     deletePluginProfile,
+    installVerifiedPlugin,
     loadPluginManifests,
     loadPluginProfiles,
+    loadPluginRegistry,
     savePluginEnabled,
     savePluginProfilesState,
+    type PluginRegistryEntry,
     type PluginProfilesPayload,
 } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
@@ -70,6 +75,7 @@ type PluginsSettingsProps = {
 };
 
 type InstalledFilter = "all" | "installed" | "not-installed";
+type PluginsView = "local" | "store";
 
 const CATEGORY_ICONS: Record<
     PluginCategory,
@@ -95,6 +101,11 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [installedFilter, setInstalledFilter] = useState<InstalledFilter>("all");
     const [categoryFilter, setCategoryFilter] = useState<PluginCategory | "all">("all");
+    const [activeView, setActiveView] = useState<PluginsView>("local");
+    const [registryPlugins, setRegistryPlugins] = useState<PluginRegistryEntry[]>([]);
+    const [registryLoaded, setRegistryLoaded] = useState(false);
+    const [registryFailed, setRegistryFailed] = useState(false);
+    const [installingPluginId, setInstallingPluginId] = useState("");
     const [, setRegistryRevision] = useState(0);
     const loadedPlugins = getLoadedPlugins();
     const pluginSettingsPanels = getPluginSettingsPanels();
@@ -199,6 +210,67 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         return counts;
     }, [plugins]);
 
+    const localPluginIds = useMemo(
+        () => new Set(plugins.map((plugin) => plugin.id)),
+        [plugins],
+    );
+
+    const registryStatusById = useMemo(() => {
+        const map = new Map<string, PluginRegistryEntry["status"]>();
+        if (registryFailed) {
+            return map;
+        }
+        for (const plugin of registryPlugins) {
+            map.set(plugin.id, plugin.status);
+        }
+        return map;
+    }, [registryFailed, registryPlugins]);
+
+    const filteredRegistryPlugins = useMemo(() => {
+        const search = searchTerm.trim().toLowerCase();
+        return registryPlugins.filter((plugin) => {
+            const installed = localPluginIds.has(plugin.id);
+
+            if (categoryFilter !== "all" && plugin.category !== categoryFilter) {
+                return false;
+            }
+
+            if (installedFilter === "installed" && !installed) {
+                return false;
+            }
+
+            if (installedFilter === "not-installed" && installed) {
+                return false;
+            }
+
+            if (search) {
+                const haystack = [
+                    plugin.name,
+                    plugin.id,
+                    plugin.description ?? "",
+                    plugin.author ?? "",
+                    PLUGIN_CATEGORY_LABELS[plugin.category],
+                ]
+                    .join(" ")
+                    .toLowerCase();
+
+                if (!haystack.includes(search)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }, [categoryFilter, installedFilter, localPluginIds, registryPlugins, searchTerm]);
+
+    const registryCategoryCounts = useMemo(() => {
+        const counts = new Map<PluginCategory, number>();
+        for (const plugin of registryPlugins) {
+            counts.set(plugin.category, (counts.get(plugin.category) ?? 0) + 1);
+        }
+        return counts;
+    }, [registryPlugins]);
+
     async function refreshAll() {
         setRequestState("loading");
 
@@ -209,11 +281,31 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
             ]);
             setPlugins(mergeCoreAndUserPluginManifests(manifestResponse.plugins));
             setProfilesPayload(profilesResponse);
+            void refreshRegistry(false);
             setStatusMessage("");
             setRequestState("success");
         } catch (error) {
             setStatusMessage(messageFromError(error, "Could not load plugins."));
             setRequestState("error");
+        }
+    }
+
+    async function refreshRegistry(showStatus = true) {
+        try {
+            const registry = await loadPluginRegistry();
+            setRegistryPlugins(registry.plugins);
+            setRegistryLoaded(true);
+            setRegistryFailed(false);
+        } catch (error) {
+            setRegistryPlugins([]);
+            setRegistryLoaded(true);
+            setRegistryFailed(true);
+            if (showStatus) {
+                setStatusMessage(
+                    messageFromError(error, "Could not load extension registry."),
+                );
+                setRequestState("error");
+            }
         }
     }
 
@@ -254,6 +346,37 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         } catch (error) {
             setStatusMessage(messageFromError(error, "Could not update plugin."));
             setRequestState("error");
+        }
+    }
+
+    async function installStorePlugin(plugin: PluginRegistryEntry) {
+        setRequestState("loading");
+        setInstallingPluginId(plugin.id);
+
+        try {
+            const installResponse = await installVerifiedPlugin(plugin.id);
+            let installedPlugin = installResponse.plugin;
+            let nextPlugins = installResponse.plugins;
+
+            if (installedPlugin.enabled === false) {
+                const enableResponse = await savePluginEnabled(plugin.id, true);
+                installedPlugin = enableResponse.plugins?.find(
+                    (item) => item.id === plugin.id,
+                ) ??
+                    enableResponse.plugin ?? { ...installedPlugin, enabled: true };
+                nextPlugins = enableResponse.plugins ?? nextPlugins;
+            }
+
+            setPlugins(mergeCoreAndUserPluginManifests(nextPlugins));
+            setPluginEnabledState(plugin.id, true);
+            await loadRuntimePlugin({ ...installedPlugin, enabled: true });
+            setStatusMessage(`${plugin.name} installed and enabled.`);
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Could not install extension."));
+            setRequestState("error");
+        } finally {
+            setInstallingPluginId("");
         }
     }
 
@@ -464,17 +587,42 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 </button>
             </header>
 
-            <ProfileBar
-                profiles={allProfiles}
-                activeProfile={activeProfile}
-                isCustom={isCustom}
-                isBusy={requestState === "loading"}
-                onApply={applyProfile}
-                onCreateNew={() => void createNewProfile()}
-                onDuplicateActive={() => void duplicateActiveProfile()}
-                onDeleteActive={deleteActiveProfile}
-                onUpdateActiveDetails={updateActiveProfileDetails}
-            />
+            <div className="plugins-view-switcher">
+                {(
+                    [
+                        ["local", "Local Plugins"],
+                        ["store", "Extension Store"],
+                    ] as const
+                ).map(([value, label]) => (
+                    <button
+                        key={value}
+                        type="button"
+                        className={activeView === value ? "active" : ""}
+                        onClick={() => {
+                            setActiveView(value);
+                            if (value === "store" && !registryLoaded) {
+                                void refreshRegistry();
+                            }
+                        }}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {activeView === "local" && (
+                <ProfileBar
+                    profiles={allProfiles}
+                    activeProfile={activeProfile}
+                    isCustom={isCustom}
+                    isBusy={requestState === "loading"}
+                    onApply={applyProfile}
+                    onCreateNew={() => void createNewProfile()}
+                    onDuplicateActive={() => void duplicateActiveProfile()}
+                    onDeleteActive={deleteActiveProfile}
+                    onUpdateActiveDetails={updateActiveProfileDetails}
+                />
+            )}
 
             <div className="marketplace-toolbar">
                 <input
@@ -490,8 +638,14 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     {(
                         [
                             ["all", "All"],
-                            ["installed", "Enabled"],
-                            ["not-installed", "Disabled"],
+                            [
+                                "installed",
+                                activeView === "store" ? "Installed" : "Enabled",
+                            ],
+                            [
+                                "not-installed",
+                                activeView === "store" ? "Available" : "Disabled",
+                            ],
                         ] as const
                     ).map(([value, label]) => (
                         <button
@@ -520,11 +674,16 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 >
                     <Layers size={14} />
                     All
-                    <span className="category-tab-count">{plugins.length}</span>
+                    <span className="category-tab-count">
+                        {activeView === "store" ? registryPlugins.length : plugins.length}
+                    </span>
                 </button>
                 {PLUGIN_CATEGORIES.map((category) => {
                     const Icon = CATEGORY_ICONS[category];
-                    const count = categoryCounts.get(category) ?? 0;
+                    const count =
+                        activeView === "store"
+                            ? (registryCategoryCounts.get(category) ?? 0)
+                            : (categoryCounts.get(category) ?? 0);
                     if (count === 0) return null;
                     return (
                         <button
@@ -545,53 +704,87 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 })}
             </div>
 
-            <div className="plugins-list">
-                {groupedPlugins.map(([category, list]) => (
-                    <div className="plugin-category-group" key={category}>
-                        {categoryFilter === "all" && (
-                            <h3 className="plugin-category-heading">
-                                {(() => {
-                                    const Icon = CATEGORY_ICONS[category];
-                                    return <Icon size={15} />;
-                                })()}
-                                {PLUGIN_CATEGORY_LABELS[category]}
-                                <span>{list.length}</span>
-                            </h3>
-                        )}
-                        {list.map((plugin) => (
-                            <PluginCard
-                                key={plugin.id}
-                                plugin={plugin}
-                                loaded={loadedState(plugin)}
-                                showConfiguration={openPluginId === plugin.id}
-                                settingsPanels={settingsPanelsForPlugin(plugin.id)}
-                                pluginSnapshot={pluginSnapshot}
-                                requestState={requestState}
-                                onToggle={() => void togglePlugin(plugin)}
-                                onToggleConfigure={() =>
-                                    setOpenPluginId((current) =>
-                                        current === plugin.id ? "" : plugin.id,
-                                    )
-                                }
-                            />
-                        ))}
-                    </div>
-                ))}
+            {activeView === "local" ? (
+                <div className="plugins-list">
+                    {groupedPlugins.map(([category, list]) => (
+                        <div className="plugin-category-group" key={category}>
+                            {categoryFilter === "all" && (
+                                <h3 className="plugin-category-heading">
+                                    {(() => {
+                                        const Icon = CATEGORY_ICONS[category];
+                                        return <Icon size={15} />;
+                                    })()}
+                                    {PLUGIN_CATEGORY_LABELS[category]}
+                                    <span>{list.length}</span>
+                                </h3>
+                            )}
+                            {list.map((plugin) => (
+                                <PluginCard
+                                    key={plugin.id}
+                                    plugin={plugin}
+                                    registryStatus={registryStatusById.get(plugin.id)}
+                                    loaded={loadedState(plugin)}
+                                    showConfiguration={openPluginId === plugin.id}
+                                    settingsPanels={settingsPanelsForPlugin(plugin.id)}
+                                    pluginSnapshot={pluginSnapshot}
+                                    requestState={requestState}
+                                    onToggle={() => void togglePlugin(plugin)}
+                                    onToggleConfigure={() =>
+                                        setOpenPluginId((current) =>
+                                            current === plugin.id ? "" : plugin.id,
+                                        )
+                                    }
+                                />
+                            ))}
+                        </div>
+                    ))}
 
-                {filteredPlugins.length === 0 && plugins.length > 0 && (
-                    <div className="empty-plugin-state">
-                        <Search size={20} />
-                        <p>No extensions match these filters.</p>
-                    </div>
-                )}
+                    {filteredPlugins.length === 0 && plugins.length > 0 && (
+                        <div className="empty-plugin-state">
+                            <Search size={20} />
+                            <p>No extensions match these filters.</p>
+                        </div>
+                    )}
 
-                {plugins.length === 0 && (
-                    <div className="empty-plugin-state">
-                        <Boxes size={20} />
-                        <p>Place local plugins in userData/plugins to install them.</p>
-                    </div>
-                )}
-            </div>
+                    {plugins.length === 0 && (
+                        <div className="empty-plugin-state">
+                            <Boxes size={20} />
+                            <p>
+                                Place local plugins in userData/plugins to install them.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="plugins-list">
+                    {filteredRegistryPlugins.map((plugin) => (
+                        <StorePluginCard
+                            key={plugin.id}
+                            plugin={plugin}
+                            installed={localPluginIds.has(plugin.id)}
+                            isBusy={
+                                requestState === "loading" &&
+                                installingPluginId === plugin.id
+                            }
+                            onInstall={() => void installStorePlugin(plugin)}
+                        />
+                    ))}
+
+                    {registryFailed && (
+                        <div className="empty-plugin-state">
+                            <XCircle size={20} />
+                            <p>Extension registry is unavailable.</p>
+                        </div>
+                    )}
+
+                    {!registryFailed && filteredRegistryPlugins.length === 0 && (
+                        <div className="empty-plugin-state">
+                            <Search size={20} />
+                            <p>No extensions match these filters.</p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {statusMessage && (
                 <p className={`connection-status ${requestState}`}>{statusMessage}</p>
@@ -783,6 +976,7 @@ function ProfileBar({
 
 type PluginCardProps = {
     plugin: PluginManifest;
+    registryStatus?: PluginRegistryEntry["status"];
     loaded: ReturnType<typeof getLoadedPlugins>[number] | undefined;
     showConfiguration: boolean;
     settingsPanels: ReturnType<typeof getPluginSettingsPanels>;
@@ -794,6 +988,7 @@ type PluginCardProps = {
 
 function PluginCard({
     plugin,
+    registryStatus,
     loaded,
     showConfiguration,
     settingsPanels,
@@ -823,6 +1018,9 @@ function PluginCard({
                                 <CategoryIcon size={11} />
                                 {PLUGIN_CATEGORY_LABELS[category]}
                             </span>
+                            {registryStatus && (
+                                <PluginTrustBadge status={registryStatus} />
+                            )}
                         </h3>
                         <span>{plugin.id}</span>
                     </div>
@@ -923,6 +1121,81 @@ function PluginCard({
                 </div>
             )}
         </article>
+    );
+}
+
+type StorePluginCardProps = {
+    plugin: PluginRegistryEntry;
+    installed: boolean;
+    isBusy: boolean;
+    onInstall: () => void;
+};
+
+function StorePluginCard({ plugin, installed, isBusy, onInstall }: StorePluginCardProps) {
+    const CategoryIcon = CATEGORY_ICONS[plugin.category];
+
+    return (
+        <article className="plugin-card store-plugin-card">
+            <header>
+                <div className="plugin-title">
+                    <Boxes size={18} />
+                    <div>
+                        <h3>
+                            {plugin.name}
+                            <PluginTrustBadge status={plugin.status} />
+                            <span className="plugin-category-badge">
+                                <CategoryIcon size={11} />
+                                {PLUGIN_CATEGORY_LABELS[plugin.category]}
+                            </span>
+                            {installed && (
+                                <span className="plugin-installed-badge">Installed</span>
+                            )}
+                        </h3>
+                        <span>{plugin.id}</span>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    className="plugin-install-button"
+                    disabled={installed || isBusy}
+                    onClick={onInstall}
+                >
+                    {installed ? <CheckCircle2 size={15} /> : <Download size={15} />}
+                    {installed ? "Installed" : isBusy ? "Installing" : "Install"}
+                </button>
+            </header>
+
+            {plugin.description && <p>{plugin.description}</p>}
+
+            <dl className="plugin-meta-grid">
+                <div>
+                    <dt>Version</dt>
+                    <dd>{plugin.version}</dd>
+                </div>
+                <div>
+                    <dt>Author</dt>
+                    <dd>{plugin.author ?? "Unknown"}</dd>
+                </div>
+            </dl>
+        </article>
+    );
+}
+
+function PluginTrustBadge({ status }: { status: PluginRegistryEntry["status"] }) {
+    if (status === "official") {
+        return (
+            <span className="plugin-trust-badge official" title="Official plugin">
+                <Star size={11} />
+                Official
+            </span>
+        );
+    }
+
+    return (
+        <span className="plugin-trust-badge verified" title="Verified community plugin">
+            <CheckCircle2 size={11} />
+            Verified
+        </span>
     );
 }
 

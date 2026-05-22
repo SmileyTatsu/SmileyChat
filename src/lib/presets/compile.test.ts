@@ -38,7 +38,9 @@ describe("compilePresetMessages", () => {
         ]);
         const messages = [message("m1", "user", "Hello")];
 
-        expect(textContents(compilePresetMessages(preset, context({ messages })))).toEqual([
+        expect(
+            textContents(compilePresetMessages(preset, context({ messages }))),
+        ).toEqual([
             "A precise character description.",
             "Curious and direct.",
             "A careful tester.",

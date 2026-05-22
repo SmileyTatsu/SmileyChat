@@ -58,6 +58,7 @@ export interface SafeFetchPolicy {
     allowLocal?: boolean;
     allowLoopback?: boolean;
     allowMdns?: boolean;
+    allowedHostnames?: string[];
     allowedProtocols?: string[];
     maxRedirects?: number;
     /** Name of the env var the user would flip to allow this fetch. Surfaced in errors. */
@@ -138,6 +139,17 @@ async function validateUrl(rawUrl: string | URL, policy: SafeFetchPolicy): Promi
     if (!allowedProtocols.includes(parsed.protocol)) {
         throw new Error(
             `Refused to fetch ${original}: protocol '${parsed.protocol.replace(/:$/, "")}' is not allowed (allowed: ${allowedProtocols.map((proto) => proto.replace(/:$/, "")).join(", ")}).`,
+        );
+    }
+
+    if (
+        policy.allowedHostnames &&
+        !policy.allowedHostnames
+            .map((hostname) => hostname.toLowerCase())
+            .includes(parsed.hostname.toLowerCase())
+    ) {
+        throw new Error(
+            `Refused to fetch ${original}: hostname '${parsed.hostname}' is not allowed.`,
         );
     }
 

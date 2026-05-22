@@ -10,7 +10,7 @@ import type {
 
 import type { ConnectionSecrets, ConnectionSettings } from "../connections/config";
 import type { PluginProfile, PluginProfilesState } from "../plugins/profiles";
-import type { PluginManifest } from "../plugins/types";
+import type { PluginCategory, PluginManifest } from "../plugins/types";
 import type { AppPreferences } from "../preferences/types";
 import type { PresetCollection } from "../presets/types";
 import type {
@@ -235,6 +235,34 @@ export function saveAppPreferences(preferences: AppPreferences) {
 
 export function loadPluginManifests() {
     return requestJson<{ plugins: PluginManifest[] }>("/api/plugins");
+}
+
+export type PluginRegistryEntry = {
+    id: string;
+    name: string;
+    description?: string;
+    version: string;
+    author?: string;
+    category: PluginCategory;
+    status: "official" | "verified";
+    files: Record<string, { url: string; sha256: string }>;
+};
+
+export type PluginRegistryPayload = {
+    version: 1;
+    plugins: PluginRegistryEntry[];
+};
+
+export function loadPluginRegistry() {
+    return requestJson<PluginRegistryPayload>("/api/plugins/registry");
+}
+
+export function installVerifiedPlugin(pluginId: string) {
+    return requestJson<{
+        ok: true;
+        plugin: PluginManifest;
+        plugins: PluginManifest[];
+    }>("/api/plugins/install", jsonInit("POST", { pluginId }));
 }
 
 export function savePluginEnabled(pluginId: string, enabled: boolean) {
