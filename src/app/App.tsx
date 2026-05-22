@@ -1,5 +1,6 @@
 import "./App.css";
 
+import { computed, type ReadonlySignal } from "@preact/signals";
 import {
     useCallback,
     useEffect,
@@ -74,13 +75,21 @@ import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
     ChatMetadata,
     ChatMode,
-    SettingsCategory,
     UserStatus,
 } from "#frontend/types";
 
 import { useCharacterChats } from "./hooks/use-character-chats";
 import { useChatSession } from "./hooks/use-chat-session";
 import { usePersonaLibrary } from "./hooks/use-persona-library";
+import {
+    closeSettingsSignal,
+    desktopCharacterOpen,
+    desktopSidebarOpen,
+    mobileCharacterOpen,
+    mobileSidebarOpen,
+    openSettings,
+    settingsOpen,
+} from "./ui-state";
 
 const MOBILE_SIDEBAR_BREAKPOINT = 820;
 const CHARACTER_DRAWER_BREAKPOINT = 1120;
@@ -115,13 +124,6 @@ export function App() {
     );
     const previousIsMobileLayoutRef = useRef(isMobileLayout);
     const previousIsCharacterDrawerLayoutRef = useRef(isCharacterDrawerLayout);
-    const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
-    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-    const [desktopCharacterOpen, setDesktopCharacterOpen] = useState(false);
-    const [mobileCharacterOpen, setMobileCharacterOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
-    const [activeSettingsCategory, setActiveSettingsCategory] =
-        useState<SettingsCategory>("connections");
     const [userStatus, setUserStatus] = useState<UserStatus>("online");
     const [connectionSettings, setConnectionSettings] = useState<ConnectionSettings>(
         defaultConnectionSettings,
@@ -226,10 +228,33 @@ export function App() {
         presetCollection.presets.find(
             (preset) => preset.id === presetCollection.activePresetId,
         ) ?? presetCollection.presets[0];
-    const sidebarOpen = isMobileLayout ? mobileSidebarOpen : desktopSidebarOpen;
-    const characterOpen = isCharacterDrawerLayout
-        ? mobileCharacterOpen
-        : desktopCharacterOpen;
+    const sidebarOpenSignal = useMemo(
+        () =>
+            computed(() =>
+                isMobileLayout ? mobileSidebarOpen.value : desktopSidebarOpen.value,
+            ),
+        [isMobileLayout],
+    );
+    const characterOpenSignal = useMemo(
+        () =>
+            computed(() =>
+                isCharacterDrawerLayout
+                    ? mobileCharacterOpen.value
+                    : desktopCharacterOpen.value,
+            ),
+        [isCharacterDrawerLayout],
+    );
+    const appShellClassName = useMemo(
+        () =>
+            computed(
+                () =>
+                    `app-shell ${desktopSidebarOpen.value ? "" : "sidebar-collapsed"} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`,
+            ),
+        [
+            preferences.appearance.fontScale,
+            preferences.appearance.messageDensity,
+        ],
+    );
 
     latestChatSessionForPluginsRef.current = chatSession;
     latestChangeModeForWorkspaceRef.current = changeMode;
@@ -285,8 +310,7 @@ export function App() {
         () =>
             subscribeToPluginEvent("app:open-settings", (payload) => {
                 if (payload === "lorebooks") {
-                    setActiveSettingsCategory("lorebooks");
-                    setSettingsOpen(true);
+                    openSettings("lorebooks");
                 }
             }),
         [],
@@ -334,11 +358,11 @@ export function App() {
 
     useEffect(() => {
         if (!previousIsMobileLayoutRef.current && isMobileLayout) {
-            setMobileSidebarOpen(false);
+            mobileSidebarOpen.value = false;
         }
 
         if (!previousIsCharacterDrawerLayoutRef.current && isCharacterDrawerLayout) {
-            setMobileCharacterOpen(false);
+            mobileCharacterOpen.value = false;
         }
 
         previousIsMobileLayoutRef.current = isMobileLayout;
@@ -476,17 +500,17 @@ export function App() {
     );
     const handleToggleSidebar = useCallback(() => {
         if (isMobileLayout) {
-            setMobileSidebarOpen((prev) => !prev);
-            setMobileCharacterOpen(false);
+            mobileSidebarOpen.value = !mobileSidebarOpen.value;
+            mobileCharacterOpen.value = false;
             return;
         }
 
-        setDesktopSidebarOpen((prev) => !prev);
+        desktopSidebarOpen.value = !desktopSidebarOpen.value;
 
         if (isCharacterDrawerLayout) {
-            setMobileCharacterOpen(false);
+            mobileCharacterOpen.value = false;
         } else {
-            setDesktopCharacterOpen(false);
+            desktopCharacterOpen.value = false;
         }
     }, [isCharacterDrawerLayout, isMobileLayout]);
     const handleToggleCharacter = useMemo(() => {
@@ -496,19 +520,19 @@ export function App() {
 
         return () => {
             if (isCharacterDrawerLayout) {
-                setMobileCharacterOpen((prev) => !prev);
+                mobileCharacterOpen.value = !mobileCharacterOpen.value;
 
                 if (isMobileLayout) {
-                    setMobileSidebarOpen(false);
+                    mobileSidebarOpen.value = false;
                 } else {
-                    setDesktopSidebarOpen(false);
+                    desktopSidebarOpen.value = false;
                 }
 
                 return;
             }
 
-            setDesktopCharacterOpen((prev) => !prev);
-            setDesktopSidebarOpen(false);
+            desktopCharacterOpen.value = !desktopCharacterOpen.value;
+            desktopSidebarOpen.value = false;
         };
     }, [characterSummaries.characters.length, isCharacterDrawerLayout, isMobileLayout]);
     const hasCharacters = characterSummaries.characters.length > 0;
@@ -568,7 +592,7 @@ export function App() {
         if (connectionSettingsLoaded) {
             queueConnectionSettingsSave(connectionSettings);
         }
-        setSettingsOpen(false);
+        closeSettingsSignal();
     }
 
     function updateConnectionSettings(nextSettings: ConnectionSettings) {
@@ -664,11 +688,10 @@ export function App() {
 
             if (applyStartupLayout) {
                 setMode(loadedPreferences.chat.defaultMode);
-                setDesktopCharacterOpen(
-                    loadedPreferences.layout.characterPanelOpenByDefault,
-                );
-                setMobileCharacterOpen(false);
-                setMobileSidebarOpen(false);
+                desktopCharacterOpen.value =
+                    loadedPreferences.layout.characterPanelOpenByDefault;
+                mobileCharacterOpen.value = false;
+                mobileSidebarOpen.value = false;
             }
 
             setPreferencesLoadError("");
@@ -731,26 +754,25 @@ export function App() {
     }
 
     function openPersonasSettings() {
-        setActiveSettingsCategory("personas");
-        setSettingsOpen(true);
+        openSettings("personas");
     }
 
     function setActiveSidebarOpen(isOpen: boolean) {
         if (isMobileLayout) {
-            setMobileSidebarOpen(isOpen);
+            mobileSidebarOpen.value = isOpen;
             return;
         }
 
-        setDesktopSidebarOpen(isOpen);
+        desktopSidebarOpen.value = isOpen;
     }
 
     function setActiveCharacterOpen(isOpen: boolean) {
         if (isCharacterDrawerLayout) {
-            setMobileCharacterOpen(isOpen);
+            mobileCharacterOpen.value = isOpen;
             return;
         }
 
-        setDesktopCharacterOpen(isOpen);
+        desktopCharacterOpen.value = isOpen;
     }
 
     const uiFontFamily = preferences.appearance.uiFontFamily.trim();
@@ -758,7 +780,7 @@ export function App() {
 
     return (
         <main
-            className={`app-shell ${desktopSidebarOpen ? "" : "sidebar-collapsed"} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`}
+            className={appShellClassName}
             style={{
                 "--custom-ui-font-family": uiFontFamily
                     ? `${uiFontFamily}, var(--default-font-family)`
@@ -768,20 +790,13 @@ export function App() {
                     : undefined,
             }}
         >
-            {isMobileLayout && sidebarOpen && (
-                <div
-                    className="sidebar-mobile-backdrop open"
-                    role="presentation"
-                    onClick={() => setMobileSidebarOpen(false)}
-                />
-            )}
-            {isCharacterDrawerLayout && hasCharacters && characterOpen && (
-                <div
-                    className="character-mobile-backdrop open"
-                    role="presentation"
-                    onClick={() => setMobileCharacterOpen(false)}
-                />
-            )}
+            <ResponsiveBackdrops
+                characterOpenSignal={characterOpenSignal}
+                hasCharacters={hasCharacters}
+                isCharacterDrawerLayout={isCharacterDrawerLayout}
+                isMobileLayout={isMobileLayout}
+                sidebarOpenSignal={sidebarOpenSignal}
+            />
             {localApiWarning && (
                 <div className="app-warning-banner" role="alert">
                     <span>{localApiWarning}</span>
@@ -790,7 +805,7 @@ export function App() {
                     </button>
                 </div>
             )}
-            <Sidebar
+            <SidebarHost
                 activeChatId={activeChat?.id ?? ""}
                 activeCharacterId={character.id}
                 chats={activeCharacterChats}
@@ -805,23 +820,23 @@ export function App() {
                 pluginSnapshot={pluginSnapshot}
                 userStatus={userStatus}
                 hasCharacters={hasCharacters}
-                isOpen={sidebarOpen}
+                isOpenSignal={sidebarOpenSignal}
                 onCreateCharacter={() => void createCharacter()}
                 onImportCharacterFiles={(files) => void importCharacterFiles(files)}
                 onImportChatFile={(file) => void importChatFile(file)}
                 onNewChat={() => {
                     startNewChat();
                     if (isMobileLayout) {
-                        setMobileSidebarOpen(false);
+                        mobileSidebarOpen.value = false;
                     }
                 }}
                 onNewGroupChat={(characterIds, title, greetingMode) => {
                     void createGroupChat(characterIds, title, greetingMode);
                     if (isMobileLayout) {
-                        setMobileSidebarOpen(false);
+                        mobileSidebarOpen.value = false;
                     }
                 }}
-                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenSettings={() => openSettings()}
                 onOpenPersonasSettings={openPersonasSettings}
                 onOpenChange={setActiveSidebarOpen}
                 chatCountsByCharacterId={chatCountsByCharacterId}
@@ -842,13 +857,13 @@ export function App() {
                 onSelectChat={(chatId) => {
                     void selectChat(chatId);
                     if (isMobileLayout) {
-                        setMobileSidebarOpen(false);
+                        mobileSidebarOpen.value = false;
                     }
                 }}
                 onSelectCharacter={(characterId) => {
                     void selectCharacter(characterId);
                     if (isMobileLayout) {
-                        setMobileSidebarOpen(false);
+                        mobileSidebarOpen.value = false;
                     }
                 }}
                 onSelectPersona={(personaId) => void selectPersona(personaId)}
@@ -900,10 +915,10 @@ export function App() {
             />
 
             {hasCharacters && activeChatIsGroup && activeChat ? (
-                <GroupPanel
+                <GroupPanelHost
                     characters={characterSummaries.characters}
                     chat={activeChat}
-                    isOpen={characterOpen}
+                    isOpenSignal={characterOpenSignal}
                     onChange={(nextChat) => void updateActiveGroupChat(nextChat)}
                     onChangeAvatar={(chatId, file) =>
                         void changeGroupAvatar(chatId, file)
@@ -914,9 +929,9 @@ export function App() {
                     onOpenChange={setActiveCharacterOpen}
                 />
             ) : hasCharacters ? (
-                <CharacterPanel
+                <CharacterPanelHost
                     character={character}
-                    isOpen={characterOpen}
+                    isOpenSignal={characterOpenSignal}
                     pluginSnapshot={pluginSnapshot}
                     onChange={updateActiveCharacter}
                     onBeforeAvatarUpload={prepareCharacterAvatarUpload}
@@ -925,47 +940,115 @@ export function App() {
                 />
             ) : null}
 
-            {settingsOpen && (
-                <OptionsModal
-                    activeCategory={activeSettingsCategory}
-                    character={character}
-                    connectionLoadError={connectionLoadError}
-                    connectionSettings={connectionSettings}
-                    messages={chatSession.messages}
-                    mode={mode}
-                    preferences={preferences}
-                    preferencesLoadError={preferencesLoadError}
-                    preferencesSaveStatus={preferencesSaveStatus}
-                    lorebookCollection={lorebookCollection}
-                    lorebookLoadError={lorebookLoadError}
-                    isLorebooksPluginEnabled={isLorebooksPluginEnabled}
-                    persona={personaEditorPersona}
-                    personaCollection={personaSummaries}
-                    personaLoadError={personaLoadError}
-                    pluginSnapshot={pluginSnapshot}
-                    onCategoryChange={setActiveSettingsCategory}
-                    onClose={closeSettings}
-                    onConnectionSettingsChange={updateConnectionSettings}
-                    onCreatePersona={() => void createPersona()}
-                    onDeletePersona={(personaId) => void deletePersona(personaId)}
-                    onLorebookCollectionChange={setLorebookCollection}
-                    onPersonaChange={(nextPersona) => void updatePersona(nextPersona)}
-                    onPersonaSelect={(personaId) =>
-                        void selectPersonaForEditing(personaId)
-                    }
-                    onPersonaSaved={applySavedPersona}
-                    onSetActivePersona={(personaId) => void selectPersona(personaId)}
-                    onPreferencesChange={updatePreferences}
-                    onPresetCollectionChange={setPresetCollection}
-                    presetCollection={presetCollection}
-                    presetLoadError={presetLoadError}
-                    userStatus={userStatus}
-                />
-            )}
+            <OptionsModalHost
+                character={character}
+                connectionLoadError={connectionLoadError}
+                connectionSettings={connectionSettings}
+                messages={chatSession.messages}
+                mode={mode}
+                preferences={preferences}
+                preferencesLoadError={preferencesLoadError}
+                preferencesSaveStatus={preferencesSaveStatus}
+                lorebookCollection={lorebookCollection}
+                lorebookLoadError={lorebookLoadError}
+                isLorebooksPluginEnabled={isLorebooksPluginEnabled}
+                persona={personaEditorPersona}
+                personaCollection={personaSummaries}
+                personaLoadError={personaLoadError}
+                pluginSnapshot={pluginSnapshot}
+                onClose={closeSettings}
+                onConnectionSettingsChange={updateConnectionSettings}
+                onCreatePersona={() => void createPersona()}
+                onDeletePersona={(personaId) => void deletePersona(personaId)}
+                onLorebookCollectionChange={setLorebookCollection}
+                onPersonaChange={(nextPersona) => void updatePersona(nextPersona)}
+                onPersonaSelect={(personaId) => void selectPersonaForEditing(personaId)}
+                onPersonaSaved={applySavedPersona}
+                onSetActivePersona={(personaId) => void selectPersona(personaId)}
+                onPreferencesChange={updatePreferences}
+                onPresetCollectionChange={setPresetCollection}
+                presetCollection={presetCollection}
+                presetLoadError={presetLoadError}
+                userStatus={userStatus}
+            />
 
             <PluginModalHost snapshot={pluginSnapshot} />
         </main>
     );
+}
+
+type OptionsModalHostProps = Parameters<typeof OptionsModal>[0];
+
+type SidebarHostProps = Omit<Parameters<typeof Sidebar>[0], "isOpen"> & {
+    isOpenSignal: ReadonlySignal<boolean>;
+};
+
+function SidebarHost({ isOpenSignal, ...props }: SidebarHostProps) {
+    return <Sidebar {...props} isOpen={isOpenSignal.value} />;
+}
+
+type CharacterPanelHostProps = Omit<Parameters<typeof CharacterPanel>[0], "isOpen"> & {
+    isOpenSignal: ReadonlySignal<boolean>;
+};
+
+function CharacterPanelHost({
+    isOpenSignal,
+    ...props
+}: CharacterPanelHostProps) {
+    return <CharacterPanel {...props} isOpen={isOpenSignal.value} />;
+}
+
+type GroupPanelHostProps = Omit<Parameters<typeof GroupPanel>[0], "isOpen"> & {
+    isOpenSignal: ReadonlySignal<boolean>;
+};
+
+function GroupPanelHost({ isOpenSignal, ...props }: GroupPanelHostProps) {
+    return <GroupPanel {...props} isOpen={isOpenSignal.value} />;
+}
+
+function ResponsiveBackdrops({
+    characterOpenSignal,
+    hasCharacters,
+    isCharacterDrawerLayout,
+    isMobileLayout,
+    sidebarOpenSignal,
+}: {
+    characterOpenSignal: ReadonlySignal<boolean>;
+    hasCharacters: boolean;
+    isCharacterDrawerLayout: boolean;
+    isMobileLayout: boolean;
+    sidebarOpenSignal: ReadonlySignal<boolean>;
+}) {
+    return (
+        <>
+            {isMobileLayout && sidebarOpenSignal.value && (
+                <div
+                    className="sidebar-mobile-backdrop open"
+                    role="presentation"
+                    onClick={() => {
+                        mobileSidebarOpen.value = false;
+                    }}
+                />
+            )}
+            {isCharacterDrawerLayout && hasCharacters && characterOpenSignal.value && (
+                <div
+                    className="character-mobile-backdrop open"
+                    role="presentation"
+                    onClick={() => {
+                        mobileCharacterOpen.value = false;
+                    }}
+                />
+            )}
+        </>
+    );
+}
+
+function OptionsModalHost(props: OptionsModalHostProps) {
+    if (!settingsOpen.value) {
+        return null;
+    }
+
+    return <OptionsModal {...props} />;
 }
 
 function isPluginAppDataChangedEvent(

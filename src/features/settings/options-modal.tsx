@@ -11,6 +11,10 @@ import {
 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
+import {
+    activeSettingsCategory,
+    setActiveSettingsCategory,
+} from "#frontend/app/ui-state";
 import type { ConnectionSettings } from "#frontend/lib/connections/config";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
@@ -35,7 +39,6 @@ import { PluginsSettings } from "./plugins-settings";
 import { PresetSettings } from "./preset-settings";
 
 type OptionsModalProps = {
-    activeCategory: SettingsCategory;
     connectionLoadError?: string;
     connectionSettings: ConnectionSettings;
     character: SmileyCharacter;
@@ -45,7 +48,6 @@ type OptionsModalProps = {
     lorebookLoadError?: string;
     isLorebooksPluginEnabled: boolean;
     onLorebookCollectionChange: (collection: LorebookCollection) => void;
-    onCategoryChange: (category: SettingsCategory) => void;
     onClose: () => void;
     onConnectionSettingsChange: (settings: ConnectionSettings) => void;
     onCreatePersona: () => void;
@@ -82,7 +84,6 @@ const settingsCategories = [
 }>;
 
 export function OptionsModal({
-    activeCategory,
     connectionLoadError,
     connectionSettings,
     character,
@@ -91,7 +92,6 @@ export function OptionsModal({
     isLorebooksPluginEnabled,
     messages,
     mode,
-    onCategoryChange,
     onClose,
     onConnectionSettingsChange,
     onCreatePersona,
@@ -114,6 +114,7 @@ export function OptionsModal({
     presetLoadError,
     userStatus,
 }: OptionsModalProps) {
+    const activeCategory = activeSettingsCategory.value;
     const [settingsNavCollapsed, setSettingsNavCollapsed] = useState(false);
     const [isMobileSettingsLayout, setIsMobileSettingsLayout] = useState(
         () => window.matchMedia("(max-width: 820px)").matches,
@@ -253,7 +254,9 @@ export function OptionsModal({
                                             }
                                             key={category.id}
                                             type="button"
-                                            onClick={() => onCategoryChange(category.id)}
+                                            onClick={() =>
+                                                setActiveSettingsCategory(category.id)
+                                            }
                                         >
                                             <Icon size={18} />
                                             <span>{category.label}</span>
