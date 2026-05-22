@@ -85,10 +85,36 @@ import { usePersonaLibrary } from "./hooks/use-persona-library";
 const MOBILE_SIDEBAR_BREAKPOINT = 820;
 const CHARACTER_DRAWER_BREAKPOINT = 1120;
 
+function useMediaQuery(query: string) {
+    const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia(query);
+        const handleChange = (event: MediaQueryListEvent) => {
+            setMatches(event.matches);
+        };
+
+        setMatches(mediaQuery.matches);
+        mediaQuery.addEventListener("change", handleChange);
+
+        return () => {
+            mediaQuery.removeEventListener("change", handleChange);
+        };
+    }, [query]);
+
+    return matches;
+}
+
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
-    const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
-    const previousViewportWidthRef = useRef(window.innerWidth);
+    const isMobileLayout = useMediaQuery(
+        `(max-width: ${MOBILE_SIDEBAR_BREAKPOINT}px)`,
+    );
+    const isCharacterDrawerLayout = useMediaQuery(
+        `(max-width: ${CHARACTER_DRAWER_BREAKPOINT}px)`,
+    );
+    const previousIsMobileLayoutRef = useRef(isMobileLayout);
+    const previousIsCharacterDrawerLayoutRef = useRef(isCharacterDrawerLayout);
     const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [desktopCharacterOpen, setDesktopCharacterOpen] = useState(false);
@@ -200,8 +226,6 @@ export function App() {
         presetCollection.presets.find(
             (preset) => preset.id === presetCollection.activePresetId,
         ) ?? presetCollection.presets[0];
-    const isMobileLayout = viewportWidth <= MOBILE_SIDEBAR_BREAKPOINT;
-    const isCharacterDrawerLayout = viewportWidth <= CHARACTER_DRAWER_BREAKPOINT;
     const sidebarOpen = isMobileLayout ? mobileSidebarOpen : desktopSidebarOpen;
     const characterOpen = isCharacterDrawerLayout
         ? mobileCharacterOpen
@@ -269,18 +293,6 @@ export function App() {
     );
 
     useEffect(() => {
-        function updateViewportWidth() {
-            setViewportWidth(window.innerWidth);
-        }
-
-        window.addEventListener("resize", updateViewportWidth);
-
-        return () => {
-            window.removeEventListener("resize", updateViewportWidth);
-        };
-    }, []);
-
-    useEffect(() => {
         function handleLocalApiError(event: Event) {
             const detail = (event as CustomEvent<{ message?: unknown }>).detail;
 
@@ -321,24 +333,17 @@ export function App() {
     }, []);
 
     useEffect(() => {
-        const previousViewportWidth = previousViewportWidthRef.current;
-
-        if (
-            previousViewportWidth > MOBILE_SIDEBAR_BREAKPOINT &&
-            viewportWidth <= MOBILE_SIDEBAR_BREAKPOINT
-        ) {
+        if (!previousIsMobileLayoutRef.current && isMobileLayout) {
             setMobileSidebarOpen(false);
         }
 
-        if (
-            previousViewportWidth > CHARACTER_DRAWER_BREAKPOINT &&
-            viewportWidth <= CHARACTER_DRAWER_BREAKPOINT
-        ) {
+        if (!previousIsCharacterDrawerLayoutRef.current && isCharacterDrawerLayout) {
             setMobileCharacterOpen(false);
         }
 
-        previousViewportWidthRef.current = viewportWidth;
-    }, [viewportWidth]);
+        previousIsMobileLayoutRef.current = isMobileLayout;
+        previousIsCharacterDrawerLayoutRef.current = isCharacterDrawerLayout;
+    }, [isCharacterDrawerLayout, isMobileLayout]);
 
     useEffect(() => {
         if (!preferencesInitialized) {
