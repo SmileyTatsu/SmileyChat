@@ -118,44 +118,36 @@ function contentForPrompt(
     promptContent: string,
     context: CompilePresetContext,
 ) {
-    const resolvedContent = resolvePresetMacros(promptContent, context);
+    const rawContent = promptContent.trim()
+        ? promptContent
+        : emptyDynamicPromptContent(promptId, context);
 
-    if (promptId === dynamicPromptIds.character) {
-        const fallback = [
-            `Character: ${context.character.data.name}`,
-            `Short description: ${getCharacterTagline(context.character)}`,
-            `Description: ${context.character.data.description}`,
-            `Personality: ${context.character.data.personality}`,
-            `System prompt: ${context.character.data.system_prompt}`,
-            `First message: ${context.character.data.first_mes}`,
-            `Message examples: ${context.character.data.mes_example}`,
-            `Character book: ${resolvePresetMacros("{{character_book}}", context)}`,
-        ].join("\n");
+    return resolvePresetMacros(rawContent, context);
+}
 
-        return resolvedContent.trim() || fallback;
-    }
-
-    if (promptId === dynamicPromptIds.scenario) {
-        return (
-            resolvedContent.trim() ||
-            [
-                `Scenario: ${context.character.data.scenario}`,
-                `Post-history instructions: ${context.character.data.post_history_instructions}`,
-            ].join("\n")
-        );
-    }
-
-    if (promptId === dynamicPromptIds.chatHistory) {
-        return (
-            resolvedContent.trim() ||
-            context.messages
+function emptyDynamicPromptContent(promptId: string, context: CompilePresetContext) {
+    switch (promptId) {
+        case dynamicPromptIds.character:
+            return context.character.data.description;
+        case dynamicPromptIds.characterPersonality:
+            return context.character.data.personality;
+        case dynamicPromptIds.personaDescription:
+            return context.personaDescription;
+        case dynamicPromptIds.scenario:
+            return context.character.data.scenario;
+        case dynamicPromptIds.chatExamples:
+            return context.character.data.mes_example;
+        case dynamicPromptIds.worldInfoBefore:
+        case dynamicPromptIds.worldInfoAfter:
+            return "";
+        case dynamicPromptIds.chatHistory:
+            return context.messages
                 .filter(isMessageIncludedInPrompt)
                 .map((message) => messageTextForHistory(message, context))
-                .join("\n")
-        );
+                .join("\n");
+        default:
+            return "";
     }
-
-    return resolvedContent;
 }
 
 function compileFallbackContext(character: SmileyCharacter) {
