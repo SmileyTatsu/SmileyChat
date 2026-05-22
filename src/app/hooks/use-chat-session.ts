@@ -1,59 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
-import { loadLorebook, uploadChatAttachments } from "#frontend/lib/api/client";
+import { uploadChatAttachments } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
+import type { ConnectionSettings } from "#frontend/lib/connections/config";
 import {
-    type ConnectionSettings,
-    getActiveConnectionProfile,
-} from "#frontend/lib/connections/config";
-import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
-import { getAdapterForSettings } from "#frontend/lib/connections/registry";
-import {
-    appendMessageSwipe,
     createCharacterErrorMessage,
     createCharacterMessage,
-    createInjectedMessage,
     createUserMessage,
     getMessageContent,
-    isActiveSwipeError,
-    updateActiveSwipeAttachments,
     updateActiveSwipeContent,
-    updateActiveSwipeReasoning,
 } from "#frontend/lib/messages";
 import {
-    clearStreamingMessageDraft,
-    getStreamingMessageDraft,
-    hasStreamingMessageDraftValue,
     setStreamingMessageAttachments,
     setStreamingMessageContent,
     setStreamingMessageReasoning,
-    type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
-import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
-import { isLorebookEnabled } from "#frontend/lib/lorebooks/normalize";
-import type { Lorebook, LorebookCollection } from "#frontend/lib/lorebooks/types";
-import {
-    getInputMiddlewares,
-    getOutputMiddlewares,
-    getPromptContextMiddlewares,
-    getPromptInjectors,
-    getPromptMiddlewares,
-} from "#frontend/lib/plugins/registry";
+import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
-import { compilePresetMessages } from "#frontend/lib/presets/compile";
-import {
-    defaultContextTokenBudget,
-    normalizeContextTokenBudget,
-} from "#frontend/lib/presets/context-budget-constants";
-import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type { PresetCollection } from "#frontend/lib/presets/types";
-import {
-    assertPromptMessagesWithinBudget,
-    buildPromptForGeneration,
-} from "#frontend/lib/prompt/build";
-import type { PromptGenerationTrigger, PromptInjector } from "#frontend/lib/prompt/types";
 import type {
     ChatMode,
     ChatAttachment,
@@ -63,6 +29,11 @@ import type {
     SmileyPersona,
     UserStatus,
 } from "#frontend/types";
+
+import type { ActiveGeneration } from "./use-chat-generation-state";
+import { useChatGenerationState } from "./use-chat-generation-state";
+import { useMessageOperations } from "./use-message-operations";
+import { usePromptGeneration } from "./use-prompt-generation";
 
 type UseChatSessionOptions = {
     chat?: ChatSession;
@@ -76,12 +47,6 @@ type UseChatSessionOptions = {
     preferences: AppPreferences;
     presetCollection: PresetCollection;
     userStatus: UserStatus;
-};
-
-type ActiveGeneration = {
-    controller: AbortController;
-    streamingMessageId?: string;
-    swipeMessageId?: string;
 };
 
 type SendMessageOptions = {
@@ -106,21 +71,57 @@ export function useChatSession({
     presetCollection,
     userStatus,
 }: UseChatSessionOptions) {
-    const [pendingChatIds, setPendingChatIds] = useState<string[]>([]);
-    const [pendingSwipeMessageIds, setPendingSwipeMessageIds] = useState<
-        Record<string, string>
-    >({});
     const [chatError, setChatError] = useState("");
     const latestChatRef = useRef<ChatSession | undefined>(chat);
-    const pendingChatIdsRef = useRef<string[]>([]);
-    const pendingSwipeMessageIdsRef = useRef<Record<string, string>>({});
-    const activeGenerationsRef = useRef<Record<string, ActiveGeneration>>({});
     const autoResponseTimerRef = useRef<number | undefined>(undefined);
     const suppressEmptyGenerationUntilRef = useRef<Record<string, number>>({});
+    const {
+        beginChatPending,
+        beginGenerationController,
+        endChatPending,
+        endGenerationController,
+        getActiveGeneration,
+        isChatPending,
+        pendingChatIds,
+        pendingSwipeMessageIds,
+    } = useChatGenerationState();
+    const { applyInputMiddlewares, generateWithPreset, resolveChatMacros } =
+        usePromptGeneration({
+            character,
+            connectionSettings,
+            groupCharacters,
+            latestChatRef,
+            lorebookCollection,
+            mode,
+            persona,
+            preferences,
+            presetCollection,
+            userStatus,
+        });
+    const {
+        activateNextExistingSwipe,
+        appendEmptySwipe,
+        appendSwipe,
+        commitStreamingDraft,
+        currentOrSourceChat,
+        deleteMessage,
+        editMessage,
+        injectMessage,
+        previousSwipe,
+        removeActiveSwipe,
+        removeMessage,
+        updateChatMessages,
+        updateMessageAttachments,
+        updateMessageContent,
+    } = useMessageOperations({
+        character,
+        latestChatRef,
+        onChatChange,
+        persona,
+        resolveChatMacros,
+    });
 
     latestChatRef.current = latestChatValue(latestChatRef.current, chat);
-    pendingChatIdsRef.current = pendingChatIds;
-    pendingSwipeMessageIdsRef.current = pendingSwipeMessageIds;
 
     useEffect(() => {
         setChatError("");
@@ -133,74 +134,6 @@ export function useChatSession({
         },
         [],
     );
-
-    const activePreset = useMemo(
-        () =>
-            presetCollection.presets.find(
-                (preset) => preset.id === presetCollection.activePresetId,
-            ),
-        [presetCollection],
-    );
-    const contextTokenBudget = normalizeContextTokenBudget(
-        getActiveConnectionProfile(connectionSettings)?.contextTokenBudget,
-        defaultContextTokenBudget,
-    );
-
-    function resolveChatMacros(
-        content: string,
-        sourceMessages: Message[],
-        sourceCharacter = character,
-    ) {
-        return resolvePresetMacros(content, {
-            character: sourceCharacter,
-            group: groupPromptContext(latestChatRef.current),
-            messages: sourceMessages,
-            mode,
-            personaDescription: persona.description,
-            personaName: persona.name,
-            userStatus,
-        });
-    }
-
-    function createAuthorNotePromptInjector(): PromptInjector {
-        return (context) => {
-            const authorNote = context.chat.metadata?.authorNote;
-            const content = authorNote?.content?.trim();
-
-            if (!authorNote || authorNote.isEnabled === false || !content) {
-                return [];
-            }
-
-            const role =
-                authorNote.role === "user" || authorNote.role === "assistant"
-                    ? authorNote.role
-                    : "system";
-            const depth =
-                typeof authorNote.depth === "number" && Number.isFinite(authorNote.depth)
-                    ? Math.max(0, Math.floor(authorNote.depth))
-                    : 0;
-
-            return [
-                {
-                    id: "core.author-note",
-                    source: "core",
-                    role,
-                    content: resolvePresetMacros(content, {
-                        character: context.character,
-                        group: context.group,
-                        messages: context.messages,
-                        mode: context.mode,
-                        personaDescription: context.persona.description,
-                        personaName: context.persona.name,
-                        userStatus: context.userStatus,
-                    }),
-                    anchor: "at-depth",
-                    depth,
-                    order: 1000,
-                },
-            ];
-        };
-    }
 
     async function sendMessage(draft: string, images: File[] = []) {
         return sendMessageWithOptions(draft, { images });
@@ -462,104 +395,6 @@ export function useChatSession({
         }
     }
 
-    async function injectMessage(
-        role: "character" | "system" | "user",
-        content: string,
-        options: {
-            authorName?: string;
-            avatarPath?: string;
-            includeInPrompt?: boolean;
-            pluginId: string;
-            promptRole?: "assistant" | "user" | "system" | "none";
-        },
-    ) {
-        const sourceChat = latestChatRef.current;
-
-        if (!sourceChat) {
-            return;
-        }
-
-        const text = resolveChatMacros(content.trim(), sourceChat.messages);
-
-        if (!text) {
-            return;
-        }
-
-        updateChatMessages(
-            [
-                ...sourceChat.messages,
-                createInjectedMessage(role, text, {
-                    activeCharacter: character,
-                    authorName: options.authorName,
-                    avatarPath: options.avatarPath,
-                    includeInPrompt: options.includeInPrompt,
-                    persona,
-                    pluginId: options.pluginId,
-                    promptRole: options.promptRole,
-                }),
-            ],
-            sourceChat,
-        );
-    }
-
-    function deleteMessage(messageId: string) {
-        const sourceChat = latestChatRef.current;
-
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.filter((message) => message.id !== messageId),
-            sourceChat,
-        );
-    }
-
-    function editMessage(messageId: string, content: string) {
-        const sourceChat = latestChatRef.current;
-
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.map((message) =>
-                message.id === messageId
-                    ? updateActiveSwipeContent(
-                          message,
-                          resolveChatMacros(
-                              content,
-                              sourceChat.messages.filter((item) => item.id !== messageId),
-                          ),
-                          undefined,
-                          "",
-                      )
-                    : message,
-            ),
-            sourceChat,
-        );
-    }
-
-    function previousSwipe(messageId: string) {
-        const sourceChat = latestChatRef.current;
-
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.map((message) =>
-                message.id === messageId
-                    ? {
-                          ...message,
-                          activeSwipeIndex: Math.max(0, message.activeSwipeIndex - 1),
-                      }
-                    : message,
-            ),
-            sourceChat,
-        );
-    }
-
     async function nextSwipe(messageId: string) {
         const sourceChat = latestChatRef.current;
 
@@ -579,18 +414,7 @@ export function useChatSession({
             return;
         }
 
-        if (targetMessage.activeSwipeIndex < targetMessage.swipes.length - 1) {
-            updateChatMessages(
-                sourceChat.messages.map((message) =>
-                    message.id === messageId
-                        ? {
-                              ...message,
-                              activeSwipeIndex: message.activeSwipeIndex + 1,
-                          }
-                        : message,
-                ),
-                sourceChat,
-            );
+        if (activateNextExistingSwipe(messageId, sourceChat)) {
             return;
         }
 
@@ -621,14 +445,7 @@ export function useChatSession({
 
         try {
             if (preferences.chat.streaming) {
-                updateChatMessages(
-                    sourceChat.messages.map((message) =>
-                        message.id === messageId
-                            ? appendMessageSwipe(message, "")
-                            : message,
-                    ),
-                    sourceChat,
-                );
+                appendEmptySwipe(messageId, sourceChat);
             }
 
             const result = await generateWithPreset(
@@ -700,18 +517,12 @@ export function useChatSession({
                     updateMessageAttachments(messageId, resultAttachments);
                 }
             } else {
-                updateChatMessages(
-                    targetChat.messages.map((message) =>
-                        message.id === messageId
-                            ? appendMessageSwipe(
-                                  message,
-                                  result.message,
-                                  undefined,
-                                  result.reasoning,
-                                  result.reasoningDetails,
-                              )
-                            : message,
-                    ),
+                appendSwipe(
+                    messageId,
+                    result.message,
+                    undefined,
+                    result.reasoning,
+                    result.reasoningDetails,
                     targetChat,
                 );
                 const resultAttachments = imageUrlsToAttachments(result.images ?? []);
@@ -726,24 +537,18 @@ export function useChatSession({
             }
 
             const targetChat = currentOrSourceChat(sourceChat);
-            updateChatMessages(
-                targetChat.messages.map((message) =>
-                    message.id === messageId
-                        ? preferences.chat.streaming
-                            ? updateActiveSwipeContent(
-                                  message,
-                                  generationErrorMessage(error),
-                                  "error",
-                              )
-                            : appendMessageSwipe(
-                                  message,
-                                  generationErrorMessage(error),
-                                  "error",
-                              )
-                        : message,
-                ),
-                targetChat,
-            );
+            if (preferences.chat.streaming) {
+                updateMessageContent(messageId, generationErrorMessage(error), "error");
+            } else {
+                appendSwipe(
+                    messageId,
+                    generationErrorMessage(error),
+                    "error",
+                    undefined,
+                    undefined,
+                    targetChat,
+                );
+            }
             if (latestChatRef.current?.id === chatId) {
                 setChatError(
                     "Generation failed. Swipe the failed response again to retry.",
@@ -764,7 +569,7 @@ export function useChatSession({
             return;
         }
 
-        const activeGeneration = activeGenerationsRef.current[activeChatId];
+        const activeGeneration = getActiveGeneration(activeChatId);
 
         if (!activeGeneration) {
             return;
@@ -776,23 +581,6 @@ export function useChatSession({
             [activeChatId]: performance.now() + emptyGenerationSuppressMs,
         };
         cleanupEmptyAbortedGeneration(activeChatId, activeGeneration);
-    }
-
-    function updateChatMessages(messages: Message[], sourceChat = latestChatRef.current) {
-        if (!sourceChat) {
-            return;
-        }
-
-        const nextChat = {
-            ...sourceChat,
-            messages,
-            updatedAt: new Date().toISOString(),
-        };
-
-        if (latestChatRef.current?.id === nextChat.id) {
-            latestChatRef.current = nextChat;
-        }
-        onChatChange(nextChat);
     }
 
     function scheduleAutomaticGroupResponse({
@@ -861,120 +649,9 @@ export function useChatSession({
         autoResponseTimerRef.current = undefined;
     }
 
-    function updateMessageContent(
-        messageId: string,
-        content: string,
-        status?: Message["swipes"][number]["status"],
-        reasoning?: string,
-        reasoningDetails?: unknown,
-    ) {
-        const sourceChat = latestChatRef.current;
-
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.map((message) =>
-                message.id === messageId
-                    ? updateActiveSwipeContent(
-                          message,
-                          content,
-                          status,
-                          reasoning,
-                          reasoningDetails,
-                      )
-                    : message,
-            ),
-            sourceChat,
-        );
-        finalizeStreamingMessageDraft(messageId);
-    }
-
-    function updateMessageReasoning(
-        messageId: string,
-        reasoning: string,
-        reasoningDetails?: unknown,
-    ) {
-        const sourceChat = latestChatRef.current;
-
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.map((message) =>
-                message.id === messageId
-                    ? updateActiveSwipeReasoning(message, reasoning, reasoningDetails)
-                    : message,
-            ),
-            sourceChat,
-        );
-        finalizeStreamingMessageDraft(messageId);
-    }
-
-    function updateMessageAttachments(messageId: string, attachments: ChatAttachment[]) {
-        const sourceChat = latestChatRef.current;
-
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.map((message) =>
-                message.id === messageId
-                    ? updateActiveSwipeAttachments(message, attachments)
-                    : message,
-            ),
-            sourceChat,
-        );
-        finalizeStreamingMessageDraft(messageId);
-    }
-
-    function removeMessage(messageId: string, sourceChat = latestChatRef.current) {
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.filter((message) => message.id !== messageId),
-            sourceChat,
-        );
-        clearStreamingMessageDraft(messageId);
-    }
-
-    function removeActiveSwipe(messageId: string, sourceChat = latestChatRef.current) {
-        if (!sourceChat) {
-            return;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.map((message) => {
-                if (message.id !== messageId || message.swipes.length <= 1) {
-                    return message;
-                }
-
-                const swipes = message.swipes.filter(
-                    (_swipe, index) => index !== message.activeSwipeIndex,
-                );
-
-                return {
-                    ...message,
-                    activeSwipeIndex: Math.max(
-                        0,
-                        Math.min(message.activeSwipeIndex - 1, swipes.length - 1),
-                    ),
-                    swipes,
-                };
-            }),
-            sourceChat,
-        );
-        clearStreamingMessageDraft(messageId);
-    }
-
     function cleanupEmptyAbortedGeneration(
         chatId: string,
-        activeGeneration = activeGenerationsRef.current[chatId],
+        activeGeneration = getActiveGeneration(chatId),
     ) {
         const sourceChat = latestChatRef.current;
 
@@ -1013,318 +690,6 @@ export function useChatSession({
                 removeActiveSwipe(message.id, sourceChat);
             }
         }
-    }
-
-    function commitStreamingDraft(messageId: string, sourceChat = latestChatRef.current) {
-        if (!sourceChat) {
-            return false;
-        }
-
-        const draft = getStreamingMessageDraft(messageId);
-
-        if (!hasStreamingMessageDraftValue(draft)) {
-            clearStreamingMessageDraft(messageId);
-            return false;
-        }
-
-        updateChatMessages(
-            sourceChat.messages.map((message) =>
-                message.id === messageId
-                    ? applyStreamingDraftToMessage(message, draft)
-                    : message,
-            ),
-            sourceChat,
-        );
-        finalizeStreamingMessageDraft(messageId);
-        return true;
-    }
-
-    function currentOrSourceChat(sourceChat: ChatSession) {
-        return latestChatRef.current?.id === sourceChat.id
-            ? latestChatRef.current
-            : sourceChat;
-    }
-
-    function isChatPending(chatId: string) {
-        return (
-            pendingChatIdsRef.current.includes(chatId) ||
-            Boolean(pendingSwipeMessageIdsRef.current[chatId])
-        );
-    }
-
-    function beginChatPending(chatId: string, swipeMessageId = "") {
-        setPendingChatIds((current) => {
-            const next = current.includes(chatId) ? current : [...current, chatId];
-            pendingChatIdsRef.current = next;
-            return next;
-        });
-
-        if (swipeMessageId) {
-            setPendingSwipeMessageIds((current) => {
-                const next = {
-                    ...current,
-                    [chatId]: swipeMessageId,
-                };
-                pendingSwipeMessageIdsRef.current = next;
-                return next;
-            });
-        }
-    }
-
-    function endChatPending(chatId: string) {
-        setPendingChatIds((current) => {
-            const next = current.filter((id) => id !== chatId);
-            pendingChatIdsRef.current = next;
-            return next;
-        });
-        setPendingSwipeMessageIds((current) => {
-            if (!current[chatId]) {
-                return current;
-            }
-
-            const next = { ...current };
-            delete next[chatId];
-            pendingSwipeMessageIdsRef.current = next;
-            return next;
-        });
-    }
-
-    function beginGenerationController(
-        chatId: string,
-        target: Omit<ActiveGeneration, "controller"> = {},
-    ) {
-        const controller = new AbortController();
-        activeGenerationsRef.current = {
-            ...activeGenerationsRef.current,
-            [chatId]: {
-                controller,
-                ...target,
-            },
-        };
-        return controller;
-    }
-
-    function endGenerationController(chatId: string, controller: AbortController) {
-        if (activeGenerationsRef.current[chatId]?.controller !== controller) {
-            return;
-        }
-
-        const next = { ...activeGenerationsRef.current };
-        delete next[chatId];
-        activeGenerationsRef.current = next;
-    }
-
-    async function generateWithPreset(
-        sourceMessages: Message[],
-        sourceCharacter: SmileyCharacter,
-        sourceMode: ChatMode,
-        sourceUserStatus: UserStatus,
-        sourceConnectionSettings: ConnectionSettings,
-        options: {
-            onImage?: (url: string) => void;
-            promptCharacter?: SmileyCharacter;
-            onReasoningToken?: (token: string) => void;
-            onToken?: (token: string) => void;
-            signal?: AbortSignal;
-            sourceChat?: ChatSession;
-            stream?: boolean;
-            targetMessageId?: string;
-            trigger?: PromptGenerationTrigger;
-        } = {},
-    ) {
-        const sourceGenerationMessages = sourceMessages.filter(
-            (message) => !isActiveSwipeError(message),
-        );
-        const promptCharacter = options.promptCharacter ?? sourceCharacter;
-        const promptChat = options.sourceChat ?? latestChatRef.current;
-
-        if (!promptChat) {
-            throw new Error("No active chat is available for prompt generation.");
-        }
-
-        const nativeLorebooks = await loadNativeLorebooks(promptChat, promptCharacter);
-        const promptBuild = await buildPromptForGeneration({
-            context: {
-                chat: promptChat,
-                character: promptCharacter,
-                group: groupPromptContext(latestChatRef.current),
-                groupCharacters,
-                generation: {
-                    activeCharacterId: sourceCharacter.id,
-                    stream: options.stream === true,
-                    ...(options.targetMessageId
-                        ? { targetMessageId: options.targetMessageId }
-                        : {}),
-                    trigger: options.trigger ?? "send",
-                },
-                lorebooks: nativeLorebooks,
-                messages: sourceGenerationMessages,
-                mode: sourceMode,
-                persona,
-                preferences,
-                preset: activePreset,
-                tokenBudget: contextTokenBudget,
-                userStatus: sourceUserStatus,
-            },
-            contextMiddlewares: getPromptContextMiddlewares(),
-            injectors: [
-                createAuthorNotePromptInjector(),
-                (context) =>
-                    createLorebookPromptInjections(nativeLorebooks, {
-                        generation: context.generation,
-                        messages: context.messages,
-                        resolveContent: (content) =>
-                            resolvePresetMacros(content, {
-                                character: context.character,
-                                group: context.group,
-                                messages: context.messages,
-                                mode: context.mode,
-                                personaDescription: context.persona.description,
-                                personaName: context.persona.name,
-                                userStatus: context.userStatus,
-                            }),
-                    }),
-                ...getPromptInjectors(),
-            ],
-        });
-        const generationMessages = promptBuild.messages;
-        const connection = getAdapterForSettings(sourceConnectionSettings);
-        const promptMessages = await applyPromptMiddlewares(
-            promptBuild.promptMessages,
-            generationMessages,
-            promptCharacter,
-            sourceMode,
-            sourceUserStatus,
-        );
-        assertPromptMessagesWithinBudget(promptMessages, contextTokenBudget);
-        const materializedPromptMessages =
-            await materializeChatGenerationMessageImages(promptMessages);
-        const result = await connection.generate({
-            generation: activePreset?.generation,
-            messages: generationMessages,
-            debug: promptBuild.debug,
-            onImage: options.onImage,
-            onReasoningToken: options.onReasoningToken,
-            onToken: options.onToken,
-            promptMessages: materializedPromptMessages,
-            signal: options.signal,
-            stream: options.stream,
-        });
-        const message = await applyOutputMiddlewares(
-            result.message,
-            generationMessages,
-            sourceCharacter,
-            sourceMode,
-            sourceUserStatus,
-            result,
-        );
-
-        return { ...result, message };
-    }
-
-    async function loadNativeLorebooks(
-        sourceChat: ChatSession,
-        sourceCharacter: SmileyCharacter,
-    ): Promise<Lorebook[]> {
-        try {
-            const lorebookIds = Array.from(
-                new Set(
-                    [
-                        lorebookCollection.activeLorebookId,
-                        ...(sourceChat.metadata?.lorebookIds ?? []),
-                        sourceCharacter.metadata?.primaryLorebookId,
-                        ...(sourceCharacter.metadata?.lorebookIds ?? []),
-                        ...(persona.metadata?.lorebookIds ?? []),
-                    ].filter((id): id is string => Boolean(id)),
-                ),
-            );
-
-            const lorebooks = await Promise.all(
-                lorebookIds.map(async (lorebookId) => {
-                    try {
-                        return await loadLorebook(lorebookId);
-                    } catch {
-                        return undefined;
-                    }
-                }),
-            );
-
-            return lorebooks
-                .filter((item): item is Lorebook => Boolean(item))
-                .filter(isLorebookEnabled);
-        } catch (error) {
-            console.warn("Failed to load native LoreBooks:", error);
-            return [];
-        }
-    }
-
-    async function applyInputMiddlewares(
-        content: string,
-        messages: Message[],
-        sourceCharacter: SmileyCharacter,
-        sourceMode: ChatMode,
-        sourceUserStatus: UserStatus,
-    ) {
-        let nextContent = content;
-
-        for (const middleware of getInputMiddlewares()) {
-            nextContent = await middleware(nextContent, {
-                character: sourceCharacter,
-                messages,
-                mode: sourceMode,
-                persona,
-                userStatus: sourceUserStatus,
-            });
-        }
-
-        return nextContent.trim();
-    }
-
-    async function applyPromptMiddlewares(
-        promptMessages: ReturnType<typeof compilePresetMessages>,
-        messages: Message[],
-        sourceCharacter: SmileyCharacter,
-        sourceMode: ChatMode,
-        sourceUserStatus: UserStatus,
-    ) {
-        let nextMessages = promptMessages;
-
-        for (const middleware of getPromptMiddlewares()) {
-            nextMessages = await middleware(nextMessages, {
-                character: sourceCharacter,
-                messages,
-                mode: sourceMode,
-                persona,
-                promptMessages: nextMessages,
-                userStatus: sourceUserStatus,
-            });
-        }
-
-        return nextMessages;
-    }
-
-    async function applyOutputMiddlewares(
-        content: string,
-        messages: Message[],
-        sourceCharacter: SmileyCharacter,
-        sourceMode: ChatMode,
-        sourceUserStatus: UserStatus,
-        result: Awaited<ReturnType<ReturnType<typeof getAdapterForSettings>["generate"]>>,
-    ) {
-        let nextContent = content;
-
-        for (const middleware of getOutputMiddlewares()) {
-            nextContent = await middleware(nextContent, {
-                character: sourceCharacter,
-                messages,
-                mode: sourceMode,
-                persona,
-                result,
-                userStatus: sourceUserStatus,
-            });
-        }
-
-        return nextContent;
     }
 
     function selectGenerationCharacter(
@@ -1544,17 +909,6 @@ export function useChatSession({
         };
     }
 
-    function groupPromptContext(sourceChat: ChatSession | undefined) {
-        if (!sourceChat || !isGroupChat(sourceChat)) {
-            return undefined;
-        }
-
-        return {
-            joinPrefix: sourceChat.group?.joinPrefix,
-            memberIds: (sourceChat.members ?? []).map((member) => member.characterId),
-        };
-    }
-
     const activeChatId = chat?.id ?? "";
 
     return {
@@ -1612,31 +966,6 @@ function withMessageReasoning(
         reasoning,
         reasoningDetails,
     );
-}
-
-function applyStreamingDraftToMessage(
-    message: Message,
-    draft: StreamingMessageDraft | undefined,
-) {
-    if (!draft) {
-        return message;
-    }
-
-    const nextMessage = updateActiveSwipeContent(
-        message,
-        draft.content ?? getMessageContent(message),
-        draft.status,
-        draft.reasoning,
-        draft.reasoningDetails,
-    );
-
-    return draft.attachments !== undefined
-        ? updateActiveSwipeAttachments(nextMessage, draft.attachments)
-        : nextMessage;
-}
-
-function finalizeStreamingMessageDraft(messageId: string) {
-    requestAnimationFrame(() => clearStreamingMessageDraft(messageId));
 }
 
 async function uploadMessageAttachments(chatId: string, images: File[]) {

@@ -1,0 +1,404 @@
+import {
+    appendMessageSwipe,
+    createInjectedMessage,
+    updateActiveSwipeAttachments,
+    updateActiveSwipeContent,
+    updateActiveSwipeReasoning,
+    getMessageContent,
+} from "#frontend/lib/messages";
+import {
+    clearStreamingMessageDraft,
+    getStreamingMessageDraft,
+    hasStreamingMessageDraftValue,
+    type StreamingMessageDraft,
+} from "#frontend/lib/streaming-message-drafts";
+import type {
+    ChatAttachment,
+    ChatSession,
+    Message,
+    SmileyCharacter,
+    SmileyPersona,
+} from "#frontend/types";
+
+type MutableRef<T> = {
+    current: T;
+};
+
+type UseMessageOperationsOptions = {
+    character: SmileyCharacter;
+    latestChatRef: MutableRef<ChatSession | undefined>;
+    onChatChange: (chat: ChatSession) => void;
+    persona: SmileyPersona;
+    resolveChatMacros: (
+        content: string,
+        sourceMessages: Message[],
+        sourceCharacter?: SmileyCharacter,
+    ) => string;
+};
+
+export function useMessageOperations({
+    character,
+    latestChatRef,
+    onChatChange,
+    persona,
+    resolveChatMacros,
+}: UseMessageOperationsOptions) {
+    function updateChatMessages(messages: Message[], sourceChat = latestChatRef.current) {
+        if (!sourceChat) {
+            return;
+        }
+
+        const nextChat = {
+            ...sourceChat,
+            messages,
+            updatedAt: new Date().toISOString(),
+        };
+
+        if (latestChatRef.current?.id === nextChat.id) {
+            latestChatRef.current = nextChat;
+        }
+        onChatChange(nextChat);
+    }
+
+    function currentOrSourceChat(sourceChat: ChatSession) {
+        return latestChatRef.current?.id === sourceChat.id
+            ? latestChatRef.current
+            : sourceChat;
+    }
+
+    async function injectMessage(
+        role: "character" | "system" | "user",
+        content: string,
+        options: {
+            authorName?: string;
+            avatarPath?: string;
+            includeInPrompt?: boolean;
+            pluginId: string;
+            promptRole?: "assistant" | "user" | "system" | "none";
+        },
+    ) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        const text = resolveChatMacros(content.trim(), sourceChat.messages);
+
+        if (!text) {
+            return;
+        }
+
+        updateChatMessages(
+            [
+                ...sourceChat.messages,
+                createInjectedMessage(role, text, {
+                    activeCharacter: character,
+                    authorName: options.authorName,
+                    avatarPath: options.avatarPath,
+                    includeInPrompt: options.includeInPrompt,
+                    persona,
+                    pluginId: options.pluginId,
+                    promptRole: options.promptRole,
+                }),
+            ],
+            sourceChat,
+        );
+    }
+
+    function deleteMessage(messageId: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.filter((message) => message.id !== messageId),
+            sourceChat,
+        );
+    }
+
+    function editMessage(messageId: string, content: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? updateActiveSwipeContent(
+                          message,
+                          resolveChatMacros(
+                              content,
+                              sourceChat.messages.filter((item) => item.id !== messageId),
+                          ),
+                          undefined,
+                          "",
+                      )
+                    : message,
+            ),
+            sourceChat,
+        );
+    }
+
+    function previousSwipe(messageId: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? {
+                          ...message,
+                          activeSwipeIndex: Math.max(0, message.activeSwipeIndex - 1),
+                      }
+                    : message,
+            ),
+            sourceChat,
+        );
+    }
+
+    function activateNextExistingSwipe(messageId: string, sourceChat: ChatSession) {
+        const targetMessage = sourceChat.messages.find(
+            (message) => message.id === messageId,
+        );
+
+        if (!targetMessage || targetMessage.activeSwipeIndex >= targetMessage.swipes.length - 1) {
+            return false;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? {
+                          ...message,
+                          activeSwipeIndex: message.activeSwipeIndex + 1,
+                      }
+                    : message,
+            ),
+            sourceChat,
+        );
+        return true;
+    }
+
+    function appendEmptySwipe(messageId: string, sourceChat: ChatSession) {
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId ? appendMessageSwipe(message, "") : message,
+            ),
+            sourceChat,
+        );
+    }
+
+    function appendSwipe(
+        messageId: string,
+        content: string,
+        status?: Message["swipes"][number]["status"],
+        reasoning?: string,
+        reasoningDetails?: unknown,
+        sourceChat = latestChatRef.current,
+    ) {
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? appendMessageSwipe(
+                          message,
+                          content,
+                          status,
+                          reasoning,
+                          reasoningDetails,
+                      )
+                    : message,
+            ),
+            sourceChat,
+        );
+    }
+
+    function updateMessageContent(
+        messageId: string,
+        content: string,
+        status?: Message["swipes"][number]["status"],
+        reasoning?: string,
+        reasoningDetails?: unknown,
+    ) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? updateActiveSwipeContent(
+                          message,
+                          content,
+                          status,
+                          reasoning,
+                          reasoningDetails,
+                      )
+                    : message,
+            ),
+            sourceChat,
+        );
+        finalizeStreamingMessageDraft(messageId);
+    }
+
+    function updateMessageReasoning(
+        messageId: string,
+        reasoning: string,
+        reasoningDetails?: unknown,
+    ) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? updateActiveSwipeReasoning(message, reasoning, reasoningDetails)
+                    : message,
+            ),
+            sourceChat,
+        );
+        finalizeStreamingMessageDraft(messageId);
+    }
+
+    function updateMessageAttachments(messageId: string, attachments: ChatAttachment[]) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? updateActiveSwipeAttachments(message, attachments)
+                    : message,
+            ),
+            sourceChat,
+        );
+        finalizeStreamingMessageDraft(messageId);
+    }
+
+    function removeMessage(messageId: string, sourceChat = latestChatRef.current) {
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.filter((message) => message.id !== messageId),
+            sourceChat,
+        );
+        clearStreamingMessageDraft(messageId);
+    }
+
+    function removeActiveSwipe(messageId: string, sourceChat = latestChatRef.current) {
+        if (!sourceChat) {
+            return;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) => {
+                if (message.id !== messageId || message.swipes.length <= 1) {
+                    return message;
+                }
+
+                const swipes = message.swipes.filter(
+                    (_swipe, index) => index !== message.activeSwipeIndex,
+                );
+
+                return {
+                    ...message,
+                    activeSwipeIndex: Math.max(
+                        0,
+                        Math.min(message.activeSwipeIndex - 1, swipes.length - 1),
+                    ),
+                    swipes,
+                };
+            }),
+            sourceChat,
+        );
+        clearStreamingMessageDraft(messageId);
+    }
+
+    function commitStreamingDraft(messageId: string, sourceChat = latestChatRef.current) {
+        if (!sourceChat) {
+            return false;
+        }
+
+        const draft = getStreamingMessageDraft(messageId);
+
+        if (!hasStreamingMessageDraftValue(draft)) {
+            clearStreamingMessageDraft(messageId);
+            return false;
+        }
+
+        updateChatMessages(
+            sourceChat.messages.map((message) =>
+                message.id === messageId
+                    ? applyStreamingDraftToMessage(message, draft)
+                    : message,
+            ),
+            sourceChat,
+        );
+        finalizeStreamingMessageDraft(messageId);
+        return true;
+    }
+
+    return {
+        activateNextExistingSwipe,
+        appendEmptySwipe,
+        appendSwipe,
+        commitStreamingDraft,
+        currentOrSourceChat,
+        deleteMessage,
+        editMessage,
+        injectMessage,
+        previousSwipe,
+        removeActiveSwipe,
+        removeMessage,
+        updateChatMessages,
+        updateMessageAttachments,
+        updateMessageContent,
+        updateMessageReasoning,
+    };
+}
+
+function applyStreamingDraftToMessage(
+    message: Message,
+    draft: StreamingMessageDraft | undefined,
+) {
+    if (!draft) {
+        return message;
+    }
+
+    const nextMessage = updateActiveSwipeContent(
+        message,
+        draft.content ?? getMessageContent(message),
+        draft.status,
+        draft.reasoning,
+        draft.reasoningDetails,
+    );
+
+    return draft.attachments !== undefined
+        ? updateActiveSwipeAttachments(nextMessage, draft.attachments)
+        : nextMessage;
+}
+
+function finalizeStreamingMessageDraft(messageId: string) {
+    requestAnimationFrame(() => clearStreamingMessageDraft(messageId));
+}
