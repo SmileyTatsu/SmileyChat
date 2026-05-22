@@ -169,7 +169,10 @@ export function useMessageOperations({
             (message) => message.id === messageId,
         );
 
-        if (!targetMessage || targetMessage.activeSwipeIndex >= targetMessage.swipes.length - 1) {
+        if (
+            !targetMessage ||
+            targetMessage.activeSwipeIndex >= targetMessage.swipes.length - 1
+        ) {
             return false;
         }
 

@@ -72,11 +72,7 @@ import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 
-import type {
-    ChatMetadata,
-    ChatMode,
-    UserStatus,
-} from "#frontend/types";
+import type { ChatMetadata, ChatMode, UserStatus } from "#frontend/types";
 
 import { useCharacterChats } from "./hooks/use-character-chats";
 import { useChatSession } from "./hooks/use-chat-session";
@@ -116,9 +112,7 @@ function useMediaQuery(query: string) {
 
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
-    const isMobileLayout = useMediaQuery(
-        `(max-width: ${MOBILE_SIDEBAR_BREAKPOINT}px)`,
-    );
+    const isMobileLayout = useMediaQuery(`(max-width: ${MOBILE_SIDEBAR_BREAKPOINT}px)`);
     const isCharacterDrawerLayout = useMediaQuery(
         `(max-width: ${CHARACTER_DRAWER_BREAKPOINT}px)`,
     );
@@ -250,10 +244,7 @@ export function App() {
                 () =>
                     `app-shell ${desktopSidebarOpen.value ? "" : "sidebar-collapsed"} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale}`,
             ),
-        [
-            preferences.appearance.fontScale,
-            preferences.appearance.messageDensity,
-        ],
+        [preferences.appearance.fontScale, preferences.appearance.messageDensity],
     );
 
     latestChatSessionForPluginsRef.current = chatSession;
@@ -991,10 +982,7 @@ type CharacterPanelHostProps = Omit<Parameters<typeof CharacterPanel>[0], "isOpe
     isOpenSignal: ReadonlySignal<boolean>;
 };
 
-function CharacterPanelHost({
-    isOpenSignal,
-    ...props
-}: CharacterPanelHostProps) {
+function CharacterPanelHost({ isOpenSignal, ...props }: CharacterPanelHostProps) {
     return <CharacterPanel {...props} isOpen={isOpenSignal.value} />;
 }
 
