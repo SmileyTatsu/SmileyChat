@@ -877,7 +877,6 @@ export function App() {
                           : "No character selected"
                 }
                 chatTitle={hasCharacters ? activeChatTitle : "No active chat"}
-                chatMetadata={activeChat?.metadata}
                 groupAvatarPath={
                     activeChatIsGroup && activeChat?.group?.avatar?.type === "custom"
                         ? activeChat.group.avatar.path
@@ -898,7 +897,6 @@ export function App() {
                 onNextSwipe={handleNextSwipe}
                 onPreviousSwipe={handlePreviousSwipe}
                 onSendMessage={handleSendMessage}
-                onUpdateChatMetadata={handleUpdateChatMetadata}
                 onToggleSidebar={handleToggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
@@ -907,6 +905,7 @@ export function App() {
 
             {hasCharacters && activeChatIsGroup && activeChat ? (
                 <GroupPanelHost
+                    authorNote={activeChat.metadata?.authorNote}
                     characters={characterSummaries.characters}
                     chat={activeChat}
                     isOpenSignal={characterOpenSignal}
@@ -918,9 +917,13 @@ export function App() {
                         void chatSession.forceGroupMemberResponse(characterId)
                     }
                     onOpenChange={setActiveCharacterOpen}
+                    onUpdateAuthorNote={(authorNote) =>
+                        handleUpdateChatMetadata({ authorNote })
+                    }
                 />
             ) : hasCharacters ? (
                 <CharacterPanelHost
+                    authorNote={activeChat?.metadata?.authorNote}
                     character={character}
                     isOpenSignal={characterOpenSignal}
                     pluginSnapshot={pluginSnapshot}
@@ -928,6 +931,9 @@ export function App() {
                     onBeforeAvatarUpload={prepareCharacterAvatarUpload}
                     onSavedCharacter={applySavedCharacter}
                     onOpenChange={setActiveCharacterOpen}
+                    onUpdateAuthorNote={(authorNote) =>
+                        handleUpdateChatMetadata({ authorNote })
+                    }
                 />
             ) : null}
 

@@ -912,104 +912,6 @@
     padding: 0;
 }
 
-.composer-author-note-panel {
-    border-bottom: 1px solid #303440;
-    background: #15171d;
-
-    @apply col-span-full grid gap-2 px-3 py-2;
-}
-
-.author-note-header,
-.author-note-footer,
-.author-note-toggles {
-    @apply flex items-center gap-2;
-}
-
-.author-note-header {
-    @apply justify-between;
-}
-
-.author-note-header > span {
-    color: #eef1f8;
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-.author-note-toggles label,
-.author-note-footer label {
-    color: #b8bfce;
-    font-size: 0.78rem;
-
-    @apply flex items-center gap-2;
-}
-
-.author-note-toggles input {
-    accent-color: #e6e8ef;
-}
-
-.author-note-toggles button {
-    display: grid;
-    place-items: center;
-    width: 26px;
-    height: 26px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: #c8cedd;
-    padding: 0;
-}
-
-.author-note-toggles button:hover {
-    background: #242833;
-    color: #f2f4f8;
-}
-
-.composer-author-note-panel textarea {
-    min-height: 72px;
-    max-height: 150px;
-    border: 1px solid #303440;
-    border-radius: 6px;
-    background: #111318;
-    color: #ececf1;
-    font-family: var(--chat-font-family);
-    font-size: 0.9rem;
-    line-height: 1.45;
-    outline: none;
-    padding: 8px 9px;
-
-    @apply w-full resize-y scrollbar-thin;
-}
-
-.composer-author-note-panel textarea:focus,
-.author-note-footer input:focus,
-.author-note-footer select:focus {
-    border-color: #4d586e;
-}
-
-.composer-author-note-panel textarea::placeholder {
-    color: #737c8e;
-    opacity: 1;
-}
-
-.author-note-footer {
-    @apply flex-wrap justify-between;
-}
-
-.author-note-footer input,
-.author-note-footer select {
-    min-height: 28px;
-    border: 1px solid #303440;
-    border-radius: 6px;
-    background: #111318;
-    color: #e6e8ef;
-    outline: none;
-    padding: 3px 7px;
-}
-
-.author-note-footer input {
-    width: 72px;
-}
-
 .message-attachments {
     @apply flex flex-wrap gap-2;
 
@@ -1030,58 +932,27 @@
 }
 
 .chat-composer-area {
-    @apply flex w-full items-start gap-4 p-2;
+    @apply flex w-full items-start gap-3 p-2;
 
-    .composer-options {
-        @apply relative flex flex-none;
-    }
-
-    .composer-options-button {
-        @apply flex items-center justify-center rounded-md border-none bg-transparent p-2 transition-colors outline-none;
+    .composer-image-button {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #b9bfd0;
+        padding: 0;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease;
 
         &:hover:not(:disabled) {
             background: #242833;
+            color: #ececf1;
         }
-    }
-
-    .composer-options-menu {
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 0;
-        z-index: 10;
-        min-width: 178px;
-        border: 1px solid #303440;
-        border-radius: 8px;
-        background: #171a20;
-        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
-        padding: 6px;
-    }
-
-    .composer-options-menu button {
-        display: flex;
-        width: 100%;
-        align-items: center;
-        gap: 9px;
-        border: 0;
-        border-radius: 6px;
-        background: transparent;
-        color: #e6e8ef;
-        padding: 8px 9px;
-        text-align: left;
-        font-size: 0.9rem;
-        line-height: 1.2;
-
-        &:hover {
-            background: #242833;
-        }
-    }
-
-    .composer-options-menu-icon {
-        display: grid;
-        flex: 0 0 18px;
-        width: 18px;
-        place-items: center;
-        color: #b9bfd0;
     }
 
     textarea {

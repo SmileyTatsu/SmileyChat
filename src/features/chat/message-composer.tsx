@@ -1,4 +1,4 @@
-import { FileText, ImagePlus, Menu, SendHorizonal, Square, X } from "lucide-preact";
+import { ImagePlus, SendHorizonal, Square, X } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
@@ -8,10 +8,9 @@ import {
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
-import type { ChatAuthorNote, ChatMode } from "#frontend/types";
+import type { ChatMode } from "#frontend/types";
 
 type MessageComposerProps = {
-    authorNote?: ChatAuthorNote;
     characterName: string;
     disabled?: boolean;
     enterToSend: boolean;
@@ -20,7 +19,6 @@ type MessageComposerProps = {
     placeholder?: string;
     resetKey: string;
     onAbortGeneration?: () => void;
-    onUpdateAuthorNote?: (authorNote: ChatAuthorNote) => void;
     onSubmit: (draft: string, images?: File[]) => void | Promise<void>;
     pluginSnapshot: PluginAppSnapshot;
 };
@@ -31,36 +29,7 @@ type StagedImage = {
     previewUrl: string;
 };
 
-function authorNoteFromProp(authorNote: ChatAuthorNote | undefined): ChatAuthorNote {
-    return {
-        content: authorNote?.content ?? "",
-        depth: normalizeAuthorNoteDepth(authorNote?.depth),
-        role: authorNote?.role ?? "system",
-        isEnabled: authorNote?.isEnabled ?? true,
-    };
-}
-
-function authorNoteKey(authorNote: ChatAuthorNote) {
-    return JSON.stringify({
-        content: authorNote.content,
-        depth: normalizeAuthorNoteDepth(authorNote.depth),
-        role: authorNote.role ?? "system",
-        isEnabled: authorNote.isEnabled ?? true,
-    });
-}
-
-function normalizeAuthorNoteDepth(depth: unknown) {
-    const parsed = typeof depth === "number" ? depth : Number(depth);
-
-    return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
-}
-
-function parseAuthorNoteDepthInput(value: string) {
-    return value.trim() ? normalizeAuthorNoteDepth(Number(value)) : 0;
-}
-
 export function MessageComposer({
-    authorNote,
     characterName,
     disabled,
     enterToSend,
@@ -69,35 +38,15 @@ export function MessageComposer({
     placeholder,
     resetKey,
     onAbortGeneration,
-    onUpdateAuthorNote,
     onSubmit,
     pluginSnapshot,
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const optionsRef = useRef<HTMLDivElement>(null);
-    const authorNoteSaveTimerRef = useRef<number | undefined>();
-    const lastSavedAuthorNoteKeyRef = useRef(
-        authorNoteKey(authorNoteFromProp(authorNote)),
-    );
 
     const [draft, setDraft] = useState("");
     const [, setRegistryRevision] = useState(0);
-    const [isAuthorNoteOpen, setIsAuthorNoteOpen] = useState(false);
-    const [isOptionsOpen, setIsOptionsOpen] = useState(false);
     const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
-    const [authorNoteContent, setAuthorNoteContent] = useState(
-        () => authorNote?.content ?? "",
-    );
-    const [authorNoteDepthInput, setAuthorNoteDepthInput] = useState(() =>
-        String(authorNote?.depth ?? 0),
-    );
-    const [authorNoteRole, setAuthorNoteRole] = useState<ChatAuthorNote["role"]>(
-        () => authorNote?.role ?? "system",
-    );
-    const [isAuthorNoteEnabled, setIsAuthorNoteEnabled] = useState(
-        () => authorNote?.isEnabled ?? true,
-    );
 
     const hasMessageContent = draft.trim().length > 0 || stagedImages.length > 0;
     const canSubmit = !disabled || isGenerating;
@@ -131,87 +80,13 @@ export function MessageComposer({
     useEffect(() => {
         setDraft("");
         clearStagedImages();
-        clearPendingAuthorNoteSave();
-        setIsAuthorNoteOpen(false);
-        setIsOptionsOpen(false);
     }, [resetKey]);
-
-    useEffect(() => {
-        const nextAuthorNote = authorNoteFromProp(authorNote);
-
-        lastSavedAuthorNoteKeyRef.current = authorNoteKey(nextAuthorNote);
-        setAuthorNoteContent(nextAuthorNote.content);
-        setAuthorNoteDepthInput(String(nextAuthorNote.depth ?? 0));
-        setAuthorNoteRole(nextAuthorNote.role ?? "system");
-        setIsAuthorNoteEnabled(nextAuthorNote.isEnabled ?? true);
-    }, [
-        authorNote?.content,
-        authorNote?.depth,
-        authorNote?.isEnabled,
-        authorNote?.role,
-        resetKey,
-    ]);
-
-    useEffect(() => {
-        if (!onUpdateAuthorNote) {
-            return;
-        }
-
-        const nextAuthorNote = currentAuthorNote();
-        const nextKey = authorNoteKey(nextAuthorNote);
-
-        if (nextKey === lastSavedAuthorNoteKeyRef.current) {
-            return;
-        }
-
-        clearPendingAuthorNoteSave();
-        authorNoteSaveTimerRef.current = window.setTimeout(() => {
-            authorNoteSaveTimerRef.current = undefined;
-            lastSavedAuthorNoteKeyRef.current = nextKey;
-            onUpdateAuthorNote(nextAuthorNote);
-        }, 500);
-
-        return clearPendingAuthorNoteSave;
-    }, [
-        authorNoteContent,
-        authorNoteDepthInput,
-        authorNoteRole,
-        isAuthorNoteEnabled,
-        onUpdateAuthorNote,
-    ]);
 
     useEffect(function () {
         return () => {
-            clearPendingAuthorNoteSave();
             clearStagedImages();
         };
     }, []);
-
-    useEffect(() => {
-        if (!isOptionsOpen) {
-            return;
-        }
-
-        function handlePointerDown(event: PointerEvent) {
-            if (!optionsRef.current?.contains(event.target as Node)) {
-                setIsOptionsOpen(false);
-            }
-        }
-
-        function handleDocumentKeyDown(event: KeyboardEvent) {
-            if (event.key === "Escape") {
-                setIsOptionsOpen(false);
-            }
-        }
-
-        document.addEventListener("pointerdown", handlePointerDown);
-        document.addEventListener("keydown", handleDocumentKeyDown);
-
-        return () => {
-            document.removeEventListener("pointerdown", handlePointerDown);
-            document.removeEventListener("keydown", handleDocumentKeyDown);
-        };
-    }, [isOptionsOpen]);
 
     function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
@@ -265,7 +140,6 @@ export function MessageComposer({
         const submittedDraft = draft;
         const submittedImages = stagedImages.map((image) => image.file);
 
-        flushAuthorNoteSave();
         setDraft("");
         clearStagedImages();
 
@@ -277,72 +151,7 @@ export function MessageComposer({
     }
 
     function openImagePicker() {
-        setIsOptionsOpen(false);
         fileInputRef.current?.click();
-    }
-
-    function openAuthorNotePanel() {
-        setIsOptionsOpen(false);
-        setIsAuthorNoteOpen(true);
-    }
-
-    function clearPendingAuthorNoteSave() {
-        if (authorNoteSaveTimerRef.current) {
-            window.clearTimeout(authorNoteSaveTimerRef.current);
-            authorNoteSaveTimerRef.current = undefined;
-        }
-    }
-
-    function currentAuthorNote(
-        overrides: Partial<{
-            content: string;
-            depthInput: string;
-            role: ChatAuthorNote["role"];
-            isEnabled: boolean;
-        }> = {},
-    ): ChatAuthorNote {
-        return {
-            content: overrides.content ?? authorNoteContent,
-            depth: parseAuthorNoteDepthInput(
-                overrides.depthInput ?? authorNoteDepthInput,
-            ),
-            role: overrides.role ?? authorNoteRole ?? "system",
-            isEnabled: overrides.isEnabled ?? isAuthorNoteEnabled,
-        };
-    }
-
-    function flushAuthorNoteSave(
-        overrides: Partial<{
-            content: string;
-            depthInput: string;
-            role: ChatAuthorNote["role"];
-            isEnabled: boolean;
-        }> = {},
-    ) {
-        if (!onUpdateAuthorNote) {
-            return;
-        }
-
-        const nextAuthorNote = currentAuthorNote(overrides);
-        const nextKey = authorNoteKey(nextAuthorNote);
-
-        clearPendingAuthorNoteSave();
-
-        if (nextKey === lastSavedAuthorNoteKeyRef.current) {
-            return;
-        }
-
-        lastSavedAuthorNoteKeyRef.current = nextKey;
-        onUpdateAuthorNote(nextAuthorNote);
-    }
-
-    function handleAuthorNoteDepthBlur() {
-        const normalizedDepthInput = String(
-            parseAuthorNoteDepthInput(authorNoteDepthInput),
-        );
-
-        setAuthorNoteDepthInput(normalizedDepthInput);
-        flushAuthorNoteSave({ depthInput: normalizedDepthInput });
     }
 
     function stageImages(files: File[]) {
@@ -434,7 +243,7 @@ export function MessageComposer({
                 onChange={(event) => stageFiles(event.currentTarget.files)}
             />
 
-            {pluginActions.length > 0 && (
+            {pluginActions.length + pluginOptions.length > 0 && (
                 <div className="composer-plugin-actions">
                     {pluginActions.map((action) => (
                         <button
@@ -445,6 +254,17 @@ export function MessageComposer({
                             onClick={() => void action.run(composerActionContext)}
                         >
                             {action.renderIcon ? action.renderIcon() : action.label}
+                        </button>
+                    ))}
+                    {pluginOptions.map((option) => (
+                        <button
+                            key={option.id}
+                            type="button"
+                            title={option.label}
+                            disabled={disabled}
+                            onClick={() => void option.run(composerActionContext)}
+                        >
+                            {option.renderIcon ? option.renderIcon() : option.label}
                         </button>
                     ))}
                 </div>
@@ -468,146 +288,17 @@ export function MessageComposer({
                 </div>
             )}
 
-            {isAuthorNoteOpen && (
-                <div className="composer-author-note-panel">
-                    <div className="author-note-header">
-                        <span>Author Note</span>
-                        <div className="author-note-toggles">
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={isAuthorNoteEnabled}
-                                    onChange={(event) =>
-                                        setIsAuthorNoteEnabled(
-                                            event.currentTarget.checked,
-                                        )
-                                    }
-                                />
-                                <span>Enable</span>
-                            </label>
-                            <button
-                                type="button"
-                                title="Close author note"
-                                aria-label="Close author note"
-                                onClick={() => {
-                                    flushAuthorNoteSave();
-                                    setIsAuthorNoteOpen(false);
-                                }}
-                            >
-                                <X size={15} />
-                            </button>
-                        </div>
-                    </div>
-                    <textarea
-                        aria-label="Author note content"
-                        placeholder="Author note content..."
-                        value={authorNoteContent}
-                        onInput={(event) =>
-                            setAuthorNoteContent(event.currentTarget.value)
-                        }
-                        onBlur={() => flushAuthorNoteSave()}
-                    />
-                    <div className="author-note-footer">
-                        <label>
-                            <span>Depth</span>
-                            <input
-                                type="number"
-                                min={0}
-                                value={authorNoteDepthInput}
-                                onInput={(event) =>
-                                    setAuthorNoteDepthInput(event.currentTarget.value)
-                                }
-                                onBlur={handleAuthorNoteDepthBlur}
-                            />
-                        </label>
-                        <label>
-                            <span>Role</span>
-                            <select
-                                value={authorNoteRole}
-                                onChange={(event) =>
-                                    setAuthorNoteRole(
-                                        event.currentTarget
-                                            .value as ChatAuthorNote["role"],
-                                    )
-                                }
-                                onBlur={() => flushAuthorNoteSave()}
-                            >
-                                <option value="system">system</option>
-                                <option value="user">user</option>
-                                <option value="assistant">assistant</option>
-                            </select>
-                        </label>
-                    </div>
-                </div>
-            )}
             <div className="chat-composer-area">
-                <div className="composer-options" ref={optionsRef}>
-                    <button
-                        type="button"
-                        title="Composer options"
-                        aria-label="Composer options"
-                        aria-expanded={isOptionsOpen}
-                        disabled={disabled}
-                        className="composer-options-button"
-                        onClick={() => setIsOptionsOpen((current) => !current)}
-                    >
-                        <Menu size={18} />
-                    </button>
-
-                    {isOptionsOpen && (
-                        <div className="composer-options-menu" role="menu">
-                            <button
-                                type="button"
-                                role="menuitem"
-                                title="Attach images"
-                                onClick={openImagePicker}
-                            >
-                                <span
-                                    className="composer-options-menu-icon"
-                                    aria-hidden="true"
-                                >
-                                    <ImagePlus size={17} />
-                                </span>
-                                <span>Attach images</span>
-                            </button>
-                            <button
-                                type="button"
-                                role="menuitem"
-                                title="Author Note"
-                                onClick={openAuthorNotePanel}
-                            >
-                                <span
-                                    className="composer-options-menu-icon"
-                                    aria-hidden="true"
-                                >
-                                    <FileText size={17} />
-                                </span>
-                                <span>Author Note</span>
-                            </button>
-
-                            {pluginOptions.map((option) => (
-                                <button
-                                    key={option.id}
-                                    type="button"
-                                    role="menuitem"
-                                    title={option.label}
-                                    onClick={() => {
-                                        setIsOptionsOpen(false);
-                                        void option.run(composerActionContext);
-                                    }}
-                                >
-                                    <span
-                                        className="composer-options-menu-icon"
-                                        aria-hidden="true"
-                                    >
-                                        {option.renderIcon ? option.renderIcon() : null}
-                                    </span>
-                                    <span>{option.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <button
+                    type="button"
+                    title="Attach images"
+                    aria-label="Attach images"
+                    disabled={disabled}
+                    className="composer-image-button"
+                    onClick={openImagePicker}
+                >
+                    <ImagePlus size={18} />
+                </button>
 
                 <textarea
                     ref={composerRef}
