@@ -155,11 +155,12 @@ export const MessageItem = memo(function MessageItem({
                         <div className="swipe-controls" aria-label="Message swipes">
                             <button
                                 type="button"
-                                title="Previous swipe"
+                                title="Previous swipe (Left Arrow)"
+                                aria-label="Previous swipe"
                                 disabled={!canPagePrevious || isPendingSwipe}
                                 onClick={() => onPreviousSwipe(message.id)}
                             >
-                                <ChevronLeft size={14} />
+                                <ChevronLeft size={16} />
                             </button>
 
                             <span>
@@ -168,15 +169,20 @@ export const MessageItem = memo(function MessageItem({
 
                             <button
                                 type="button"
-                                disabled={!canPageForward || isPendingSwipe}
-                                onClick={() => onNextSwipe(message.id)}
-                                title={
+                                aria-label={
                                     message.activeSwipeIndex < message.swipes.length - 1
                                         ? "Next swipe"
                                         : "Generate next swipe"
                                 }
+                                disabled={!canPageForward || isPendingSwipe}
+                                onClick={() => onNextSwipe(message.id)}
+                                title={
+                                    message.activeSwipeIndex < message.swipes.length - 1
+                                        ? "Next swipe (Right Arrow)"
+                                        : "Generate next swipe (Right Arrow)"
+                                }
                             >
-                                <ChevronRight size={14} />
+                                <ChevronRight size={16} />
                             </button>
                         </div>
                     )}

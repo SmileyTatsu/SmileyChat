@@ -94,6 +94,10 @@ export const MessageList = memo(function MessageList({
     );
 
     const lastMessage = messages[messages.length - 1];
+    const keyboardSwipeTarget = useMemo(
+        () => findKeyboardSwipeTarget(messages),
+        [messages],
+    );
     const lastActiveSwipe = lastMessage
         ? (lastMessage.swipes[lastMessage.activeSwipeIndex] ?? lastMessage.swipes[0])
         : undefined;
@@ -144,6 +148,60 @@ export const MessageList = memo(function MessageList({
             document.removeEventListener("keydown", handleKeyDown);
         };
     }, [openMenuMessageId]);
+
+    useEffect(() => {
+        if (!keyboardSwipeTarget || editingMessageId || openMenuMessageId) {
+            return;
+        }
+
+        const swipeTarget = keyboardSwipeTarget;
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (
+                event.defaultPrevented ||
+                event.altKey ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.shiftKey ||
+                isTextEntryTarget(event.target)
+            ) {
+                return;
+            }
+
+            if (event.key === "ArrowLeft") {
+                if (
+                    swipeTarget.activeSwipeIndex <= 0 ||
+                    pendingSwipeMessageId === swipeTarget.id
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+                onPreviousSwipe(swipeTarget.id);
+                return;
+            }
+
+            if (event.key === "ArrowRight") {
+                if (pendingSwipeMessageId === swipeTarget.id) {
+                    return;
+                }
+
+                event.preventDefault();
+                onNextSwipe(swipeTarget.id);
+            }
+        }
+
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [
+        editingMessageId,
+        keyboardSwipeTarget,
+        onNextSwipe,
+        onPreviousSwipe,
+        openMenuMessageId,
+        pendingSwipeMessageId,
+    ]);
 
     const updateAutoScrollPreference = useCallback(() => {
         const list = listRef.current;
@@ -480,6 +538,35 @@ function normalizeMessageWindowSize(value: number) {
     }
 
     return Math.max(1, Math.round(value));
+}
+
+function isTextEntryTarget(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (target.isContentEditable) {
+        return true;
+    }
+
+    const tagName = target.tagName.toLowerCase();
+
+    return tagName === "input" || tagName === "textarea" || tagName === "select";
+}
+
+function findKeyboardSwipeTarget(messages: Message[]) {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+
+        if (
+            message?.role === "character" &&
+            message.metadata?.canGenerateSwipe !== false
+        ) {
+            return message;
+        }
+    }
+
+    return undefined;
 }
 
 function TypingIndicator({

@@ -378,8 +378,7 @@ export function Sidebar({
               ).includes(normalizedSidebarFilter),
           )
         : directChats;
-    const filteredCharactersCount =
-        filteredCharacters.length + filteredGroupChats.length;
+    const filteredCharactersCount = filteredCharacters.length + filteredGroupChats.length;
 
     if (!isOpen) {
         return (
@@ -460,9 +459,7 @@ export function Sidebar({
                     placeholder="Filter characters and chats"
                     aria-label="Filter characters and chats"
                     onInput={(event) =>
-                        setSidebarFilter(
-                            (event.currentTarget as HTMLInputElement).value,
-                        )
+                        setSidebarFilter((event.currentTarget as HTMLInputElement).value)
                     }
                 />
                 {sidebarFilter && (
@@ -488,9 +485,7 @@ export function Sidebar({
                         <ChevronDown size={14} />
                         <span>
                             Characters
-                            {hasSidebarFilter && (
-                                <small>{filteredCharactersCount}</small>
-                            )}
+                            {hasSidebarFilter && <small>{filteredCharactersCount}</small>}
                         </span>
                     </button>
                     <span className="rail-actions">
@@ -743,9 +738,7 @@ export function Sidebar({
                         </button>
                     </span>
                 </div>
-                <div
-                    className={`rail-collapsible ${chatsCollapsed ? "collapsed" : ""}`}
-                >
+                <div className={`rail-collapsible ${chatsCollapsed ? "collapsed" : ""}`}>
                     <div className="rail-collapsible-body">
                         <div className="chat-list">
                             {filteredDirectChats.length > 0 ? (
