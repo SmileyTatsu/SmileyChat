@@ -121,6 +121,7 @@
 .rail-section {
     display: grid;
     gap: 8px;
+    min-height: 0;
 }
 
 .rail-section.chat-section {
@@ -145,9 +146,123 @@
     gap: 8px;
 }
 
-.rail-title.with-action span:last-child {
+.rail-title.with-action .rail-actions {
     display: inline-flex;
     gap: 5px;
+}
+
+.sidebar-filter-bar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) 26px;
+    align-items: center;
+    gap: 6px;
+    margin-top: -4px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: rgba(17, 19, 24, 0.96);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.16);
+    color: #8f9ab1;
+    padding: 6px 7px 6px 9px;
+    backdrop-filter: blur(12px);
+}
+
+.sidebar-filter-bar input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #ececf1;
+    font: inherit;
+    font-size: 0.86rem;
+    outline: none;
+}
+
+.sidebar-filter-bar input::placeholder {
+    color: #747c8e;
+}
+
+.sidebar-filter-bar button {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #aeb6c8;
+    padding: 0;
+}
+
+.sidebar-filter-bar button:hover {
+    background: #242832;
+    color: #ececf1;
+}
+
+.rail-section-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    letter-spacing: inherit;
+    text-transform: inherit;
+}
+
+.rail-section-toggle svg {
+    flex: 0 0 auto;
+    transition: transform 0.18s ease;
+}
+
+.rail-section-toggle[aria-expanded="false"] svg {
+    transform: rotate(-90deg);
+}
+
+.rail-section-toggle span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.rail-section-toggle small {
+    display: inline-grid;
+    min-width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid #303440;
+    border-radius: 999px;
+    background: #1b1e25;
+    color: #c4cad8;
+    font-size: 0.66rem;
+    line-height: 1;
+}
+
+.rail-collapsible {
+    display: grid;
+    grid-template-rows: 1fr;
+    min-height: 0;
+    transition:
+        grid-template-rows 0.2s ease,
+        opacity 0.16s ease;
+}
+
+.rail-collapsible.collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0.72;
+}
+
+.rail-collapsible-body {
+    display: grid;
+    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .rail-icon-button {
@@ -203,6 +318,10 @@
 .rail-empty-state span {
     color: #9da3b4;
     font-size: 0.78rem;
+}
+
+.rail-empty-state.compact {
+    padding: 8px 10px;
 }
 
 .rail-subtitle {
