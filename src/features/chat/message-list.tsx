@@ -149,21 +149,31 @@ export const MessageList = memo(function MessageList({
         };
     }, [openMenuMessageId]);
 
-    useEffect(() => {
-        if (!keyboardSwipeTarget || editingMessageId || openMenuMessageId) {
+    const updateAutoScrollPreference = useCallback(() => {
+        const list = listRef.current;
+        if (!list) {
             return;
         }
 
-        const swipeTarget = keyboardSwipeTarget;
+        const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+        shouldAutoScrollRef.current = distanceFromBottom < AUTO_SCROLL_BOTTOM_THRESHOLD;
+        setShowJumpToBottom(distanceFromBottom >= AUTO_SCROLL_BOTTOM_THRESHOLD);
+    }, []);
 
-        function handleKeyDown(event: KeyboardEvent) {
+    const handleListKeyDown = useCallback(
+        (event: KeyboardEvent) => {
+            const swipeTarget = keyboardSwipeTarget;
+
             if (
+                !swipeTarget ||
+                editingMessageId ||
+                openMenuMessageId ||
                 event.defaultPrevented ||
                 event.altKey ||
                 event.ctrlKey ||
                 event.metaKey ||
                 event.shiftKey ||
-                isTextEntryTarget(event.target)
+                isInteractiveKeyboardTarget(event.target, listRef.current)
             ) {
                 return;
             }
@@ -189,30 +199,16 @@ export const MessageList = memo(function MessageList({
                 event.preventDefault();
                 onNextSwipe(swipeTarget.id);
             }
-        }
-
-        document.addEventListener("keydown", handleKeyDown);
-
-        return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [
-        editingMessageId,
-        keyboardSwipeTarget,
-        onNextSwipe,
-        onPreviousSwipe,
-        openMenuMessageId,
-        pendingSwipeMessageId,
-    ]);
-
-    const updateAutoScrollPreference = useCallback(() => {
-        const list = listRef.current;
-        if (!list) {
-            return;
-        }
-
-        const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
-        shouldAutoScrollRef.current = distanceFromBottom < AUTO_SCROLL_BOTTOM_THRESHOLD;
-        setShowJumpToBottom(distanceFromBottom >= AUTO_SCROLL_BOTTOM_THRESHOLD);
-    }, []);
+        },
+        [
+            editingMessageId,
+            keyboardSwipeTarget,
+            onNextSwipe,
+            onPreviousSwipe,
+            openMenuMessageId,
+            pendingSwipeMessageId,
+        ],
+    );
 
     const startEditing = useCallback((messageId: string) => {
         setEditingMessageId(messageId);
@@ -365,7 +361,10 @@ export const MessageList = memo(function MessageList({
             <div
                 className="message-list"
                 ref={listRef}
+                aria-label="Chat messages"
                 aria-live="polite"
+                tabIndex={0}
+                onKeyDown={handleListKeyDown}
                 onScroll={updateAutoScrollPreference}
             >
                 <div
@@ -541,7 +540,10 @@ function normalizeMessageWindowSize(value: number) {
     return Math.max(1, Math.round(value));
 }
 
-function isTextEntryTarget(target: EventTarget | null) {
+function isInteractiveKeyboardTarget(
+    target: EventTarget | null,
+    keyboardScope: HTMLElement | null,
+) {
     if (!(target instanceof HTMLElement)) {
         return false;
     }
@@ -552,7 +554,43 @@ function isTextEntryTarget(target: EventTarget | null) {
 
     const tagName = target.tagName.toLowerCase();
 
-    return tagName === "input" || tagName === "textarea" || tagName === "select";
+    if (
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        tagName === "button" ||
+        tagName === "a"
+    ) {
+        return true;
+    }
+
+    const roleWidget = target.closest(
+        [
+            "[contenteditable='true']",
+            "[role='button']",
+            "[role='checkbox']",
+            "[role='combobox']",
+            "[role='link']",
+            "[role='listbox']",
+            "[role='menu']",
+            "[role='menuitem']",
+            "[role='option']",
+            "[role='radio']",
+            "[role='slider']",
+            "[role='spinbutton']",
+            "[role='switch']",
+            "[role='tab']",
+            "[role='tablist']",
+        ].join(","),
+    );
+
+    if (roleWidget) {
+        return true;
+    }
+
+    const tabIndexedWidget = target.closest("[tabindex]");
+
+    return Boolean(tabIndexedWidget && tabIndexedWidget !== keyboardScope);
 }
 
 function findKeyboardSwipeTarget(messages: Message[]) {
