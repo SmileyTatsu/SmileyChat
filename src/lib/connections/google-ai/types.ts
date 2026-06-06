@@ -49,9 +49,27 @@ export type GoogleAISystemInstruction = {
     parts: GoogleAIPart[];
 };
 
+export type GoogleAISafetyCategory =
+    | "HARM_CATEGORY_HARASSMENT"
+    | "HARM_CATEGORY_HATE_SPEECH"
+    | "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+    | "HARM_CATEGORY_DANGEROUS_CONTENT";
+
+export type GoogleAISafetyThreshold =
+    | "BLOCK_NONE"
+    | "BLOCK_ONLY_HIGH"
+    | "BLOCK_MEDIUM_AND_ABOVE"
+    | "BLOCK_LOW_AND_ABOVE";
+
+export type GoogleAISafetySetting = {
+    category: GoogleAISafetyCategory;
+    threshold: GoogleAISafetyThreshold;
+};
+
 export type GoogleAIGenerateContentRequest = {
     contents: GoogleAIContent[];
     systemInstruction?: GoogleAISystemInstruction;
+    safetySettings?: GoogleAISafetySetting[];
     generationConfig?: {
         frequencyPenalty?: number;
         maxOutputTokens?: number;
