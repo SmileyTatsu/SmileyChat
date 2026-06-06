@@ -629,5 +629,14 @@ function TypingIndicator({
         );
     }
 
-    return null;
+    return (
+        <div className="chat-typing-line" aria-label={`${characterName} is writing`}>
+            <div className="typing-dots">
+                <i />
+                <i />
+                <i />
+            </div>
+            <span>{characterName} is writing</span>
+        </div>
+    );
 }

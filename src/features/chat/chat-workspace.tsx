@@ -99,7 +99,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     characterAvatarPath={characterAvatarPath}
                     characterName={characterName}
                     errorMessage={errorMessage}
-                    isTyping={mode === "rp" ? isSending : false}
+                    isTyping={isSending}
                     messages={messages}
                     mode={mode}
                     autoScroll={preferences.chat.autoScroll}
@@ -114,19 +114,6 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     onPreviousSwipe={onPreviousSwipe}
                     pluginSnapshot={pluginSnapshot}
                 />
-            )}
-            {!emptyState && isSending && mode === "chat" && (
-                <div
-                    className="chat-typing-line"
-                    aria-label={`${characterName} is writing`}
-                >
-                    <div className="typing-dots">
-                        <i />
-                        <i />
-                        <i />
-                    </div>
-                    <span>{characterName} is writing</span>
-                </div>
             )}
             {!emptyState && (
                 <MessageComposer
