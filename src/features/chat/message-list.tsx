@@ -210,8 +210,8 @@ export const MessageList = memo(function MessageList({
         }
 
         const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
-        shouldAutoScrollRef.current = distanceFromBottom < 80;
-        setShowJumpToBottom(distanceFromBottom > 320);
+        shouldAutoScrollRef.current = distanceFromBottom < AUTO_SCROLL_BOTTOM_THRESHOLD;
+        setShowJumpToBottom(distanceFromBottom >= AUTO_SCROLL_BOTTOM_THRESHOLD);
     }, []);
 
     const startEditing = useCallback((messageId: string) => {
@@ -523,6 +523,7 @@ export const MessageList = memo(function MessageList({
 });
 
 const LOAD_EARLIER_BATCH_SIZE = 50;
+const AUTO_SCROLL_BOTTOM_THRESHOLD = 80;
 
 function snapToBottom(list: HTMLDivElement) {
     list.scrollTop = list.scrollHeight;
