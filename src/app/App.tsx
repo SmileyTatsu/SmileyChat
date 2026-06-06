@@ -89,6 +89,7 @@ import {
 
 const MOBILE_SIDEBAR_BREAKPOINT = 820;
 const CHARACTER_DRAWER_BREAKPOINT = 1120;
+const CONNECTION_SETTINGS_SAVE_DEBOUNCE_MS = 400;
 
 function useMediaQuery(query: string) {
     const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
@@ -146,6 +147,7 @@ export function App() {
     const connectionSettingsLoadedRef = useRef(false);
     const queuedConnectionSettingsSaveRef = useRef<ConnectionSettings | undefined>();
     const connectionSettingsSaveInFlightRef = useRef(false);
+    const connectionSettingsSaveTimerRef = useRef<number | undefined>();
     const {
         applySavedPersona,
         createPersona,
@@ -338,6 +340,7 @@ export function App() {
                 return;
             }
 
+            clearConnectionSettingsSaveTimer();
             persistConnectionSettingsWithKeepAlive(latestConnectionSettingsRef.current);
         }
 
@@ -590,7 +593,7 @@ export function App() {
 
     function closeSettings() {
         if (connectionSettingsLoaded) {
-            queueConnectionSettingsSave(connectionSettings);
+            queueConnectionSettingsSave(connectionSettings, { immediate: true });
         }
         closeSettingsSignal();
     }
@@ -603,15 +606,43 @@ export function App() {
         }
     }
 
-    function queueConnectionSettingsSave(settings: ConnectionSettings) {
+    function queueConnectionSettingsSave(
+        settings: ConnectionSettings,
+        options: { immediate?: boolean } = {},
+    ) {
         queuedConnectionSettingsSaveRef.current = settings;
 
-        if (!connectionSettingsSaveInFlightRef.current) {
+        if (options.immediate) {
+            clearConnectionSettingsSaveTimer();
             void flushQueuedConnectionSettingsSave();
+            return;
         }
+
+        if (connectionSettingsSaveInFlightRef.current) {
+            return;
+        }
+
+        clearConnectionSettingsSaveTimer();
+        connectionSettingsSaveTimerRef.current = window.setTimeout(() => {
+            connectionSettingsSaveTimerRef.current = undefined;
+            void flushQueuedConnectionSettingsSave();
+        }, CONNECTION_SETTINGS_SAVE_DEBOUNCE_MS);
+    }
+
+    function clearConnectionSettingsSaveTimer() {
+        if (connectionSettingsSaveTimerRef.current === undefined) {
+            return;
+        }
+
+        window.clearTimeout(connectionSettingsSaveTimerRef.current);
+        connectionSettingsSaveTimerRef.current = undefined;
     }
 
     async function flushQueuedConnectionSettingsSave() {
+        if (connectionSettingsSaveInFlightRef.current) {
+            return;
+        }
+
         connectionSettingsSaveInFlightRef.current = true;
 
         try {
