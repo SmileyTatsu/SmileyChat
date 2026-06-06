@@ -65,11 +65,13 @@ export function useChatLibrary({
     const [activeChat, setActiveChatState] = useState<ChatSession | undefined>();
     const [groupCharacters, setGroupCharactersState] = useState<SmileyCharacter[]>([]);
     const [chatLoadError, setChatLoadError] = useState("");
+    const [isChatLoading, setIsChatLoading] = useState(false);
     const latestChatRef = useRef(activeChat);
     const latestChatSummariesRef = useRef(chatSummaries);
     const latestGroupCharactersRef = useRef(groupCharacters);
     const chatAutosaveTimerRef = useRef<number | undefined>(undefined);
     const chatSaveRequestIdRef = useRef(0);
+    const chatSelectRequestIdRef = useRef(0);
 
     latestChatRef.current = activeChat;
     latestChatSummariesRef.current = chatSummaries;
@@ -505,10 +507,21 @@ export function useChatLibrary({
     }
 
     async function selectChat(chatId: string) {
-        await flushPendingChatAutosaveWithoutStateUpdate();
+        const requestId = chatSelectRequestIdRef.current + 1;
+        chatSelectRequestIdRef.current = requestId;
+        setIsChatLoading(true);
 
         try {
-            const loadedChat = normalizeChat(await loadChat(chatId));
+            await flushPendingChatAutosaveWithoutStateUpdate();
+
+            const rawChat = await loadChat(chatId);
+            await yieldToBrowser();
+
+            if (requestId !== chatSelectRequestIdRef.current) {
+                return undefined;
+            }
+
+            const loadedChat = normalizeChat(rawChat);
 
             if (!loadedChat) {
                 throw new Error("Invalid chat.");
@@ -543,6 +556,10 @@ export function useChatLibrary({
         } catch (error) {
             setChatLoadError(messageFromError(error));
             return undefined;
+        } finally {
+            if (requestId === chatSelectRequestIdRef.current) {
+                setIsChatLoading(false);
+            }
         }
     }
 
@@ -787,6 +804,7 @@ export function useChatLibrary({
         deleteChat,
         flushPendingChatAutosaveWithoutStateUpdate,
         groupCharacters,
+        isChatLoading,
         latestChatRef,
         latestChatSummariesRef,
         latestGroupCharactersRef,
@@ -803,4 +821,10 @@ export function useChatLibrary({
         updateActiveGroupChat,
         updateChatSummary,
     };
+}
+
+function yieldToBrowser() {
+    return new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 0);
+    });
 }

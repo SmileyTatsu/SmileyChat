@@ -19,6 +19,7 @@ type ChatWorkspaceProps = {
     groupAvatarPath?: string;
     groupMembers?: ChatGroupMember[];
     errorMessage?: string;
+    isLoading?: boolean;
     isSending?: boolean;
     messages: Message[];
     mode: ChatMode;
@@ -52,6 +53,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     groupAvatarPath,
     groupMembers,
     errorMessage,
+    isLoading,
     isSending,
     messages,
     mode,
@@ -72,7 +74,11 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     pluginSnapshot,
 }: ChatWorkspaceProps) {
     return (
-        <section className={`chat-workspace ${mode}`} aria-label="Active chat">
+        <section
+            className={`chat-workspace ${mode}`}
+            aria-busy={isLoading ? "true" : undefined}
+            aria-label="Active chat"
+        >
             <ChatHeader
                 characterAvatarPath={characterAvatarPath}
                 characterName={characterName}
@@ -85,7 +91,9 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                 onToggleSidebar={onToggleSidebar}
                 onToggleCharacter={onToggleCharacter}
             />
-            {emptyState ? (
+            {isLoading ? (
+                <ChatLoadingState />
+            ) : emptyState ? (
                 <div className="chat-empty-state">
                     <div>
                         <h2>{emptyState.title}</h2>
@@ -117,7 +125,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     getPluginSnapshot={getPluginSnapshot}
                 />
             )}
-            {!emptyState && (
+            {!emptyState && !isLoading && (
                 <MessageComposer
                     characterName={characterName}
                     disabled={
@@ -138,3 +146,12 @@ export const ChatWorkspace = memo(function ChatWorkspace({
         </section>
     );
 });
+
+function ChatLoadingState() {
+    return (
+        <div className="chat-loading-state" role="status" aria-live="polite">
+            <div className="chat-loading-spinner" aria-hidden="true" />
+            <span>Loading chat</span>
+        </div>
+    );
+}

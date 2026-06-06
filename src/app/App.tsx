@@ -177,6 +177,7 @@ export function App() {
         characterSummaries,
         chatImportStatus,
         chatImportStatusFading,
+        isChatLoading,
         chatLoadError,
         createCharacter,
         createGroupChat,
@@ -924,6 +925,7 @@ export function App() {
                 }
                 groupMembers={activeChatIsGroup ? activeChat?.members : undefined}
                 errorMessage={chatSession.chatError}
+                isLoading={isChatLoading}
                 isSending={chatSession.isSending}
                 messages={chatSession.messages}
                 mode={mode}

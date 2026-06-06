@@ -186,6 +186,7 @@ export function useCharacterChats({
         chatCountsByCharacterId: chatLibrary.chatCountsByCharacterId,
         chatImportStatus: importExport.chatImportStatus,
         chatImportStatusFading: importExport.chatImportStatusFading,
+        isChatLoading: chatLibrary.isChatLoading,
         chatLoadError: chatLibrary.chatLoadError,
         createCharacter,
         createGroupChat,

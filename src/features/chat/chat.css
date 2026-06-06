@@ -296,6 +296,37 @@
     padding: 0 13px;
 }
 
+.chat-loading-state {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 12px;
+    min-height: 0;
+    color: #b9bfd0;
+    font-size: 0.92rem;
+}
+
+.chat-loading-spinner {
+    width: 34px;
+    height: 34px;
+    border: 2px solid rgba(185, 191, 208, 0.2);
+    border-top-color: #e1e7ff;
+    border-radius: 999px;
+    animation: chat-loading-spin 700ms linear infinite;
+}
+
+@keyframes chat-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-loading-spinner {
+        animation-duration: 1.4s;
+    }
+}
+
 .message {
     padding: var(--message-padding-y) var(--message-padding-x);
     grid-template-columns: var(--message-avatar-size) minmax(0, 1fr);
