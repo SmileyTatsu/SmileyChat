@@ -20,6 +20,22 @@
 
     --rp-message-gap: 16px;
 
+    --surface-0: #101114;
+    --surface-1: #15171c;
+    --surface-2: #1b1e25;
+    --surface-3: #22252e;
+    --surface-4: #282d38;
+    --surface-hover: rgba(255, 255, 255, 0.055);
+    --surface-active: #242832;
+    --surface-recessed: rgba(0, 0, 0, 0.22);
+    --line-subtle: rgba(255, 255, 255, 0.045);
+    --ring-subtle: inset 0 0 0 1px rgba(255, 255, 255, 0.045);
+    --ring-control: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+    --ring-focus: 0 0 0 2px rgba(126, 160, 255, 0.42);
+    --shadow-floating: 0 24px 58px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --shadow-menu: 0 18px 42px rgba(0, 0, 0, 0.46), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.2);
+
     display: grid;
     grid-template-columns: 300px minmax(420px, 1fr) auto;
     height: 100dvh;
@@ -29,7 +45,7 @@
     font-family: var(--app-font-family);
     background:
         radial-gradient(circle at top left, rgba(73, 93, 145, 0.18), transparent 34rem),
-        #101114;
+        var(--surface-0);
 
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
@@ -233,6 +249,376 @@ select:disabled,
 textarea:disabled {
     cursor: not-allowed;
     opacity: 0.62;
+}
+
+.left-rail,
+.character-panel {
+    border: 0;
+    background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+}
+
+.left-rail {
+    box-shadow: inset -1px 0 0 var(--line-subtle);
+}
+
+.character-panel {
+    box-shadow: inset 1px 0 0 var(--line-subtle);
+}
+
+.chat-header,
+.side-panel-header,
+.modal-header,
+.character-dialog-header,
+.settings-card > header,
+.composer-staged-images,
+.plugin-modal > header {
+    border-color: var(--line-subtle);
+}
+
+.plugin-sidebar-panel,
+.connection-provider-panel,
+.connection-actions,
+.plugin-config-panel,
+.profile-bar-editor,
+.lorebook-list-section + .lorebook-list-section,
+.character-form,
+.persona-bar {
+    border-color: var(--line-subtle);
+}
+
+.sidebar-filter-bar,
+.context-tabs,
+.inline-group-segments,
+.plugins-view-switcher,
+.marketplace-filter-pills,
+.preset-subnav,
+.settings-segmented-control,
+.swipe-controls {
+    border: 0;
+    background: var(--surface-recessed);
+    box-shadow: var(--ring-control);
+}
+
+.context-tabs button.active,
+.inline-group-segments button.active,
+.plugins-view-switcher button.active,
+.preset-subnav button.active,
+.settings-segmented-control button.active,
+.marketplace-filter-pills .pill-active {
+    background: var(--surface-4);
+    box-shadow: var(--shadow-soft);
+    color: #ececf1;
+}
+
+.mode-toggle {
+    border-radius: 10px;
+    background: var(--surface-recessed);
+    box-shadow: var(--ring-control);
+    padding: 4px;
+}
+
+.mode-toggle button {
+    border: 0;
+    height: 34px;
+    border-radius: 7px;
+}
+
+.mode-toggle button.active {
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.24);
+}
+
+.mobile-sidebar-toggle,
+.mobile-character-toggle,
+.icon-button,
+.plugin-header-actions button,
+.rail-icon-button,
+.new-chat-button.secondary,
+.inline-group-actions button,
+.character-panel-actions button,
+.group-member-row button,
+.secondary-button,
+.message-confirm-actions button,
+.message-edit-actions button,
+.composer-plugin-actions button,
+.inline-field-row button,
+.connection-actions button,
+.button-row button,
+.plugins-heading button,
+.plugin-card-actions button,
+.preset-section-header button,
+.settings-nav-toggle,
+.persona-settings,
+.persona-main,
+.status-menu button,
+.persona-picker-panel button,
+.category-tab {
+    border-color: transparent;
+    background-color: var(--surface-3);
+    box-shadow: var(--ring-control);
+}
+
+.mobile-sidebar-toggle:hover,
+.mobile-character-toggle:hover,
+.icon-button:hover,
+.plugin-header-actions button:hover,
+.rail-icon-button:hover,
+.new-chat-button.secondary:hover:not(:disabled),
+.inline-group-actions button:hover:not(:disabled),
+.character-panel-actions button:hover,
+.group-member-row button:hover:not(:disabled),
+.secondary-button:hover,
+.message-confirm-actions button:hover,
+.message-edit-actions button:hover,
+.composer-plugin-actions button:hover:not(:disabled),
+.inline-field-row button:hover,
+.connection-actions button:hover,
+.button-row button:hover,
+.plugins-heading button:hover,
+.plugin-card-actions button:hover,
+.settings-nav-toggle:hover,
+.persona-settings:hover,
+.persona-main:hover,
+.persona-main[aria-expanded="true"],
+.status-menu button:hover,
+.status-menu button.active,
+.persona-picker-panel button:hover,
+.persona-picker-panel button.active,
+.category-tab:hover,
+.category-tab-active {
+    border-color: transparent;
+    background-color: var(--surface-active);
+    color: #ececf1;
+}
+
+.character-row:hover,
+.chat-row:hover,
+.character-row.active,
+.chat-row.active,
+.settings-nav button:hover,
+.settings-nav button.active,
+.prompt-row.active,
+.prompt-row:hover,
+.personas-list > div:hover,
+.personas-list > div.active,
+.lorebook-list-section > div:hover,
+.lorebook-list-section > div.active {
+    border-color: transparent;
+    background: var(--surface-hover);
+    box-shadow: var(--ring-control);
+}
+
+.inline-group-create,
+.inline-group-preview,
+.group-avatar-option,
+.group-member-row,
+.author-note-card,
+.connection-fieldset,
+.connection-card,
+.plugin-card,
+.plugin-config-section,
+.profile-bar,
+.lorebook-list-section > div,
+.personas-list > div,
+.persona-detail-header,
+.prompt-row,
+.compiled-message,
+.settings-card,
+.settings-message-preview,
+.composer,
+.message-reasoning {
+    border: 0;
+    background: var(--surface-2);
+    box-shadow: var(--ring-subtle);
+}
+
+.rail-empty-state,
+.empty-plugin-state,
+.empty-lorebook-state {
+    border-color: rgba(255, 255, 255, 0.075);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.sidebar-filter-bar,
+.inline-group-field input,
+.rename-chat-dialog input,
+.author-note-card textarea,
+.author-note-settings input,
+.author-note-settings select,
+.character-form input,
+.character-form select,
+.character-form textarea,
+.character-dialog-body input,
+.character-dialog-body textarea,
+.tool-window input,
+.tool-window select,
+.tool-window textarea,
+.profile-bar-select select,
+.profile-bar-editor input,
+.profile-bar-editor textarea,
+.marketplace-search,
+.settings-text-input,
+.settings-number-input,
+.message-edit-panel textarea {
+    border: 0;
+    background-color: var(--surface-3);
+    box-shadow: var(--ring-control), inset 0 2px 5px rgba(0, 0, 0, 0.12);
+}
+
+.sidebar-filter-bar:focus-within,
+.inline-group-field input:focus,
+.rename-chat-dialog input:focus,
+.author-note-card textarea:focus,
+.author-note-settings input:focus,
+.author-note-settings select:focus,
+.character-form input:focus,
+.character-form select:focus,
+.character-form textarea:focus,
+.character-dialog-body input:focus,
+.character-dialog-body textarea:focus,
+.tool-window input:focus,
+.tool-window select:focus,
+.tool-window textarea:focus,
+.profile-bar-select select:focus,
+.profile-bar-editor input:focus,
+.profile-bar-editor textarea:focus,
+.marketplace-search:focus,
+.settings-text-input:focus,
+.settings-number-input:focus,
+.message-edit-panel textarea:focus {
+    background-color: color-mix(in srgb, var(--surface-3) 82%, white);
+    box-shadow: var(--ring-focus), inset 0 2px 5px rgba(0, 0, 0, 0.12);
+}
+
+.message-menu,
+.character-context-menu,
+.status-menu,
+.persona-picker-panel,
+.export-menu,
+.message-confirm-dialog,
+.character-dialog,
+.plugin-modal,
+.settings-modal {
+    border: 0;
+    background: #17191f;
+    box-shadow: var(--shadow-floating);
+}
+
+.message-menu,
+.character-context-menu,
+.status-menu,
+.persona-picker-panel,
+.export-menu {
+    box-shadow: var(--shadow-menu);
+}
+
+.message-confirm-dialog blockquote {
+    border: 0;
+    background: var(--surface-0);
+    box-shadow: var(--ring-control);
+}
+
+.group-avatar,
+.composer-staged-image,
+.message-attachments a,
+.profile-avatar-button {
+    border: 0;
+    box-shadow: var(--ring-control);
+}
+
+.chat-error,
+.rail-error,
+.rail-status,
+.connection-status,
+.preset-warning-list,
+.preset-confirm-details,
+.lorebook-manager-bridge,
+.app-warning-banner {
+    box-shadow: var(--ring-subtle);
+}
+
+.message-list,
+.character-dialog-body,
+.character-form,
+.chat-details-panel,
+.settings-content,
+.settings-nav,
+.prompt-list,
+.compiled-message-list,
+.lorebook-list,
+.personas-list,
+.persona-picker-list,
+.group-avatar-grid,
+.message-menu {
+    scrollbar-color: #454b5b transparent;
+}
+
+.message-list::-webkit-scrollbar,
+.character-dialog-body::-webkit-scrollbar,
+.character-form::-webkit-scrollbar,
+.chat-details-panel::-webkit-scrollbar,
+.settings-content::-webkit-scrollbar,
+.settings-nav::-webkit-scrollbar,
+.prompt-list::-webkit-scrollbar,
+.compiled-message-list::-webkit-scrollbar,
+.lorebook-list::-webkit-scrollbar,
+.personas-list::-webkit-scrollbar,
+.persona-picker-list::-webkit-scrollbar,
+.group-avatar-grid::-webkit-scrollbar,
+.message-menu::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.message-list::-webkit-scrollbar-track,
+.character-dialog-body::-webkit-scrollbar-track,
+.character-form::-webkit-scrollbar-track,
+.chat-details-panel::-webkit-scrollbar-track,
+.settings-content::-webkit-scrollbar-track,
+.settings-nav::-webkit-scrollbar-track,
+.prompt-list::-webkit-scrollbar-track,
+.compiled-message-list::-webkit-scrollbar-track,
+.lorebook-list::-webkit-scrollbar-track,
+.personas-list::-webkit-scrollbar-track,
+.persona-picker-list::-webkit-scrollbar-track,
+.group-avatar-grid::-webkit-scrollbar-track,
+.message-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.message-list::-webkit-scrollbar-thumb,
+.character-dialog-body::-webkit-scrollbar-thumb,
+.character-form::-webkit-scrollbar-thumb,
+.chat-details-panel::-webkit-scrollbar-thumb,
+.settings-content::-webkit-scrollbar-thumb,
+.settings-nav::-webkit-scrollbar-thumb,
+.prompt-list::-webkit-scrollbar-thumb,
+.compiled-message-list::-webkit-scrollbar-thumb,
+.lorebook-list::-webkit-scrollbar-thumb,
+.personas-list::-webkit-scrollbar-thumb,
+.persona-picker-list::-webkit-scrollbar-thumb,
+.group-avatar-grid::-webkit-scrollbar-thumb,
+.message-menu::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: rgba(129, 139, 164, 0.38);
+    background-clip: content-box;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover,
+.character-dialog-body::-webkit-scrollbar-thumb:hover,
+.character-form::-webkit-scrollbar-thumb:hover,
+.chat-details-panel::-webkit-scrollbar-thumb:hover,
+.settings-content::-webkit-scrollbar-thumb:hover,
+.settings-nav::-webkit-scrollbar-thumb:hover,
+.prompt-list::-webkit-scrollbar-thumb:hover,
+.compiled-message-list::-webkit-scrollbar-thumb:hover,
+.lorebook-list::-webkit-scrollbar-thumb:hover,
+.personas-list::-webkit-scrollbar-thumb:hover,
+.persona-picker-list::-webkit-scrollbar-thumb:hover,
+.group-avatar-grid::-webkit-scrollbar-thumb:hover,
+.message-menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(157, 168, 196, 0.52);
+    background-clip: content-box;
 }
 
 @media (max-width: 1120px) {
