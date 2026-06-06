@@ -1,5 +1,5 @@
 import { ImagePlus, SendHorizonal, Square, X } from "lucide-preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import {
     getPluginComposerActions,
@@ -59,7 +59,7 @@ export function MessageComposer({
         [],
     );
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const composer = composerRef.current;
         if (!composer) return;
 
