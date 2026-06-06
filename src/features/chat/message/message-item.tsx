@@ -47,8 +47,8 @@ export type MessageItemProps = {
     message: Message;
     mode: ChatMode;
     openMenuRef: { current: HTMLDivElement | null };
+    getPluginSnapshot: () => PluginAppSnapshot;
     pluginMessageActions: PluginMessageAction[];
-    pluginSnapshot: PluginAppSnapshot;
     renderer?: MessageRenderer;
     showRpCharacterImages: boolean;
     showTimestamps: boolean;
@@ -79,8 +79,8 @@ export const MessageItem = memo(function MessageItem({
     message,
     mode,
     openMenuRef,
+    getPluginSnapshot,
     pluginMessageActions,
-    pluginSnapshot,
     renderer,
     showRpCharacterImages,
     showTimestamps,
@@ -248,7 +248,7 @@ export const MessageItem = memo(function MessageItem({
                                             void action.run({
                                                 content: getMessageContent(latestMessage),
                                                 message: latestMessage,
-                                                snapshot: pluginSnapshot,
+                                                snapshot: getPluginSnapshot(),
                                             });
                                         }}
                                     >
@@ -331,8 +331,8 @@ function areMessageItemPropsEqual(
         previous.menuPlacement === next.menuPlacement &&
         previous.message === next.message &&
         previous.mode === next.mode &&
+        previous.getPluginSnapshot === next.getPluginSnapshot &&
         previous.pluginMessageActions === next.pluginMessageActions &&
-        previous.pluginSnapshot === next.pluginSnapshot &&
         previous.renderer === next.renderer &&
         previous.showRpCharacterImages === next.showRpCharacterImages &&
         previous.showTimestamps === next.showTimestamps

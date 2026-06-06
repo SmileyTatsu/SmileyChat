@@ -39,7 +39,7 @@ type MessageListProps = {
     onEditMessage: (messageId: string, content: string) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
-    pluginSnapshot: PluginAppSnapshot;
+    getPluginSnapshot: () => PluginAppSnapshot;
 };
 
 export const MessageList = memo(function MessageList({
@@ -59,7 +59,7 @@ export const MessageList = memo(function MessageList({
     onEditMessage,
     onNextSwipe,
     onPreviousSwipe,
-    pluginSnapshot,
+    getPluginSnapshot,
 }: MessageListProps) {
     const listRef = useRef<HTMLDivElement>(null);
     const openMenuRef = useRef<HTMLDivElement>(null);
@@ -398,8 +398,8 @@ export const MessageList = memo(function MessageList({
                             message={message}
                             mode={mode}
                             openMenuRef={openMenuRef}
+                            getPluginSnapshot={getPluginSnapshot}
                             pluginMessageActions={pluginMessageActions}
-                            pluginSnapshot={pluginSnapshot}
                             renderer={messageRenderers[0]}
                             showRpCharacterImages={showRpCharacterImages}
                             showTimestamps={showTimestamps}

@@ -40,6 +40,7 @@ type ChatWorkspaceProps = {
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
     pluginComposerState?: PluginComposerStatePatch;
+    getPluginSnapshot: () => PluginAppSnapshot;
     pluginSnapshot: PluginAppSnapshot;
 };
 
@@ -67,6 +68,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     onToggleSidebar,
     onToggleCharacter,
     pluginComposerState,
+    getPluginSnapshot,
     pluginSnapshot,
 }: ChatWorkspaceProps) {
     return (
@@ -112,7 +114,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     onEditMessage={onEditMessage}
                     onNextSwipe={onNextSwipe}
                     onPreviousSwipe={onPreviousSwipe}
-                    pluginSnapshot={pluginSnapshot}
+                    getPluginSnapshot={getPluginSnapshot}
                 />
             )}
             {!emptyState && (

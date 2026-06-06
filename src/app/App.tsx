@@ -218,6 +218,7 @@ export function App() {
     const latestStartNewChatForWorkspaceRef = useRef(startNewChat);
     const latestSelectCharacterForPluginsRef = useRef(selectCharacter);
     const latestGenerateModelForPluginsRef = useRef(generatePluginModelResponse);
+    const latestPluginSnapshotRef = useRef<PluginAppSnapshot | undefined>();
     const activePresetForPlugins =
         presetCollection.presets.find(
             (preset) => preset.id === presetCollection.activePresetId,
@@ -446,6 +447,14 @@ export function App() {
             userStatus,
         ],
     );
+    latestPluginSnapshotRef.current = pluginSnapshot;
+    const getPluginSnapshotForActions = useCallback(() => {
+        if (!latestPluginSnapshotRef.current) {
+            throw new Error("Plugin snapshot is not available yet.");
+        }
+
+        return latestPluginSnapshotRef.current;
+    }, []);
     const handleCreateCharacterFromEmptyState = useCallback(() => {
         void latestCreateCharacterForWorkspaceRef.current();
     }, []);
@@ -900,6 +909,7 @@ export function App() {
                 onToggleSidebar={handleToggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
+                getPluginSnapshot={getPluginSnapshotForActions}
                 pluginSnapshot={pluginSnapshot}
             />
 
