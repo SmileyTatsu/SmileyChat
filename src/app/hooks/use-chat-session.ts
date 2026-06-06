@@ -30,7 +30,6 @@ import type {
     UserStatus,
 } from "#frontend/types";
 
-import type { ActiveGeneration } from "./use-chat-generation-state";
 import { useChatGenerationState } from "./use-chat-generation-state";
 import { useMessageOperations } from "./use-message-operations";
 import { usePromptGeneration } from "./use-prompt-generation";
