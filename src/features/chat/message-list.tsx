@@ -68,6 +68,7 @@ export const MessageList = memo(function MessageList({
     const isLoadingEarlierRef = useRef(false);
     const needsInitialBottomScrollRef = useRef(true);
     const shouldAutoScrollRef = useRef(true);
+    const wasStreamingRef = useRef(false);
     const [visibleCount, setVisibleCount] = useState(() =>
         normalizeMessageWindowSize(initialMessageCount),
     );
@@ -94,6 +95,7 @@ export const MessageList = memo(function MessageList({
     );
 
     const lastMessage = messages[messages.length - 1];
+    const isStreamActive = Boolean(isTyping || pendingSwipeMessageId);
     const keyboardSwipeTarget = useMemo(
         () => findKeyboardSwipeTarget(messages),
         [messages],
@@ -111,13 +113,19 @@ export const MessageList = memo(function MessageList({
     ].join(":");
 
     useEffect(() => {
+        const streamJustStarted = isStreamActive && !wasStreamingRef.current;
+        wasStreamingRef.current = isStreamActive;
+
         const list = listRef.current;
         if (!list || !autoScroll || !shouldAutoScrollRef.current) {
             return;
         }
 
-        list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
-    }, [autoScroll, errorMessage, isTyping, pendingSwipeMessageId, scrollVersion]);
+        list.scrollTo({
+            top: list.scrollHeight,
+            behavior: isStreamActive && !streamJustStarted ? "auto" : "smooth",
+        });
+    }, [autoScroll, errorMessage, isStreamActive, scrollVersion]);
 
     useEffect(() => {
         if (!openMenuMessageId) {
@@ -517,7 +525,7 @@ export const MessageList = memo(function MessageList({
             return;
         }
 
-        list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+        list.scrollTo({ top: list.scrollHeight, behavior: "auto" });
     }
 });
 
