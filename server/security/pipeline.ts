@@ -10,7 +10,14 @@
 // alongside the existing token-issuance logic.
 
 import { checkBasicAuth } from "./basic-auth";
-import { checkIpAllowlist } from "./ip-allowlist";
+import { getTrustedProxyCidrs } from "../config/runtime-config";
+import {
+    checkIpAllowlist,
+    ipToBytes,
+    matchesCidr,
+    parseCidr,
+    type CidrEntry,
+} from "./ip-allowlist";
 import {
     applyRateLimitHeaders,
     buildRateLimitedResponse,
@@ -25,14 +32,62 @@ export interface SecurityContext {
     rateLimit: RateLimitResult | null;
 }
 
+let cachedTrustedProxies: {
+    raw: string | null;
+    entries: CidrEntry[] | null;
+} | null = null;
+
+function getTrustedProxies(): CidrEntry[] | null {
+    const raw = getTrustedProxyCidrs();
+    if (!cachedTrustedProxies || cachedTrustedProxies.raw !== raw) {
+        const entries: CidrEntry[] = [];
+        if (raw) {
+            for (const part of raw.split(",")) {
+                const trimmed = part.trim();
+                if (!trimmed) continue;
+                const cidr = parseCidr(trimmed);
+                if (!cidr) {
+                    console.warn(`[trusted-proxies] Ignoring invalid entry: "${trimmed}"`);
+                    continue;
+                }
+                entries.push(cidr);
+            }
+        }
+
+        cachedTrustedProxies = {
+            raw,
+            entries: entries.length > 0 ? entries : null,
+        };
+    }
+
+    return cachedTrustedProxies.entries;
+}
+
+function isTrustedProxyIp(ip: string): boolean {
+    const trustedProxies = getTrustedProxies();
+    if (!trustedProxies) return false;
+
+    const bytes = ipToBytes(ip);
+    if (!bytes) return false;
+
+    return trustedProxies.some((entry) => matchesCidr(bytes, entry));
+}
+
+function firstForwardedForIp(request: Request): string | null {
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    if (!forwardedFor) return null;
+
+    const first = forwardedFor.split(",")[0]?.trim();
+    return first && ipToBytes(first) ? first : null;
+}
+
 export function resolveClientIp(request: Request, server: Bun.Server<unknown>): string {
     const sockAddr = server.requestIP(request);
-    if (sockAddr?.address) return sockAddr.address;
-
-    const forwardedFor = request.headers.get("x-forwarded-for");
-    if (forwardedFor) {
-        const first = forwardedFor.split(",")[0]?.trim();
-        if (first) return first;
+    if (sockAddr?.address) {
+        if (isTrustedProxyIp(sockAddr.address)) {
+            return firstForwardedForIp(request) ?? sockAddr.address;
+        }
+        return sockAddr.address;
     }
 
     return "0.0.0.0";

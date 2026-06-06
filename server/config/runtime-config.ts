@@ -78,6 +78,10 @@ export function getTrustedPrivateNetworksOverride() {
     return normalizeEnvValue(Bun.env.SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS);
 }
 
+export function getTrustedProxyCidrs() {
+    return normalizeEnvValue(Bun.env.SMILEYCHAT_TRUSTED_PROXIES);
+}
+
 export function getBasicAuthConfig() {
     return {
         user: normalizeEnvValue(Bun.env.SMILEYCHAT_BASIC_AUTH_USER),
