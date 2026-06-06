@@ -2,6 +2,7 @@ import type { Message, MessageSwipe } from "#frontend/types";
 
 import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
+import { normalizeChat } from "./normalize";
 import type { ChatSession } from "./types";
 
 export type SillyTavernChatImportInput = {
@@ -17,6 +18,16 @@ export function importSillyTavernChat({
 }: SillyTavernChatImportInput): ChatSession {
     if (!characterId.trim()) {
         throw new Error("A target character is required to import a chat.");
+    }
+
+    const nativeChat = importSmileyChatChat({
+        raw,
+        characterId,
+        sourceFileName,
+    });
+
+    if (nativeChat) {
+        return nativeChat;
     }
 
     const lines = raw
@@ -69,6 +80,61 @@ export function importSillyTavernChat({
         messages,
         createdAt: now,
         updatedAt: now,
+    };
+}
+
+function importSmileyChatChat({
+    raw,
+    characterId,
+    sourceFileName,
+}: SillyTavernChatImportInput): ChatSession | undefined {
+    let value: unknown;
+
+    try {
+        value = JSON.parse(raw);
+    } catch {
+        return undefined;
+    }
+
+    if (!isRecord(value) || !Array.isArray(value.messages)) {
+        return undefined;
+    }
+
+    const now = new Date().toISOString();
+    const title = asString(value.title).trim();
+    const defaultTitle =
+        asString(value.defaultTitle).trim() || deriveImportTitle(sourceFileName);
+    const chat = normalizeChat({
+        ...value,
+        id: createId("chat"),
+        kind: "direct",
+        characterId,
+        members: undefined,
+        group: undefined,
+        defaultTitle,
+        ...(title ? { title } : {}),
+        createdAt: asIsoString(value.createdAt) || now,
+        updatedAt: now,
+    });
+
+    if (!chat) {
+        throw new Error("Chat file is not a valid SmileyChat chat.");
+    }
+
+    if (chat.messages.length === 0) {
+        throw new Error("Chat file contains no importable messages.");
+    }
+
+    return {
+        ...chat,
+        messages: chat.messages.map((message) =>
+            message.role === "character"
+                ? {
+                      ...message,
+                      authorCharacterId: characterId,
+                  }
+                : message,
+        ),
     };
 }
 
@@ -161,4 +227,8 @@ function asIsoString(value: unknown): string {
     }
 
     return Number.isFinite(Date.parse(value)) ? value : "";
+}
+
+function asString(value: unknown) {
+    return typeof value === "string" ? value : "";
 }
