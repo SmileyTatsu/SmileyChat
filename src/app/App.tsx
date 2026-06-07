@@ -90,6 +90,7 @@ import {
 const MOBILE_SIDEBAR_BREAKPOINT = 820;
 const CHARACTER_DRAWER_BREAKPOINT = 1120;
 const CONNECTION_SETTINGS_SAVE_DEBOUNCE_MS = 400;
+const BACKDROP_TRANSITION_MS = 200;
 
 function useMediaQuery(query: string) {
     const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
@@ -1058,25 +1059,75 @@ function ResponsiveBackdrops({
 }) {
     return (
         <>
-            {isMobileLayout && sidebarOpenSignal.value && (
-                <div
-                    className="sidebar-mobile-backdrop open"
-                    role="presentation"
-                    onClick={() => {
-                        mobileSidebarOpen.value = false;
-                    }}
-                />
-            )}
-            {isCharacterDrawerLayout && hasCharacters && characterOpenSignal.value && (
-                <div
-                    className="character-mobile-backdrop open"
-                    role="presentation"
-                    onClick={() => {
-                        mobileCharacterOpen.value = false;
-                    }}
-                />
-            )}
+            <AnimatedBackdrop
+                className="sidebar-mobile-backdrop"
+                isOpen={isMobileLayout && sidebarOpenSignal.value}
+                onClick={() => {
+                    mobileSidebarOpen.value = false;
+                }}
+            />
+            <AnimatedBackdrop
+                className="character-mobile-backdrop"
+                isOpen={
+                    isCharacterDrawerLayout && hasCharacters && characterOpenSignal.value
+                }
+                onClick={() => {
+                    mobileCharacterOpen.value = false;
+                }}
+            />
         </>
+    );
+}
+
+function AnimatedBackdrop({
+    className,
+    isOpen,
+    onClick,
+}: {
+    className: string;
+    isOpen: boolean;
+    onClick: () => void;
+}) {
+    const [isMounted, setIsMounted] = useState(isOpen);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        let animationFrame = 0;
+        let timeout = 0;
+
+        if (isOpen) {
+            setIsMounted(true);
+            animationFrame = window.requestAnimationFrame(() => {
+                setIsVisible(true);
+            });
+        } else {
+            setIsVisible(false);
+            timeout = window.setTimeout(() => {
+                setIsMounted(false);
+            }, BACKDROP_TRANSITION_MS);
+        }
+
+        return () => {
+            if (animationFrame) {
+                window.cancelAnimationFrame(animationFrame);
+            }
+
+            if (timeout) {
+                window.clearTimeout(timeout);
+            }
+        };
+    }, [isOpen]);
+
+    if (!isMounted) {
+        return null;
+    }
+
+    return (
+        <div
+            className={`${className}${isVisible ? " open" : ""}`}
+            role="presentation"
+            onClick={onClick}
+        />
     );
 }
 

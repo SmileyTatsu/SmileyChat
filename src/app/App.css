@@ -64,12 +64,14 @@
     z-index: 40;
     background: rgba(0, 0, 0, 0.6);
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.2s ease;
 }
 
 .sidebar-mobile-backdrop.open,
 .character-mobile-backdrop.open {
     opacity: 1;
+    pointer-events: auto;
 }
 
 .app-shell.density-compact {
@@ -630,7 +632,7 @@ textarea:disabled {
         grid-template-columns: 42px minmax(360px, 1fr) auto;
     }
 
-    .character-mobile-backdrop.open {
+    .character-mobile-backdrop {
         display: block;
     }
 
@@ -678,7 +680,7 @@ textarea:disabled {
         grid-template-columns: 1fr;
     }
 
-    .sidebar-mobile-backdrop.open {
+    .sidebar-mobile-backdrop {
         display: block;
     }
 
