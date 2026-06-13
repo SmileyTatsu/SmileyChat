@@ -13,6 +13,7 @@ import {
     loadLorebookSummaries,
     loadPluginManifests,
     loadPresetCollection as loadPresetCollectionRequest,
+    localApiFetch,
     localApiErrorEventName,
     saveAppPreferences,
     saveConnectionSecrets,
@@ -498,17 +499,21 @@ export function App() {
         const safeSettings = sanitizeConnectionSettings(settings);
         const secrets = sanitizeConnectionSecrets(extractConnectionSecrets(settings));
 
-        void fetch("/api/connections", {
+        void localApiFetch("/api/connections", {
             body: JSON.stringify(safeSettings),
             headers: { "Content-Type": "application/json" },
             keepalive: true,
             method: "PUT",
+        }).catch((error) => {
+            console.warn("Could not persist connection settings before unload:", error);
         });
-        void fetch("/api/connections/secrets", {
+        void localApiFetch("/api/connections/secrets", {
             body: JSON.stringify(secrets),
             headers: { "Content-Type": "application/json" },
             keepalive: true,
             method: "PUT",
+        }).catch((error) => {
+            console.warn("Could not persist connection secrets before unload:", error);
         });
     }
 

@@ -18,6 +18,8 @@ const DEFAULT_PORT = 4173;
 const DEFAULT_FRONTEND_PORT = 5173;
 const DEFAULT_BASIC_AUTH_REALM = "SmileyChat";
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 600;
+const DEFAULT_PLUGIN_REGISTRY_URL =
+    "https://raw.githubusercontent.com/SmileyTatsu/smileychat-plugins/main/registry.json";
 
 function normalizeEnvValue(value: string | undefined | null): string | null {
     if (value === undefined || value === null) return null;
@@ -30,6 +32,25 @@ function parseCsv(value: string | undefined | null): string[] {
         .split(",")
         .map((entry) => entry.trim())
         .filter(Boolean);
+}
+
+function normalizeHttpsUrl(value: string | undefined | null, fallback: string) {
+    const candidate = normalizeEnvValue(value) ?? fallback;
+
+    try {
+        const url = new URL(candidate);
+
+        if (url.protocol === "https:") {
+            return url.toString();
+        }
+    } catch {
+        // Warn below with the original value.
+    }
+
+    console.warn(
+        `[runtime-config] Invalid HTTPS URL "${candidate}"; falling back to ${fallback}.`,
+    );
+    return fallback;
 }
 
 function isEnabledFlag(value: string | undefined | null) {
@@ -135,6 +156,22 @@ export function isAdminSecretRequiredOnLoopback() {
 
 export function isPluginsOutboundFetchAllowed() {
     return isEnabledFlag(Bun.env.SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH);
+}
+
+export function getPluginRegistryUrl() {
+    return normalizeHttpsUrl(
+        Bun.env.SMILEYCHAT_PLUGIN_REGISTRY_URL,
+        DEFAULT_PLUGIN_REGISTRY_URL,
+    );
+}
+
+export function getPluginRegistryAllowedHostnames() {
+    const registryHost = new URL(getPluginRegistryUrl()).hostname.toLowerCase();
+    const extraHosts = parseCsv(Bun.env.SMILEYCHAT_PLUGIN_REGISTRY_ALLOWED_HOSTS).map(
+        (host) => host.toLowerCase(),
+    );
+
+    return Array.from(new Set([registryHost, ...extraHosts]));
 }
 
 export function getLogLevel() {

@@ -17,15 +17,16 @@ import {
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
 
-import { isPluginsOutboundFetchAllowed } from "./config/runtime-config";
+import {
+    getPluginRegistryAllowedHostnames,
+    getPluginRegistryUrl,
+    isPluginsOutboundFetchAllowed,
+} from "./config/runtime-config";
 import { BadRequestError, HttpError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
 import { safeFetch } from "./security/safe-fetch";
 
 const corePluginIds = new Set(["smiley-chat-formatter", "lorebooks"]);
-const REGISTRY_URL =
-    "https://raw.githubusercontent.com/SmileyTatsu/smileychat-plugins/main/registry.json";
-const REGISTRY_ALLOWED_HOSTS = ["raw.githubusercontent.com"];
 const PLUGIN_INSTALL_MAX_FILE_BYTES = 10 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 const PLUGIN_REGISTRY_MAX_BYTES = 2 * 1024 * 1024;
@@ -123,10 +124,12 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
 }
 
 export async function readPluginRegistry() {
-    const response = await safeFetch(REGISTRY_URL, {
+    const registryUrl = getPluginRegistryUrl();
+    const registryAllowedHostnames = getPluginRegistryAllowedHostnames();
+    const response = await safeFetch(registryUrl, {
         maxResponseBytes: PLUGIN_REGISTRY_MAX_BYTES,
         policy: {
-            allowedHostnames: REGISTRY_ALLOWED_HOSTS,
+            allowedHostnames: registryAllowedHostnames,
             allowedProtocols: ["https:"],
         },
     });
@@ -141,7 +144,7 @@ export async function readPluginRegistry() {
     const bytes = await readResponseBytes(
         response,
         PLUGIN_REGISTRY_MAX_BYTES,
-        REGISTRY_URL,
+        registryUrl,
     );
 
     try {
@@ -163,10 +166,12 @@ export async function installVerifiedPlugin(body: unknown) {
         (body as Record<string, unknown>).pluginId,
         "Plugin ID is required.",
     );
-    const registryResponse = await safeFetch(REGISTRY_URL, {
+    const registryUrl = getPluginRegistryUrl();
+    const registryAllowedHostnames = getPluginRegistryAllowedHostnames();
+    const registryResponse = await safeFetch(registryUrl, {
         maxResponseBytes: PLUGIN_REGISTRY_MAX_BYTES,
         policy: {
-            allowedHostnames: REGISTRY_ALLOWED_HOSTS,
+            allowedHostnames: registryAllowedHostnames,
             allowedProtocols: ["https:"],
         },
     });
@@ -181,7 +186,7 @@ export async function installVerifiedPlugin(body: unknown) {
     const registryBytes = await readResponseBytes(
         registryResponse,
         PLUGIN_REGISTRY_MAX_BYTES,
-        REGISTRY_URL,
+        registryUrl,
     );
     let registry: PluginRegistry;
     try {
@@ -218,7 +223,11 @@ export async function installVerifiedPlugin(body: unknown) {
 
         for (const [fileKey, fileEntry] of Object.entries(registryPlugin.files)) {
             const targetPath = resolveRegistryFilePath(tempRoot, fileKey);
-            const downloaded = await downloadRegistryFile(fileEntry, totalBytes);
+            const downloaded = await downloadRegistryFile(
+                fileEntry,
+                totalBytes,
+                registryAllowedHostnames,
+            );
             totalBytes += downloaded.bytes.byteLength;
 
             if (totalBytes > PLUGIN_INSTALL_MAX_TOTAL_BYTES) {
@@ -426,12 +435,13 @@ function resolveRegistryFilePath(root: string, fileKey: string) {
 async function downloadRegistryFile(
     file: { url: string; sha256: string },
     previousTotalBytes: number,
+    registryAllowedHostnames: string[],
 ) {
     const parsedUrl = new URL(file.url);
 
     if (
         parsedUrl.protocol !== "https:" ||
-        !REGISTRY_ALLOWED_HOSTS.includes(parsedUrl.hostname.toLowerCase())
+        !registryAllowedHostnames.includes(parsedUrl.hostname.toLowerCase())
     ) {
         throw new BadRequestError("Registry file URL host is not trusted.");
     }
@@ -439,7 +449,7 @@ async function downloadRegistryFile(
     const response = await safeFetch(parsedUrl, {
         maxResponseBytes: PLUGIN_INSTALL_MAX_FILE_BYTES,
         policy: {
-            allowedHostnames: REGISTRY_ALLOWED_HOSTS,
+            allowedHostnames: registryAllowedHostnames,
             allowedProtocols: ["https:"],
         },
     });

@@ -23,34 +23,45 @@ const csrfHeaderName = "x-smileychat-csrf";
 const csrfMagicHeaderName = "x-smileychat-csrf-magic";
 const csrfMagicValue = "1";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const defaultApiBasePath = "/api";
 
 export const localApiErrorEventName = "smileychat:local-api-error";
 
 let csrfToken: string | undefined;
 
+export function localApiPath(path: string) {
+    if (/^https?:\/\//i.test(path)) {
+        return path;
+    }
+
+    const basePath = normalizeApiBasePath(
+        import.meta.env.VITE_SMILEYCHAT_API_BASE_PATH,
+    );
+    const relativePath = path.startsWith(defaultApiBasePath)
+        ? path.slice(defaultApiBasePath.length)
+        : path;
+
+    return `${basePath}${relativePath.startsWith("/") ? relativePath : `/${relativePath}`}`;
+}
+
 export async function localApiFetch(path: string, init: RequestInit = {}) {
     const method = (init.method ?? "GET").toUpperCase();
     const headers = new Headers(init.headers);
+    const url = localApiPath(path);
 
     if (unsafeMethods.has(method)) {
         headers.set(csrfHeaderName, await getCsrfToken());
         headers.set(csrfMagicHeaderName, csrfMagicValue);
     }
 
-    let response = await fetch(path, {
-        ...init,
-        headers,
-    });
+    let response = await fetchLocalApi(url, method, path, init, headers);
 
     if (response.status === 403 && unsafeMethods.has(method)) {
         csrfToken = undefined;
 
         headers.set(csrfHeaderName, await getCsrfToken());
         headers.set(csrfMagicHeaderName, csrfMagicValue);
-        response = await fetch(path, {
-            ...init,
-            headers,
-        });
+        response = await fetchLocalApi(url, method, path, init, headers);
     }
 
     if (response.status === 403 && unsafeMethods.has(method)) {
@@ -58,6 +69,40 @@ export async function localApiFetch(path: string, init: RequestInit = {}) {
     }
 
     return response;
+}
+
+function normalizeApiBasePath(value: unknown) {
+    if (typeof value !== "string" || !value.trim()) {
+        return defaultApiBasePath;
+    }
+
+    const trimmed = value.trim();
+
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed.replace(/\/+$/, "");
+    }
+
+    const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    return withLeadingSlash.replace(/\/+$/, "") || defaultApiBasePath;
+}
+
+async function fetchLocalApi(
+    url: string,
+    method: string,
+    originalPath: string,
+    init: RequestInit,
+    headers: Headers,
+) {
+    try {
+        return await fetch(url, {
+            ...init,
+            headers,
+        });
+    } catch {
+        throw new Error(
+            `${method} ${originalPath} failed: local API request could not reach the server.`,
+        );
+    }
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -77,7 +122,15 @@ async function getCsrfToken() {
         return csrfToken;
     }
 
-    const response = await fetch("/api/csrf");
+    let response: Response;
+
+    try {
+        response = await fetch(localApiPath("/api/csrf"));
+    } catch {
+        throw new Error(
+            "Load CSRF token failed: local API request could not reach the server.",
+        );
+    }
 
     if (!response.ok) {
         throw new Error(
