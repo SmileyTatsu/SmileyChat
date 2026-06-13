@@ -32,7 +32,8 @@
     --ring-subtle: inset 0 0 0 1px rgba(255, 255, 255, 0.045);
     --ring-control: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
     --ring-focus: 0 0 0 2px rgba(126, 160, 255, 0.42);
-    --shadow-floating: 0 24px 58px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --shadow-floating:
+        0 24px 58px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
     --shadow-menu: 0 18px 42px rgba(0, 0, 0, 0.46), 0 0 0 1px rgba(255, 255, 255, 0.05);
     --shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.2);
 
@@ -463,7 +464,9 @@ textarea:disabled {
 .message-edit-panel textarea {
     border: 0;
     background-color: var(--surface-3);
-    box-shadow: var(--ring-control), inset 0 2px 5px rgba(0, 0, 0, 0.12);
+    box-shadow:
+        var(--ring-control),
+        inset 0 2px 5px rgba(0, 0, 0, 0.12);
 }
 
 .sidebar-filter-bar:focus-within,
@@ -488,7 +491,9 @@ textarea:disabled {
 .settings-number-input:focus,
 .message-edit-panel textarea:focus {
     background-color: color-mix(in srgb, var(--surface-3) 82%, white);
-    box-shadow: var(--ring-focus), inset 0 2px 5px rgba(0, 0, 0, 0.12);
+    box-shadow:
+        var(--ring-focus),
+        inset 0 2px 5px rgba(0, 0, 0, 0.12);
 }
 
 .message-menu,

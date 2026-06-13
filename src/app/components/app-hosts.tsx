@@ -24,10 +24,7 @@ type CharacterPanelHostProps = Omit<Parameters<typeof CharacterPanel>[0], "isOpe
     isOpenSignal: ReadonlySignal<boolean>;
 };
 
-export function CharacterPanelHost({
-    isOpenSignal,
-    ...props
-}: CharacterPanelHostProps) {
+export function CharacterPanelHost({ isOpenSignal, ...props }: CharacterPanelHostProps) {
     return <CharacterPanel {...props} isOpen={isOpenSignal.value} />;
 }
 
@@ -119,7 +116,7 @@ function AnimatedBackdrop({
 
     return (
         <div
-            className={`${className}${isVisible ? " open" : ""}`}
+            className={`${className}${isVisible ? "open" : ""}`}
             role="presentation"
             onClick={onClick}
         />

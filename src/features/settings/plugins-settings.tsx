@@ -1,10 +1,4 @@
-import {
-    Boxes,
-    Layers,
-    RefreshCw,
-    Search,
-    XCircle,
-} from "lucide-preact";
+import { Boxes, Layers, RefreshCw, Search, XCircle } from "lucide-preact";
 
 import {
     PLUGIN_CATEGORIES,

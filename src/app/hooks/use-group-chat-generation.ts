@@ -72,13 +72,10 @@ export function eligibleGroupCharacters({
         .slice()
         .sort((left, right) => left.order - right.order)
         .filter((member) => !member.muted)
-        .map((member) =>
-            groupCharacters.find((item) => item.id === member.characterId),
-        )
+        .map((member) => groupCharacters.find((item) => item.id === member.characterId))
         .filter(
             (item): item is SmileyCharacter =>
-                item !== undefined &&
-                (allowSelfResponses || item.id !== lastSpeakerId),
+                item !== undefined && (allowSelfResponses || item.id !== lastSpeakerId),
         );
 }
 
@@ -102,10 +99,7 @@ function selectPooledGroupCharacter(
     availableCharacters: SmileyCharacter[],
     messages: Message[],
 ) {
-    const lastUserIndex = findLastIndex(
-        messages,
-        (message) => message.role === "user",
-    );
+    const lastUserIndex = findLastIndex(messages, (message) => message.role === "user");
     const spokenSinceUser = new Set(
         messages
             .slice(lastUserIndex + 1)

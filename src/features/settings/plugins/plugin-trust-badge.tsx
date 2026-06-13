@@ -2,11 +2,7 @@ import { CheckCircle2, Star } from "lucide-preact";
 
 import type { PluginRegistryEntry } from "#frontend/lib/api/client";
 
-export function PluginTrustBadge({
-    status,
-}: {
-    status: PluginRegistryEntry["status"];
-}) {
+export function PluginTrustBadge({ status }: { status: PluginRegistryEntry["status"] }) {
     if (status === "official") {
         return (
             <span className="plugin-trust-badge official" title="Official plugin">

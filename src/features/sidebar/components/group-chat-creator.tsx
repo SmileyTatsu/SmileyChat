@@ -92,9 +92,7 @@ export function GroupChatCreator({
                         <button
                             key={option.value}
                             type="button"
-                            className={
-                                groupGreetingMode === option.value ? "active" : ""
-                            }
+                            className={groupGreetingMode === option.value ? "active" : ""}
                             role="radio"
                             aria-checked={groupGreetingMode === option.value}
                             onClick={() => onGroupGreetingModeChange(option.value)}

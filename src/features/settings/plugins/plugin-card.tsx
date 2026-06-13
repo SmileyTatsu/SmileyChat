@@ -1,7 +1,10 @@
 import { Boxes, CheckCircle2, Power, Settings, XCircle } from "lucide-preact";
 
 import type { PluginRegistryEntry } from "#frontend/lib/api/client";
-import { getLoadedPlugins, getPluginSettingsPanels } from "#frontend/lib/plugins/registry";
+import {
+    getLoadedPlugins,
+    getPluginSettingsPanels,
+} from "#frontend/lib/plugins/registry";
 import { createPluginStorage } from "#frontend/lib/plugins/runtime";
 import {
     PLUGIN_CATEGORY_LABELS,

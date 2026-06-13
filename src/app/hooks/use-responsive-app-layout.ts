@@ -40,7 +40,10 @@ export function useResponsiveAppLayout() {
     const previousIsCharacterDrawerLayoutRef = useRef(isCharacterDrawerLayout);
 
     const sidebarOpenSignal = useMemo(
-        () => computed(() => (isMobileLayout ? mobileSidebarOpen.value : desktopSidebarOpen.value)),
+        () =>
+            computed(() =>
+                isMobileLayout ? mobileSidebarOpen.value : desktopSidebarOpen.value,
+            ),
         [isMobileLayout],
     );
     const characterOpenSignal = useMemo(
@@ -59,9 +62,7 @@ export function useResponsiveAppLayout() {
             previousIsMobileLayoutRef.current = isMobileLayout;
         }
 
-        if (
-            previousIsCharacterDrawerLayoutRef.current !== isCharacterDrawerLayout
-        ) {
+        if (previousIsCharacterDrawerLayoutRef.current !== isCharacterDrawerLayout) {
             mobileCharacterOpen.value = false;
             previousIsCharacterDrawerLayoutRef.current = isCharacterDrawerLayout;
         }

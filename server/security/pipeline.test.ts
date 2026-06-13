@@ -37,9 +37,7 @@ describe("security pipeline client IP resolution", () => {
             headers: { "x-forwarded-for": "198.51.100.25, 10.0.0.8" },
         });
 
-        expect(resolveClientIp(request, serverWithIp("10.0.0.8"))).toBe(
-            "198.51.100.25",
-        );
+        expect(resolveClientIp(request, serverWithIp("10.0.0.8"))).toBe("198.51.100.25");
     });
 
     test("falls back to the trusted proxy IP for malformed x-forwarded-for", () => {

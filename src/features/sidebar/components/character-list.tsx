@@ -64,9 +64,7 @@ export function CharacterList({
                         )}
                         <span>
                             <strong>{character.name}</strong>
-                            <small>
-                                {character.tagline || "No short description"}
-                            </small>
+                            <small>{character.tagline || "No short description"}</small>
                         </span>
                     </button>
                 ))

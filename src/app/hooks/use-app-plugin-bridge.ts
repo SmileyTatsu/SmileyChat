@@ -146,8 +146,7 @@ export function useAppPluginBridge({
                 chatSessionRef.current.injectMessage(role, content, options),
             sendMessage: (content, options) =>
                 chatSessionRef.current.sendMessage(content, options?.images),
-            switchCharacter: (characterId) =>
-                selectCharacterRef.current(characterId),
+            switchCharacter: (characterId) => selectCharacterRef.current(characterId),
         });
 
         return () => setPluginAppActionHandlers({});

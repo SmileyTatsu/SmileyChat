@@ -47,7 +47,9 @@ function getTrustedProxies(): CidrEntry[] | null {
                 if (!trimmed) continue;
                 const cidr = parseCidr(trimmed);
                 if (!cidr) {
-                    console.warn(`[trusted-proxies] Ignoring invalid entry: "${trimmed}"`);
+                    console.warn(
+                        `[trusted-proxies] Ignoring invalid entry: "${trimmed}"`,
+                    );
                     continue;
                 }
                 entries.push(cidr);

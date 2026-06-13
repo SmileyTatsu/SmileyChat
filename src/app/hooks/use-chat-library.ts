@@ -71,17 +71,14 @@ export function useChatLibrary({
     const latestChatSummariesRef = useRef(chatSummaries);
     const latestGroupCharactersRef = useRef(groupCharacters);
     const chatSelectRequestIdRef = useRef(0);
-    const {
-        flushPendingChatAutosaveWithoutStateUpdate,
-        persistChat,
-        queueChatSave,
-    } = useChatAutosave({
-        latestChatRef,
-        setActiveChat,
-        setChatLoadError,
-        setChatSummaries,
-        updateChatSummary,
-    });
+    const { flushPendingChatAutosaveWithoutStateUpdate, persistChat, queueChatSave } =
+        useChatAutosave({
+            latestChatRef,
+            setActiveChat,
+            setChatLoadError,
+            setChatSummaries,
+            updateChatSummary,
+        });
 
     latestChatRef.current = activeChat;
     latestChatSummariesRef.current = chatSummaries;

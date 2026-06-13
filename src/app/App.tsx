@@ -1,13 +1,7 @@
 import "./App.css";
 
 import { computed } from "@preact/signals";
-import {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
 import { PluginModalHost } from "#frontend/features/plugins/plugin-surfaces";

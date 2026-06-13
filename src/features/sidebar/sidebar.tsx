@@ -40,11 +40,7 @@ import { ChatList } from "./components/chat-list";
 import { CharacterList } from "./components/character-list";
 import { GroupChatCreator } from "./components/group-chat-creator";
 import { useCharacterCardDrop } from "./hooks/use-character-card-drop";
-import {
-    formatChatCount,
-    formatChatMeta,
-    normalizeFilterText,
-} from "./sidebar-helpers";
+import { formatChatCount, formatChatMeta, normalizeFilterText } from "./sidebar-helpers";
 
 type SidebarProps = {
     activeChatId: string;
