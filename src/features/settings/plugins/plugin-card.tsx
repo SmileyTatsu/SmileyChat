@@ -1,4 +1,11 @@
-import { Boxes, CheckCircle2, Power, Settings, XCircle } from "lucide-preact";
+import {
+    AlertTriangle,
+    Boxes,
+    CheckCircle2,
+    Power,
+    Settings,
+    XCircle,
+} from "lucide-preact";
 
 import type { PluginRegistryEntry } from "#frontend/lib/api/client";
 import {
@@ -43,6 +50,7 @@ export function PluginCard({
     const enabled = plugin.enabled !== false;
     const category: PluginCategory = plugin.category ?? "other";
     const CategoryIcon = CATEGORY_ICONS[category];
+    const isUnverified = plugin.source !== "core" && !registryStatus;
 
     return (
         <article className="plugin-card">
@@ -64,6 +72,15 @@ export function PluginCard({
                             {registryStatus && (
                                 <PluginTrustBadge status={registryStatus} />
                             )}
+                            {isUnverified && (
+                                <span
+                                    className="plugin-trust-badge unverified"
+                                    title="Unverified local plugin"
+                                >
+                                    <AlertTriangle size={11} />
+                                    Unverified
+                                </span>
+                            )}
                         </h3>
                         <span>{plugin.id}</span>
                     </div>
@@ -83,6 +100,8 @@ export function PluginCard({
             </header>
 
             {plugin.description && <p>{plugin.description}</p>}
+
+            {isUnverified && <UnverifiedPluginWarning plugin={plugin} />}
 
             <dl className="plugin-meta-grid">
                 <div>
@@ -172,4 +191,44 @@ export function PluginCard({
             )}
         </article>
     );
+}
+
+function UnverifiedPluginWarning({ plugin }: { plugin: PluginManifest }) {
+    const claimText =
+        plugin.permissions && plugin.permissions.length > 0
+            ? `While it claims to only use ${formatPermissionList(plugin.permissions)}, unverified plugins have full access to your browser, chats, and connection secrets.`
+            : "Even if it declares no special permissions, unverified plugins have full access to your browser, chats, and connection secrets.";
+
+    return (
+        <div className="plugin-warning-panel" role="note">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <div>
+                <strong>Warning: Unverified Plugin</strong>
+                <p>
+                    This plugin has not been reviewed by the SmileyChat team.{" "}
+                    {claimText} Only install this if you completely trust the author.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function formatPermissionList(permissions: string[]) {
+    const labels = permissions.map(formatPermissionName);
+
+    if (labels.length === 1) {
+        return labels[0];
+    }
+
+    if (labels.length === 2) {
+        return `${labels[0]} and ${labels[1]}`;
+    }
+
+    return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+function formatPermissionName(permission: string) {
+    return permission
+        .replace(/[:_-]+/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

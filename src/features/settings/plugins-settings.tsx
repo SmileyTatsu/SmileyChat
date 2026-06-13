@@ -1,4 +1,11 @@
-import { Boxes, Layers, RefreshCw, Search, XCircle } from "lucide-preact";
+import {
+    AlertTriangle,
+    Boxes,
+    Layers,
+    RefreshCw,
+    Search,
+    XCircle,
+} from "lucide-preact";
 
 import {
     PLUGIN_CATEGORIES,
@@ -58,6 +65,12 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         togglePlugin,
         updateActiveProfileDetails,
     } = pluginSettings;
+    const unverifiedLocalPlugins = plugins.filter(
+        (plugin) => plugin.source !== "core" && !registryStatusById.has(plugin.id),
+    );
+    const enabledUnverifiedCount = unverifiedLocalPlugins.filter(
+        (plugin) => plugin.enabled !== false,
+    ).length;
 
     return (
         <section className="tool-window plugins-settings">
@@ -114,6 +127,22 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     onDeleteActive={deleteActiveProfile}
                     onUpdateActiveDetails={updateActiveProfileDetails}
                 />
+            )}
+
+            {activeView === "local" && unverifiedLocalPlugins.length > 0 && (
+                <div className="plugin-global-warning" role="note">
+                    <AlertTriangle size={17} aria-hidden="true" />
+                    <p>
+                        {enabledUnverifiedCount > 0
+                            ? `${enabledUnverifiedCount} unverified local plugin${
+                                  enabledUnverifiedCount === 1 ? " is" : "s are"
+                              } enabled.`
+                            : "Unverified local plugins are installed."}{" "}
+                        Local plugins run as trusted browser code and can read chats,
+                        app state, and connection secrets. Only enable plugins from
+                        authors you trust.
+                    </p>
+                </div>
             )}
 
             <div className="marketplace-toolbar">

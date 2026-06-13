@@ -389,6 +389,12 @@
     color: #a9d1ff;
 }
 
+.plugin-title .plugin-trust-badge.unverified {
+    border: 1px solid #7a5524;
+    background: #2b2117;
+    color: #f0c879;
+}
+
 .plugin-title .plugin-installed-badge {
     border: 1px solid rgba(72, 199, 116, 0.36);
     background: rgba(72, 199, 116, 0.1);
@@ -513,6 +519,47 @@
     color: #dce2f4;
     font-size: 0.75rem;
     padding: 4px 7px;
+}
+
+.plugin-global-warning,
+.plugin-warning-panel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 9px;
+    border: 1px solid #5d4a24;
+    border-radius: 8px;
+    background: #211d16;
+    color: #f0c879;
+}
+
+.plugin-global-warning {
+    padding: 10px 11px;
+}
+
+.plugin-warning-panel {
+    padding: 10px;
+}
+
+.plugin-global-warning svg,
+.plugin-warning-panel svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+.plugin-global-warning p,
+.plugin-warning-panel p {
+    margin: 0;
+    color: #e7c98a;
+    font-size: 0.83rem;
+    line-height: 1.4;
+}
+
+.plugin-warning-panel strong {
+    display: block;
+    margin-bottom: 3px;
+    color: #ffe0a1;
+    font-size: 0.82rem;
 }
 
 .plugin-card-actions {

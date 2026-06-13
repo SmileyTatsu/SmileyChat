@@ -269,6 +269,8 @@ export function usePluginSettings() {
 
     async function togglePlugin(plugin: PluginManifest) {
         const nextEnabled = plugin.enabled === false;
+        const enablingUnverified =
+            nextEnabled && plugin.source !== "core" && !registryStatusById.has(plugin.id);
         setRequestState("loading");
 
         try {
@@ -295,7 +297,9 @@ export function usePluginSettings() {
 
             setStatusMessage(
                 `${plugin.name} ${nextEnabled ? "enabled" : "disabled"}.${
-                    plugin.source === "core" || nextEnabled || loadedState(plugin)
+                    enablingUnverified
+                        ? " This plugin is unverified; keep it enabled only if you completely trust the author."
+                        : plugin.source === "core" || nextEnabled || loadedState(plugin)
                         ? ""
                         : " Restart SmileyChat to load this plugin into the current session."
                 }`,
