@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import { uploadChatAttachments } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import type { ConnectionSettings } from "#frontend/lib/connections/config";
@@ -8,7 +7,6 @@ import {
     createCharacterErrorMessage,
     createCharacterMessage,
     createUserMessage,
-    getMessageContent,
     updateActiveSwipeContent,
 } from "#frontend/lib/messages";
 import {
@@ -31,6 +29,15 @@ import type {
 } from "#frontend/types";
 
 import { useChatGenerationState } from "./use-chat-generation-state";
+import {
+    imageUrlsToAttachments,
+    uploadMessageAttachments,
+} from "./chat-session-attachments";
+import {
+    eligibleGroupCharacters,
+    promptCharacterForGeneration,
+    selectGenerationCharacter,
+} from "./use-group-chat-generation";
 import { useMessageOperations } from "./use-message-operations";
 import { usePromptGeneration } from "./use-prompt-generation";
 
@@ -175,11 +182,13 @@ export function useChatSession({
         }
 
         const sourceMessages = sourceChat.messages;
-        const generationCharacter = selectGenerationCharacter(
+        const generationCharacter = selectGenerationCharacter({
+            character,
+            forcedCharacterId: options.forcedCharacterId,
+            groupCharacters,
+            messages: sourceMessages,
             sourceChat,
-            sourceMessages,
-            options.forcedCharacterId,
-        );
+        });
         const text = await applyInputMiddlewares(
             resolveChatMacros(draft.trim(), sourceMessages, generationCharacter),
             sourceMessages,
@@ -263,10 +272,11 @@ export function useChatSession({
                 userStatus,
                 connectionSettings,
                 {
-                    promptCharacter: promptCharacterForGeneration(
+                    promptCharacter: promptCharacterForGeneration({
+                        activeSpeaker: generationCharacter,
+                        groupCharacters,
                         sourceChat,
-                        generationCharacter,
-                    ),
+                    }),
                     sourceChat: pendingChat,
                     stream: preferences.chat.streaming,
                     trigger: options.autoTurnCount ? "auto-group" : "send",
@@ -431,7 +441,12 @@ export function useChatSession({
         );
         const generationCharacter =
             groupCharacters.find((item) => item.id === targetMessage.authorCharacterId) ??
-            selectGenerationCharacter(sourceChat, historyBeforeTarget);
+            selectGenerationCharacter({
+                character,
+                groupCharacters,
+                messages: historyBeforeTarget,
+                sourceChat,
+            });
 
         setChatError("");
         beginChatPending(chatId, messageId);
@@ -454,10 +469,11 @@ export function useChatSession({
                 userStatus,
                 connectionSettings,
                 {
-                    promptCharacter: promptCharacterForGeneration(
+                    promptCharacter: promptCharacterForGeneration({
+                        activeSpeaker: generationCharacter,
+                        groupCharacters,
                         sourceChat,
-                        generationCharacter,
-                    ),
+                    }),
                     sourceChat,
                     stream: preferences.chat.streaming,
                     targetMessageId: messageId,
@@ -613,7 +629,13 @@ export function useChatSession({
             return;
         }
 
-        if (eligibleGroupCharacters(sourceChat, sourceChat.messages).length === 0) {
+        if (
+            eligibleGroupCharacters({
+                groupCharacters,
+                messages: sourceChat.messages,
+                sourceChat,
+            }).length === 0
+        ) {
             return;
         }
 
@@ -691,223 +713,6 @@ export function useChatSession({
         }
     }
 
-    function selectGenerationCharacter(
-        sourceChat: ChatSession,
-        messages: Message[],
-        forcedCharacterId = "",
-    ) {
-        if (!isGroupChat(sourceChat) || groupCharacters.length === 0) {
-            return character;
-        }
-
-        if (forcedCharacterId) {
-            return (
-                groupCharacters.find((item) => item.id === forcedCharacterId) ?? character
-            );
-        }
-
-        const availableCharacters = eligibleGroupCharacters(sourceChat, messages);
-
-        if (availableCharacters.length === 0) {
-            return groupCharacters[0] ?? character;
-        }
-
-        const replyOrder = sourceChat.group?.replyOrder ?? "list";
-
-        if (replyOrder === "pooled") {
-            return selectPooledGroupCharacter(availableCharacters, messages);
-        }
-
-        if (replyOrder === "natural") {
-            return selectNaturalGroupCharacter(availableCharacters, messages);
-        }
-
-        return selectListGroupCharacter(availableCharacters, messages);
-    }
-
-    function eligibleGroupCharacters(sourceChat: ChatSession, messages: Message[]) {
-        if (!isGroupChat(sourceChat)) {
-            return [];
-        }
-
-        const lastMessage = messages[messages.length - 1];
-        const lastSpeakerId =
-            lastMessage?.role === "character"
-                ? lastMessage.authorCharacterId ||
-                  groupCharacters.find((item) => item.data.name === lastMessage.author)
-                      ?.id ||
-                  ""
-                : "";
-        const allowSelfResponses = sourceChat.group?.allowSelfResponses === true;
-
-        return (sourceChat.members ?? [])
-            .slice()
-            .sort((left, right) => left.order - right.order)
-            .filter((member) => !member.muted)
-            .map((member) =>
-                groupCharacters.find((item) => item.id === member.characterId),
-            )
-            .filter(
-                (item): item is SmileyCharacter =>
-                    item !== undefined &&
-                    (allowSelfResponses || item.id !== lastSpeakerId),
-            );
-    }
-
-    function selectListGroupCharacter(
-        availableCharacters: SmileyCharacter[],
-        messages: Message[],
-    ) {
-        const lastCharacterMessage = [...messages]
-            .reverse()
-            .find((message) => message.role === "character");
-        const lastIndex = availableCharacters.findIndex(
-            (item) =>
-                item.id === lastCharacterMessage?.authorCharacterId ||
-                item.data.name === lastCharacterMessage?.author,
-        );
-
-        return availableCharacters[(lastIndex + 1) % availableCharacters.length];
-    }
-
-    function selectPooledGroupCharacter(
-        availableCharacters: SmileyCharacter[],
-        messages: Message[],
-    ) {
-        const lastUserIndex = findLastIndex(
-            messages,
-            (message) => message.role === "user",
-        );
-        const spokenSinceUser = new Set(
-            messages
-                .slice(lastUserIndex + 1)
-                .filter((message) => message.role === "character")
-                .map((message) => message.authorCharacterId || message.author),
-        );
-        const unspoken = availableCharacters.filter(
-            (item) =>
-                !spokenSinceUser.has(item.id) && !spokenSinceUser.has(item.data.name),
-        );
-        const pool = unspoken.length ? unspoken : availableCharacters;
-
-        return pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    function selectNaturalGroupCharacter(
-        availableCharacters: SmileyCharacter[],
-        messages: Message[],
-    ) {
-        const lastMessage = messages[messages.length - 1];
-        const lastContent = lastMessage ? getMessageContent(lastMessage) : "";
-        const mentioned = availableCharacters.filter((item) =>
-            characterNameMentioned(lastContent, item.data.name),
-        );
-
-        if (mentioned.length) {
-            return mentioned[Math.floor(Math.random() * mentioned.length)];
-        }
-        const activated = availableCharacters.filter((item) => {
-            const talkativeness =
-                latestChatRef.current?.members?.find(
-                    (member) => member.characterId === item.id,
-                )?.talkativeness ?? 0.5;
-            return Math.random() < talkativeness;
-        });
-        const pool = activated.length ? activated : availableCharacters;
-
-        return pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    function characterNameMentioned(content: string, characterName: string) {
-        const safeName = characterName.trim();
-
-        if (!safeName) {
-            return false;
-        }
-
-        return new RegExp(`\\b${escapeRegExp(safeName)}\\b`, "i").test(content);
-    }
-
-    function promptCharacterForGeneration(
-        sourceChat: ChatSession,
-        activeSpeaker: SmileyCharacter,
-    ) {
-        if (
-            !isGroupChat(sourceChat) ||
-            sourceChat.group?.generationMode !== "join-character-cards"
-        ) {
-            return sourceChat.group?.scenarioOverride
-                ? {
-                      ...activeSpeaker,
-                      data: {
-                          ...activeSpeaker.data,
-                          scenario: sourceChat.group.scenarioOverride,
-                      },
-                  }
-                : activeSpeaker;
-        }
-
-        const memberIds = new Set(
-            (sourceChat.members ?? []).map((member) => member.characterId),
-        );
-        const orderedCharacters = (sourceChat.members ?? [])
-            .slice()
-            .sort((left, right) => left.order - right.order)
-            .map((member) =>
-                groupCharacters.find((character) => character.id === member.characterId),
-            )
-            .filter((item): item is SmileyCharacter => Boolean(item));
-
-        if (orderedCharacters.length <= 1 || !memberIds.has(activeSpeaker.id)) {
-            return activeSpeaker;
-        }
-
-        return {
-            ...activeSpeaker,
-            data: {
-                ...activeSpeaker.data,
-                description: joinCharacterField(
-                    orderedCharacters,
-                    sourceChat.group?.joinPrefix,
-                    "Description",
-                    (item) => item.data.description,
-                ),
-                personality: joinCharacterField(
-                    orderedCharacters,
-                    sourceChat.group?.joinPrefix,
-                    "Personality",
-                    (item) => item.data.personality,
-                ),
-                scenario:
-                    sourceChat.group?.scenarioOverride ||
-                    joinCharacterField(
-                        orderedCharacters,
-                        sourceChat.group?.joinPrefix,
-                        "Scenario",
-                        (item) => item.data.scenario,
-                    ),
-                mes_example: activeSpeaker.data.mes_example,
-                system_prompt: [
-                    `This is a group chat. The active speaker for the next reply is ${activeSpeaker.data.name}.`,
-                    joinCharacterField(
-                        orderedCharacters,
-                        sourceChat.group?.joinPrefix,
-                        "System prompt",
-                        (item) => item.data.system_prompt,
-                    ),
-                ]
-                    .filter(Boolean)
-                    .join("\n\n"),
-                post_history_instructions: [
-                    activeSpeaker.data.post_history_instructions,
-                    groupInstructionSections(orderedCharacters),
-                ]
-                    .filter((part) => part.trim())
-                    .join("\n\n"),
-            },
-        };
-    }
-
     const activeChatId = chat?.id ?? "";
 
     return {
@@ -967,24 +772,6 @@ function withMessageReasoning(
     );
 }
 
-async function uploadMessageAttachments(chatId: string, images: File[]) {
-    if (images.length === 0) {
-        return [];
-    }
-
-    const result = await uploadChatAttachments(chatId, images);
-    return result.attachments;
-}
-
-function imageUrlsToAttachments(urls: string[]): ChatAttachment[] {
-    return urls.map((url, index) => ({
-        id: `generated-image-${index + 1}`,
-        type: "image",
-        url,
-        name: `Generated image ${index + 1}`,
-    }));
-}
-
 function latestChatValue(
     current: ChatSession | undefined,
     next: ChatSession | undefined,
@@ -994,60 +781,4 @@ function latestChatValue(
     }
 
     return next.updatedAt >= current.updatedAt ? next : current;
-}
-
-function findLastIndex<T>(items: T[], predicate: (item: T) => boolean) {
-    for (let index = items.length - 1; index >= 0; index -= 1) {
-        if (predicate(items[index])) {
-            return index;
-        }
-    }
-
-    return -1;
-}
-
-function escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function joinCharacterField(
-    characters: SmileyCharacter[],
-    prefixTemplate: string | undefined,
-    fieldName: string,
-    valueForCharacter: (character: SmileyCharacter) => string,
-) {
-    const safePrefixTemplate = prefixTemplate ?? "{{char}}:";
-
-    return characters
-        .map((character) => {
-            const value = valueForCharacter(character).trim();
-
-            if (!value) {
-                return "";
-            }
-
-            const prefix = safePrefixTemplate.replace(
-                /\{\{char\}\}/g,
-                character.data.name,
-            );
-
-            return [prefix, `${fieldName}:\n${value}`].filter(Boolean).join("\n");
-        })
-        .filter(Boolean)
-        .join("\n\n");
-}
-
-function groupInstructionSections(characters: SmileyCharacter[]) {
-    return characters
-        .map((character) => {
-            const value = character.data.post_history_instructions.trim();
-
-            if (!value) {
-                return "";
-            }
-
-            return `Post-history instructions for ${character.data.name}:\n${value}`;
-        })
-        .filter(Boolean)
-        .join("\n\n");
 }

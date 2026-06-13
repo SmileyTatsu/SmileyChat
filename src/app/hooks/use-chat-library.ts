@@ -6,7 +6,6 @@ import {
     deleteChat as deleteChatRequest,
     loadChat,
     loadChatSummaries,
-    saveChat,
     saveChatIndex,
     uploadChatAttachments,
 } from "#frontend/lib/api/client";
@@ -33,6 +32,8 @@ import type {
     SmileyPersona,
     UserStatus,
 } from "#frontend/types";
+
+import { useChatAutosave } from "./use-chat-autosave";
 
 type UseChatLibraryOptions = {
     activeCharacterId: string;
@@ -69,20 +70,22 @@ export function useChatLibrary({
     const latestChatRef = useRef(activeChat);
     const latestChatSummariesRef = useRef(chatSummaries);
     const latestGroupCharactersRef = useRef(groupCharacters);
-    const chatAutosaveTimerRef = useRef<number | undefined>(undefined);
-    const chatSaveRequestIdRef = useRef(0);
     const chatSelectRequestIdRef = useRef(0);
+    const {
+        flushPendingChatAutosaveWithoutStateUpdate,
+        persistChat,
+        queueChatSave,
+    } = useChatAutosave({
+        latestChatRef,
+        setActiveChat,
+        setChatLoadError,
+        setChatSummaries,
+        updateChatSummary,
+    });
 
     latestChatRef.current = activeChat;
     latestChatSummariesRef.current = chatSummaries;
     latestGroupCharactersRef.current = groupCharacters;
-
-    useEffect(
-        () => () => {
-            clearPendingChatAutosave();
-        },
-        [],
-    );
 
     function setChatSummaries(nextSummaries: ChatSummaryCollection) {
         const safeSummaries = normalizeChatSummaryCollection(nextSummaries);
@@ -401,86 +404,6 @@ export function useChatLibrary({
 
         await flushPendingChatAutosaveWithoutStateUpdate();
         await createChatForCharacter(latestCharacterRef.current, defaultNewChatMode);
-    }
-
-    function queueChatSave(nextChat: ChatSession) {
-        const safeChat = normalizeChat(nextChat);
-
-        if (!safeChat) {
-            return;
-        }
-
-        const isActiveChat = safeChat.id === latestChatRef.current?.id;
-
-        if (isActiveChat) {
-            setActiveChat(safeChat);
-        }
-        updateChatSummary(chatToSummary(safeChat));
-        setChatLoadError("");
-        chatSaveRequestIdRef.current += 1;
-
-        clearPendingChatAutosave();
-        chatAutosaveTimerRef.current = window.setTimeout(() => {
-            chatAutosaveTimerRef.current = undefined;
-            void persistChat(safeChat, false);
-        }, 450);
-    }
-
-    function clearPendingChatAutosave() {
-        if (chatAutosaveTimerRef.current) {
-            window.clearTimeout(chatAutosaveTimerRef.current);
-            chatAutosaveTimerRef.current = undefined;
-        }
-    }
-
-    async function flushPendingChatAutosaveWithoutStateUpdate() {
-        if (!chatAutosaveTimerRef.current || !latestChatRef.current) {
-            return;
-        }
-
-        const pendingChat = latestChatRef.current;
-        clearPendingChatAutosave();
-        await persistChat(pendingChat, false);
-    }
-
-    async function persistChat(nextChat: ChatSession, updateState = true) {
-        const safeChat = normalizeChat(nextChat);
-
-        if (!safeChat) {
-            return;
-        }
-
-        const requestId = chatSaveRequestIdRef.current + 1;
-        chatSaveRequestIdRef.current = requestId;
-
-        if (updateState) {
-            setActiveChat(safeChat);
-            updateChatSummary(chatToSummary(safeChat));
-        }
-
-        try {
-            const result = (await saveChat(safeChat)) as {
-                chat: ChatSession;
-                chats?: ChatSummaryCollection;
-            };
-            const savedChat = normalizeChat(result.chat) ?? safeChat;
-
-            if (requestId === chatSaveRequestIdRef.current) {
-                if (updateState || savedChat.id === latestChatRef.current?.id) {
-                    setActiveChat(savedChat);
-                }
-                if (result.chats) {
-                    setChatSummaries(result.chats);
-                } else {
-                    updateChatSummary(chatToSummary(savedChat));
-                }
-                setChatLoadError("");
-            }
-        } catch (error) {
-            if (requestId === chatSaveRequestIdRef.current) {
-                setChatLoadError(messageFromError(error));
-            }
-        }
     }
 
     function updateChatSummary(summary: ChatSummary) {

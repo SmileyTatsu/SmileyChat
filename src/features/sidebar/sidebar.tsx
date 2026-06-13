@@ -1,6 +1,5 @@
 import {
     AlertTriangle,
-    Check,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -20,7 +19,6 @@ import {
 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
 
-import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import {
     chatDisplayTitle,
     defaultGroupTitle,
@@ -38,7 +36,15 @@ import type {
 
 import { PersonaBar } from "../personas/persona-bar";
 import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
-import { GroupAvatar } from "../chat/group-avatar";
+import { ChatList } from "./components/chat-list";
+import { CharacterList } from "./components/character-list";
+import { GroupChatCreator } from "./components/group-chat-creator";
+import { useCharacterCardDrop } from "./hooks/use-character-card-drop";
+import {
+    formatChatCount,
+    formatChatMeta,
+    normalizeFilterText,
+} from "./sidebar-helpers";
 
 type SidebarProps = {
     activeChatId: string;
@@ -81,12 +87,6 @@ type SidebarProps = {
     onStatusChange: (status: UserStatus) => void;
 };
 
-const GROUP_GREETING_OPTIONS: Array<{ label: string; value: GroupGreetingMode }> = [
-    { label: "All", value: "all" },
-    { label: "First", value: "first" },
-    { label: "None", value: "none" },
-];
-
 export function Sidebar({
     activeChatId,
     activeCharacterId,
@@ -126,8 +126,14 @@ export function Sidebar({
     const importInputRef = useRef<HTMLInputElement>(null);
     const chatImportInputRef = useRef<HTMLInputElement>(null);
     const groupAvatarInputRef = useRef<HTMLInputElement>(null);
-    const dragDepthRef = useRef(0);
-    const [isCharacterDropActive, setIsCharacterDropActive] = useState(false);
+    const {
+        handleCharacterDragEnter,
+        handleCharacterDragLeave,
+        handleCharacterDragOver,
+        handleCharacterDrop,
+        importFiles,
+        isCharacterDropActive,
+    } = useCharacterCardDrop({ onImportCharacterFiles });
     const [contextMenu, setContextMenu] = useState<
         | {
               character: CharacterSummary;
@@ -182,56 +188,6 @@ export function Sidebar({
             x: event.clientX,
             y: event.clientY,
         });
-    }
-
-    function importFiles(files: File[]) {
-        const characterFiles = files.filter(isCharacterCardFile);
-
-        if (characterFiles.length) {
-            onImportCharacterFiles(characterFiles);
-        }
-    }
-
-    function handleCharacterDragEnter(event: DragEvent) {
-        if (!hasDraggedFiles(event)) {
-            return;
-        }
-
-        event.preventDefault();
-        dragDepthRef.current += 1;
-        setIsCharacterDropActive(true);
-    }
-
-    function handleCharacterDragOver(event: DragEvent) {
-        if (!hasDraggedFiles(event)) {
-            return;
-        }
-
-        event.preventDefault();
-        event.dataTransfer!.dropEffect = "copy";
-    }
-
-    function handleCharacterDragLeave(event: DragEvent) {
-        if (!hasDraggedFiles(event)) {
-            return;
-        }
-
-        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-
-        if (dragDepthRef.current === 0) {
-            setIsCharacterDropActive(false);
-        }
-    }
-
-    function handleCharacterDrop(event: DragEvent) {
-        if (!hasDraggedFiles(event)) {
-            return;
-        }
-
-        event.preventDefault();
-        dragDepthRef.current = 0;
-        setIsCharacterDropActive(false);
-        importFiles(Array.from(event.dataTransfer?.files ?? []));
     }
 
     function requestRenameChat(chat: ChatSummary) {
@@ -468,113 +424,19 @@ export function Sidebar({
             </button>
 
             {groupCreateOpen && (
-                <form className="inline-group-create" onSubmit={submitGroupCreate}>
-                    <div className="inline-group-create-header">
-                        <div>
-                            <strong>Create group</strong>
-                            <span>{selectedGroupCharacterIds.length} selected</span>
-                        </div>
-                        <button
-                            className="rail-icon-button"
-                            type="button"
-                            title="Close group creator"
-                            aria-label="Close group creator"
-                            onClick={closeGroupCreate}
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
-
-                    <label className="inline-group-field">
-                        <span>Title</span>
-                        <input
-                            value={groupTitleDraft}
-                            placeholder={groupDefaultTitle}
-                            onInput={(event) =>
-                                setGroupTitleDraft(
-                                    (event.currentTarget as HTMLInputElement).value,
-                                )
-                            }
-                        />
-                    </label>
-
-                    <div className="inline-group-preview">
-                        <GroupAvatar members={selectedGroupMembers} />
-                        <span>{groupTitleDraft.trim() || groupDefaultTitle}</span>
-                    </div>
-
-                    <div className="inline-group-field">
-                        <span>Default greetings</span>
-                        <div className="inline-group-segments" role="radiogroup">
-                            {GROUP_GREETING_OPTIONS.map((option) => (
-                                <button
-                                    className={
-                                        groupGreetingMode === option.value ? "active" : ""
-                                    }
-                                    key={option.value}
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={groupGreetingMode === option.value}
-                                    onClick={() => setGroupGreetingMode(option.value)}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="inline-group-field">
-                        <span>Characters</span>
-                        <div className="group-avatar-grid" aria-label="Group characters">
-                            {characters.map((character) => {
-                                const isSelected = selectedGroupCharacterIds.includes(
-                                    character.id,
-                                );
-
-                                return (
-                                    <button
-                                        className={`group-avatar-option ${
-                                            isSelected ? "selected" : ""
-                                        }`}
-                                        key={character.id}
-                                        type="button"
-                                        aria-pressed={isSelected}
-                                        title={character.name}
-                                        onClick={() => toggleGroupCharacter(character.id)}
-                                    >
-                                        <span className="group-avatar-frame">
-                                            <img
-                                                src={
-                                                    character.avatar?.path ||
-                                                    characterInitialAvatar(character.name)
-                                                }
-                                                alt=""
-                                            />
-                                            <span className="group-avatar-check">
-                                                <Check size={12} />
-                                            </span>
-                                        </span>
-                                        <span>{character.name}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="inline-group-actions">
-                        <button type="button" onClick={closeGroupCreate}>
-                            Cancel
-                        </button>
-                        <button
-                            className="primary"
-                            type="submit"
-                            disabled={selectedGroupCharacterIds.length === 0}
-                        >
-                            <Users size={14} />
-                            Create
-                        </button>
-                    </div>
-                </form>
+                <GroupChatCreator
+                    characters={characters}
+                    groupDefaultTitle={groupDefaultTitle}
+                    groupGreetingMode={groupGreetingMode}
+                    groupTitleDraft={groupTitleDraft}
+                    selectedGroupCharacterIds={selectedGroupCharacterIds}
+                    selectedGroupMembers={selectedGroupMembers}
+                    onClose={closeGroupCreate}
+                    onGroupGreetingModeChange={setGroupGreetingMode}
+                    onGroupTitleDraftChange={setGroupTitleDraft}
+                    onSubmit={submitGroupCreate}
+                    onToggleGroupCharacter={toggleGroupCharacter}
+                />
             )}
 
             {!groupCreateOpen && (
@@ -688,111 +550,20 @@ export function Sidebar({
                                         <small>JSON or PNG Tavern cards</small>
                                     </span>
                                 </div>
-                                <div className="character-list">
-                                    {filteredCharacters.length > 0 ? (
-                                        filteredCharacters.map((character) => (
-                                            <button
-                                                className={`character-row ${
-                                                    character.id === activeCharacterId &&
-                                                    !activeGroupChat
-                                                        ? "active"
-                                                        : ""
-                                                }`}
-                                                key={character.id}
-                                                type="button"
-                                                onClick={() =>
-                                                    onSelectCharacter(character.id)
-                                                }
-                                                onContextMenu={(event) =>
-                                                    openCharacterMenu(event, character)
-                                                }
-                                            >
-                                                {character.avatar ? (
-                                                    <img
-                                                        className="avatar image-avatar"
-                                                        src={character.avatar.path}
-                                                        alt=""
-                                                    />
-                                                ) : (
-                                                    <img
-                                                        className="avatar image-avatar"
-                                                        src={characterInitialAvatar(
-                                                            character.name,
-                                                        )}
-                                                        alt=""
-                                                    />
-                                                )}
-                                                <span>
-                                                    <strong>{character.name}</strong>
-                                                    <small>
-                                                        {character.tagline ||
-                                                            "No short description"}
-                                                    </small>
-                                                </span>
-                                            </button>
-                                        ))
-                                    ) : characters.length > 0 && hasSidebarFilter ? (
-                                        <div className="rail-empty-state">
-                                            <strong>No matching characters</strong>
-                                            <span>Try a different filter.</span>
-                                        </div>
-                                    ) : (
-                                        <div className="rail-empty-state">
-                                            <strong>No characters yet</strong>
-                                            <span>
-                                                Create one or import a character card.
-                                            </span>
-                                        </div>
-                                    )}
-                                    {filteredGroupChats.length > 0 && (
-                                        <>
-                                            <div className="rail-subtitle">
-                                                Group chats
-                                            </div>
-                                            {filteredGroupChats.map((chat) => (
-                                                <button
-                                                    className={`character-row group-chat-row ${
-                                                        chat.id === activeChatId
-                                                            ? "active"
-                                                            : ""
-                                                    }`}
-                                                    key={chat.id}
-                                                    type="button"
-                                                    onClick={() => onSelectChat(chat.id)}
-                                                    onContextMenu={(event) =>
-                                                        openChatMenu(event, chat)
-                                                    }
-                                                >
-                                                    <GroupAvatar
-                                                        className="avatar"
-                                                        customPath={
-                                                            chat.group?.avatar?.type ===
-                                                            "custom"
-                                                                ? chat.group.avatar.path
-                                                                : undefined
-                                                        }
-                                                        members={chat.members ?? []}
-                                                    />
-                                                    <span>
-                                                        <strong>
-                                                            {chatDisplayTitle(chat)}
-                                                        </strong>
-                                                        <small>
-                                                            {formatChatMeta(chat)}
-                                                        </small>
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </>
-                                    )}
-                                    {groupChats.length > 0 &&
-                                        filteredGroupChats.length === 0 &&
-                                        hasSidebarFilter && (
-                                            <div className="rail-empty-state compact">
-                                                <strong>No matching group chats</strong>
-                                            </div>
-                                        )}
-                                </div>
+                                <CharacterList
+                                    activeCharacterId={activeCharacterId}
+                                    activeChatId={activeChatId}
+                                    activeGroupChat={activeGroupChat}
+                                    characters={characters}
+                                    filteredCharacters={filteredCharacters}
+                                    filteredGroupChats={filteredGroupChats}
+                                    groupChats={groupChats}
+                                    hasSidebarFilter={hasSidebarFilter}
+                                    onOpenCharacterMenu={openCharacterMenu}
+                                    onOpenChatMenu={openChatMenu}
+                                    onSelectCharacter={onSelectCharacter}
+                                    onSelectChat={onSelectChat}
+                                />
                                 {characterImportStatus && (
                                     <p className="rail-status">{characterImportStatus}</p>
                                 )}
@@ -895,62 +666,15 @@ export function Sidebar({
                             className={`rail-collapsible ${chatsCollapsed ? "collapsed" : ""}`}
                         >
                             <div className="rail-collapsible-body">
-                                <div className="chat-list">
-                                    {filteredDirectChats.length > 0 ? (
-                                        filteredDirectChats.map((chat) => (
-                                            <button
-                                                className={`chat-row ${
-                                                    chat.id === activeChatId
-                                                        ? "active"
-                                                        : ""
-                                                }`}
-                                                key={chat.id}
-                                                type="button"
-                                                onClick={() => onSelectChat(chat.id)}
-                                                onContextMenu={(event) =>
-                                                    openChatMenu(event, chat)
-                                                }
-                                            >
-                                                {isGroupChat(chat) ? (
-                                                    <GroupAvatar
-                                                        className="chat-row-avatar"
-                                                        customPath={
-                                                            chat.group?.avatar?.type ===
-                                                            "custom"
-                                                                ? chat.group.avatar.path
-                                                                : undefined
-                                                        }
-                                                        members={chat.members ?? []}
-                                                    />
-                                                ) : (
-                                                    <span className="chat-row-avatar direct-chat-avatar">
-                                                        <MessageSquare size={15} />
-                                                    </span>
-                                                )}
-                                                <span>
-                                                    <strong>
-                                                        {chatDisplayTitle(chat)}
-                                                    </strong>
-                                                    <small>{formatChatMeta(chat)}</small>
-                                                </span>
-                                            </button>
-                                        ))
-                                    ) : directChats.length > 0 && hasSidebarFilter ? (
-                                        <div className="rail-empty-state">
-                                            <strong>No matching chats</strong>
-                                            <span>Try a different filter.</span>
-                                        </div>
-                                    ) : (
-                                        <div className="rail-empty-state">
-                                            <strong>No chats yet</strong>
-                                            <span>
-                                                {hasCharacters
-                                                    ? "Start a chat when you are ready."
-                                                    : "Create a character before starting a chat."}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
+                                <ChatList
+                                    activeChatId={activeChatId}
+                                    directChats={directChats}
+                                    filteredDirectChats={filteredDirectChats}
+                                    hasCharacters={hasCharacters}
+                                    hasSidebarFilter={hasSidebarFilter}
+                                    onOpenChatMenu={openChatMenu}
+                                    onSelectChat={onSelectChat}
+                                />
                                 {chatImportStatus && (
                                     <p
                                         className={`rail-status${
@@ -1320,67 +1044,4 @@ export function Sidebar({
             )}
         </aside>
     );
-}
-
-function formatChatCount(count: number) {
-    return `${count} saved chat${count === 1 ? "" : "s"}`;
-}
-
-function normalizeFilterText(value: string) {
-    return value.trim().toLocaleLowerCase();
-}
-
-function hasDraggedFiles(event: DragEvent) {
-    return Array.from(event.dataTransfer?.types ?? []).includes("Files");
-}
-
-function isCharacterCardFile(file: File) {
-    const name = file.name.toLowerCase();
-
-    return (
-        name.endsWith(".json") ||
-        name.endsWith(".png") ||
-        file.type === "application/json" ||
-        file.type === "image/png"
-    );
-}
-
-function formatChatMeta(chat: ChatSummary) {
-    const messageCount = `${chat.messageCount} message${
-        chat.messageCount === 1 ? "" : "s"
-    }`;
-    const lastMessage = formatLastMessageTime(chat.lastMessageAt);
-
-    return lastMessage ? `${messageCount} - ${lastMessage}` : messageCount;
-}
-
-function formatLastMessageTime(value: string | undefined) {
-    if (!value) {
-        return "";
-    }
-
-    const date = new Date(value);
-
-    if (!Number.isFinite(date.getTime())) {
-        return "";
-    }
-
-    const now = new Date();
-    const time = date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-
-    if (date.toDateString() === now.toDateString()) {
-        return `Last today ${time}`;
-    }
-
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-
-    if (date.toDateString() === yesterday.toDateString()) {
-        return `Last yesterday ${time}`;
-    }
-
-    return `Last ${date.toLocaleDateString()} ${time}`;
 }

@@ -1,21 +1,16 @@
 import "./App.css";
 
-import { computed, type ReadonlySignal } from "@preact/signals";
+import { computed } from "@preact/signals";
 import {
     useCallback,
     useEffect,
-    useLayoutEffect,
     useMemo,
     useRef,
     useState,
 } from "preact/hooks";
 
-import { CharacterPanel } from "#frontend/features/characters/character-panel";
-import { GroupPanel } from "#frontend/features/characters/group-panel";
 import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
 import { PluginModalHost } from "#frontend/features/plugins/plugin-surfaces";
-import { OptionsModal } from "#frontend/features/settings/options-modal";
-import { Sidebar } from "#frontend/features/sidebar/sidebar";
 
 import {
     loadAppPreferences,
@@ -51,21 +46,8 @@ import {
     type AppPreferences,
 } from "#frontend/lib/preferences/types";
 
-import {
-    getPluginCharacterPresence,
-    getPluginComposerState,
-    isPluginEnabled,
-    setPluginAppActionHandlers,
-    setPluginModelHandlers,
-    setPluginSnapshot,
-    subscribeToPluginEvent,
-    subscribeToPluginRegistry,
-} from "#frontend/lib/plugins/registry";
 import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
-import type {
-    PluginAppDataChangedEvent,
-    PluginAppSnapshot,
-} from "#frontend/lib/plugins/types";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
@@ -75,8 +57,20 @@ import type { PresetCollection } from "#frontend/lib/presets/types";
 import type { ChatMetadata, ChatMode, UserStatus } from "#frontend/types";
 
 import { useCharacterChats } from "./hooks/use-character-chats";
+import {
+    useAppPluginBridge,
+    usePluginSnapshotPublisher,
+} from "./hooks/use-app-plugin-bridge";
 import { useChatSession } from "./hooks/use-chat-session";
 import { usePersonaLibrary } from "./hooks/use-persona-library";
+import { useResponsiveAppLayout } from "./hooks/use-responsive-app-layout";
+import {
+    CharacterPanelHost,
+    GroupPanelHost,
+    OptionsModalHost,
+    ResponsiveBackdrops,
+    SidebarHost,
+} from "./components/app-hosts";
 import {
     closeSettingsSignal,
     desktopCharacterOpen,
@@ -84,42 +78,22 @@ import {
     mobileCharacterOpen,
     mobileSidebarOpen,
     openSettings,
-    settingsOpen,
 } from "./ui-state";
 
-const MOBILE_SIDEBAR_BREAKPOINT = 820;
-const CHARACTER_DRAWER_BREAKPOINT = 1120;
 const CONNECTION_SETTINGS_SAVE_DEBOUNCE_MS = 400;
-const BACKDROP_TRANSITION_MS = 200;
-
-function useMediaQuery(query: string) {
-    const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia(query);
-        const handleChange = (event: MediaQueryListEvent) => {
-            setMatches(event.matches);
-        };
-
-        setMatches(mediaQuery.matches);
-        mediaQuery.addEventListener("change", handleChange);
-
-        return () => {
-            mediaQuery.removeEventListener("change", handleChange);
-        };
-    }, [query]);
-
-    return matches;
-}
 
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
-    const isMobileLayout = useMediaQuery(`(max-width: ${MOBILE_SIDEBAR_BREAKPOINT}px)`);
-    const isCharacterDrawerLayout = useMediaQuery(
-        `(max-width: ${CHARACTER_DRAWER_BREAKPOINT}px)`,
-    );
-    const previousIsMobileLayoutRef = useRef(isMobileLayout);
-    const previousIsCharacterDrawerLayoutRef = useRef(isCharacterDrawerLayout);
+    const {
+        characterOpenSignal,
+        isCharacterDrawerLayout,
+        isMobileLayout,
+        setActiveCharacterOpen,
+        setActiveSidebarOpen,
+        sidebarOpenSignal,
+        toggleCharacter,
+        toggleSidebar,
+    } = useResponsiveAppLayout();
     const [userStatus, setUserStatus] = useState<UserStatus>("online");
     const [connectionSettings, setConnectionSettings] = useState<ConnectionSettings>(
         defaultConnectionSettings,
@@ -141,7 +115,6 @@ export function App() {
     const [localApiWarning, setLocalApiWarning] = useState("");
     const [connectionSettingsLoaded, setConnectionSettingsLoaded] = useState(false);
     const [preferencesInitialized, setPreferencesInitialized] = useState(false);
-    const [pluginRegistryRevision, setPluginRegistryRevision] = useState(0);
     const latestConnectionSettingsRef = useRef<ConnectionSettings>(
         defaultConnectionSettings,
     );
@@ -227,22 +200,6 @@ export function App() {
         presetCollection.presets.find(
             (preset) => preset.id === presetCollection.activePresetId,
         ) ?? presetCollection.presets[0];
-    const sidebarOpenSignal = useMemo(
-        () =>
-            computed(() =>
-                isMobileLayout ? mobileSidebarOpen.value : desktopSidebarOpen.value,
-            ),
-        [isMobileLayout],
-    );
-    const characterOpenSignal = useMemo(
-        () =>
-            computed(() =>
-                isCharacterDrawerLayout
-                    ? mobileCharacterOpen.value
-                    : desktopCharacterOpen.value,
-            ),
-        [isCharacterDrawerLayout],
-    );
     const appShellClassName = useMemo(
         () =>
             computed(
@@ -267,50 +224,6 @@ export function App() {
         void loadPersonaCollection();
         void loadPlugins();
     }, []);
-
-    useEffect(
-        () =>
-            subscribeToPluginEvent("app:data-changed", (payload) => {
-                if (!isPluginAppDataChangedEvent(payload)) {
-                    return;
-                }
-
-                if (payload.type === "characters") {
-                    void loadCharacterCollection();
-                    return;
-                }
-
-                if (payload.type === "lorebooks") {
-                    void loadLorebookCollection();
-                    return;
-                }
-
-                if (payload.type === "personas") {
-                    void loadPersonaCollection();
-                    return;
-                }
-
-                if (payload.type === "preferences") {
-                    void loadPreferences({ applyStartupLayout: false });
-                    return;
-                }
-
-                if (payload.type === "presets") {
-                    void loadPresetCollection();
-                }
-            }),
-        [],
-    );
-
-    useEffect(
-        () =>
-            subscribeToPluginEvent("app:open-settings", (payload) => {
-                if (payload === "lorebooks") {
-                    openSettings("lorebooks");
-                }
-            }),
-        [],
-    );
 
     useEffect(() => {
         function handleLocalApiError(event: Event) {
@@ -354,19 +267,6 @@ export function App() {
     }, []);
 
     useEffect(() => {
-        if (!previousIsMobileLayoutRef.current && isMobileLayout) {
-            mobileSidebarOpen.value = false;
-        }
-
-        if (!previousIsCharacterDrawerLayoutRef.current && isCharacterDrawerLayout) {
-            mobileCharacterOpen.value = false;
-        }
-
-        previousIsMobileLayoutRef.current = isMobileLayout;
-        previousIsCharacterDrawerLayoutRef.current = isCharacterDrawerLayout;
-    }, [isCharacterDrawerLayout, isMobileLayout]);
-
-    useEffect(() => {
         if (!preferencesInitialized) {
             return;
         }
@@ -374,56 +274,17 @@ export function App() {
         void loadCharacterCollection();
     }, [preferencesInitialized]);
 
-    useEffect(
-        () =>
-            subscribeToPluginRegistry(() =>
-                setPluginRegistryRevision((revision) => revision + 1),
-            ),
-        [],
-    );
-
-    useEffect(() => {
-        setPluginAppActionHandlers({
-            generateResponse: () =>
-                latestChatSessionForPluginsRef.current.sendMessage(""),
-            injectMessage: (role, content, options) =>
-                latestChatSessionForPluginsRef.current.injectMessage(
-                    role,
-                    content,
-                    options,
-                ),
-            sendMessage: (content, options) =>
-                latestChatSessionForPluginsRef.current.sendMessage(
-                    content,
-                    options?.images,
-                ),
-            switchCharacter: (characterId) =>
-                latestSelectCharacterForPluginsRef.current(characterId),
+    const { characterPresence, pluginComposerState, isLorebooksPluginEnabled } =
+        useAppPluginBridge({
+            chatSessionRef: latestChatSessionForPluginsRef,
+            generateModelResponseRef: latestGenerateModelForPluginsRef,
+            loadCharacterCollection,
+            loadLorebookCollection,
+            loadPersonaCollection,
+            loadPreferences,
+            loadPresetCollection,
+            selectCharacterRef: latestSelectCharacterForPluginsRef,
         });
-
-        return () => setPluginAppActionHandlers({});
-    }, []);
-
-    useEffect(() => {
-        setPluginModelHandlers({
-            generate: (request) => latestGenerateModelForPluginsRef.current(request),
-        });
-
-        return () => setPluginModelHandlers({});
-    }, []);
-
-    const characterPresence = useMemo(
-        () => getPluginCharacterPresence(),
-        [pluginRegistryRevision],
-    );
-    const pluginComposerState = useMemo(
-        () => getPluginComposerState(),
-        [pluginRegistryRevision],
-    );
-    const isLorebooksPluginEnabled = useMemo(
-        () => isPluginEnabled("lorebooks"),
-        [pluginRegistryRevision],
-    );
     const pluginSnapshot: PluginAppSnapshot = useMemo(
         () => ({
             activeChat,
@@ -452,6 +313,7 @@ export function App() {
             userStatus,
         ],
     );
+    usePluginSnapshotPublisher(pluginSnapshot);
     latestPluginSnapshotRef.current = pluginSnapshot;
     const getPluginSnapshotForActions = useCallback(() => {
         if (!latestPluginSnapshotRef.current) {
@@ -503,43 +365,13 @@ export function App() {
         },
         [activeChat, queueChatSave],
     );
-    const handleToggleSidebar = useCallback(() => {
-        if (isMobileLayout) {
-            mobileSidebarOpen.value = !mobileSidebarOpen.value;
-            mobileCharacterOpen.value = false;
-            return;
-        }
-
-        desktopSidebarOpen.value = !desktopSidebarOpen.value;
-
-        if (isCharacterDrawerLayout) {
-            mobileCharacterOpen.value = false;
-        } else {
-            desktopCharacterOpen.value = false;
-        }
-    }, [isCharacterDrawerLayout, isMobileLayout]);
     const handleToggleCharacter = useMemo(() => {
         if (!characterSummaries.characters.length) {
             return undefined;
         }
 
-        return () => {
-            if (isCharacterDrawerLayout) {
-                mobileCharacterOpen.value = !mobileCharacterOpen.value;
-
-                if (isMobileLayout) {
-                    mobileSidebarOpen.value = false;
-                } else {
-                    desktopSidebarOpen.value = false;
-                }
-
-                return;
-            }
-
-            desktopCharacterOpen.value = !desktopCharacterOpen.value;
-            desktopSidebarOpen.value = false;
-        };
-    }, [characterSummaries.characters.length, isCharacterDrawerLayout, isMobileLayout]);
+        return toggleCharacter;
+    }, [characterSummaries.characters.length, toggleCharacter]);
     const hasCharacters = characterSummaries.characters.length > 0;
     const chatEmptyState = useMemo(() => {
         if (!hasCharacters) {
@@ -571,10 +403,6 @@ export function App() {
         hasCharacters,
     ]);
     const activeChatIsGroup = activeChat ? isGroupChat(activeChat) : false;
-
-    useLayoutEffect(() => {
-        setPluginSnapshot(pluginSnapshot);
-    }, [pluginSnapshot]);
 
     async function loadConnectionSettings() {
         try {
@@ -790,24 +618,6 @@ export function App() {
         openSettings("personas");
     }
 
-    function setActiveSidebarOpen(isOpen: boolean) {
-        if (isMobileLayout) {
-            mobileSidebarOpen.value = isOpen;
-            return;
-        }
-
-        desktopSidebarOpen.value = isOpen;
-    }
-
-    function setActiveCharacterOpen(isOpen: boolean) {
-        if (isCharacterDrawerLayout) {
-            mobileCharacterOpen.value = isOpen;
-            return;
-        }
-
-        desktopCharacterOpen.value = isOpen;
-    }
-
     const uiFontFamily = preferences.appearance.uiFontFamily.trim();
     const chatFontFamily = preferences.appearance.chatFontFamily.trim();
 
@@ -860,13 +670,13 @@ export function App() {
                 onNewChat={() => {
                     startNewChat();
                     if (isMobileLayout) {
-                        mobileSidebarOpen.value = false;
+                        setActiveSidebarOpen(false);
                     }
                 }}
                 onNewGroupChat={(characterIds, title, greetingMode) => {
                     void createGroupChat(characterIds, title, greetingMode);
                     if (isMobileLayout) {
-                        mobileSidebarOpen.value = false;
+                        setActiveSidebarOpen(false);
                     }
                 }}
                 onOpenSettings={() => openSettings()}
@@ -890,13 +700,13 @@ export function App() {
                 onSelectChat={(chatId) => {
                     void selectChat(chatId);
                     if (isMobileLayout) {
-                        mobileSidebarOpen.value = false;
+                        setActiveSidebarOpen(false);
                     }
                 }}
                 onSelectCharacter={(characterId) => {
                     void selectCharacter(characterId);
                     if (isMobileLayout) {
-                        mobileSidebarOpen.value = false;
+                        setActiveSidebarOpen(false);
                     }
                 }}
                 onSelectPersona={(personaId) => void selectPersona(personaId)}
@@ -940,7 +750,7 @@ export function App() {
                 onNextSwipe={handleNextSwipe}
                 onPreviousSwipe={handlePreviousSwipe}
                 onSendMessage={handleSendMessage}
-                onToggleSidebar={handleToggleSidebar}
+                onToggleSidebar={toggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
                 getPluginSnapshot={getPluginSnapshotForActions}
@@ -1015,143 +825,5 @@ export function App() {
 
             <PluginModalHost snapshot={pluginSnapshot} />
         </main>
-    );
-}
-
-type OptionsModalHostProps = Parameters<typeof OptionsModal>[0];
-
-type SidebarHostProps = Omit<Parameters<typeof Sidebar>[0], "isOpen"> & {
-    isOpenSignal: ReadonlySignal<boolean>;
-};
-
-function SidebarHost({ isOpenSignal, ...props }: SidebarHostProps) {
-    return <Sidebar {...props} isOpen={isOpenSignal.value} />;
-}
-
-type CharacterPanelHostProps = Omit<Parameters<typeof CharacterPanel>[0], "isOpen"> & {
-    isOpenSignal: ReadonlySignal<boolean>;
-};
-
-function CharacterPanelHost({ isOpenSignal, ...props }: CharacterPanelHostProps) {
-    return <CharacterPanel {...props} isOpen={isOpenSignal.value} />;
-}
-
-type GroupPanelHostProps = Omit<Parameters<typeof GroupPanel>[0], "isOpen"> & {
-    isOpenSignal: ReadonlySignal<boolean>;
-};
-
-function GroupPanelHost({ isOpenSignal, ...props }: GroupPanelHostProps) {
-    return <GroupPanel {...props} isOpen={isOpenSignal.value} />;
-}
-
-function ResponsiveBackdrops({
-    characterOpenSignal,
-    hasCharacters,
-    isCharacterDrawerLayout,
-    isMobileLayout,
-    sidebarOpenSignal,
-}: {
-    characterOpenSignal: ReadonlySignal<boolean>;
-    hasCharacters: boolean;
-    isCharacterDrawerLayout: boolean;
-    isMobileLayout: boolean;
-    sidebarOpenSignal: ReadonlySignal<boolean>;
-}) {
-    return (
-        <>
-            <AnimatedBackdrop
-                className="sidebar-mobile-backdrop"
-                isOpen={isMobileLayout && sidebarOpenSignal.value}
-                onClick={() => {
-                    mobileSidebarOpen.value = false;
-                }}
-            />
-            <AnimatedBackdrop
-                className="character-mobile-backdrop"
-                isOpen={
-                    isCharacterDrawerLayout && hasCharacters && characterOpenSignal.value
-                }
-                onClick={() => {
-                    mobileCharacterOpen.value = false;
-                }}
-            />
-        </>
-    );
-}
-
-function AnimatedBackdrop({
-    className,
-    isOpen,
-    onClick,
-}: {
-    className: string;
-    isOpen: boolean;
-    onClick: () => void;
-}) {
-    const [isMounted, setIsMounted] = useState(isOpen);
-    const [isVisible, setIsVisible] = useState(false);
-
-    useEffect(() => {
-        let animationFrame = 0;
-        let timeout = 0;
-
-        if (isOpen) {
-            setIsMounted(true);
-            animationFrame = window.requestAnimationFrame(() => {
-                setIsVisible(true);
-            });
-        } else {
-            setIsVisible(false);
-            timeout = window.setTimeout(() => {
-                setIsMounted(false);
-            }, BACKDROP_TRANSITION_MS);
-        }
-
-        return () => {
-            if (animationFrame) {
-                window.cancelAnimationFrame(animationFrame);
-            }
-
-            if (timeout) {
-                window.clearTimeout(timeout);
-            }
-        };
-    }, [isOpen]);
-
-    if (!isMounted) {
-        return null;
-    }
-
-    return (
-        <div
-            className={`${className}${isVisible ? " open" : ""}`}
-            role="presentation"
-            onClick={onClick}
-        />
-    );
-}
-
-function OptionsModalHost(props: OptionsModalHostProps) {
-    if (!settingsOpen.value) {
-        return null;
-    }
-
-    return <OptionsModal {...props} />;
-}
-
-function isPluginAppDataChangedEvent(
-    payload: unknown,
-): payload is PluginAppDataChangedEvent {
-    if (!payload || typeof payload !== "object") {
-        return false;
-    }
-
-    const type = (payload as { type?: unknown }).type;
-    return (
-        type === "characters" ||
-        type === "lorebooks" ||
-        type === "personas" ||
-        type === "preferences" ||
-        type === "presets"
     );
 }
