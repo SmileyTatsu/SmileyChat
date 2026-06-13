@@ -13,6 +13,8 @@ import type {
     PluginSidebarPanel,
 } from "#frontend/lib/plugins/types";
 
+import { PluginRenderSurface, pluginIdFromScopedId } from "./plugin-error-boundary";
+
 type PluginSidebarPanelsProps = {
     side: PluginSidebarPanel["side"];
     snapshot: PluginAppSnapshot;
@@ -38,11 +40,18 @@ export function PluginSidebarPanels({ side, snapshot }: PluginSidebarPanelsProps
                     <section className="plugin-sidebar-panel" key={panel.id}>
                         <h3>{panel.label}</h3>
                         <div>
-                            {panel.render({
-                                pluginId,
-                                snapshot,
-                                storage: createPluginStorage(pluginId),
-                            })}
+                            <PluginRenderSurface
+                                pluginId={pluginId}
+                                resetKey={panel.id}
+                                surface={panel.label}
+                                render={() =>
+                                    panel.render({
+                                        pluginId,
+                                        snapshot,
+                                        storage: createPluginStorage(pluginId),
+                                    })
+                                }
+                            />
                         </div>
                     </section>
                 );
@@ -108,16 +117,19 @@ function PluginModalFrame({
                     </button>
                 </header>
                 <div className="plugin-modal-body">
-                    {modal.render({
-                        close,
-                        snapshot,
-                    })}
+                    <PluginRenderSurface
+                        pluginId={modal.pluginId}
+                        resetKey={modal.id}
+                        surface={modal.title ?? "Plugin dialog"}
+                        render={() =>
+                            modal.render({
+                                close,
+                                snapshot,
+                            })
+                        }
+                    />
                 </div>
             </section>
         </div>
     );
-}
-
-function pluginIdFromScopedId(id: string) {
-    return id.split(":")[0] || id;
 }

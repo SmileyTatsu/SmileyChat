@@ -10,6 +10,11 @@ import {
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { ChatMode } from "#frontend/types";
 
+import {
+    PluginRenderSurface,
+    pluginIdFromScopedId,
+} from "../plugins/plugin-error-boundary";
+
 type MessageComposerProps = {
     characterName: string;
     disabled?: boolean;
@@ -253,7 +258,15 @@ export function MessageComposer({
                             disabled={disabled}
                             onClick={() => void action.run(composerActionContext)}
                         >
-                            {action.renderIcon ? action.renderIcon() : action.label}
+                            <PluginRenderSurface
+                                pluginId={pluginIdFromScopedId(action.id)}
+                                resetKey={action.id}
+                                fallback={action.label}
+                                surface={action.label}
+                                render={() =>
+                                    action.renderIcon ? action.renderIcon() : action.label
+                                }
+                            />
                         </button>
                     ))}
                     {pluginOptions.map((option) => (
@@ -264,7 +277,15 @@ export function MessageComposer({
                             disabled={disabled}
                             onClick={() => void option.run(composerActionContext)}
                         >
-                            {option.renderIcon ? option.renderIcon() : option.label}
+                            <PluginRenderSurface
+                                pluginId={pluginIdFromScopedId(option.id)}
+                                resetKey={option.id}
+                                fallback={option.label}
+                                surface={option.label}
+                                render={() =>
+                                    option.renderIcon ? option.renderIcon() : option.label
+                                }
+                            />
                         </button>
                     ))}
                 </div>

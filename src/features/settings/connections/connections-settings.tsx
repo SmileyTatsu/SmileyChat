@@ -47,9 +47,11 @@ import {
 } from "#frontend/lib/presets/context-budget-constants";
 import {
     getPluginConnectionProvider,
+    getPluginConnectionProviderOwnerId,
     getPluginConnectionProviders,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
+import { PluginRenderSurface } from "#frontend/features/plugins/plugin-error-boundary";
 
 import { GoogleAIConnection } from "./providers/google-ai-connection";
 import { AnthropicConnection } from "./providers/anthropic-connection";
@@ -101,6 +103,10 @@ export function ConnectionsSettings({
     const activePluginProvider = activeProfile
         ? getPluginConnectionProvider(activeProfile.provider)
         : undefined;
+    const activePluginProviderOwnerId =
+        activePluginProvider && activeProfile
+            ? getPluginConnectionProviderOwnerId(activeProfile.provider)
+            : undefined;
 
     useEffect(() => {
         if (loadError) {
@@ -838,13 +844,22 @@ export function ConnectionsSettings({
                             onTest={testConnection}
                         />
                     ) : activePluginProvider?.renderSettings ? (
-                        activePluginProvider.renderSettings({
-                            profile: activeProfile,
-                            disabled: isBusy,
-                            onChange: updateActiveProfileConfig,
-                            onSave: () => void saveSettings(),
-                            onTest: testConnection,
-                        })
+                        <PluginRenderSurface
+                            pluginId={
+                                activePluginProviderOwnerId ?? activePluginProvider.id
+                            }
+                            resetKey={activeProfile.id}
+                            surface={`${activePluginProvider.label} connection settings`}
+                            render={() =>
+                                activePluginProvider.renderSettings?.({
+                                    profile: activeProfile,
+                                    disabled: isBusy,
+                                    onChange: updateActiveProfileConfig,
+                                    onSave: () => void saveSettings(),
+                                    onTest: testConnection,
+                                })
+                            }
+                        />
                     ) : (
                         <div className="connection-card">
                             <p>

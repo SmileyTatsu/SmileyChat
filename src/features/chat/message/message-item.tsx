@@ -35,6 +35,10 @@ import { MessageAttachments } from "./message-attachment";
 import { MessageContent } from "./message-content";
 import { MessageHeader } from "./message-header";
 import { MessageReasoning } from "./message-reasoning";
+import {
+    PluginRenderSurface,
+    pluginIdFromScopedId,
+} from "../../plugins/plugin-error-boundary";
 
 export type MessageItemProps = {
     characterAvatarPath?: string;
@@ -252,7 +256,17 @@ export const MessageItem = memo(function MessageItem({
                                             });
                                         }}
                                     >
-                                        {action.renderIcon ? action.renderIcon() : null}
+                                        <PluginRenderSurface
+                                            pluginId={pluginIdFromScopedId(action.id)}
+                                            resetKey={action.id}
+                                            fallback={null}
+                                            surface={action.label}
+                                            render={() =>
+                                                action.renderIcon
+                                                    ? action.renderIcon()
+                                                    : null
+                                            }
+                                        />
                                         {action.label}
                                     </button>
                                 ))}

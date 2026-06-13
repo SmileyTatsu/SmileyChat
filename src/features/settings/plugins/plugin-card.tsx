@@ -15,6 +15,7 @@ import {
 
 import { CATEGORY_ICONS, type RequestState } from "./plugin-settings-helpers";
 import { PluginTrustBadge } from "./plugin-trust-badge";
+import { PluginRenderSurface } from "../../plugins/plugin-error-boundary";
 
 export type PluginCardProps = {
     plugin: PluginManifest;
@@ -146,11 +147,18 @@ export function PluginCard({
                         settingsPanels.map((panel) => (
                             <section className="plugin-config-section" key={panel.id}>
                                 <h4>{panel.label}</h4>
-                                {panel.render({
-                                    pluginId: plugin.id,
-                                    snapshot: pluginSnapshot,
-                                    storage: createPluginStorage(plugin.id),
-                                })}
+                                <PluginRenderSurface
+                                    pluginId={plugin.id}
+                                    resetKey={panel.id}
+                                    surface={panel.label}
+                                    render={() =>
+                                        panel.render({
+                                            pluginId: plugin.id,
+                                            snapshot: pluginSnapshot,
+                                            storage: createPluginStorage(plugin.id),
+                                        })
+                                    }
+                                />
                             </section>
                         ))
                     ) : loaded?.status === "loaded" ? (

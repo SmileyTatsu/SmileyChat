@@ -5,6 +5,10 @@ import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { ChatGroupMember, ChatMode } from "#frontend/types";
 
 import { GroupAvatar } from "./group-avatar";
+import {
+    PluginRenderSurface,
+    pluginIdFromScopedId,
+} from "../plugins/plugin-error-boundary";
 
 type ChatHeaderProps = {
     characterAvatarPath?: string;
@@ -119,7 +123,17 @@ export function ChatHeader({
                                     void action.run({ snapshot: pluginSnapshot })
                                 }
                             >
-                                {action.renderIcon ? action.renderIcon() : action.label}
+                                <PluginRenderSurface
+                                    pluginId={pluginIdFromScopedId(action.id)}
+                                    resetKey={action.id}
+                                    fallback={action.label}
+                                    surface={action.label}
+                                    render={() =>
+                                        action.renderIcon
+                                            ? action.renderIcon()
+                                            : action.label
+                                    }
+                                />
                             </button>
                         ))}
                     </div>

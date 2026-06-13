@@ -234,6 +234,39 @@
     scrollbar-gutter: stable;
 }
 
+.plugin-error-boundary {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    border: 1px solid rgba(235, 87, 87, 0.42);
+    border-radius: 8px;
+    background: rgba(72, 26, 31, 0.28);
+    color: #ffd6dc;
+    padding: 9px 10px;
+    line-height: 1.35;
+}
+
+.plugin-error-boundary strong,
+.plugin-error-boundary span,
+.plugin-error-boundary code {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.plugin-error-boundary strong {
+    font-size: 0.86rem;
+}
+
+.plugin-error-boundary span {
+    color: #ffb4bd;
+    font-size: 0.78rem;
+}
+
+.plugin-error-boundary code {
+    color: #f2a7af;
+    font-size: 0.76rem;
+}
+
 button,
 input,
 select,

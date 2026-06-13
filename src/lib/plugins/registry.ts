@@ -233,6 +233,13 @@ export function getLoadedPlugins() {
     return [...loadedPlugins];
 }
 
+export function getPluginDisplayName(pluginId: string) {
+    return (
+        loadedPlugins.find((plugin) => plugin.manifest.id === pluginId)?.manifest.name ??
+        pluginId
+    );
+}
+
 export function getPluginSettingsPanels() {
     return enabledValues(settingsPanels);
 }
@@ -309,6 +316,11 @@ export function getPluginMacroValue(
 export function getPluginConnectionProvider(providerId: string) {
     const provider = connectionProviders.get(providerId);
     return provider && isPluginEnabled(provider.pluginId) ? provider.value : undefined;
+}
+
+export function getPluginConnectionProviderOwnerId(providerId: string) {
+    const provider = connectionProviders.get(providerId);
+    return provider && isPluginEnabled(provider.pluginId) ? provider.pluginId : undefined;
 }
 
 export function getPluginConnectionProviders() {
