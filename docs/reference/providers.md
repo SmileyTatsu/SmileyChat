@@ -12,6 +12,7 @@ SmileyChat currently includes these provider adapters:
 - **OpenRouter**: OpenRouter-specific model catalog, app attribution, and provider routing controls.
 - **Google AI**: Direct browser calls to the Gemini API.
 - **Anthropic**: Direct browser calls to the Claude Messages API.
+- **NovelAI**: Direct browser calls to NovelAI's OpenAI-compatible completions endpoint.
 
 Provider calls are made directly from the frontend to the configured provider URL. SmileyChat intentionally does not proxy normal provider model listing or generation calls through the local Bun API.
 
@@ -83,9 +84,25 @@ Browser requests include:
 
 System and developer prompts are joined into the top-level Anthropic `system` field. User and assistant history is converted to Anthropic Messages API turns, and consecutive same-role turns are merged.
 
+## NovelAI
+
+Use the NovelAI provider to access NovelAI models natively without relying on generic OpenAI-compatible routing.
+
+Defaults and endpoints:
+
+- Default model: `llama-3-erato-v1`
+- Generation: `POST {baseUrl}/oa/v1/chat/completions`
+
+Base URL routing is handled dynamically based on the selected model:
+
+- `xialong-v1` and `glm-4-6` map to `https://text.novelai.net`
+- `llama-3-erato-v1`, `kayra-v1`, `clio-v1`, and custom models map to `https://api.novelai.net`
+
+SmileyChat utilizes the NovelAI `/oa/v1/chat/completions` endpoint instead of the raw text endpoint so that instruct formatting templates are automatically applied by the NovelAI backend. The provider implementation also includes magic `logit_bias` arrays for Erato and Kayra to ban unwanted artifacts like dinkus and asterisms automatically.
+
 ## Streaming
 
-OpenAI-compatible, OpenRouter, Google AI, and Anthropic adapters support streaming over SSE. Streaming is enabled by default through the app-level preference `preferences.chat.streaming` and can be disabled in Options > Settings.
+OpenAI-compatible, OpenRouter, Google AI, Anthropic, and NovelAI adapters support streaming over SSE. Streaming is enabled by default through the app-level preference `preferences.chat.streaming` and can be disabled in Options > Settings.
 
 Streaming is intentionally not a per-provider setting.
 

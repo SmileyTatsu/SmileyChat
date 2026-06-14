@@ -64,7 +64,20 @@ Use **Anthropic** to connect directly to Claude through Anthropic's Messages API
 
 Anthropic browser calls use Anthropic's direct browser access header because SmileyChat is a local BYO-key app that calls providers directly from the frontend.
 
-## 5. Other Cloud APIs
+## 5. NovelAI
+
+Use **NovelAI** to connect directly to NovelAI's text generation models with full support for model-specific routing and artifact bans.
+
+1. Click **New Profile**.
+2. Choose **NovelAI**.
+3. Enter your **NovelAI API key**.
+4. Select a model, such as `llama-3-erato-v1`.
+5. Click **Test Connection**.
+6. Click **Save**.
+
+*Note: SmileyChat uses the official Chat Completions endpoint for NovelAI, which natively applies instruct formats based on your chosen model. The connection panel will also dynamically route you to the correct base URL (e.g. `text.novelai.net` vs `api.novelai.net`) depending on your selection.*
+
+## 6. Other Cloud APIs
 
 For cloud APIs that use the standard OpenAI Chat Completions format:
 
