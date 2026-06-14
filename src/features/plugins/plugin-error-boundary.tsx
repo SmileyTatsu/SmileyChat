@@ -36,10 +36,7 @@ export class PluginErrorBoundary extends Component<
     }
 
     componentDidUpdate(previousProps: PluginErrorBoundaryProps) {
-        if (
-            this.state.hasError &&
-            previousProps.resetKey !== this.props.resetKey
-        ) {
+        if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
             this.setState({ errorMessage: "", hasError: false });
         }
     }

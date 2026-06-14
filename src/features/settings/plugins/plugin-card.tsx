@@ -205,8 +205,8 @@ function UnverifiedPluginWarning({ plugin }: { plugin: PluginManifest }) {
             <div>
                 <strong>Warning: Unverified Plugin</strong>
                 <p>
-                    This plugin has not been reviewed by the SmileyChat team.{" "}
-                    {claimText} Only install this if you completely trust the author.
+                    This plugin has not been reviewed by the SmileyChat team. {claimText}{" "}
+                    Only install this if you completely trust the author.
                 </p>
             </div>
         </div>

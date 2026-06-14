@@ -1,8 +1,6 @@
 import styles from "./styles.css?raw";
 
-import {
-    messageFormattingForMode,
-} from "#frontend/lib/message-formatting/quote-highlighting";
+import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
 import { defaultAppPreferences } from "#frontend/lib/preferences/types";
 
 import { renderFormatted, renderPlain } from "./formatting";
@@ -43,7 +41,8 @@ function registerFormatterRenderer(api: FormatterApi) {
         priority: 20,
         render: ({ content, messageFormatting, mode }) => {
             const formatting =
-                messageFormatting ?? messageFormattingForMode(defaultAppPreferences, mode);
+                messageFormatting ??
+                messageFormattingForMode(defaultAppPreferences, mode);
 
             return api.ui.h(
                 "div",

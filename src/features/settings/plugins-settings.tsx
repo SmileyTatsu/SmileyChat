@@ -1,11 +1,4 @@
-import {
-    AlertTriangle,
-    Boxes,
-    Layers,
-    RefreshCw,
-    Search,
-    XCircle,
-} from "lucide-preact";
+import { AlertTriangle, Boxes, Layers, RefreshCw, Search, XCircle } from "lucide-preact";
 
 import {
     PLUGIN_CATEGORIES,
@@ -138,9 +131,9 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                   enabledUnverifiedCount === 1 ? " is" : "s are"
                               } enabled.`
                             : "Unverified local plugins are installed."}{" "}
-                        Local plugins run as trusted browser code and can read chats,
-                        app state, and connection secrets. Only enable plugins from
-                        authors you trust.
+                        Local plugins run as trusted browser code and can read chats, app
+                        state, and connection secrets. Only enable plugins from authors
+                        you trust.
                     </p>
                 </div>
             )}

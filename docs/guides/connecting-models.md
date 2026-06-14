@@ -12,10 +12,10 @@ Use the **OpenAI-compatible** provider type for local tools that expose an OpenA
 2. Choose **OpenAI-compatible**.
 3. Name the profile, such as `Local LM Studio`.
 4. Set the **Base URL** for your tool:
-   - **LM Studio:** `http://127.0.0.1:1234/v1`
-   - **Ollama:** `http://127.0.0.1:11434/v1`
-   - **KoboldCpp:** `http://127.0.0.1:5001/v1`
-   - **text-generation-webui:** `http://127.0.0.1:5000/v1`
+    - **LM Studio:** `http://127.0.0.1:1234/v1`
+    - **Ollama:** `http://127.0.0.1:11434/v1`
+    - **KoboldCpp:** `http://127.0.0.1:5001/v1`
+    - **text-generation-webui:** `http://127.0.0.1:5000/v1`
 5. Click **Load Models**.
 6. Select a model from the dropdown, or enter a custom model name.
 7. Click **Test Connection**.

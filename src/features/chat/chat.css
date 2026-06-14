@@ -298,32 +298,113 @@
 
 .chat-loading-state {
     display: grid;
-    place-items: center;
     align-content: center;
-    gap: 12px;
+    gap: 14px;
     min-height: 0;
+    padding: 24px clamp(18px, 4vw, 52px);
     color: #b9bfd0;
     font-size: 0.92rem;
 }
 
-.chat-loading-spinner {
-    width: 34px;
-    height: 34px;
-    border: 2px solid rgba(185, 191, 208, 0.2);
-    border-top-color: #e1e7ff;
-    border-radius: 999px;
-    animation: chat-loading-spin 700ms linear infinite;
+.chat-loading-copy {
+    justify-self: center;
+    color: #aeb4c4;
+    font-weight: 700;
 }
 
-@keyframes chat-loading-spin {
+.chat-loading-message {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    width: min(720px, 100%);
+    opacity: 0.72;
+}
+
+.chat-loading-message.medium {
+    width: min(580px, 88%);
+}
+
+.chat-loading-message.narrow {
+    width: min(480px, 78%);
+}
+
+.chat-loading-avatar,
+.chat-loading-lines > div,
+.chat-loading-composer {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.075);
+}
+
+.chat-loading-avatar::after,
+.chat-loading-lines > div::after,
+.chat-loading-composer::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        100deg,
+        transparent,
+        rgba(255, 255, 255, 0.08),
+        transparent
+    );
+    animation: chat-loading-sheen 1.7s ease-in-out infinite;
+    content: "";
+    transform: translateX(-100%);
+}
+
+.chat-loading-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+}
+
+.chat-loading-lines {
+    display: grid;
+    align-content: start;
+    gap: 9px;
+    padding-top: 4px;
+}
+
+.chat-loading-lines > div {
+    height: 12px;
+    border-radius: 999px;
+}
+
+.chat-loading-lines > div:first-child {
+    width: 42%;
+    background: rgba(225, 231, 255, 0.15);
+}
+
+.chat-loading-lines > div:last-child {
+    width: 100%;
+}
+
+.chat-loading-message.medium .chat-loading-lines > div:last-child {
+    width: 78%;
+}
+
+.chat-loading-message.narrow .chat-loading-lines > div:last-child {
+    width: 64%;
+}
+
+.chat-loading-composer {
+    width: min(760px, 100%);
+    height: 52px;
+    margin-top: 8px;
+    border-radius: 10px;
+}
+
+@keyframes chat-loading-sheen {
     to {
-        transform: rotate(360deg);
+        transform: translateX(100%);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .chat-loading-spinner {
-        animation-duration: 1.4s;
+    .chat-loading-avatar::after,
+    .chat-loading-lines > div::after,
+    .chat-loading-composer::after {
+        animation: none;
     }
 }
 

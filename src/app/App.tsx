@@ -59,6 +59,7 @@ import {
 import { useChatSession } from "./hooks/use-chat-session";
 import { usePersonaLibrary } from "./hooks/use-persona-library";
 import { useResponsiveAppLayout } from "./hooks/use-responsive-app-layout";
+import { AppStartupScreen } from "./components/app-startup-screen";
 import {
     CharacterPanelHost,
     GroupPanelHost,
@@ -76,6 +77,7 @@ import {
 } from "./ui-state";
 
 const CONNECTION_SETTINGS_SAVE_DEBOUNCE_MS = 400;
+type StartupStatus = "loading" | "ready" | "error";
 
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
@@ -109,11 +111,14 @@ export function App() {
     const [preferencesSaveStatus, setPreferencesSaveStatus] = useState("");
     const [localApiWarning, setLocalApiWarning] = useState("");
     const [connectionSettingsLoaded, setConnectionSettingsLoaded] = useState(false);
-    const [preferencesInitialized, setPreferencesInitialized] = useState(false);
+    const [startupStatus, setStartupStatus] = useState<StartupStatus>("loading");
+    const [startupLabel, setStartupLabel] = useState("Loading preferences...");
+    const [startupError, setStartupError] = useState("");
     const latestConnectionSettingsRef = useRef<ConnectionSettings>(
         defaultConnectionSettings,
     );
     const connectionSettingsLoadedRef = useRef(false);
+    const backgroundLoadsStartedRef = useRef(false);
     const queuedConnectionSettingsSaveRef = useRef<ConnectionSettings | undefined>();
     const connectionSettingsSaveInFlightRef = useRef(false);
     const connectionSettingsSaveTimerRef = useRef<number | undefined>();
@@ -156,6 +161,7 @@ export function App() {
         importCharacterFiles,
         importChatFile,
         loadCharacterCollection,
+        loadInitialChatState,
         pendingCharacterId,
         prepareCharacterAvatarUpload,
         queueChatSave,
@@ -213,12 +219,7 @@ export function App() {
     latestGenerateModelForPluginsRef.current = generatePluginModelResponse;
 
     useEffect(() => {
-        void loadConnectionSettings();
-        void loadLorebookCollection();
-        void loadPresetCollection();
-        void loadPreferences({ applyStartupLayout: true });
-        void loadPersonaCollection();
-        void loadPlugins();
+        void initializeStartup();
     }, []);
 
     useEffect(() => {
@@ -261,14 +262,6 @@ export function App() {
             window.removeEventListener("pagehide", flushConnectionSettingsBeforeUnload);
         };
     }, []);
-
-    useEffect(() => {
-        if (!preferencesInitialized) {
-            return;
-        }
-
-        void loadCharacterCollection();
-    }, [preferencesInitialized]);
 
     const { characterPresence, pluginComposerState, isLorebooksPluginEnabled } =
         useAppPluginBridge({
@@ -558,9 +551,49 @@ export function App() {
             setPreferencesLoadError("");
         } catch (error) {
             setPreferencesLoadError(messageFromError(error));
-        } finally {
-            setPreferencesInitialized(true);
         }
+    }
+
+    async function loadStartupPreferences() {
+        const loadedPreferences = normalizeAppPreferences(await loadAppPreferences());
+        setPreferences(loadedPreferences);
+        setMode(loadedPreferences.chat.defaultMode);
+        desktopCharacterOpen.value = loadedPreferences.layout.characterPanelOpenByDefault;
+        mobileCharacterOpen.value = false;
+        mobileSidebarOpen.value = false;
+        setPreferencesLoadError("");
+        return loadedPreferences;
+    }
+
+    async function initializeStartup() {
+        setStartupStatus("loading");
+        setStartupError("");
+
+        try {
+            setStartupLabel("Loading preferences...");
+            await loadStartupPreferences();
+            setStartupLabel("Loading characters...");
+            await loadInitialChatState();
+            setStartupLabel("Opening chat...");
+            setStartupStatus("ready");
+            startBackgroundLoads();
+        } catch (error) {
+            setStartupError(messageFromError(error, "Failed to load SmileyChat."));
+            setStartupStatus("error");
+        }
+    }
+
+    function startBackgroundLoads() {
+        if (backgroundLoadsStartedRef.current) {
+            return;
+        }
+
+        backgroundLoadsStartedRef.current = true;
+        void loadConnectionSettings();
+        void loadLorebookCollection();
+        void loadPresetCollection();
+        void loadPersonaCollection();
+        void loadPlugins();
     }
 
     function updatePreferences(nextPreferences: AppPreferences) {
@@ -620,6 +653,16 @@ export function App() {
 
     const uiFontFamily = preferences.appearance.uiFontFamily.trim();
     const chatFontFamily = preferences.appearance.chatFontFamily.trim();
+
+    if (startupStatus !== "ready") {
+        return (
+            <AppStartupScreen
+                error={startupStatus === "error" ? startupError : undefined}
+                label={startupLabel}
+                onRetry={initializeStartup}
+            />
+        );
+    }
 
     return (
         <main

@@ -162,8 +162,31 @@ export const ChatWorkspace = memo(function ChatWorkspace({
 function ChatLoadingState() {
     return (
         <div className="chat-loading-state" role="status" aria-live="polite">
-            <div className="chat-loading-spinner" aria-hidden="true" />
-            <span>Loading chat</span>
+            <div className="chat-loading-copy">
+                <span>Loading chat...</span>
+            </div>
+            <div className="chat-loading-message wide" aria-hidden="true">
+                <div className="chat-loading-avatar" />
+                <div className="chat-loading-lines">
+                    <div />
+                    <div />
+                </div>
+            </div>
+            <div className="chat-loading-message medium" aria-hidden="true">
+                <div className="chat-loading-avatar" />
+                <div className="chat-loading-lines">
+                    <div />
+                    <div />
+                </div>
+            </div>
+            <div className="chat-loading-message narrow" aria-hidden="true">
+                <div className="chat-loading-avatar" />
+                <div className="chat-loading-lines">
+                    <div />
+                    <div />
+                </div>
+            </div>
+            <div className="chat-loading-composer" aria-hidden="true" />
         </div>
     );
 }

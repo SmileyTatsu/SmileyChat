@@ -62,24 +62,28 @@ export function useCharacterLibrary() {
         latestCharacterSummariesRef.current = safeSummaries;
     }
 
+    async function loadCharacterCollectionStrict() {
+        const summaries = normalizeCharacterSummaryCollection(
+            await loadCharacterSummaries(),
+        );
+
+        setCharacterSummaries(summaries);
+
+        if (summaries.characters.length === 0) {
+            setCharacter(defaultCharacter);
+            setCharacterLoadError("");
+            return { summaries, character: defaultCharacter };
+        }
+
+        const activeCharacter = await fetchCharacterById(summaries.activeCharacterId);
+        setCharacter(activeCharacter);
+        setCharacterLoadError("");
+        return { summaries, character: activeCharacter };
+    }
+
     async function loadCharacterCollection() {
         try {
-            const summaries = normalizeCharacterSummaryCollection(
-                await loadCharacterSummaries(),
-            );
-
-            setCharacterSummaries(summaries);
-
-            if (summaries.characters.length === 0) {
-                setCharacter(defaultCharacter);
-                setCharacterLoadError("");
-                return { summaries, character: defaultCharacter };
-            }
-
-            const activeCharacter = await fetchCharacterById(summaries.activeCharacterId);
-            setCharacter(activeCharacter);
-            setCharacterLoadError("");
-            return { summaries, character: activeCharacter };
+            return await loadCharacterCollectionStrict();
         } catch (error) {
             setCharacterLoadError(messageFromError(error));
             return undefined;
@@ -410,6 +414,7 @@ export function useCharacterLibrary() {
         latestCharacterRef,
         latestCharacterSummariesRef,
         loadCharacterCollection,
+        loadCharacterCollectionStrict,
         prepareCharacterAvatarUpload,
         removeCharacterAvatar,
         saveActiveCharacterSelection,

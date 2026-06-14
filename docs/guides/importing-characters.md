@@ -21,4 +21,5 @@ If you want to bulk-import many characters at once, or if you are organizing fil
 4. When you start SmileyChat (or reload the app), it will automatically scan this folder, import all valid characters into your permanent library, and remove the processed files from the `imports` folder.
 
 ## Where are my characters saved?
+
 Once imported, your characters are securely stored as individual, readable folders inside `userData/characters/library/`. You can easily back them up or edit the JSON files directly.

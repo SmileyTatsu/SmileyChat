@@ -161,7 +161,7 @@ export function GeneralSettings({
 
                 <ToggleRow
                     checked={preferences.appearance.highlightQuotedTextInChat}
-                    description='Use the same quote color in Chatting mode.'
+                    description="Use the same quote color in Chatting mode."
                     label="Highlight quoted text in Chatting mode"
                     onChange={(highlightQuotedTextInChat) =>
                         updateAppearance({ highlightQuotedTextInChat })
@@ -285,9 +285,7 @@ export function GeneralSettings({
                     <p>
                         The room settles into quiet light.{" "}
                         {previewFormatting.highlightQuotes ? (
-                            <span className="message-quoted-text">
-                                "Stay a moment,"
-                            </span>
+                            <span className="message-quoted-text">"Stay a moment,"</span>
                         ) : (
                             '"Stay a moment,"'
                         )}{" "}

@@ -113,6 +113,27 @@ export function useChatLibrary({
         }
     }
 
+    async function loadInitialChatState(sourceCharacter: SmileyCharacter) {
+        const summaries = normalizeChatSummaryCollection(await loadChatSummaries());
+        setChatSummaries(summaries);
+
+        if (
+            !latestCharacterSummariesRef.current.characters.some(
+                (item) => item.id === sourceCharacter.id,
+            )
+        ) {
+            setActiveChat(undefined);
+            setGroupCharacters([]);
+            setMode(defaultNewChatMode);
+            setChatLoadError("");
+            return { summaries, activeChat: undefined };
+        }
+
+        const activeChat = await activateChatForCharacter(sourceCharacter, summaries);
+        setChatLoadError("");
+        return { summaries, activeChat };
+    }
+
     async function activateChatForCharacter(
         sourceCharacter: SmileyCharacter,
         sourceSummaries?: ChatSummaryCollection,
@@ -727,6 +748,7 @@ export function useChatLibrary({
         latestChatRef,
         latestChatSummariesRef,
         latestGroupCharactersRef,
+        loadInitialChatState,
         loadChatCollection,
         persistChat,
         queueChatSave,

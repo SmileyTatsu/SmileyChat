@@ -91,12 +91,26 @@ export function useCharacterChats({
         await chatLibrary.activateChatForCharacter(result.character);
     }
 
+    async function loadInitialChatState() {
+        const result = await characterLibrary.loadCharacterCollectionStrict();
+        const chatResult = await chatLibrary.loadInitialChatState(result.character);
+
+        return {
+            activeChat: chatResult.activeChat,
+            character: result.character,
+            characters: result.summaries,
+            chats: chatResult.summaries,
+        };
+    }
+
     async function selectCharacter(characterId: string) {
         const activeChat = chatLibrary.latestChatRef.current;
         const isAlreadySelectedCharacter =
             characterId === characterLibrary.latestCharacterRef.current.id;
         const isAlreadyOpenDirectChat =
-            activeChat && !isGroupChat(activeChat) && activeChat.characterId === characterId;
+            activeChat &&
+            !isGroupChat(activeChat) &&
+            activeChat.characterId === characterId;
 
         if (
             characterId === pendingCharacterId ||
@@ -244,6 +258,7 @@ export function useCharacterChats({
         importCharacterFiles: importExport.importCharacterFiles,
         importChatFile: importExport.importChatFile,
         loadCharacterCollection,
+        loadInitialChatState,
         pendingCharacterId,
         prepareCharacterAvatarUpload,
         queueChatSave: chatLibrary.queueChatSave,
