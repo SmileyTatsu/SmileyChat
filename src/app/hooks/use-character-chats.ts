@@ -1,4 +1,7 @@
-import { chatToSummary } from "#frontend/lib/chats/normalize";
+import { useRef, useState } from "preact/hooks";
+
+import { chatToSummary, isGroupChat } from "#frontend/lib/chats/normalize";
+import { messageFromError } from "#frontend/lib/common/errors";
 import type {
     ChatMode,
     ChatSession,
@@ -25,6 +28,8 @@ export function useCharacterChats({
     userStatus,
 }: UseCharacterChatsOptions) {
     const characterLibrary = useCharacterLibrary();
+    const [pendingCharacterId, setPendingCharacterId] = useState("");
+    const characterSelectRequestIdRef = useRef(0);
     const chatLibrary = useChatLibrary({
         activeCharacterId: characterLibrary.character.id,
         defaultNewChatMode,
@@ -87,14 +92,56 @@ export function useCharacterChats({
     }
 
     async function selectCharacter(characterId: string) {
+        const activeChat = chatLibrary.latestChatRef.current;
+        const isAlreadySelectedCharacter =
+            characterId === characterLibrary.latestCharacterRef.current.id;
+        const isAlreadyOpenDirectChat =
+            activeChat && !isGroupChat(activeChat) && activeChat.characterId === characterId;
+
+        if (
+            characterId === pendingCharacterId ||
+            (isAlreadySelectedCharacter && (!activeChat || isAlreadyOpenDirectChat))
+        ) {
+            return;
+        }
+
+        const requestId = characterSelectRequestIdRef.current + 1;
+        characterSelectRequestIdRef.current = requestId;
+        setPendingCharacterId(characterId);
+        chatLibrary.setChatLoading(true);
+
         importExport.beginChatImportStatusFade();
-        await characterLibrary.flushPendingCharacterAutosaveWithoutStateUpdate();
-        await chatLibrary.flushPendingChatAutosaveWithoutStateUpdate();
 
-        const nextCharacter = await characterLibrary.selectCharacter(characterId);
+        try {
+            await characterLibrary.flushPendingCharacterAutosaveWithoutStateUpdate();
+            await chatLibrary.flushPendingChatAutosaveWithoutStateUpdate();
 
-        if (nextCharacter) {
-            await chatLibrary.activateChatForCharacter(nextCharacter);
+            characterLibrary.saveActiveCharacterSelection(characterId);
+            const nextCharacter = await characterLibrary.fetchCharacterById(characterId);
+
+            if (requestId !== characterSelectRequestIdRef.current) {
+                return;
+            }
+
+            if (nextCharacter) {
+                characterLibrary.commitSelectedCharacter(nextCharacter);
+
+                await chatLibrary.activateChatForCharacter(
+                    nextCharacter,
+                    chatLibrary.latestChatSummariesRef.current,
+                );
+            }
+        } catch (error) {
+            if (requestId === characterSelectRequestIdRef.current) {
+                const message = messageFromError(error);
+                characterLibrary.setCharacterLoadError(message);
+                chatLibrary.setChatLoadError(message);
+            }
+        } finally {
+            if (requestId === characterSelectRequestIdRef.current) {
+                setPendingCharacterId("");
+                chatLibrary.setChatLoading(false);
+            }
         }
     }
 
@@ -197,6 +244,7 @@ export function useCharacterChats({
         importCharacterFiles: importExport.importCharacterFiles,
         importChatFile: importExport.importChatFile,
         loadCharacterCollection,
+        pendingCharacterId,
         prepareCharacterAvatarUpload,
         queueChatSave: chatLibrary.queueChatSave,
         removeCharacterAvatar,

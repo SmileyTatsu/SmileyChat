@@ -115,12 +115,11 @@ export function useChatLibrary({
 
     async function activateChatForCharacter(
         sourceCharacter: SmileyCharacter,
-        sourceSummaries = latestChatSummariesRef.current,
+        sourceSummaries?: ChatSummaryCollection,
     ) {
-        const summaries =
-            sourceSummaries === latestChatSummariesRef.current
-                ? normalizeChatSummaryCollection(await loadChatSummaries())
-                : sourceSummaries;
+        const summaries = sourceSummaries
+            ? normalizeChatSummaryCollection(sourceSummaries)
+            : normalizeChatSummaryCollection(await loadChatSummaries());
 
         setChatSummaries(summaries);
 
@@ -735,6 +734,7 @@ export function useChatLibrary({
         selectChat,
         setActiveChat,
         setChatLoadError,
+        setChatLoading: setIsChatLoading,
         setChatSummaries,
         setGroupCharacters,
         startNewChat,

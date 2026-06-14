@@ -36,6 +36,9 @@ export function useCharacterLibrary() {
     const latestCharacterSummariesRef = useRef(characterSummaries);
     const characterAutosaveTimerRef = useRef<number | undefined>(undefined);
     const characterSaveRequestIdRef = useRef(0);
+    const characterCacheRef = useRef(new Map<string, SmileyCharacter>());
+    const activeSelectionSaveInFlightRef = useRef(false);
+    const queuedActiveSelectionIdRef = useRef<string | undefined>();
 
     latestCharacterRef.current = character;
     latestCharacterSummariesRef.current = characterSummaries;
@@ -50,6 +53,7 @@ export function useCharacterLibrary() {
     function setCharacter(nextCharacter: SmileyCharacter) {
         setCharacterState(nextCharacter);
         latestCharacterRef.current = nextCharacter;
+        characterCacheRef.current.set(nextCharacter.id, nextCharacter);
     }
 
     function setCharacterSummaries(nextSummaries: CharacterSummaryCollection) {
@@ -83,7 +87,22 @@ export function useCharacterLibrary() {
     }
 
     async function fetchCharacterById(characterId: string) {
-        return normalizeCharacter(await loadCharacter(characterId)) ?? defaultCharacter;
+        const cachedCharacter = characterCacheRef.current.get(characterId);
+        const cachedSummary = latestCharacterSummariesRef.current.characters.find(
+            (item) => item.id === characterId,
+        );
+
+        if (
+            cachedCharacter &&
+            (!cachedSummary || cachedSummary.updatedAt === cachedCharacter.updatedAt)
+        ) {
+            return cachedCharacter;
+        }
+
+        const loadedCharacter =
+            normalizeCharacter(await loadCharacter(characterId)) ?? defaultCharacter;
+        characterCacheRef.current.set(loadedCharacter.id, loadedCharacter);
+        return loadedCharacter;
     }
 
     function queueCharacterSave(nextCharacter: SmileyCharacter) {
@@ -186,6 +205,48 @@ export function useCharacterLibrary() {
         }
     }
 
+    function commitSelectedCharacter(nextCharacter: SmileyCharacter) {
+        setCharacter(nextCharacter);
+        setCharacterSummaries({
+            ...latestCharacterSummariesRef.current,
+            activeCharacterId: nextCharacter.id,
+        });
+        setCharacterLoadError("");
+    }
+
+    function saveActiveCharacterSelection(characterId: string) {
+        queuedActiveSelectionIdRef.current = characterId;
+        void flushActiveCharacterSelectionSave();
+    }
+
+    async function flushActiveCharacterSelectionSave() {
+        if (activeSelectionSaveInFlightRef.current) {
+            return;
+        }
+
+        activeSelectionSaveInFlightRef.current = true;
+
+        try {
+            while (queuedActiveSelectionIdRef.current) {
+                const activeCharacterId = queuedActiveSelectionIdRef.current;
+                queuedActiveSelectionIdRef.current = undefined;
+
+                await saveCharacterIndex({
+                    ...latestCharacterSummariesRef.current,
+                    activeCharacterId,
+                });
+            }
+        } catch (error) {
+            setCharacterLoadError(messageFromError(error));
+        } finally {
+            activeSelectionSaveInFlightRef.current = false;
+
+            if (queuedActiveSelectionIdRef.current) {
+                void flushActiveCharacterSelectionSave();
+            }
+        }
+    }
+
     async function createCharacter() {
         await flushPendingCharacterAutosaveWithoutStateUpdate();
 
@@ -246,6 +307,7 @@ export function useCharacterLibrary() {
             })) as {
                 characters?: CharacterSummaryCollection;
             };
+            characterCacheRef.current.delete(characterId);
 
             if (result.characters) {
                 setCharacterSummaries(result.characters);
@@ -271,6 +333,7 @@ export function useCharacterLibrary() {
                 chats?: ChatSummaryCollection;
             };
             const summaries = normalizeCharacterSummaryCollection(result.characters);
+            characterCacheRef.current.delete(characterId);
             const nextCharacter =
                 wasActiveCharacter && summaries.characters.length > 0
                     ? await fetchCharacterById(summaries.activeCharacterId)
@@ -339,6 +402,7 @@ export function useCharacterLibrary() {
         character,
         characterLoadError,
         characterSummaries,
+        commitSelectedCharacter,
         createCharacter,
         deleteCharacter,
         fetchCharacterById,
@@ -348,6 +412,7 @@ export function useCharacterLibrary() {
         loadCharacterCollection,
         prepareCharacterAvatarUpload,
         removeCharacterAvatar,
+        saveActiveCharacterSelection,
         selectCharacter,
         setCharacter,
         setCharacterLoadError,

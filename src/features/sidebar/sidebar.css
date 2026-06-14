@@ -714,6 +714,19 @@
     border-color: #303440;
 }
 
+.character-row.pending {
+    border-color: #4f5f7c;
+    background: #232838;
+}
+
+.character-row.pending small {
+    color: #cbd7ff;
+}
+
+.character-row.pending .avatar {
+    opacity: 0.72;
+}
+
 .character-row:disabled:hover,
 .chat-row:disabled:hover {
     background: #20232b;

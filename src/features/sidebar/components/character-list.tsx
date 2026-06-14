@@ -14,6 +14,7 @@ export type CharacterListProps = {
     filteredGroupChats: ChatSummary[];
     groupChats: ChatSummary[];
     hasSidebarFilter: boolean;
+    pendingCharacterId?: string;
     onOpenCharacterMenu: (event: MouseEvent, character: CharacterSummary) => void;
     onOpenChatMenu: (event: MouseEvent, chat: ChatSummary) => void;
     onSelectCharacter: (characterId: string) => void;
@@ -29,45 +30,59 @@ export function CharacterList({
     filteredGroupChats,
     groupChats,
     hasSidebarFilter,
+    pendingCharacterId,
     onOpenCharacterMenu,
     onOpenChatMenu,
     onSelectCharacter,
     onSelectChat,
 }: CharacterListProps) {
+    const activeRowCharacterId = pendingCharacterId || activeCharacterId;
+
     return (
         <div className="character-list">
             {filteredCharacters.length > 0 ? (
-                filteredCharacters.map((character) => (
-                    <button
-                        className={`character-row ${
-                            character.id === activeCharacterId && !activeGroupChat
-                                ? "active"
-                                : ""
-                        }`}
-                        key={character.id}
-                        type="button"
-                        onClick={() => onSelectCharacter(character.id)}
-                        onContextMenu={(event) => onOpenCharacterMenu(event, character)}
-                    >
-                        {character.avatar ? (
-                            <img
-                                className="avatar image-avatar"
-                                src={character.avatar.path}
-                                alt=""
-                            />
-                        ) : (
-                            <img
-                                className="avatar image-avatar"
-                                src={characterInitialAvatar(character.name)}
-                                alt=""
-                            />
-                        )}
-                        <span>
-                            <strong>{character.name}</strong>
-                            <small>{character.tagline || "No short description"}</small>
-                        </span>
-                    </button>
-                ))
+                filteredCharacters.map((character) => {
+                    const isPending = character.id === pendingCharacterId;
+                    const isActive =
+                        character.id === activeRowCharacterId && !activeGroupChat;
+
+                    return (
+                        <button
+                            className={`character-row ${isActive ? "active" : ""} ${
+                                isPending ? "pending" : ""
+                            }`}
+                            key={character.id}
+                            type="button"
+                            aria-busy={isPending ? "true" : undefined}
+                            onClick={() => onSelectCharacter(character.id)}
+                            onContextMenu={(event) =>
+                                onOpenCharacterMenu(event, character)
+                            }
+                        >
+                            {character.avatar ? (
+                                <img
+                                    className="avatar image-avatar"
+                                    src={character.avatar.path}
+                                    alt=""
+                                />
+                            ) : (
+                                <img
+                                    className="avatar image-avatar"
+                                    src={characterInitialAvatar(character.name)}
+                                    alt=""
+                                />
+                            )}
+                            <span>
+                                <strong>{character.name}</strong>
+                                <small>
+                                    {isPending
+                                        ? "Switching..."
+                                        : character.tagline || "No short description"}
+                                </small>
+                            </span>
+                        </button>
+                    );
+                })
             ) : characters.length > 0 && hasSidebarFilter ? (
                 <div className="rail-empty-state">
                     <strong>No matching characters</strong>

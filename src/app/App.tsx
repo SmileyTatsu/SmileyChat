@@ -156,6 +156,7 @@ export function App() {
         importCharacterFiles,
         importChatFile,
         loadCharacterCollection,
+        pendingCharacterId,
         prepareCharacterAvatarUpload,
         queueChatSave,
         removeCharacterAvatar,
@@ -657,6 +658,7 @@ export function App() {
                 characters={characterSummaries.characters}
                 characterImportStatus={characterImportStatus}
                 characterLoadError={characterLoadError}
+                pendingCharacterId={pendingCharacterId}
                 persona={persona}
                 personas={personaSummaries.personas}
                 pluginSnapshot={pluginSnapshot}

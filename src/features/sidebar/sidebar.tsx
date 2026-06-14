@@ -45,6 +45,7 @@ import { formatChatCount, formatChatMeta, normalizeFilterText } from "./sidebar-
 type SidebarProps = {
     activeChatId: string;
     activeCharacterId: string;
+    pendingCharacterId?: string;
     chats: ChatSummary[];
     chatCountsByCharacterId: Record<string, number>;
     chatImportStatus?: string;
@@ -86,6 +87,7 @@ type SidebarProps = {
 export function Sidebar({
     activeChatId,
     activeCharacterId,
+    pendingCharacterId,
     chats,
     chatImportStatus,
     chatImportStatusFading,
@@ -555,6 +557,7 @@ export function Sidebar({
                                     filteredGroupChats={filteredGroupChats}
                                     groupChats={groupChats}
                                     hasSidebarFilter={hasSidebarFilter}
+                                    pendingCharacterId={pendingCharacterId}
                                     onOpenCharacterMenu={openCharacterMenu}
                                     onOpenChatMenu={openChatMenu}
                                     onSelectCharacter={onSelectCharacter}
