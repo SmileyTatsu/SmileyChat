@@ -71,7 +71,7 @@ Use **NovelAI** to connect directly to NovelAI's text generation models with ful
 1. Click **New Profile**.
 2. Choose **NovelAI**.
 3. Enter your **NovelAI API key**.
-4. Select a model, such as `llama-3-erato-v1`.
+4. Select a model, such as `xialong-v1` (Fine-tuned GLM 4.6. Recommended).
 5. Click **Test Connection**.
 6. Click **Save**.
 
