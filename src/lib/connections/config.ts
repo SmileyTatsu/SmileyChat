@@ -9,6 +9,8 @@ import { defaultAnthropicConfig, normalizeAnthropicConfig } from "./anthropic/co
 import type { AnthropicConnectionConfig } from "./anthropic/types";
 import { defaultGoogleAIConfig, normalizeGoogleAIConfig } from "./google-ai/config";
 import type { GoogleAIConnectionConfig } from "./google-ai/types";
+import { defaultNovelAIConfig, normalizeNovelAIConfig } from "./novelai/config";
+import type { NovelAIConnectionConfig } from "./novelai/types";
 import {
     defaultOpenAICompatibleConfig,
     normalizeOpenAICompatibleConfig,
@@ -22,6 +24,7 @@ export type ConnectionProviderId =
     | "openrouter"
     | "google-ai"
     | "anthropic"
+    | "novelai"
     | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
@@ -64,12 +67,22 @@ export type AnthropicConnectionProfile = {
     updatedAt: string;
 };
 
+export type NovelAIConnectionProfile = {
+    id: string;
+    name: string;
+    provider: "novelai";
+    contextTokenBudget: number;
+    config: NovelAIConnectionConfig;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type PluginConnectionProfile = {
     id: string;
     name: string;
     provider: Exclude<
         ConnectionProviderId,
-        "openai-compatible" | "openrouter" | "google-ai" | "anthropic"
+        "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai"
     >;
     contextTokenBudget: number;
     config: Record<string, unknown>;
@@ -82,6 +95,7 @@ export type ConnectionProfile =
     | OpenRouterConnectionProfile
     | GoogleAIConnectionProfile
     | AnthropicConnectionProfile
+    | NovelAIConnectionProfile
     | PluginConnectionProfile;
 
 export type ConnectionSettings = {
@@ -105,6 +119,7 @@ const migratedOpenAIProfileId = "profile-openai-compatible-default";
 export {
     defaultAnthropicConfig,
     defaultGoogleAIConfig,
+    defaultNovelAIConfig,
     defaultOpenAICompatibleConfig,
     defaultOpenRouterConfig,
 };
@@ -261,6 +276,18 @@ export function createConnectionProfile(
         };
     }
 
+    if (provider === "novelai") {
+        return {
+            id: createConnectionProfileId(),
+            name,
+            provider,
+            contextTokenBudget: defaultContextTokenBudget,
+            config: normalizeNovelAIConfig(defaultConfig ?? defaultNovelAIConfig),
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
     if (provider !== "openai-compatible") {
         return {
             id: createConnectionProfileId(),
@@ -317,6 +344,12 @@ export function isAnthropicProfile(
     return profile?.provider === "anthropic";
 }
 
+export function isNovelAIProfile(
+    profile: ConnectionProfile | undefined,
+): profile is NovelAIConnectionProfile {
+    return profile?.provider === "novelai";
+}
+
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {
     const sourceProfiles = Array.isArray(settings.profiles) ? settings.profiles : [];
     const profiles = sourceProfiles
@@ -364,7 +397,9 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                     ? normalizeGoogleAIConfig(profile.config)
                     : provider === "anthropic"
                       ? normalizeAnthropicConfig(profile.config)
-                      : normalizePluginConfig(profile.config),
+                      : provider === "novelai"
+                        ? normalizeNovelAIConfig(profile.config)
+                        : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;

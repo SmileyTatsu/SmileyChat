@@ -9,6 +9,7 @@ import {
     getActiveConnectionProfile,
     isAnthropicProfile,
     isGoogleAIProfile,
+    isNovelAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
     sanitizeConnectionSecrets,
@@ -29,6 +30,10 @@ import {
 import { listGoogleAIModels } from "#frontend/lib/connections/google-ai/models";
 import type { GoogleAIModel } from "#frontend/lib/connections/google-ai/types";
 import { trimTrailingSlash } from "#frontend/lib/connections/http";
+import {
+    createNovelAIConnection,
+    createNovelAICompletionUrl,
+} from "#frontend/lib/connections/novelai/adapter";
 import { createOpenAICompatibleConnection } from "#frontend/lib/connections/openai-compatible/adapter";
 import { listOpenAICompatibleModels } from "#frontend/lib/connections/openai-compatible/models";
 import type { OpenAICompatibleModel } from "#frontend/lib/connections/openai-compatible/types";
@@ -57,6 +62,7 @@ import { GoogleAIConnection } from "./providers/google-ai-connection";
 import { AnthropicConnection } from "./providers/anthropic-connection";
 import { OpenAICompatibleConnection } from "./providers/openai-compatible-connection";
 import { OpenRouterConnection } from "./providers/openrouter-connection";
+import { NovelAIConnection } from "./providers/novelai-connection";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
@@ -157,6 +163,8 @@ export function ConnectionsSettings({
         isGoogleAIProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
         isAnthropicProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
         isAnthropicProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
+        isNovelAIProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
+        isNovelAIProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
     ]);
 
     async function saveSettings(nextSettings = settings) {
@@ -291,6 +299,39 @@ export function ConnectionsSettings({
 
                     setStatusMessage(
                         `Anthropic connection test succeeded: ${result.message}`,
+                    );
+                    setRequestState("success");
+                } catch (error) {
+                    setStatusMessage(
+                        messageFromError(error, "Unexpected connection error."),
+                    );
+                    setRequestState("error");
+                }
+
+                return;
+            }
+
+            if (isNovelAIProfile(activeProfile)) {
+                const targetUrl = createNovelAICompletionUrl({
+                    ...activeProfile.config,
+                    apiKey: undefined,
+                });
+
+                setRequestState("loading");
+                setStatusMessage(`Testing POST ${targetUrl}`);
+
+                try {
+                    const adapter = createNovelAIConnection({
+                        ...activeProfile.config,
+                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    });
+                    const result = await adapter.generate({
+                        context: "Reply briefly to confirm the connection works.",
+                        messages: [createUserMessage("hello", defaultPersona)],
+                    });
+
+                    setStatusMessage(
+                        `NovelAI connection test succeeded: ${result.message}`,
                     );
                     setRequestState("success");
                 } catch (error) {
@@ -611,7 +652,8 @@ export function ConnectionsSettings({
             providerId === "openai-compatible" ||
             providerId === "openrouter" ||
             providerId === "google-ai" ||
-            providerId === "anthropic"
+            providerId === "anthropic" ||
+            providerId === "novelai"
                 ? undefined
                 : (provider?.defaultConfig ?? {});
         const nextProfile = createConnectionProfile(
@@ -622,6 +664,8 @@ export function ConnectionsSettings({
                   ? "Google AI"
                   : providerId === "anthropic"
                     ? "Anthropic"
+                    : providerId === "novelai"
+                      ? "NovelAI"
                     : (provider?.label ?? "OpenAI compatible"),
             config,
         );
@@ -786,6 +830,7 @@ export function ConnectionsSettings({
                                 <option value="openrouter">OpenRouter</option>
                                 <option value="google-ai">Google AI</option>
                                 <option value="anthropic">Anthropic</option>
+                                <option value="novelai">NovelAI</option>
                                 {pluginProviders.map((provider) => (
                                     <option key={provider.id} value={provider.id}>
                                         {provider.label}
@@ -841,6 +886,14 @@ export function ConnectionsSettings({
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
+                            onTest={testConnection}
+                        />
+                    ) : isNovelAIProfile(activeProfile) ? (
+                        <NovelAIConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            onChange={(config) => updateActiveProfileConfig(config)}
+                            onClearApiKey={clearApiKey}
                             onTest={testConnection}
                         />
                     ) : activePluginProvider?.renderSettings ? (

@@ -4,12 +4,14 @@ import {
     getActiveConnectionProfile,
     isAnthropicProfile,
     isGoogleAIProfile,
+    isNovelAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
     type ConnectionSettings,
 } from "./config";
 import { createAnthropicConnection } from "./anthropic/adapter";
 import { createGoogleAIConnection } from "./google-ai/adapter";
+import { createNovelAIConnection } from "./novelai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
 
@@ -59,6 +61,17 @@ export function getAdapterForSettings(settings: ConnectionSettings) {
         }
 
         return createAnthropicConnection({
+            ...profile.config,
+            apiKey: profile.config.apiKey?.trim() || undefined,
+        });
+    }
+
+    if (isNovelAIProfile(profile)) {
+        if (!profile.config.model.id.trim()) {
+            throw new Error(`${profile.name} needs a model.`);
+        }
+
+        return createNovelAIConnection({
             ...profile.config,
             apiKey: profile.config.apiKey?.trim() || undefined,
         });

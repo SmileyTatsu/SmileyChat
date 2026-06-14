@@ -162,4 +162,37 @@ describe("connection config normalization", () => {
 
         expect(settings.profiles[0]?.config).not.toHaveProperty("thinking");
     });
+
+    test("normalizes NovelAI profiles", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-novelai",
+            profiles: [
+                {
+                    id: "profile-novelai",
+                    name: "NovelAI",
+                    provider: "novelai",
+                    config: {
+                        apiKey: "secret",
+                        model: {
+                            source: "default",
+                            id: "kayra-v1",
+                        },
+                        maxOutputTokens: 512,
+                    },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.config).toMatchObject({
+            apiKey: "secret",
+            maxOutputTokens: 512,
+            model: {
+                source: "default",
+                id: "kayra-v1",
+            },
+        });
+    });
 });
