@@ -147,8 +147,15 @@ bun run dev:api
 
 ## Documentation
 
-Check the [docs/](docs/) folder for deeper technical insights:
+Check the [docs/](docs/) folder for guides and technical insights.
 
+### How-To Guides
+- [How to Access SmileyChat Remotely](docs/guides/remote-access.md)
+- [How to Connect AI Models](docs/guides/connecting-models.md)
+- [How to Import Characters](docs/guides/importing-characters.md)
+- [How to Backup and Restore Data](docs/guides/backup-and-restore.md)
+
+### Technical Details
 - [User Data & Storage](docs/user-data.md)
 - [Development Guide](docs/development.md)
 - [Providers & AI Setup](docs/providers.md)
