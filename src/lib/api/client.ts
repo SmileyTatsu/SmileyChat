@@ -34,9 +34,7 @@ export function localApiPath(path: string) {
         return path;
     }
 
-    const basePath = normalizeApiBasePath(
-        import.meta.env.VITE_SMILEYCHAT_API_BASE_PATH,
-    );
+    const basePath = normalizeApiBasePath(import.meta.env.VITE_SMILEYCHAT_API_BASE_PATH);
     const relativePath = path.startsWith(defaultApiBasePath)
         ? path.slice(defaultApiBasePath.length)
         : path;
@@ -298,7 +296,7 @@ export type PluginRegistryEntry = {
     author?: string;
     category: PluginCategory;
     status: "official" | "verified";
-    files: Record<string, { url: string; sha256: string }>;
+    archive: { url: string; sha256: string };
 };
 
 export type PluginRegistryPayload = {

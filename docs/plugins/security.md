@@ -38,7 +38,8 @@ Enabling a listed local plugin from Options > Plugins loads it into the current 
 
 - Permission labels are enforced for protected plugin APIs, but they are not a security sandbox. Plugins are still trusted browser-side code.
 - Plugins are browser-side ESM modules. They do not run as Bun server plugins.
-- There is no plugin package installer yet. Users install plugins by placing folders under `userData/plugins`.
+- Local plugins can be installed by placing folders under `userData/plugins`.
+- Verified registry plugins can be installed from Options > Plugins > Store. SmileyChat verifies the packaged ZIP hash and validates extracted paths, but verified plugins are still trusted code.
 - Plugin cleanup/unload is not a full isolation boundary. Supported hooks are filtered when disabled, but arbitrary side effects from plugin code cannot always be undone.
 - Provider plugins run from the frontend and are subject to browser CORS rules unless they explicitly use the guarded plugin fetch bridge for non-provider helper requests.
 

@@ -1,3 +1,4 @@
+import AdmZip from "adm-zip";
 import { Glob } from "bun";
 import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import {
@@ -27,8 +28,10 @@ import { coreExtensionsDataDir, pluginsDir } from "./paths";
 import { safeFetch } from "./security/safe-fetch";
 
 const corePluginIds = new Set(["smiley-chat-formatter", "lorebooks"]);
-const PLUGIN_INSTALL_MAX_FILE_BYTES = 10 * 1024 * 1024;
-const PLUGIN_INSTALL_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
+const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;
+const PLUGIN_INSTALL_MAX_EXTRACTED_TOTAL_BYTES = 50 * 1024 * 1024;
+const PLUGIN_INSTALL_MAX_ARCHIVE_ENTRIES = 1000;
 const PLUGIN_REGISTRY_MAX_BYTES = 2 * 1024 * 1024;
 const legacyCorePluginFolders: Record<string, string[]> = {
     "smiley-chat-formatter": ["chat-formatter", "smiley-chat-formatter"],
@@ -75,7 +78,7 @@ type RegistryPlugin = {
     author?: string;
     category: PluginCategory;
     status: RegistryPluginStatus;
-    files: Record<string, { url: string; sha256: string }>;
+    archive: { url: string; sha256: string };
 };
 
 type PluginRegistry = {
@@ -219,24 +222,12 @@ export async function installVerifiedPlugin(body: unknown) {
     await mkdir(tempRoot, { recursive: true });
 
     try {
-        let totalBytes = 0;
-
-        for (const [fileKey, fileEntry] of Object.entries(registryPlugin.files)) {
-            const targetPath = resolveRegistryFilePath(tempRoot, fileKey);
-            const downloaded = await downloadRegistryFile(
-                fileEntry,
-                totalBytes,
-                registryAllowedHostnames,
-            );
-            totalBytes += downloaded.bytes.byteLength;
-
-            if (totalBytes > PLUGIN_INSTALL_MAX_TOTAL_BYTES) {
-                throw new BadRequestError("Plugin install payload exceeds 50 MB.");
-            }
-
-            await mkdir(dirname(targetPath), { recursive: true });
-            await Bun.write(targetPath, downloaded.bytes);
-        }
+        const archive = await downloadRegistryArchive(
+            registryPlugin.archive,
+            registryAllowedHostnames,
+        );
+        await extractPluginArchive(archive.bytes, tempRoot);
+        await hoistSingleArchiveRoot(tempRoot);
 
         const manifestFile = Bun.file(join(tempRoot, "plugin.json"));
 
@@ -328,11 +319,7 @@ function normalizeRegistryPlugin(value: unknown): RegistryPlugin {
         throw new HttpError(502, `Registry plugin ID '${id}' is not a safe folder name.`);
     }
 
-    const files = normalizeRegistryFiles(plugin.files);
-
-    if (!files["plugin.json"]) {
-        throw new HttpError(502, `Registry plugin '${id}' is missing plugin.json.`);
-    }
+    const archive = normalizeRegistryArchive(plugin.archive, id);
 
     const status = plugin.status;
 
@@ -352,39 +339,33 @@ function normalizeRegistryPlugin(value: unknown): RegistryPlugin {
         author: typeof plugin.author === "string" ? plugin.author : undefined,
         category: normalizeCategory(plugin.category),
         status,
-        files,
+        archive,
     };
 }
 
-function normalizeRegistryFiles(value: unknown) {
+function normalizeRegistryArchive(value: unknown, pluginId: string) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new HttpError(502, "Registry plugin files must be an object.");
+        throw new HttpError(502, `Registry plugin '${pluginId}' needs an archive.`);
     }
 
-    const files: RegistryPlugin["files"] = {};
+    const archive = value as Record<string, unknown>;
+    const url = registryString(
+        archive.url,
+        `Registry plugin '${pluginId}' archive needs a URL.`,
+    );
+    const sha256 = registryString(
+        archive.sha256,
+        `Registry plugin '${pluginId}' archive needs a sha256 hash.`,
+    ).toLowerCase();
 
-    for (const [fileKey, fileValue] of Object.entries(value)) {
-        validateRegistryFileKey(fileKey);
-
-        if (!fileValue || typeof fileValue !== "object" || Array.isArray(fileValue)) {
-            throw new HttpError(502, `Registry file '${fileKey}' must be an object.`);
-        }
-
-        const file = fileValue as Record<string, unknown>;
-        const url = registryString(file.url, `Registry file '${fileKey}' needs a URL.`);
-        const sha256 = registryString(
-            file.sha256,
-            `Registry file '${fileKey}' needs a sha256 hash.`,
-        ).toLowerCase();
-
-        if (!/^[a-f0-9]{64}$/.test(sha256)) {
-            throw new HttpError(502, `Registry file '${fileKey}' has an invalid sha256.`);
-        }
-
-        files[fileKey] = { url, sha256 };
+    if (!/^[a-f0-9]{64}$/.test(sha256)) {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' archive has an invalid sha256.`,
+        );
     }
 
-    return files;
+    return { url, sha256 };
 }
 
 function registryString(value: unknown, message: string) {
@@ -395,17 +376,151 @@ function registryString(value: unknown, message: string) {
     return value.trim();
 }
 
-function validateRegistryFileKey(fileKey: string) {
+async function downloadRegistryArchive(
+    archive: { url: string; sha256: string },
+    registryAllowedHostnames: string[],
+) {
+    const parsedUrl = new URL(archive.url);
+
     if (
-        !fileKey ||
-        isAbsolute(fileKey) ||
-        fileKey.includes("\\") ||
-        /^[a-zA-Z]:/.test(fileKey)
+        parsedUrl.protocol !== "https:" ||
+        !registryAllowedHostnames.includes(parsedUrl.hostname.toLowerCase())
     ) {
-        throw new HttpError(502, `Registry file path '${fileKey}' is not allowed.`);
+        throw new BadRequestError("Registry archive URL host is not trusted.");
     }
 
-    const segments = fileKey.split("/");
+    const response = await safeFetch(parsedUrl, {
+        maxResponseBytes: PLUGIN_INSTALL_MAX_ARCHIVE_BYTES,
+        policy: {
+            allowedHostnames: registryAllowedHostnames,
+            allowedProtocols: ["https:"],
+        },
+    });
+
+    if (!response.ok) {
+        throw new HttpError(
+            502,
+            `Plugin archive download failed: ${response.status} ${response.statusText}`,
+        );
+    }
+
+    const bytes = await readResponseBytesAndHash(
+        response,
+        PLUGIN_INSTALL_MAX_ARCHIVE_BYTES,
+        PLUGIN_INSTALL_MAX_ARCHIVE_BYTES,
+        archive.url,
+        archive.sha256,
+    );
+
+    return { bytes };
+}
+
+async function extractPluginArchive(bytes: Uint8Array, tempRoot: string) {
+    let zip: AdmZip;
+
+    try {
+        zip = new AdmZip(Buffer.from(bytes));
+    } catch {
+        throw new HttpError(502, "Plugin archive is not a readable ZIP file.");
+    }
+
+    const entries = zip.getEntries();
+
+    if (entries.length === 0) {
+        throw new BadRequestError("Plugin archive is empty.");
+    }
+
+    if (entries.length > PLUGIN_INSTALL_MAX_ARCHIVE_ENTRIES) {
+        throw new BadRequestError("Plugin archive contains too many files.");
+    }
+
+    let totalExtractedBytes = 0;
+
+    for (const entry of entries) {
+        const archivePath = normalizeArchiveEntryName(entry.entryName);
+
+        if (!archivePath || shouldSkipArchiveEntry(archivePath)) {
+            continue;
+        }
+
+        const targetPath = resolveArchiveEntryPath(tempRoot, archivePath);
+
+        if (entry.isDirectory) {
+            await mkdir(targetPath, { recursive: true });
+            continue;
+        }
+
+        const entrySize = entry.header.size;
+
+        if (entrySize > PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES) {
+            throw new BadRequestError(
+                `Plugin archive entry '${archivePath}' exceeds 10 MB.`,
+            );
+        }
+
+        totalExtractedBytes += entrySize;
+
+        if (totalExtractedBytes > PLUGIN_INSTALL_MAX_EXTRACTED_TOTAL_BYTES) {
+            throw new BadRequestError("Plugin archive extracted payload exceeds 50 MB.");
+        }
+
+        const data = entry.getData();
+
+        if (data.byteLength !== entrySize) {
+            throw new BadRequestError(
+                `Plugin archive entry '${archivePath}' has an invalid size.`,
+            );
+        }
+
+        await mkdir(dirname(targetPath), { recursive: true });
+        await Bun.write(targetPath, data);
+    }
+}
+
+function normalizeArchiveEntryName(entryName: string) {
+    if (entryName.startsWith("/") || entryName.includes("\\")) {
+        throw new HttpError(502, `Plugin archive path '${entryName}' is not allowed.`);
+    }
+
+    const normalized = entryName;
+    return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
+}
+
+function shouldSkipArchiveEntry(archivePath: string) {
+    return (
+        archivePath === "__MACOSX" ||
+        archivePath.startsWith("__MACOSX/") ||
+        archivePath.endsWith("/.DS_Store") ||
+        archivePath === ".DS_Store"
+    );
+}
+
+function resolveArchiveEntryPath(root: string, archivePath: string) {
+    validateArchiveEntryPath(archivePath);
+
+    const targetPath = resolve(root, ...archivePath.split("/"));
+
+    if (!isSafeChild(root, targetPath)) {
+        throw new HttpError(
+            502,
+            `Plugin archive path '${archivePath}' escapes install root.`,
+        );
+    }
+
+    return targetPath;
+}
+
+function validateArchiveEntryPath(archivePath: string) {
+    if (
+        !archivePath ||
+        isAbsolute(archivePath) ||
+        archivePath.includes("\\") ||
+        /^[a-zA-Z]:/.test(archivePath)
+    ) {
+        throw new HttpError(502, `Plugin archive path '${archivePath}' is not allowed.`);
+    }
+
+    const segments = archivePath.split("/");
 
     if (
         segments.some(
@@ -416,60 +531,32 @@ function validateRegistryFileKey(fileKey: string) {
                 /^[a-zA-Z]:/.test(segment),
         )
     ) {
-        throw new HttpError(502, `Registry file path '${fileKey}' is not allowed.`);
+        throw new HttpError(502, `Plugin archive path '${archivePath}' is not allowed.`);
     }
 }
 
-function resolveRegistryFilePath(root: string, fileKey: string) {
-    validateRegistryFileKey(fileKey);
-
-    const targetPath = resolve(root, ...fileKey.split("/"));
-
-    if (!isSafeChild(root, targetPath)) {
-        throw new HttpError(502, `Registry file path '${fileKey}' escapes install root.`);
+async function hoistSingleArchiveRoot(tempRoot: string) {
+    if (await pathExists(join(tempRoot, "plugin.json"))) {
+        return;
     }
 
-    return targetPath;
-}
-
-async function downloadRegistryFile(
-    file: { url: string; sha256: string },
-    previousTotalBytes: number,
-    registryAllowedHostnames: string[],
-) {
-    const parsedUrl = new URL(file.url);
-
-    if (
-        parsedUrl.protocol !== "https:" ||
-        !registryAllowedHostnames.includes(parsedUrl.hostname.toLowerCase())
-    ) {
-        throw new BadRequestError("Registry file URL host is not trusted.");
-    }
-
-    const response = await safeFetch(parsedUrl, {
-        maxResponseBytes: PLUGIN_INSTALL_MAX_FILE_BYTES,
-        policy: {
-            allowedHostnames: registryAllowedHostnames,
-            allowedProtocols: ["https:"],
-        },
-    });
-
-    if (!response.ok) {
-        throw new HttpError(
-            502,
-            `Plugin file download failed: ${response.status} ${response.statusText}`,
-        );
-    }
-
-    const bytes = await readResponseBytesAndHash(
-        response,
-        PLUGIN_INSTALL_MAX_FILE_BYTES,
-        PLUGIN_INSTALL_MAX_TOTAL_BYTES - previousTotalBytes,
-        file.url,
-        file.sha256,
+    const entries = await readdir(tempRoot, { withFileTypes: true });
+    const contentEntries = entries.filter(
+        (entry) => entry.name !== "__MACOSX" && entry.name !== ".DS_Store",
     );
 
-    return { bytes };
+    if (contentEntries.length !== 1 || !contentEntries[0].isDirectory()) {
+        return;
+    }
+
+    const nestedRoot = join(tempRoot, contentEntries[0].name);
+    const installRoot = dirname(tempRoot);
+    const hoistRoot = join(installRoot, `${basename(tempRoot)}-hoist`);
+
+    await rm(hoistRoot, { recursive: true, force: true });
+    await rename(nestedRoot, hoistRoot);
+    await rm(tempRoot, { recursive: true, force: true });
+    await rename(hoistRoot, tempRoot);
 }
 
 async function readResponseBytesAndHash(
@@ -501,12 +588,15 @@ async function readResponseBytesAndHash(
 
             if (totalBytes > maxFileBytes) {
                 await reader.cancel().catch(() => undefined);
-                throw new HttpError(502, `Plugin file from ${url} exceeds 10 MB.`);
+                throw new HttpError(
+                    502,
+                    `Plugin archive from ${url} exceeds ${maxFileBytes} bytes.`,
+                );
             }
 
             if (totalBytes > maxRemainingBytes) {
                 await reader.cancel().catch(() => undefined);
-                throw new HttpError(502, "Plugin install payload exceeds 50 MB.");
+                throw new HttpError(502, "Plugin archive download is too large.");
             }
 
             hasher.update(value);
@@ -519,7 +609,7 @@ async function readResponseBytesAndHash(
     const actualSha256 = hasher.digest("hex");
 
     if (actualSha256 !== expectedSha256.toLowerCase()) {
-        throw new HttpError(502, `Plugin file hash mismatch for ${url}.`);
+        throw new HttpError(502, `Plugin archive hash mismatch for ${url}.`);
     }
 
     const bytes = new Uint8Array(totalBytes);
@@ -1199,3 +1289,10 @@ async function readResponseBytes(
 
     return bytes;
 }
+
+export const pluginInstallTestInternals = {
+    extractPluginArchive,
+    hoistSingleArchiveRoot,
+    normalizePluginRegistry,
+    resolveArchiveEntryPath,
+};

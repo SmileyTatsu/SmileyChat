@@ -7,7 +7,9 @@ Start here:
 
 1. Read [quick-start.md](quick-start.md).
 2. Copy one of the examples from [examples.md](examples.md).
-3. Use [api-reference.md](api-reference.md) when you need a specific hook.
+3. Use [plugin-development.md](plugin-development.md) when turning an idea into a complete plugin.
+4. Use [distribution.md](distribution.md) when packaging a plugin for the verified extension registry.
+5. Use [api-reference.md](api-reference.md) when you need a specific hook.
 
 Current plugin surfaces:
 

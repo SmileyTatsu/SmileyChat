@@ -627,6 +627,8 @@ These routes are used by the app and plugin runtime:
 
 - `GET /api/plugins`: discover bundled core extensions and installed local plugin manifests.
 - `PUT /api/plugins/{pluginId}`: enable or disable one plugin.
+- `GET /api/plugins/registry`: load the verified extension registry.
+- `POST /api/plugins/install`: install one verified registry plugin by `pluginId`.
 - `POST /api/plugins/fetch`: SSRF-guarded outbound fetch for trusted local plugins with `network:fetch`, gated by `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true`.
 - `GET /api/plugins/profiles`: load plugin profile state plus built-in profile definitions.
 - `PUT /api/plugins/profiles`: save plugin profile state.
