@@ -75,9 +75,7 @@ export function CharacterList({
                             <span>
                                 <strong>{character.name}</strong>
                                 <small>
-                                    {isPending
-                                        ? "Switching..."
-                                        : character.tagline || "No short description"}
+                                    {character.tagline || "No short description"}
                                 </small>
                             </span>
                         </button>
