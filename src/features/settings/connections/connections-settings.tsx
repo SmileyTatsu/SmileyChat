@@ -666,7 +666,7 @@ export function ConnectionsSettings({
                     ? "Anthropic"
                     : providerId === "novelai"
                       ? "NovelAI"
-                    : (provider?.label ?? "OpenAI compatible"),
+                      : (provider?.label ?? "OpenAI compatible"),
             config,
         );
 

@@ -90,9 +90,7 @@ export function NovelAIConnection({
                     value={config.model.source === "custom" ? config.model.id : ""}
                     placeholder="Use a NovelAI model ID"
                     onInput={(event) =>
-                        updateCustomModel(
-                            (event.currentTarget as HTMLInputElement).value,
-                        )
+                        updateCustomModel((event.currentTarget as HTMLInputElement).value)
                     }
                 />
             </label>
@@ -118,9 +116,7 @@ export function NovelAIConnection({
                 />
             </label>
             <details>
-                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-                    Advanced
-                </summary>
+                <summary style={{ cursor: "pointer", fontWeight: 700 }}>Advanced</summary>
                 <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
                     <BaseUrlField
                         baseUrl={config.baseUrl ?? ""}
