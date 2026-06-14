@@ -85,7 +85,6 @@ export function App() {
         characterOpenSignal,
         isCharacterDrawerLayout,
         isMobileLayout,
-        setActiveCharacterOpen,
         setActiveSidebarOpen,
         sidebarOpenSignal,
         toggleCharacter,
@@ -814,7 +813,6 @@ export function App() {
                     onForceReply={(characterId) =>
                         void chatSession.forceGroupMemberResponse(characterId)
                     }
-                    onOpenChange={setActiveCharacterOpen}
                     onUpdateAuthorNote={(authorNote) =>
                         handleUpdateChatMetadata({ authorNote })
                     }
@@ -828,7 +826,6 @@ export function App() {
                     onChange={updateActiveCharacter}
                     onBeforeAvatarUpload={prepareCharacterAvatarUpload}
                     onSavedCharacter={applySavedCharacter}
-                    onOpenChange={setActiveCharacterOpen}
                     onUpdateAuthorNote={(authorNote) =>
                         handleUpdateChatMetadata({ authorNote })
                     }

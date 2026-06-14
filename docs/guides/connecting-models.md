@@ -75,7 +75,7 @@ Use **NovelAI** to connect directly to NovelAI's text generation models with ful
 5. Click **Test Connection**.
 6. Click **Save**.
 
-*Note: SmileyChat uses the official Chat Completions endpoint for NovelAI, which natively applies instruct formats based on your chosen model. The connection panel will also dynamically route you to the correct base URL (e.g. `text.novelai.net` vs `api.novelai.net`) depending on your selection.*
+_Note: SmileyChat uses the official Chat Completions endpoint for NovelAI, which natively applies instruct formats based on your chosen model. The connection panel will also dynamically route you to the correct base URL (e.g. `text.novelai.net` vs `api.novelai.net`) depending on your selection._
 
 ## 6. Other Cloud APIs
 

@@ -1,4 +1,4 @@
-import { Settings, UserRound, Users } from "lucide-preact";
+import { UserRound, Users } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import type { PersonaSummary, SmileyPersona, UserStatus } from "#frontend/types";
@@ -9,7 +9,6 @@ type PersonaBarProps = {
     persona: SmileyPersona;
     personas: PersonaSummary[];
     status: UserStatus;
-    onOpenSettings: () => void;
     onOpenPersonasSettings: () => void;
     onPersonaSelect: (personaId: string) => void;
     onStatusChange: (status: UserStatus) => void;
@@ -21,7 +20,6 @@ export function PersonaBar({
     persona,
     personas,
     status,
-    onOpenSettings,
     onOpenPersonasSettings,
     onPersonaSelect,
     onStatusChange,
@@ -170,15 +168,6 @@ export function PersonaBar({
                     </div>
                 )}
             </div>
-
-            <button
-                className="persona-settings"
-                type="button"
-                title="Open settings"
-                onClick={onOpenSettings}
-            >
-                <Settings size={18} />
-            </button>
         </section>
     );
 }

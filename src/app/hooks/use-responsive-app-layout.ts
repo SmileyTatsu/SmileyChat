@@ -77,15 +77,6 @@ export function useResponsiveAppLayout() {
         desktopSidebarOpen.value = isOpen;
     }
 
-    function setActiveCharacterOpen(isOpen: boolean) {
-        if (isCharacterDrawerLayout) {
-            mobileCharacterOpen.value = isOpen;
-            return;
-        }
-
-        desktopCharacterOpen.value = isOpen;
-    }
-
     function toggleSidebar() {
         if (isMobileLayout) {
             mobileSidebarOpen.value = !mobileSidebarOpen.value;
@@ -94,12 +85,6 @@ export function useResponsiveAppLayout() {
         }
 
         desktopSidebarOpen.value = !desktopSidebarOpen.value;
-
-        if (isCharacterDrawerLayout) {
-            mobileCharacterOpen.value = false;
-        } else {
-            desktopCharacterOpen.value = false;
-        }
     }
 
     function toggleCharacter() {
@@ -108,22 +93,18 @@ export function useResponsiveAppLayout() {
 
             if (isMobileLayout) {
                 mobileSidebarOpen.value = false;
-            } else {
-                desktopSidebarOpen.value = false;
             }
 
             return;
         }
 
         desktopCharacterOpen.value = !desktopCharacterOpen.value;
-        desktopSidebarOpen.value = false;
     }
 
     return {
         characterOpenSignal,
         isCharacterDrawerLayout,
         isMobileLayout,
-        setActiveCharacterOpen,
         setActiveSidebarOpen,
         sidebarOpenSignal,
         toggleCharacter,

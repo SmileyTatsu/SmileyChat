@@ -412,7 +412,7 @@
     --shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.2);
 
     display: grid;
-    grid-template-columns: 300px minmax(420px, 1fr) auto;
+    grid-template-columns: 344px minmax(420px, 1fr) auto;
     height: 100dvh;
     min-height: 0;
     overflow: hidden;
@@ -428,7 +428,7 @@
 }
 
 .app-shell.sidebar-collapsed {
-    grid-template-columns: 42px minmax(420px, 1fr) auto;
+    grid-template-columns: 72px minmax(420px, 1fr) auto;
 }
 
 .sidebar-mobile-backdrop,
@@ -661,13 +661,14 @@ textarea:disabled {
     opacity: 0.62;
 }
 
+.sidebar-container,
 .left-rail,
 .character-panel {
     border: 0;
     background: color-mix(in srgb, var(--surface-1) 94%, transparent);
 }
 
-.left-rail {
+.sidebar-container {
     box-shadow: inset -1px 0 0 var(--line-subtle);
 }
 
@@ -737,8 +738,8 @@ textarea:disabled {
     box-shadow: 0 7px 18px rgba(0, 0, 0, 0.24);
 }
 
-.mobile-sidebar-toggle,
-.mobile-character-toggle,
+.sidebar-toggle-btn,
+.character-toggle-btn,
 .icon-button,
 .plugin-header-actions button,
 .rail-icon-button,
@@ -757,7 +758,6 @@ textarea:disabled {
 .plugin-card-actions button,
 .preset-section-header button,
 .settings-nav-toggle,
-.persona-settings,
 .persona-main,
 .status-menu button,
 .persona-picker-panel button,
@@ -767,8 +767,8 @@ textarea:disabled {
     box-shadow: var(--ring-control);
 }
 
-.mobile-sidebar-toggle:hover,
-.mobile-character-toggle:hover,
+.sidebar-toggle-btn:hover,
+.character-toggle-btn:hover,
 .icon-button:hover,
 .plugin-header-actions button:hover,
 .rail-icon-button:hover,
@@ -786,7 +786,6 @@ textarea:disabled {
 .plugins-heading button:hover,
 .plugin-card-actions button:hover,
 .settings-nav-toggle:hover,
-.persona-settings:hover,
 .persona-main:hover,
 .persona-main[aria-expanded="true"],
 .status-menu button:hover,
@@ -800,9 +799,7 @@ textarea:disabled {
     color: #ececf1;
 }
 
-.character-row:hover,
 .chat-row:hover,
-.character-row.active,
 .chat-row.active,
 .settings-nav button:hover,
 .settings-nav button.active,
@@ -1037,11 +1034,11 @@ textarea:disabled {
 
 @media (max-width: 1120px) {
     .app-shell {
-        grid-template-columns: 248px minmax(360px, 1fr) auto;
+        grid-template-columns: 320px minmax(360px, 1fr) auto;
     }
 
     .app-shell.sidebar-collapsed {
-        grid-template-columns: 42px minmax(360px, 1fr) auto;
+        grid-template-columns: 72px minmax(360px, 1fr) auto;
     }
 
     .character-mobile-backdrop {
@@ -1079,7 +1076,12 @@ textarea:disabled {
     }
 
     .character-panel.collapsed {
+        width: 0;
+        border-left: 0;
         transform: translateX(100%);
+        visibility: hidden;
+        pointer-events: none;
+        box-shadow: none;
     }
 }
 
@@ -1096,15 +1098,15 @@ textarea:disabled {
         display: block;
     }
 
-    .left-rail {
+    .sidebar-container {
         position: fixed;
         left: 0;
         top: 0;
         bottom: 0;
         z-index: 50;
-        width: 300px;
-        max-width: calc(100vw - 44px);
-        overflow-y: auto;
+        width: min(344px, calc(100vw - 72px));
+        max-width: calc(100vw - 72px);
+        overflow: hidden;
         transform: translateX(-100%);
         visibility: hidden;
         pointer-events: none;
@@ -1115,7 +1117,7 @@ textarea:disabled {
         box-shadow: 0 0 40px rgba(0, 0, 0, 0);
     }
 
-    .left-rail.open {
+    .sidebar-container.open {
         transform: translateX(0);
         visibility: visible;
         pointer-events: auto;
@@ -1126,26 +1128,51 @@ textarea:disabled {
         box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
     }
 
-    .left-rail.collapsed {
+    .sidebar-container.collapsed {
+        width: min(344px, calc(100vw - 72px));
         transform: translateX(-100%);
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+            transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.2s ease,
+            visibility 0s linear 0.2s;
+        box-shadow: none;
     }
 
     .chat-header {
-        align-items: flex-start;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 36px;
+        align-items: center;
+        gap: 8px;
     }
 
     .chat-title-block {
-        width: 100%;
+        grid-column: 1;
+        grid-row: 1;
+        width: auto;
     }
 
     .header-actions {
-        width: 100%;
+        display: contents;
     }
 
     .mode-toggle {
-        flex: 1;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
         min-width: 0;
+    }
+
+    .character-toggle-btn {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+    }
+
+    .plugin-header-actions {
+        grid-column: 1 / -1;
+        grid-row: 3;
     }
 
     .mode-toggle button {

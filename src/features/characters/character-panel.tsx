@@ -1,11 +1,4 @@
-import {
-    ChevronLeft,
-    ChevronRight,
-    ImagePlus,
-    ListPlus,
-    SlidersHorizontal,
-    X,
-} from "lucide-preact";
+import { ImagePlus, ListPlus, SlidersHorizontal, X } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
 
 import { uploadCharacterAvatar } from "#frontend/lib/api/client";
@@ -33,7 +26,6 @@ type CharacterPanelProps = {
     isOpen: boolean;
     onBeforeAvatarUpload?: () => void | Promise<void>;
     onChange: (character: SmileyCharacter) => void;
-    onOpenChange: (isOpen: boolean) => void;
     onSavedCharacter?: (
         character: SmileyCharacter,
         summaries?: CharacterSummaryCollection,
@@ -48,7 +40,6 @@ export function CharacterPanel({
     isOpen,
     onBeforeAvatarUpload,
     onChange,
-    onOpenChange,
     onSavedCharacter,
     onUpdateAuthorNote,
     pluginSnapshot,
@@ -197,14 +188,6 @@ export function CharacterPanel({
                     <div className="panel-content">
                         <header className="side-panel-header">
                             <h2>Context</h2>
-                            <button
-                                className="icon-button"
-                                type="button"
-                                title="Collapse character panel"
-                                onClick={() => onOpenChange(false)}
-                            >
-                                <ChevronRight size={18} />
-                            </button>
                         </header>
 
                         <ContextTabs
@@ -380,18 +363,6 @@ export function CharacterPanel({
                             </section>
                         </div>
                     </div>
-                )}
-
-                {!isOpen && (
-                    <button
-                        className="collapsed-panel-button"
-                        type="button"
-                        title="Open character panel"
-                        onClick={() => onOpenChange(true)}
-                    >
-                        <ChevronLeft size={18} />
-                        <span>Character</span>
-                    </button>
                 )}
             </aside>
 

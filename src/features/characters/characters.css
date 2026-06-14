@@ -3,16 +3,19 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    border-left: 1px solid #262831;
     background: rgba(20, 21, 26, 0.95);
 }
 
 .character-panel.open {
     width: 400px;
+    border-left: 1px solid #262831;
 }
 
 .character-panel.collapsed {
-    width: 42px;
+    width: 0;
+    border-left: 0;
+    background: transparent;
+    pointer-events: none;
 }
 
 .panel-content {
@@ -125,30 +128,6 @@
     }
 }
 
-.collapsed-panel-button {
-    display: grid;
-    place-items: center;
-    gap: 8px;
-    width: 100%;
-    min-height: 144px;
-    border: 0;
-    background: transparent;
-    color: #b9bfd0;
-    padding: 12px 0;
-}
-
-.collapsed-panel-button:hover {
-    background: #20232b;
-    color: #ececf1;
-}
-
-.collapsed-panel-button span {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-}
-
 .profile-card {
     display: flex;
     gap: 12px;
@@ -230,6 +209,8 @@
     aspect-ratio: 1;
     font-weight: 800;
     background: #5f6f8f;
+    object-fit: cover;
+    object-position: center;
 }
 
 .empty-avatar {
@@ -495,6 +476,17 @@
     border-radius: 8px;
     background: #171a21;
     padding: 8px;
+}
+
+.group-member-row .avatar {
+    display: block;
+    width: 34px;
+    height: 34px;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: #516179;
+    object-fit: cover;
+    object-position: center;
 }
 
 .group-talkativeness {

@@ -4,20 +4,23 @@ import { useEffect, useState } from "preact/hooks";
 import { CharacterPanel } from "#frontend/features/characters/character-panel";
 import { GroupPanel } from "#frontend/features/characters/group-panel";
 import { OptionsModal } from "#frontend/features/settings/options-modal";
-import { Sidebar } from "#frontend/features/sidebar/sidebar";
+import { SidebarContainer } from "#frontend/features/sidebar/sidebar";
 
 import { mobileCharacterOpen, mobileSidebarOpen, settingsOpen } from "../ui-state";
 
 const BACKDROP_TRANSITION_MS = 200;
+const SWIPE_EDGE_PX = 24;
+const SWIPE_THRESHOLD_PX = 70;
+const SWIPE_VERTICAL_CANCEL_PX = 60;
 
 type OptionsModalHostProps = Parameters<typeof OptionsModal>[0];
 
-type SidebarHostProps = Omit<Parameters<typeof Sidebar>[0], "isOpen"> & {
+type SidebarHostProps = Omit<Parameters<typeof SidebarContainer>[0], "isOpen"> & {
     isOpenSignal: ReadonlySignal<boolean>;
 };
 
 export function SidebarHost({ isOpenSignal, ...props }: SidebarHostProps) {
-    return <Sidebar {...props} isOpen={isOpenSignal.value} />;
+    return <SidebarContainer {...props} isOpen={isOpenSignal.value} />;
 }
 
 type CharacterPanelHostProps = Omit<Parameters<typeof CharacterPanel>[0], "isOpen"> & {
@@ -49,6 +52,82 @@ export function ResponsiveBackdrops({
     isMobileLayout: boolean;
     sidebarOpenSignal: ReadonlySignal<boolean>;
 }) {
+    useEffect(() => {
+        if (!isMobileLayout) {
+            return;
+        }
+
+        let startX = 0;
+        let startY = 0;
+        let tracking = false;
+
+        function handlePointerDown(event: PointerEvent) {
+            if (event.pointerType === "mouse") {
+                return;
+            }
+
+            startX = event.clientX;
+            startY = event.clientY;
+            tracking = true;
+        }
+
+        function handlePointerUp(event: PointerEvent) {
+            if (!tracking) {
+                return;
+            }
+
+            tracking = false;
+
+            const deltaX = event.clientX - startX;
+            const deltaY = event.clientY - startY;
+
+            if (
+                Math.abs(deltaX) < SWIPE_THRESHOLD_PX ||
+                Math.abs(deltaY) > SWIPE_VERTICAL_CANCEL_PX
+            ) {
+                return;
+            }
+
+            if (sidebarOpenSignal.value && deltaX < 0) {
+                mobileSidebarOpen.value = false;
+                return;
+            }
+
+            if (characterOpenSignal.value && deltaX > 0) {
+                mobileCharacterOpen.value = false;
+                return;
+            }
+
+            if (
+                !sidebarOpenSignal.value &&
+                !characterOpenSignal.value &&
+                startX <= SWIPE_EDGE_PX &&
+                deltaX > 0
+            ) {
+                mobileSidebarOpen.value = true;
+                return;
+            }
+
+            if (
+                hasCharacters &&
+                !sidebarOpenSignal.value &&
+                !characterOpenSignal.value &&
+                startX >= window.innerWidth - SWIPE_EDGE_PX &&
+                deltaX < 0
+            ) {
+                mobileCharacterOpen.value = true;
+            }
+        }
+
+        window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+        window.addEventListener("pointerup", handlePointerUp, { passive: true });
+
+        return () => {
+            window.removeEventListener("pointerdown", handlePointerDown);
+            window.removeEventListener("pointerup", handlePointerUp);
+        };
+    }, [characterOpenSignal, hasCharacters, isMobileLayout, sidebarOpenSignal]);
+
     return (
         <>
             <AnimatedBackdrop

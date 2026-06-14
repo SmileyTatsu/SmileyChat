@@ -1,4 +1,4 @@
-import { Menu, User } from "lucide-preact";
+import { Menu, PanelRight } from "lucide-preact";
 
 import { getPluginHeaderActions } from "#frontend/lib/plugins/registry";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
@@ -75,7 +75,7 @@ export function ChatHeader({
             <div className="chat-title-block">
                 {onToggleSidebar && (
                     <button
-                        className="mobile-sidebar-toggle"
+                        className="sidebar-toggle-btn"
                         type="button"
                         onClick={onToggleSidebar}
                         aria-label="Toggle sidebar"
@@ -159,13 +159,13 @@ export function ChatHeader({
 
                 {onToggleCharacter && (
                     <button
-                        className="mobile-character-toggle"
+                        className="character-toggle-btn"
                         type="button"
                         onClick={onToggleCharacter}
                         aria-label="Toggle character info"
                         title="Toggle character info"
                     >
-                        <User size={22} />
+                        <PanelRight size={22} />
                     </button>
                 )}
             </div>

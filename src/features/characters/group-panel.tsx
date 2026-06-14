@@ -1,6 +1,4 @@
 import {
-    ChevronLeft,
-    ChevronRight,
     ChevronUp,
     ChevronDown,
     ImagePlus,
@@ -36,7 +34,6 @@ type GroupPanelProps = {
     onChange: (chat: ChatSession) => void;
     onChangeAvatar: (chatId: string, file: File) => void;
     onForceReply: (characterId: string) => void;
-    onOpenChange: (isOpen: boolean) => void;
     onUpdateAuthorNote: (authorNote: ChatAuthorNote) => void;
 };
 
@@ -48,7 +45,6 @@ export function GroupPanel({
     onChange,
     onChangeAvatar,
     onForceReply,
-    onOpenChange,
     onUpdateAuthorNote,
 }: GroupPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -167,14 +163,6 @@ export function GroupPanel({
                 <div className="panel-content">
                     <header className="side-panel-header">
                         <h2>Context</h2>
-                        <button
-                            className="icon-button"
-                            type="button"
-                            title="Collapse group panel"
-                            onClick={() => onOpenChange(false)}
-                        >
-                            <ChevronRight size={18} />
-                        </button>
                     </header>
 
                     <ContextTabs
@@ -655,18 +643,6 @@ export function GroupPanel({
                         </section>
                     </div>
                 </div>
-            )}
-
-            {!isOpen && (
-                <button
-                    className="collapsed-panel-button"
-                    type="button"
-                    title="Open group panel"
-                    onClick={() => onOpenChange(true)}
-                >
-                    <ChevronLeft size={18} />
-                    <span>Group</span>
-                </button>
             )}
         </aside>
     );

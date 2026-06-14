@@ -11,30 +11,22 @@
     @apply flex items-center justify-between gap-x-4 gap-y-2 border-b border-[#303440] px-4 py-2;
 }
 
-.mobile-sidebar-toggle,
-.mobile-character-toggle {
-    border: 1px solid #303440;
-    color: #c4cad8;
+.sidebar-toggle-btn,
+.character-toggle-btn {
+    border: 0;
+    color: #8f9ab1;
 
-    @apply hidden size-10 items-center justify-center rounded-md bg-transparent;
+    @apply flex size-9 items-center justify-center rounded-md bg-transparent;
 }
 
-.mobile-sidebar-toggle:hover,
-.mobile-character-toggle:hover {
-    color: #fff;
-    background: #242832;
+.sidebar-toggle-btn {
+    margin-right: 2px;
 }
 
-@media (max-width: 1120px) {
-    .mobile-character-toggle {
-        display: flex;
-    }
-}
-
-@media (max-width: 820px) {
-    .mobile-sidebar-toggle {
-        display: flex;
-    }
+.sidebar-toggle-btn:hover,
+.character-toggle-btn:hover {
+    color: #ececf1;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .chat-header h1 {
