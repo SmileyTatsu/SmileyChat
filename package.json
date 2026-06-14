@@ -4,14 +4,14 @@
     "version": "0.0.3",
     "type": "module",
     "scripts": {
-        "dev": "vite --host 127.0.0.1",
+        "dev": "bun --bun vite --host 127.0.0.1",
         "dev:api": "bun --watch --no-clear-screen server/index.ts",
-        "build": "tsc && vite build",
+        "build": "bun --bun tsc && bun --bun vite build",
         "format": "prettier --write .",
         "test": "bun test",
         "start": "bun server/index.ts",
-        "preview": "vite preview --host 127.0.0.1",
-        "typecheck": "tsc --noEmit"
+        "preview": "bun --bun vite preview --host 127.0.0.1",
+        "typecheck": "bun --bun tsc --noEmit"
     },
     "dependencies": {
         "@preact/preset-vite": "^2.10.5",
