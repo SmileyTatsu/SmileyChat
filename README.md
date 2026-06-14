@@ -1,16 +1,16 @@
 # SmileyChat
 
-> ⚠️ **Project Status: Early Pre-Alpha**
-> SmileyChat is currently in a very early stage of development. Please keep in mind that performance is not yet fully optimized, features are still being added, and you may encounter bugs. The core architecture is actively evolving!
+> **Project Status: Early Pre-Alpha**
+> SmileyChat is currently in a very early stage of development. Please keep in mind that performance is not yet fully optimized, features are still being added, and you may encounter bugs. The core architecture is actively evolving.
 
 SmileyChat is a local-first frontend application for chatting, roleplay, and storytelling with AI chatbots. Designed to be clean, accessible, and friendly to both casual users and writers.
 
 ## Features
 
-- **Dual Visual Modes**: Seamlessly switch between a casual "Chatting" mode (like Discord) and a "Roleplaying / Storytelling" mode designed for reading and writing long scenes.
+- **Dual Visual Modes**: Seamlessly switch between a casual "Chatting" mode, like Discord, and a "Roleplaying / Storytelling" mode designed for reading and writing long scenes.
 - **Local Persistence**: All your characters, chats, and personas are saved entirely locally in standard JSON files. No cloud lock-in.
-- **Providers**: Connect your favorite local models (LMStudio, Ollama, text-generation-webui) or cloud providers via dedicated adapters (OpenRouter, Google AI / Gemini, OpenAI-Compatible).
-- **Character Card Support**: Import Tavern-style V1/V2/V3 JSON and PNG character cards easily via drag & drop or file selection.
+- **Providers**: Connect your favorite local models, such as LMStudio, Ollama, and text-generation-webui, or cloud providers through dedicated adapters for OpenAI-compatible APIs, OpenRouter, Google AI / Gemini, and Anthropic / Claude.
+- **Character Card Support**: Import Tavern-style V1/V2/V3 JSON and PNG character cards easily through drag and drop or file selection.
 - **Extensible Plugin System**: Extend the core functionality using local ESM plugins.
 
 ## Installation & Usage
@@ -91,12 +91,7 @@ bun run start
 
 ## Server Configuration
 
-SmileyChat binds to **`0.0.0.0` by default** so LAN devices, Tailscale
-peers, and Docker containers can reach it out of the box. The
-safe-by-default lockdown keeps that safe: any non-loopback request gets
-a friendly "set up access" page until you configure Basic Auth or an IP
-allowlist below. Edit `.env` (auto-created from `.env.example` on first
-boot). Most settings hot-reload within ~2 seconds, no restart needed.
+SmileyChat binds to **`0.0.0.0` by default** so LAN devices, Tailscale peers, and Docker containers can reach it out of the box. The safe-by-default lockdown keeps that safe: any non-loopback request gets a friendly "set up access" page until you configure Basic Auth or an IP allowlist below. Edit `.env`, which is auto-created from `.env.example` on first boot. Most settings hot-reload within about 2 seconds, no restart needed.
 
 The headline knobs:
 
@@ -119,21 +114,15 @@ SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK=false
 SMILEYCHAT_ALLOW_UNAUTHENTICATED_REMOTE=false
 ```
 
-When running behind a reverse proxy or under a DNS name, list the public
-browser origins that may make state-changing requests:
+When running behind a reverse proxy or under a DNS name, list the public browser origins that may make state-changing requests:
 
 ```bash
 SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
 ```
 
-Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`) traffic
-is auto-trusted by default. Those clients skip both the IP allowlist
-and Basic Auth, the same way loopback does. Toggle with
-`SMILEYCHAT_BYPASS_AUTH_TAILSCALE` / `_DOCKER`.
+Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`) traffic is auto-trusted by default. Those clients skip both the IP allowlist and Basic Auth, the same way loopback does. Toggle with `SMILEYCHAT_BYPASS_AUTH_TAILSCALE` / `_DOCKER`.
 
-See [docs/security.md](docs/security.md) for the full security model:
-every layer, every env var, what it protects against, and recommended
-recipes for local / LAN / Tailscale / public-internet deployments.
+See [docs/reference/security.md](docs/reference/security.md) for the full security model: every layer, every env var, what it protects against, and recommended recipes for local / LAN / Tailscale / public-internet deployments.
 
 ## Development
 
@@ -145,21 +134,37 @@ bun run dev
 bun run dev:api
 ```
 
+Useful checks:
+
+```bash
+bun run typecheck
+bun test
+bun run build
+```
+
 ## Documentation
 
-Check the [docs/](docs/) folder for guides and technical insights.
+Check the [docs/](docs/) folder for guides, reference material, plugin docs, and technical notes.
 
 ### How-To Guides
-- [How to Access SmileyChat Remotely](docs/guides/remote-access.md)
+
+- [Running SmileyChat on Android via Termux](docs/android-termux.md)
 - [How to Connect AI Models](docs/guides/connecting-models.md)
 - [How to Import Characters](docs/guides/importing-characters.md)
+- [Understanding Presets](docs/guides/understanding-presets.md)
 - [How to Backup and Restore Data](docs/guides/backup-and-restore.md)
+- [How to Access SmileyChat Remotely](docs/guides/remote-access.md)
+- [Troubleshooting](docs/guides/troubleshooting.md)
+- [Using LoreBooks](docs/guides/lorebooks.md)
 
 ### Technical Details
-- [User Data & Storage](docs/user-data.md)
-- [Development Guide](docs/development.md)
-- [Providers & AI Setup](docs/providers.md)
-- [Core Architecture](docs/architecture.md)
+
+- [Providers & AI Setup](docs/reference/providers.md)
+- [Preset Macros](docs/reference/macros.md)
+- [User Data & Storage](docs/reference/user-data.md)
+- [Security Model](docs/reference/security.md)
+- [Development Guide](docs/development/development.md)
+- [Core Architecture](docs/development/architecture.md)
 - [Plugins System](docs/plugins/README.md)
 
 ## AI Disclosure
@@ -168,7 +173,7 @@ This project was built with the assistance of AI. Please note:
 
 1. AI was primarily used for frontend development and UI structuring.
 2. All code written by AI has been strictly reviewed at least twice by a human.
-3. **For Contributors:** You are totally welcome to use AI tools for your PRs, but you are expected to know exactly what the fuck the AI did. Do not submit blind generations. Trash code will not be merged.
+3. **For Contributors:** You are welcome to use AI tools for your PRs, but you are expected to know exactly what the AI changed. Do not submit blind generations. Low-quality code will not be merged.
 
 ## Contact
 

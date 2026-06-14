@@ -235,7 +235,7 @@ size cap.
 Outside the plugin fetch bridge, SmileyChat's server makes **no outbound HTTP
 calls** of its own. All LLM
 provider traffic goes browser-to-provider direct (see
-[`docs/architecture.md`](architecture.md)). The plugin bridge is for
+[`docs/development/architecture.md`](../development/architecture.md)). The plugin bridge is for
 trusted local plugins that need non-provider helper APIs affected by
 CORS. It allows HTTPS only, accepts `GET`, `POST`, `PUT`, `PATCH`, and
 `DELETE`, drops unsafe request/response headers, caps request bodies at

@@ -20,10 +20,15 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `assets/`: Avatar images for personas.
     - `orphaned/`: Safely holds data from deleted personas to prevent accidental loss.
 - `userData/presets/`: Contains generation presets (context templates, macros).
+- `userData/lorebooks/`: Contains native LoreBook files and the LoreBook index.
+    - `books/`: JSON files for each LoreBook.
+    - `imports/`: Drop SmileyChat LoreBook JSON or SillyTavern World Info JSON here for import workflows.
+    - `orphaned/`: Safely holds data from deleted LoreBooks to prevent accidental loss.
+    - `index.json`: Tracks active LoreBook selection, ordering, and summaries.
 - `userData/settings/`: App configuration.
     - `preferences.json`: Local UI preferences (dark mode, font size, etc.).
     - `connections.json`: Provider URLs and generic model settings.
-    - `connection-secrets.json`: **API Keys**. This is kept strictly separated so it is never accidentally exported.
+    - `connection-secrets.json`: **API Keys**. This is kept strictly separated so it is less likely to be accidentally exported, but it is not encrypted at rest.
     - `csrf-secret.json`: Token used to secure local API endpoints.
     - `plugin-profiles.json`: Saved plugin profile selection plus user-created plugin profile definitions.
     - `core-extensions/`: Storage for built-in extension data.

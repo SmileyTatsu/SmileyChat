@@ -18,4 +18,4 @@ SmileyChat supports importing SillyTavern-style presets. If you have a favorite 
 *Note: SmileyChat handles context length trimming based on your Connection profile's model, so some preset settings from other apps might be ignored to provide a better out-of-the-box experience.*
 
 ## Macros
-Presets use macros like `{{char}}` (which gets replaced by the character's name) or `{{user}}` (which gets replaced by your persona's name). You can read the full list of supported macros in the [Preset Macros](../macros.md) documentation.
+Presets use macros like `{{char}}` (which gets replaced by the character's name) or `{{user}}` (which gets replaced by your persona's name). You can read the full list of supported macros in the [Preset Macros](../reference/macros.md) documentation.
