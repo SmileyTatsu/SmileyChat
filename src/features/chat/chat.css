@@ -413,6 +413,14 @@
     min-width: 0;
 }
 
+.italicized-message-text .message-content {
+    font-style: italic;
+}
+
+.message-quoted-text {
+    color: #f2c78f;
+}
+
 .message-reasoning {
     margin: 6px 0 12px;
     border: 1px solid rgba(151, 164, 196, 0.16);

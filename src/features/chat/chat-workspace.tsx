@@ -4,6 +4,7 @@ import type {
     PluginAppSnapshot,
     PluginComposerStatePatch,
 } from "#frontend/lib/plugins/types";
+import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type { ChatGroupMember, ChatMode, Message } from "#frontend/types";
 
@@ -73,9 +74,19 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     getPluginSnapshot,
     pluginSnapshot,
 }: ChatWorkspaceProps) {
+    const messageFormatting = messageFormattingForMode(preferences, mode);
+    const workspaceClassName = [
+        "chat-workspace",
+        mode,
+        messageFormatting.italicizeMessages ? "italicized-message-text" : "",
+        messageFormatting.highlightQuotes ? "highlight-quoted-text" : "",
+    ]
+        .filter(Boolean)
+        .join(" ");
+
     return (
         <section
-            className={`chat-workspace ${mode}`}
+            className={workspaceClassName}
             aria-busy={isLoading ? "true" : undefined}
             aria-label="Active chat"
         >
@@ -118,6 +129,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     resetKey={activeChatId}
                     showRpCharacterImages={preferences.appearance.showRpCharacterImages}
                     showTimestamps={preferences.appearance.showTimestamps}
+                    messageFormatting={messageFormatting}
                     onDeleteMessage={onDeleteMessage}
                     onEditMessage={onEditMessage}
                     onNextSwipe={onNextSwipe}

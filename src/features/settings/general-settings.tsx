@@ -7,6 +7,7 @@ import type {
     MessageDensity,
 } from "#frontend/lib/preferences/types";
 import { clampInteger } from "#frontend/lib/common/math";
+import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
 import type { ChatMode } from "#frontend/types";
 
 type GeneralSettingsProps = {
@@ -51,6 +52,11 @@ export function GeneralSettings({
             },
         });
     }
+
+    const previewFormatting = messageFormattingForMode(
+        preferences,
+        preferences.chat.defaultMode,
+    );
 
     return (
         <section className="tool-window general-settings">
@@ -143,6 +149,42 @@ export function GeneralSettings({
                         updateAppearance({ showRpCharacterImages })
                     }
                 />
+
+                <ToggleRow
+                    checked={preferences.appearance.highlightQuotedTextInRp}
+                    description='Use a subtle accent color for text inside "quotes" in Roleplaying mode.'
+                    label="Highlight quoted text in RP mode"
+                    onChange={(highlightQuotedTextInRp) =>
+                        updateAppearance({ highlightQuotedTextInRp })
+                    }
+                />
+
+                <ToggleRow
+                    checked={preferences.appearance.highlightQuotedTextInChat}
+                    description='Use the same quote color in Chatting mode.'
+                    label="Highlight quoted text in Chatting mode"
+                    onChange={(highlightQuotedTextInChat) =>
+                        updateAppearance({ highlightQuotedTextInChat })
+                    }
+                />
+
+                <ToggleRow
+                    checked={preferences.appearance.italicizeRpMessages}
+                    description="Render message body text in italics while reading Roleplaying mode."
+                    label="Italicize RP messages"
+                    onChange={(italicizeRpMessages) =>
+                        updateAppearance({ italicizeRpMessages })
+                    }
+                />
+
+                <ToggleRow
+                    checked={preferences.appearance.italicizeChatMessages}
+                    description="Apply the same italic treatment to Chatting mode."
+                    label="Italicize Chatting messages"
+                    onChange={(italicizeChatMessages) =>
+                        updateAppearance({ italicizeChatMessages })
+                    }
+                />
             </section>
 
             <section className="settings-card">
@@ -228,14 +270,28 @@ export function GeneralSettings({
                         <p>Current message appearance.</p>
                     </div>
                 </header>
-                <div className="settings-message-preview">
+                <div
+                    className="settings-message-preview"
+                    style={{
+                        fontStyle: previewFormatting.italicizeMessages
+                            ? "italic"
+                            : undefined,
+                    }}
+                >
                     <strong>
                         Mira
                         {preferences.appearance.showTimestamps && <time>10:24 PM</time>}
                     </strong>
                     <p>
-                        The room settles into quiet light while the next line waits in the
-                        composer.
+                        The room settles into quiet light.{" "}
+                        {previewFormatting.highlightQuotes ? (
+                            <span className="message-quoted-text">
+                                "Stay a moment,"
+                            </span>
+                        ) : (
+                            '"Stay a moment,"'
+                        )}{" "}
+                        Mira says, while the next line waits in the composer.
                     </p>
                 </div>
             </section>

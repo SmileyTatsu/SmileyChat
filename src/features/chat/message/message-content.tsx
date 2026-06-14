@@ -1,3 +1,9 @@
+import { h } from "preact";
+
+import {
+    renderQuotedText,
+    type MessageFormattingOptions,
+} from "#frontend/lib/message-formatting/quote-highlighting";
 import type { MessageRenderer } from "#frontend/lib/plugins/types";
 import type { ChatMode, Message } from "#frontend/types";
 
@@ -11,6 +17,7 @@ type MessageContentProps = {
     characterName: string;
     content: string;
     message: Message;
+    messageFormatting: MessageFormattingOptions;
     mode: ChatMode;
 
     renderer?: MessageRenderer;
@@ -29,6 +36,7 @@ export function MessageContent(props: MessageContentProps) {
                         characterName: props.characterName,
                         content: props.content,
                         message: props.message,
+                        messageFormatting: props.messageFormatting,
                         mode: props.mode,
                     })
                 }
@@ -36,5 +44,11 @@ export function MessageContent(props: MessageContentProps) {
         );
     }
 
-    return <p>{props.content}</p>;
+    return (
+        <p>
+            {renderQuotedText(h, props.content, {
+                enabled: props.messageFormatting.highlightQuotes,
+            })}
+        </p>
+    );
 }

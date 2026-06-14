@@ -11,6 +11,10 @@ export type AppPreferences = {
         showTimestamps: boolean;
         showRpCharacterImages: boolean;
         fontScale: FontScale;
+        highlightQuotedTextInChat: boolean;
+        highlightQuotedTextInRp: boolean;
+        italicizeChatMessages: boolean;
+        italicizeRpMessages: boolean;
         uiFontFamily: string;
         chatFontFamily: string;
     };
@@ -33,6 +37,10 @@ export const defaultAppPreferences: AppPreferences = {
         showTimestamps: true,
         showRpCharacterImages: false,
         fontScale: "default",
+        highlightQuotedTextInChat: true,
+        highlightQuotedTextInRp: true,
+        italicizeChatMessages: true,
+        italicizeRpMessages: true,
         uiFontFamily: "",
         chatFontFamily: "",
     },
@@ -72,6 +80,22 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             fontScale: normalizeFontScale(
                 appearance.fontScale,
                 defaultAppPreferences.appearance.fontScale,
+            ),
+            highlightQuotedTextInChat: booleanOrFallback(
+                appearance.highlightQuotedTextInChat,
+                defaultAppPreferences.appearance.highlightQuotedTextInChat,
+            ),
+            highlightQuotedTextInRp: booleanOrFallback(
+                appearance.highlightQuotedTextInRp,
+                defaultAppPreferences.appearance.highlightQuotedTextInRp,
+            ),
+            italicizeChatMessages: booleanOrFallback(
+                appearance.italicizeChatMessages,
+                defaultAppPreferences.appearance.italicizeChatMessages,
+            ),
+            italicizeRpMessages: booleanOrFallback(
+                appearance.italicizeRpMessages,
+                defaultAppPreferences.appearance.italicizeRpMessages,
             ),
             uiFontFamily: normalizeFontFamily(
                 appearance.uiFontFamily,

@@ -19,6 +19,7 @@ import {
     getMessageReasoning,
     isActiveSwipeError,
 } from "#frontend/lib/messages";
+import type { MessageFormattingOptions } from "#frontend/lib/message-formatting/quote-highlighting";
 import type {
     MessageRenderer,
     PluginAppSnapshot,
@@ -52,6 +53,7 @@ export type MessageItemProps = {
     mode: ChatMode;
     openMenuRef: { current: HTMLDivElement | null };
     getPluginSnapshot: () => PluginAppSnapshot;
+    messageFormatting: MessageFormattingOptions;
     pluginMessageActions: PluginMessageAction[];
     renderer?: MessageRenderer;
     showRpCharacterImages: boolean;
@@ -84,6 +86,7 @@ export const MessageItem = memo(function MessageItem({
     mode,
     openMenuRef,
     getPluginSnapshot,
+    messageFormatting,
     pluginMessageActions,
     renderer,
     showRpCharacterImages,
@@ -322,6 +325,7 @@ export const MessageItem = memo(function MessageItem({
                         characterName={characterName}
                         message={message}
                         mode={mode}
+                        messageFormatting={messageFormatting}
                         renderer={renderer}
                         onVisibleContentChange={onVisibleContentChange}
                     />
@@ -346,6 +350,7 @@ function areMessageItemPropsEqual(
         previous.message === next.message &&
         previous.mode === next.mode &&
         previous.getPluginSnapshot === next.getPluginSnapshot &&
+        previous.messageFormatting === next.messageFormatting &&
         previous.pluginMessageActions === next.pluginMessageActions &&
         previous.renderer === next.renderer &&
         previous.showRpCharacterImages === next.showRpCharacterImages &&
@@ -358,6 +363,7 @@ type MessageLiveContentProps = {
     characterName: string;
     message: Message;
     mode: ChatMode;
+    messageFormatting: MessageFormattingOptions;
     renderer?: MessageRenderer;
     onVisibleContentChange: () => void;
 };
@@ -367,6 +373,7 @@ function MessageLiveContent({
     characterName,
     message,
     mode,
+    messageFormatting,
     renderer,
     onVisibleContentChange,
 }: MessageLiveContentProps) {
@@ -398,6 +405,7 @@ function MessageLiveContent({
                 characterName={characterName}
                 content={content}
                 message={renderedMessage}
+                messageFormatting={messageFormatting}
                 mode={mode}
             />
         </>

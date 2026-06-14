@@ -10,6 +10,7 @@ import {
 } from "preact/hooks";
 
 import { getMessageContent } from "#frontend/lib/messages";
+import type { MessageFormattingOptions } from "#frontend/lib/message-formatting/quote-highlighting";
 import {
     getMessageRenderers,
     getPluginMessageActions,
@@ -31,6 +32,7 @@ type MessageListProps = {
     mode: ChatMode;
 
     showTimestamps: boolean;
+    messageFormatting: MessageFormattingOptions;
     pendingSwipeMessageId?: string;
     resetKey: string;
     showRpCharacterImages: boolean;
@@ -55,6 +57,7 @@ export const MessageList = memo(function MessageList({
     resetKey,
     showRpCharacterImages,
     showTimestamps,
+    messageFormatting,
     onDeleteMessage,
     onEditMessage,
     onNextSwipe,
@@ -409,6 +412,7 @@ export const MessageList = memo(function MessageList({
                             getPluginSnapshot={getPluginSnapshot}
                             pluginMessageActions={pluginMessageActions}
                             renderer={messageRenderers[0]}
+                            messageFormatting={messageFormatting}
                             showRpCharacterImages={showRpCharacterImages}
                             showTimestamps={showTimestamps}
                             onCancelEdit={cancelEdit}

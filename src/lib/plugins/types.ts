@@ -16,6 +16,7 @@ import type {
     ConnectionAdapter,
 } from "../connections/types";
 import type { LorebookCollection } from "../lorebooks/types";
+import type { MessageFormattingOptions } from "../message-formatting/quote-highlighting";
 import type { AppPreferences } from "../preferences/types";
 import type { MacroContext } from "../presets/macros";
 import type { PresetCollection } from "../presets/types";
@@ -119,6 +120,7 @@ export type MessageRenderContext = {
     content: string;
     message: Message;
     mode: ChatMode;
+    messageFormatting?: MessageFormattingOptions;
     characterName: string;
     characterAvatarPath?: string;
 };
