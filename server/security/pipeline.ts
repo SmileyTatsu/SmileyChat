@@ -120,7 +120,7 @@ export function runSecurityPipeline(
         );
     }
 
-    const rateLimit = checkRateLimit(url, ip);
+    const rateLimit = checkRateLimit(url, ip, request.method);
     if (rateLimit?.exceeded) {
         return finalize(buildRateLimitedResponse(rateLimit), url);
     }

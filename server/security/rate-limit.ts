@@ -13,13 +13,19 @@ import { getDefaultRateLimit, isRateLimitEnabled } from "../config/runtime-confi
 
 type Bucket = { count: number; resetAt: number };
 
+type RateLimitMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+
 interface RateLimitRule {
     key: string;
     limit: number;
     windowMs: number;
 }
 
-const ROUTE_RULES: Array<{ pattern: RegExp; rule: RateLimitRule }> = [
+const ROUTE_RULES: Array<{
+    pattern: RegExp;
+    rule: RateLimitRule;
+    methods?: RateLimitMethod[];
+}> = [
     {
         pattern: /^\/api\/csrf(?:$|\?)/,
         rule: { key: "csrf-token", limit: 60, windowMs: 60_000 },
@@ -30,6 +36,7 @@ const ROUTE_RULES: Array<{ pattern: RegExp; rule: RateLimitRule }> = [
     },
     {
         pattern: /^\/api\/(characters|personas)\/[^/]+\/avatar(?:$|\?)/,
+        methods: ["POST"],
         rule: { key: "avatar-upload", limit: 30, windowMs: 60_000 },
     },
     {
@@ -49,9 +56,13 @@ function defaultRule(): RateLimitRule {
     return { key: "default", limit: getDefaultRateLimit(), windowMs: 60_000 };
 }
 
-function selectRule(pathname: string): RateLimitRule {
+function selectRule(pathname: string, method: string): RateLimitRule {
     return (
-        ROUTE_RULES.find((entry) => entry.pattern.test(pathname))?.rule ?? defaultRule()
+        ROUTE_RULES.find(
+            (entry) =>
+                entry.pattern.test(pathname) &&
+                (!entry.methods || entry.methods.includes(method as RateLimitMethod)),
+        )?.rule ?? defaultRule()
     );
 }
 
@@ -73,14 +84,18 @@ export interface RateLimitResult {
 // Returns null when rate limiting is disabled or the request isn't /api/*.
 // Otherwise returns a result the caller can use to set headers and
 // optionally short-circuit with 429.
-export function checkRateLimit(url: URL, ip: string): RateLimitResult | null {
+export function checkRateLimit(
+    url: URL,
+    ip: string,
+    method: string,
+): RateLimitResult | null {
     if (!isRateLimitEnabled()) return null;
     if (!url.pathname.startsWith("/api/")) return null;
 
     const now = Date.now();
     sweepExpired(now);
 
-    const rule = selectRule(url.pathname);
+    const rule = selectRule(url.pathname, method.toUpperCase());
     const key = `${rule.key}:${ip}`;
     const existing = buckets.get(key);
     const bucket =
