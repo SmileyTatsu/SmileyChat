@@ -4,7 +4,6 @@ import { computed } from "@preact/signals";
 import {
     useCallback,
     useEffect,
-    useLayoutEffect,
     useMemo,
     useRef,
     useState,
@@ -74,6 +73,7 @@ import {
     usePluginSnapshotPublisher,
 } from "./hooks/use-app-plugin-bridge";
 import { useChatSession } from "./hooks/use-chat-session";
+import { useEventCallback } from "./hooks/use-event-callback";
 import { usePersonaLibrary } from "./hooks/use-persona-library";
 import { useResponsiveAppLayout } from "./hooks/use-responsive-app-layout";
 import { AppStartupScreen } from "./components/app-startup-screen";
@@ -974,16 +974,4 @@ export function App() {
             <PluginModalHost snapshot={pluginSnapshot} />
         </main>
     );
-}
-
-function useEventCallback<TArgs extends unknown[], TReturn>(
-    callback: (...args: TArgs) => TReturn,
-) {
-    const callbackRef = useRef(callback);
-
-    useLayoutEffect(() => {
-        callbackRef.current = callback;
-    });
-
-    return useCallback((...args: TArgs) => callbackRef.current(...args), []);
 }

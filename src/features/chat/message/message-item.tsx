@@ -349,12 +349,23 @@ function areMessageItemPropsEqual(
         previous.menuPlacement === next.menuPlacement &&
         previous.message === next.message &&
         previous.mode === next.mode &&
+        previous.openMenuRef === next.openMenuRef &&
         previous.getPluginSnapshot === next.getPluginSnapshot &&
         previous.messageFormatting === next.messageFormatting &&
         previous.pluginMessageActions === next.pluginMessageActions &&
         previous.renderer === next.renderer &&
         previous.showRpCharacterImages === next.showRpCharacterImages &&
-        previous.showTimestamps === next.showTimestamps
+        previous.showTimestamps === next.showTimestamps &&
+        previous.onCancelEdit === next.onCancelEdit &&
+        previous.onCloseMenu === next.onCloseMenu &&
+        previous.onCopyMessage === next.onCopyMessage &&
+        previous.onDeleteMessage === next.onDeleteMessage &&
+        previous.onNextSwipe === next.onNextSwipe &&
+        previous.onPreviousSwipe === next.onPreviousSwipe &&
+        previous.onSaveEdit === next.onSaveEdit &&
+        previous.onStartEditing === next.onStartEditing &&
+        previous.onToggleMenu === next.onToggleMenu &&
+        previous.onVisibleContentChange === next.onVisibleContentChange
     );
 }
 

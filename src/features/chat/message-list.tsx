@@ -9,6 +9,7 @@ import {
     useState,
 } from "preact/hooks";
 
+import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
 import { getMessageContent } from "#frontend/lib/messages";
 import type { MessageFormattingOptions } from "#frontend/lib/message-formatting/quote-highlighting";
 import {
@@ -367,6 +368,16 @@ export const MessageList = memo(function MessageList({
         snapToBottom(list);
     }, [autoScroll, mode, showRpCharacterImages]);
 
+    const scrollToBottomIfNeeded = useEventCallback(() => {
+        const list = listRef.current;
+
+        if (!list || !autoScroll || !shouldAutoScrollRef.current) {
+            return;
+        }
+
+        list.scrollTo({ top: list.scrollHeight, behavior: "auto" });
+    });
+
     return (
         <div className="message-list-shell">
             <div
@@ -522,15 +533,6 @@ export const MessageList = memo(function MessageList({
         });
     }
 
-    function scrollToBottomIfNeeded() {
-        const list = listRef.current;
-
-        if (!list || !autoScroll || !shouldAutoScrollRef.current) {
-            return;
-        }
-
-        list.scrollTo({ top: list.scrollHeight, behavior: "auto" });
-    }
 });
 
 const LOAD_EARLIER_BATCH_SIZE = 50;
