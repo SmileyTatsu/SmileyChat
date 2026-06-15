@@ -17,7 +17,7 @@ const DEFAULT_HOST = "0.0.0.0";
 const DEFAULT_PORT = 4173;
 const DEFAULT_FRONTEND_PORT = 5173;
 const DEFAULT_BASIC_AUTH_REALM = "SmileyChat";
-const DEFAULT_RATE_LIMIT_PER_MINUTE = 600;
+const DEFAULT_RATE_LIMIT_PER_MINUTE = 2000;
 const DEFAULT_PLUGIN_REGISTRY_URL =
     "https://raw.githubusercontent.com/SmileyTatsu/smileychat-plugins/main/registry.json";
 

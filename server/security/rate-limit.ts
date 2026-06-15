@@ -1,10 +1,9 @@
 // Fixed-window per-IP rate limiter for /api/*.
 //
-// Default bucket: 600 req/min per IP across the whole API surface (every
-// request a normal user makes goes through React Query, which doesn't
-// generate anywhere near that volume). A handful of routes get tighter
-// buckets to throttle the dangerous corners: bulk-import, avatar upload,
-// CSRF-token grab, etc.
+// Default bucket: generous for a local-first app because UI rendering can
+// legitimately fan out across many character cards, images, and saved chats.
+// A handful of routes get tighter buckets to throttle expensive or sensitive
+// manual actions: imports, avatar upload, PNG export, CSRF-token grab, etc.
 //
 // Bucket sweep runs once per minute (on the first request after a 60 s
 // gap), which keeps the map small without a dedicated timer.
@@ -31,17 +30,19 @@ const ROUTE_RULES: Array<{
         rule: { key: "csrf-token", limit: 60, windowMs: 60_000 },
     },
     {
-        pattern: /^\/api\/(characters|chats|personas)\/import(?:$|\?|\/)/,
-        rule: { key: "import", limit: 20, windowMs: 60_000 },
+        pattern: /^\/api\/(characters|chats|lorebooks|personas)\/import(?:$|\?|\/)/,
+        methods: ["POST"],
+        rule: { key: "import", limit: 300, windowMs: 60_000 },
     },
     {
         pattern: /^\/api\/(characters|personas)\/[^/]+\/avatar(?:$|\?)/,
         methods: ["POST"],
-        rule: { key: "avatar-upload", limit: 30, windowMs: 60_000 },
+        rule: { key: "avatar-upload", limit: 120, windowMs: 60_000 },
     },
     {
         pattern: /^\/api\/characters\/[^/]+\/export\.png(?:$|\?)/,
-        rule: { key: "card-export", limit: 30, windowMs: 60_000 },
+        methods: ["GET"],
+        rule: { key: "card-export", limit: 60, windowMs: 60_000 },
     },
     {
         pattern: /^\/api\/connections\/secrets(?:$|\?)/,
