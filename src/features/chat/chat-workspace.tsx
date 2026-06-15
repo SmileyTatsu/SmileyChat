@@ -12,6 +12,35 @@ import { ChatHeader } from "./chat-header";
 import { MessageComposer } from "./message-composer";
 import { MessageList } from "./message-list";
 
+type LoadingMessageSkeleton = {
+    lines: readonly number[];
+};
+
+const LOADING_MESSAGE_SKELETONS: readonly LoadingMessageSkeleton[] = [
+    { lines: [24, 88, 72] },
+    { lines: [31, 100] },
+    { lines: [20, 94, 58] },
+    { lines: [34, 76] },
+    { lines: [27, 92, 81] },
+    { lines: [22, 88] },
+    { lines: [36, 100, 64] },
+    { lines: [26, 84] },
+    { lines: [30, 98, 70] },
+    { lines: [24, 67] },
+    { lines: [29, 91, 54] },
+    { lines: [21, 83] },
+    { lines: [33, 97, 76] },
+    { lines: [25, 74] },
+    { lines: [38, 100, 69] },
+    { lines: [23, 86] },
+    { lines: [28, 95, 61] },
+    { lines: [35, 78] },
+    { lines: [19, 89, 73] },
+    { lines: [32, 82] },
+    { lines: [26, 99, 57] },
+    { lines: [30, 71] },
+];
+
 type ChatWorkspaceProps = {
     activeChatId: string;
     characterAvatarPath?: string;
@@ -165,27 +194,23 @@ function ChatLoadingState() {
             <div className="chat-loading-copy">
                 <span>Loading chat...</span>
             </div>
-            <div className="chat-loading-message wide" aria-hidden="true">
-                <div className="chat-loading-avatar" />
-                <div className="chat-loading-lines">
-                    <div />
-                    <div />
+            {LOADING_MESSAGE_SKELETONS.map((message, messageIndex) => (
+                <div
+                    className="chat-loading-message"
+                    aria-hidden="true"
+                    key={messageIndex}
+                >
+                    <div className="chat-loading-avatar" />
+                    <div className="chat-loading-lines">
+                        {message.lines.map((lineWidth, lineIndex) => (
+                            <div
+                                key={lineIndex}
+                                style={`--chat-loading-line-width: ${lineWidth}`}
+                            />
+                        ))}
+                    </div>
                 </div>
-            </div>
-            <div className="chat-loading-message medium" aria-hidden="true">
-                <div className="chat-loading-avatar" />
-                <div className="chat-loading-lines">
-                    <div />
-                    <div />
-                </div>
-            </div>
-            <div className="chat-loading-message narrow" aria-hidden="true">
-                <div className="chat-loading-avatar" />
-                <div className="chat-loading-lines">
-                    <div />
-                    <div />
-                </div>
-            </div>
+            ))}
             <div className="chat-loading-composer" aria-hidden="true" />
         </div>
     );
