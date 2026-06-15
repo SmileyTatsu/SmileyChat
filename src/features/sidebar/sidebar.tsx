@@ -15,7 +15,7 @@ import {
     X,
 } from "lucide-preact";
 import type { RefObject } from "preact";
-import { useRef, useState } from "preact/hooks";
+import { useMemo, useRef, useState } from "preact/hooks";
 
 import {
     chatDisplayTitle,
@@ -428,44 +428,68 @@ export function Sidebar({
         closeGroupCreate();
     }
 
-    const selectedGroupMembers = selectedGroupCharacterIds
-        .map((characterId, index) => {
-            const character = characters.find((item) => item.id === characterId);
+    const selectedGroupMembers = useMemo(
+        () =>
+            selectedGroupCharacterIds
+                .map((characterId, index) => {
+                    const character = characters.find((item) => item.id === characterId);
 
-            if (!character) {
-                return undefined;
-            }
+                    if (!character) {
+                        return undefined;
+                    }
 
-            return {
-                characterId: character.id,
-                name: character.name,
-                ...(character.avatar?.path ? { avatarPath: character.avatar.path } : {}),
-                order: index,
-            };
-        })
-        .filter((member): member is NonNullable<typeof member> => Boolean(member));
-    const groupDefaultTitle = selectedGroupMembers.length
-        ? defaultGroupTitle(selectedGroupMembers)
-        : "Group: choose at least one character";
-    const activeCharacter = characters.find(
-        (character) => character.id === activeCharacterId,
+                    return {
+                        characterId: character.id,
+                        name: character.name,
+                        ...(character.avatar?.path
+                            ? { avatarPath: character.avatar.path }
+                            : {}),
+                        order: index,
+                    };
+                })
+                .filter((member): member is NonNullable<typeof member> =>
+                    Boolean(member),
+                ),
+        [characters, selectedGroupCharacterIds],
     );
-    const contextualChats = chats.filter((chat) =>
-        isGroupChat(chat)
-            ? (chat.members ?? []).some(
-                  (member) => member.characterId === activeCharacterId,
-              )
-            : chat.characterId === activeCharacterId,
+    const groupDefaultTitle = useMemo(
+        () =>
+            selectedGroupMembers.length
+                ? defaultGroupTitle(selectedGroupMembers)
+                : "Group: choose at least one character",
+        [selectedGroupMembers],
     );
-    const normalizedChatFilter = normalizeFilterText(chatFilter);
+    const activeCharacter = useMemo(
+        () => characters.find((character) => character.id === activeCharacterId),
+        [activeCharacterId, characters],
+    );
+    const contextualChats = useMemo(
+        () =>
+            chats.filter((chat) =>
+                isGroupChat(chat)
+                    ? (chat.members ?? []).some(
+                          (member) => member.characterId === activeCharacterId,
+                      )
+                    : chat.characterId === activeCharacterId,
+            ),
+        [activeCharacterId, chats],
+    );
+    const normalizedChatFilter = useMemo(
+        () => normalizeFilterText(chatFilter),
+        [chatFilter],
+    );
     const hasChatFilter = normalizedChatFilter.length > 0;
-    const filteredContextualChats = hasChatFilter
-        ? contextualChats.filter((chat) =>
-              normalizeFilterText(
-                  `${chatDisplayTitle(chat)} ${formatChatMeta(chat)}`,
-              ).includes(normalizedChatFilter),
-          )
-        : contextualChats;
+    const filteredContextualChats = useMemo(
+        () =>
+            hasChatFilter
+                ? contextualChats.filter((chat) =>
+                      normalizeFilterText(
+                          `${chatDisplayTitle(chat)} ${formatChatMeta(chat)}`,
+                      ).includes(normalizedChatFilter),
+                  )
+                : contextualChats,
+        [contextualChats, hasChatFilter, normalizedChatFilter],
+    );
 
     if (!isOpen) {
         return (

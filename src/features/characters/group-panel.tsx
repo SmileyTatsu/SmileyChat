@@ -8,8 +8,7 @@ import {
     Volume2,
     VolumeX,
 } from "lucide-preact";
-import { useRef } from "preact/hooks";
-import { useState } from "preact/hooks";
+import { useMemo, useRef, useState } from "preact/hooks";
 
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import { defaultGroupTitle } from "#frontend/lib/chats/normalize";
@@ -49,14 +48,26 @@ export function GroupPanel({
 }: GroupPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<ContextTab>("entity");
-    const members = (chat.members ?? [])
-        .slice()
-        .sort((left, right) => left.order - right.order);
-    const availableCharacters = characters.filter(
-        (character) => !members.some((member) => member.characterId === character.id),
+    const members = useMemo(
+        () =>
+            (chat.members ?? [])
+                .slice()
+                .sort((left, right) => left.order - right.order),
+        [chat.members],
     );
-    const group = normalizedGroup(chat.group);
-    const defaultTitle = defaultGroupTitle(members);
+    const memberCharacterIds = useMemo(
+        () => new Set(members.map((member) => member.characterId)),
+        [members],
+    );
+    const availableCharacters = useMemo(
+        () =>
+            characters.filter(
+                (character) => !memberCharacterIds.has(character.id),
+            ),
+        [characters, memberCharacterIds],
+    );
+    const group = useMemo(() => normalizedGroup(chat.group), [chat.group]);
+    const defaultTitle = useMemo(() => defaultGroupTitle(members), [members]);
     const contextIdBase = `group-context-${chat.id}`;
 
     function updateGroup(nextGroup: ChatGroup) {
