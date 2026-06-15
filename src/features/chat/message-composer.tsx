@@ -1,13 +1,20 @@
 import { ImagePlus, SendHorizonal, Square, X } from "lucide-preact";
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { memo } from "preact/compat";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
 import {
     getPluginComposerActions,
     getPluginComposerOptions,
     setPluginDraftActionHandlers,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
-import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type {
+    PluginAppSnapshot,
+    PluginComposerAction,
+    PluginComposerActionContext,
+    PluginComposerOption,
+} from "#frontend/lib/plugins/types";
 import type { ChatMode } from "#frontend/types";
 
 import {
@@ -34,7 +41,16 @@ type StagedImage = {
     previewUrl: string;
 };
 
-export function MessageComposer({
+type PluginComposerActionsProps = {
+    disabled?: boolean;
+    pluginActions: PluginComposerAction[];
+    pluginOptions: PluginComposerOption[];
+    runComposerAction: (
+        run: (context: PluginComposerActionContext) => void | Promise<void>,
+    ) => void;
+};
+
+export const MessageComposer = memo(function MessageComposer({
     characterName,
     disabled,
     enterToSend,
@@ -50,7 +66,7 @@ export function MessageComposer({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [draft, setDraft] = useState("");
-    const [, setRegistryRevision] = useState(0);
+    const [registryRevision, setRegistryRevision] = useState(0);
     const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
 
     const hasMessageContent = draft.trim().length > 0 || stagedImages.length > 0;
@@ -74,12 +90,6 @@ export function MessageComposer({
         const nextHeight = Math.min(composer.scrollHeight, maxHeight);
         composer.style.height = `${nextHeight}px`;
         composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
-    }, [draft]);
-
-    useEffect(() => {
-        setPluginDraftActionHandlers({ insertDraft: insertText, setDraft });
-
-        return () => setPluginDraftActionHandlers({});
     }, [draft]);
 
     useEffect(() => {
@@ -121,27 +131,29 @@ export function MessageComposer({
         }
     }
 
-    function insertText(text: string) {
+    const insertText = useEventCallback((text: string) => {
         const textarea = composerRef.current;
 
         if (!textarea) {
-            setDraft(`${draft}${text}`);
+            setDraft((currentDraft) => `${currentDraft}${text}`);
             return;
         }
 
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        const nextDraft = `${draft.slice(0, start)}${text}${draft.slice(end)}`;
 
-        setDraft(nextDraft);
+        setDraft(
+            (currentDraft) =>
+                `${currentDraft.slice(0, start)}${text}${currentDraft.slice(end)}`,
+        );
 
         requestAnimationFrame(() => {
             textarea.focus();
             textarea.setSelectionRange(start + text.length, start + text.length);
         });
-    }
+    });
 
-    function submitDraft() {
+    const submitDraft = useEventCallback(() => {
         const submittedDraft = draft;
         const submittedImages = stagedImages.map((image) => image.file);
 
@@ -149,7 +161,24 @@ export function MessageComposer({
         clearStagedImages();
 
         return onSubmit(submittedDraft, submittedImages);
-    }
+    });
+
+    const runComposerAction = useEventCallback(
+        (run: (context: PluginComposerActionContext) => void | Promise<void>) =>
+            void run({
+                draft,
+                insertText,
+                setDraft,
+                snapshot: pluginSnapshot,
+                submit: submitDraft,
+            }),
+    );
+
+    useEffect(() => {
+        setPluginDraftActionHandlers({ insertDraft: insertText, setDraft });
+
+        return () => setPluginDraftActionHandlers({});
+    }, [insertText]);
 
     function abortGeneration() {
         onAbortGeneration?.();
@@ -226,15 +255,14 @@ export function MessageComposer({
         });
     }
 
-    const pluginActions = getPluginComposerActions();
-    const pluginOptions = getPluginComposerOptions();
-    const composerActionContext = {
-        draft,
-        insertText,
-        setDraft,
-        snapshot: pluginSnapshot,
-        submit: submitDraft,
-    };
+    const pluginActions = useMemo(
+        () => getPluginComposerActions(),
+        [registryRevision],
+    );
+    const pluginOptions = useMemo(
+        () => getPluginComposerOptions(),
+        [registryRevision],
+    );
 
     return (
         <form className="composer" onSubmit={handleSubmit}>
@@ -249,46 +277,12 @@ export function MessageComposer({
             />
 
             {pluginActions.length + pluginOptions.length > 0 && (
-                <div className="composer-plugin-actions">
-                    {pluginActions.map((action) => (
-                        <button
-                            key={action.id}
-                            type="button"
-                            title={action.label}
-                            disabled={disabled}
-                            onClick={() => void action.run(composerActionContext)}
-                        >
-                            <PluginRenderSurface
-                                pluginId={pluginIdFromScopedId(action.id)}
-                                resetKey={action.id}
-                                fallback={action.label}
-                                surface={action.label}
-                                render={() =>
-                                    action.renderIcon ? action.renderIcon() : action.label
-                                }
-                            />
-                        </button>
-                    ))}
-                    {pluginOptions.map((option) => (
-                        <button
-                            key={option.id}
-                            type="button"
-                            title={option.label}
-                            disabled={disabled}
-                            onClick={() => void option.run(composerActionContext)}
-                        >
-                            <PluginRenderSurface
-                                pluginId={pluginIdFromScopedId(option.id)}
-                                resetKey={option.id}
-                                fallback={option.label}
-                                surface={option.label}
-                                render={() =>
-                                    option.renderIcon ? option.renderIcon() : option.label
-                                }
-                            />
-                        </button>
-                    ))}
-                </div>
+                <PluginComposerActions
+                    disabled={disabled}
+                    pluginActions={pluginActions}
+                    pluginOptions={pluginOptions}
+                    runComposerAction={runComposerAction}
+                />
             )}
 
             {stagedImages.length > 0 && (
@@ -373,4 +367,54 @@ export function MessageComposer({
             </div>
         </form>
     );
-}
+});
+
+const PluginComposerActions = memo(function PluginComposerActions({
+    disabled,
+    pluginActions,
+    pluginOptions,
+    runComposerAction,
+}: PluginComposerActionsProps) {
+    return (
+        <div className="composer-plugin-actions">
+            {pluginActions.map((action) => (
+                <button
+                    key={action.id}
+                    type="button"
+                    title={action.label}
+                    disabled={disabled}
+                    onClick={() => runComposerAction(action.run)}
+                >
+                    <PluginRenderSurface
+                        pluginId={pluginIdFromScopedId(action.id)}
+                        resetKey={action.id}
+                        fallback={action.label}
+                        surface={action.label}
+                        render={() =>
+                            action.renderIcon ? action.renderIcon() : action.label
+                        }
+                    />
+                </button>
+            ))}
+            {pluginOptions.map((option) => (
+                <button
+                    key={option.id}
+                    type="button"
+                    title={option.label}
+                    disabled={disabled}
+                    onClick={() => runComposerAction(option.run)}
+                >
+                    <PluginRenderSurface
+                        pluginId={pluginIdFromScopedId(option.id)}
+                        resetKey={option.id}
+                        fallback={option.label}
+                        surface={option.label}
+                        render={() =>
+                            option.renderIcon ? option.renderIcon() : option.label
+                        }
+                    />
+                </button>
+            ))}
+        </div>
+    );
+});
