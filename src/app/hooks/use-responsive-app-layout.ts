@@ -1,5 +1,5 @@
 import { computed } from "@preact/signals";
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import {
     desktopCharacterOpen,
@@ -68,16 +68,19 @@ export function useResponsiveAppLayout() {
         }
     }, [isCharacterDrawerLayout, isMobileLayout]);
 
-    function setActiveSidebarOpen(isOpen: boolean) {
-        if (isMobileLayout) {
-            mobileSidebarOpen.value = isOpen;
-            return;
-        }
+    const setActiveSidebarOpen = useCallback(
+        (isOpen: boolean) => {
+            if (isMobileLayout) {
+                mobileSidebarOpen.value = isOpen;
+                return;
+            }
 
-        desktopSidebarOpen.value = isOpen;
-    }
+            desktopSidebarOpen.value = isOpen;
+        },
+        [isMobileLayout],
+    );
 
-    function toggleSidebar() {
+    const toggleSidebar = useCallback(() => {
         if (isMobileLayout) {
             mobileSidebarOpen.value = !mobileSidebarOpen.value;
             mobileCharacterOpen.value = false;
@@ -85,9 +88,9 @@ export function useResponsiveAppLayout() {
         }
 
         desktopSidebarOpen.value = !desktopSidebarOpen.value;
-    }
+    }, [isMobileLayout]);
 
-    function toggleCharacter() {
+    const toggleCharacter = useCallback(() => {
         if (isCharacterDrawerLayout) {
             mobileCharacterOpen.value = !mobileCharacterOpen.value;
 
@@ -99,7 +102,7 @@ export function useResponsiveAppLayout() {
         }
 
         desktopCharacterOpen.value = !desktopCharacterOpen.value;
-    }
+    }, [isCharacterDrawerLayout, isMobileLayout]);
 
     return {
         characterOpenSignal,

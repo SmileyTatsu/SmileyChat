@@ -1,4 +1,5 @@
 import { type ReadonlySignal } from "@preact/signals";
+import { memo } from "preact/compat";
 import { useEffect, useState } from "preact/hooks";
 
 import { CharacterPanel } from "#frontend/features/characters/character-panel";
@@ -19,25 +20,34 @@ type SidebarHostProps = Omit<Parameters<typeof SidebarContainer>[0], "isOpen"> &
     isOpenSignal: ReadonlySignal<boolean>;
 };
 
-export function SidebarHost({ isOpenSignal, ...props }: SidebarHostProps) {
+export const SidebarHost = memo(function SidebarHost({
+    isOpenSignal,
+    ...props
+}: SidebarHostProps) {
     return <SidebarContainer {...props} isOpen={isOpenSignal.value} />;
-}
+});
 
 type CharacterPanelHostProps = Omit<Parameters<typeof CharacterPanel>[0], "isOpen"> & {
     isOpenSignal: ReadonlySignal<boolean>;
 };
 
-export function CharacterPanelHost({ isOpenSignal, ...props }: CharacterPanelHostProps) {
+export const CharacterPanelHost = memo(function CharacterPanelHost({
+    isOpenSignal,
+    ...props
+}: CharacterPanelHostProps) {
     return <CharacterPanel {...props} isOpen={isOpenSignal.value} />;
-}
+});
 
 type GroupPanelHostProps = Omit<Parameters<typeof GroupPanel>[0], "isOpen"> & {
     isOpenSignal: ReadonlySignal<boolean>;
 };
 
-export function GroupPanelHost({ isOpenSignal, ...props }: GroupPanelHostProps) {
+export const GroupPanelHost = memo(function GroupPanelHost({
+    isOpenSignal,
+    ...props
+}: GroupPanelHostProps) {
     return <GroupPanel {...props} isOpen={isOpenSignal.value} />;
-}
+});
 
 export function ResponsiveBackdrops({
     characterOpenSignal,
@@ -202,10 +212,12 @@ function AnimatedBackdrop({
     );
 }
 
-export function OptionsModalHost(props: OptionsModalHostProps) {
+export const OptionsModalHost = memo(function OptionsModalHost(
+    props: OptionsModalHostProps,
+) {
     if (!settingsOpen.value) {
         return null;
     }
 
     return <OptionsModal {...props} />;
-}
+});

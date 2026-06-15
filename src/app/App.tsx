@@ -1,7 +1,14 @@
 import "./App.css";
 
 import { computed } from "@preact/signals";
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "preact/hooks";
 
 import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
 import { PluginModalHost } from "#frontend/features/plugins/plugin-surfaces";
@@ -49,7 +56,17 @@ import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 
-import type { ChatMetadata, ChatMode, UserStatus } from "#frontend/types";
+import type {
+    CharacterSummaryCollection,
+    ChatAuthorNote,
+    ChatMetadata,
+    ChatMode,
+    ChatSession,
+    GroupGreetingMode,
+    SmileyCharacter,
+    SmileyPersona,
+    UserStatus,
+} from "#frontend/types";
 
 import { useCharacterChats } from "./hooks/use-character-chats";
 import {
@@ -652,6 +669,132 @@ export function App() {
 
     const uiFontFamily = preferences.appearance.uiFontFamily.trim();
     const chatFontFamily = preferences.appearance.chatFontFamily.trim();
+    const handleClearLocalApiWarning = useEventCallback(() => {
+        setLocalApiWarning("");
+    });
+    const handleOpenSettings = useEventCallback(() => {
+        openSettings();
+    });
+    const handleOpenPersonasSettings = useEventCallback(() => {
+        openPersonasSettings();
+    });
+    const handleSidebarCreateCharacter = useEventCallback(() => {
+        void createCharacter();
+    });
+    const handleSidebarImportCharacterFiles = useEventCallback((files: File[]) => {
+        void importCharacterFiles(files);
+    });
+    const handleSidebarImportChatFile = useEventCallback((file: File) => {
+        void importChatFile(file);
+    });
+    const handleSidebarNewChat = useEventCallback(() => {
+        startNewChat();
+        if (isMobileLayout) {
+            setActiveSidebarOpen(false);
+        }
+    });
+    const handleSidebarNewGroupChat = useEventCallback(
+        (characterIds: string[], title?: string, greetingMode?: GroupGreetingMode) => {
+            void createGroupChat(characterIds, title, greetingMode);
+            if (isMobileLayout) {
+                setActiveSidebarOpen(false);
+            }
+        },
+    );
+    const handleSidebarDeleteCharacter = useEventCallback(
+        (characterId: string, options?: { deleteChats?: boolean }) => {
+            void deleteCharacter(characterId, options);
+        },
+    );
+    const handleSidebarExportCharacter = useEventCallback(
+        (characterId: string, format: "json" | "png") => {
+            void exportCharacter(characterId, format);
+        },
+    );
+    const handleSidebarRemoveCharacterAvatar = useEventCallback((characterId: string) => {
+        void removeCharacterAvatar(characterId);
+    });
+    const handleSidebarDeleteChat = useEventCallback((chatId: string) => {
+        void deleteChat(chatId);
+    });
+    const handleSidebarChangeGroupAvatar = useEventCallback(
+        (chatId: string, file: File) => {
+            void changeGroupAvatar(chatId, file);
+        },
+    );
+    const handleSidebarRenameChat = useEventCallback((chatId: string, title: string) => {
+        void renameChat(chatId, title);
+    });
+    const handleSidebarSelectChat = useEventCallback((chatId: string) => {
+        void selectChat(chatId);
+        if (isMobileLayout) {
+            setActiveSidebarOpen(false);
+        }
+    });
+    const handleSidebarSelectCharacter = useEventCallback((characterId: string) => {
+        void selectCharacter(characterId);
+        if (isMobileLayout) {
+            setActiveSidebarOpen(false);
+        }
+    });
+    const handleSidebarSelectPersona = useEventCallback((personaId: string) => {
+        void selectPersona(personaId);
+    });
+    const handleGroupPanelChange = useEventCallback((nextChat: ChatSession) => {
+        void updateActiveGroupChat(nextChat);
+    });
+    const handleGroupPanelChangeAvatar = useEventCallback(
+        (chatId: string, file: File) => {
+            void changeGroupAvatar(chatId, file);
+        },
+    );
+    const handleGroupPanelForceReply = useEventCallback((characterId: string) => {
+        void chatSession.forceGroupMemberResponse(characterId);
+    });
+    const handlePanelUpdateAuthorNote = useEventCallback((authorNote: ChatAuthorNote) => {
+        handleUpdateChatMetadata({ authorNote });
+    });
+    const handleCharacterPanelChange = useEventCallback(
+        (nextCharacter: SmileyCharacter) => {
+            updateActiveCharacter(nextCharacter);
+        },
+    );
+    const handleCharacterPanelBeforeAvatarUpload = useEventCallback(() => {
+        return prepareCharacterAvatarUpload();
+    });
+    const handleCharacterPanelSavedCharacter = useEventCallback(
+        (savedCharacter: SmileyCharacter, summaries?: CharacterSummaryCollection) => {
+            applySavedCharacter(savedCharacter, summaries);
+        },
+    );
+    const handleOptionsClose = useEventCallback(() => {
+        closeSettings();
+    });
+    const handleOptionsConnectionSettingsChange = useEventCallback(
+        (nextSettings: ConnectionSettings) => {
+            updateConnectionSettings(nextSettings);
+        },
+    );
+    const handleOptionsCreatePersona = useEventCallback(() => {
+        void createPersona();
+    });
+    const handleOptionsDeletePersona = useEventCallback((personaId: string) => {
+        void deletePersona(personaId);
+    });
+    const handleOptionsPersonaChange = useEventCallback((nextPersona: SmileyPersona) => {
+        void updatePersona(nextPersona);
+    });
+    const handleOptionsPersonaSelect = useEventCallback((personaId: string) => {
+        void selectPersonaForEditing(personaId);
+    });
+    const handleOptionsSetActivePersona = useEventCallback((personaId: string) => {
+        void selectPersona(personaId);
+    });
+    const handleOptionsPreferencesChange = useEventCallback(
+        (nextPreferences: AppPreferences) => {
+            updatePreferences(nextPreferences);
+        },
+    );
 
     if (startupStatus !== "ready") {
         return (
@@ -685,7 +828,7 @@ export function App() {
             {localApiWarning && (
                 <div className="app-warning-banner" role="alert">
                     <span>{localApiWarning}</span>
-                    <button type="button" onClick={() => setLocalApiWarning("")}>
+                    <button type="button" onClick={handleClearLocalApiWarning}>
                         Dismiss
                     </button>
                 </div>
@@ -707,52 +850,24 @@ export function App() {
                 userStatus={userStatus}
                 hasCharacters={hasCharacters}
                 isOpenSignal={sidebarOpenSignal}
-                onCreateCharacter={() => void createCharacter()}
-                onImportCharacterFiles={(files) => void importCharacterFiles(files)}
-                onImportChatFile={(file) => void importChatFile(file)}
-                onNewChat={() => {
-                    startNewChat();
-                    if (isMobileLayout) {
-                        setActiveSidebarOpen(false);
-                    }
-                }}
-                onNewGroupChat={(characterIds, title, greetingMode) => {
-                    void createGroupChat(characterIds, title, greetingMode);
-                    if (isMobileLayout) {
-                        setActiveSidebarOpen(false);
-                    }
-                }}
-                onOpenSettings={() => openSettings()}
-                onOpenPersonasSettings={openPersonasSettings}
+                onCreateCharacter={handleSidebarCreateCharacter}
+                onImportCharacterFiles={handleSidebarImportCharacterFiles}
+                onImportChatFile={handleSidebarImportChatFile}
+                onNewChat={handleSidebarNewChat}
+                onNewGroupChat={handleSidebarNewGroupChat}
+                onOpenSettings={handleOpenSettings}
+                onOpenPersonasSettings={handleOpenPersonasSettings}
                 onOpenChange={setActiveSidebarOpen}
                 chatCountsByCharacterId={chatCountsByCharacterId}
-                onDeleteCharacter={(characterId, options) =>
-                    void deleteCharacter(characterId, options)
-                }
-                onExportCharacter={(characterId, format) =>
-                    void exportCharacter(characterId, format)
-                }
-                onRemoveCharacterAvatar={(characterId) =>
-                    void removeCharacterAvatar(characterId)
-                }
-                onDeleteChat={(chatId) => void deleteChat(chatId)}
-                onChangeGroupAvatar={(chatId, file) =>
-                    void changeGroupAvatar(chatId, file)
-                }
-                onRenameChat={(chatId, title) => void renameChat(chatId, title)}
-                onSelectChat={(chatId) => {
-                    void selectChat(chatId);
-                    if (isMobileLayout) {
-                        setActiveSidebarOpen(false);
-                    }
-                }}
-                onSelectCharacter={(characterId) => {
-                    void selectCharacter(characterId);
-                    if (isMobileLayout) {
-                        setActiveSidebarOpen(false);
-                    }
-                }}
-                onSelectPersona={(personaId) => void selectPersona(personaId)}
+                onDeleteCharacter={handleSidebarDeleteCharacter}
+                onExportCharacter={handleSidebarExportCharacter}
+                onRemoveCharacterAvatar={handleSidebarRemoveCharacterAvatar}
+                onDeleteChat={handleSidebarDeleteChat}
+                onChangeGroupAvatar={handleSidebarChangeGroupAvatar}
+                onRenameChat={handleSidebarRenameChat}
+                onSelectChat={handleSidebarSelectChat}
+                onSelectCharacter={handleSidebarSelectCharacter}
+                onSelectPersona={handleSidebarSelectPersona}
                 onStatusChange={setUserStatus}
             />
 
@@ -806,16 +921,10 @@ export function App() {
                     characters={characterSummaries.characters}
                     chat={activeChat}
                     isOpenSignal={characterOpenSignal}
-                    onChange={(nextChat) => void updateActiveGroupChat(nextChat)}
-                    onChangeAvatar={(chatId, file) =>
-                        void changeGroupAvatar(chatId, file)
-                    }
-                    onForceReply={(characterId) =>
-                        void chatSession.forceGroupMemberResponse(characterId)
-                    }
-                    onUpdateAuthorNote={(authorNote) =>
-                        handleUpdateChatMetadata({ authorNote })
-                    }
+                    onChange={handleGroupPanelChange}
+                    onChangeAvatar={handleGroupPanelChangeAvatar}
+                    onForceReply={handleGroupPanelForceReply}
+                    onUpdateAuthorNote={handlePanelUpdateAuthorNote}
                 />
             ) : hasCharacters ? (
                 <CharacterPanelHost
@@ -823,12 +932,10 @@ export function App() {
                     character={character}
                     isOpenSignal={characterOpenSignal}
                     pluginSnapshot={pluginSnapshot}
-                    onChange={updateActiveCharacter}
-                    onBeforeAvatarUpload={prepareCharacterAvatarUpload}
-                    onSavedCharacter={applySavedCharacter}
-                    onUpdateAuthorNote={(authorNote) =>
-                        handleUpdateChatMetadata({ authorNote })
-                    }
+                    onChange={handleCharacterPanelChange}
+                    onBeforeAvatarUpload={handleCharacterPanelBeforeAvatarUpload}
+                    onSavedCharacter={handleCharacterPanelSavedCharacter}
+                    onUpdateAuthorNote={handlePanelUpdateAuthorNote}
                 />
             ) : null}
 
@@ -848,16 +955,16 @@ export function App() {
                 personaCollection={personaSummaries}
                 personaLoadError={personaLoadError}
                 pluginSnapshot={pluginSnapshot}
-                onClose={closeSettings}
-                onConnectionSettingsChange={updateConnectionSettings}
-                onCreatePersona={() => void createPersona()}
-                onDeletePersona={(personaId) => void deletePersona(personaId)}
+                onClose={handleOptionsClose}
+                onConnectionSettingsChange={handleOptionsConnectionSettingsChange}
+                onCreatePersona={handleOptionsCreatePersona}
+                onDeletePersona={handleOptionsDeletePersona}
                 onLorebookCollectionChange={setLorebookCollection}
-                onPersonaChange={(nextPersona) => void updatePersona(nextPersona)}
-                onPersonaSelect={(personaId) => void selectPersonaForEditing(personaId)}
+                onPersonaChange={handleOptionsPersonaChange}
+                onPersonaSelect={handleOptionsPersonaSelect}
                 onPersonaSaved={applySavedPersona}
-                onSetActivePersona={(personaId) => void selectPersona(personaId)}
-                onPreferencesChange={updatePreferences}
+                onSetActivePersona={handleOptionsSetActivePersona}
+                onPreferencesChange={handleOptionsPreferencesChange}
                 onPresetCollectionChange={setPresetCollection}
                 presetCollection={presetCollection}
                 presetLoadError={presetLoadError}
@@ -867,4 +974,16 @@ export function App() {
             <PluginModalHost snapshot={pluginSnapshot} />
         </main>
     );
+}
+
+function useEventCallback<TArgs extends unknown[], TReturn>(
+    callback: (...args: TArgs) => TReturn,
+) {
+    const callbackRef = useRef(callback);
+
+    useLayoutEffect(() => {
+        callbackRef.current = callback;
+    });
+
+    return useCallback((...args: TArgs) => callbackRef.current(...args), []);
 }
