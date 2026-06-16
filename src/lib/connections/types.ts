@@ -49,5 +49,6 @@ export type ChatGenerationResult = {
 export type ConnectionAdapter = {
     id: string;
     label: string;
+    buildPayload: (request: ChatGenerationRequest) => Promise<unknown> | unknown;
     generate: (request: ChatGenerationRequest) => Promise<ChatGenerationResult>;
 };

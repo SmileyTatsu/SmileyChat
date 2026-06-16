@@ -7,6 +7,7 @@ import {
 } from "#frontend/lib/connections/config";
 import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
+import type { ChatGenerationRequest } from "#frontend/lib/connections/types";
 import { isActiveSwipeError } from "#frontend/lib/messages";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
@@ -56,6 +57,11 @@ type UsePromptGenerationOptions = {
     preferences: AppPreferences;
     presetCollection: PresetCollection;
     userStatus: UserStatus;
+};
+
+export type DebugGenerationPayload = {
+    request: ChatGenerationRequest;
+    payload: unknown;
 };
 
 export function usePromptGeneration({
@@ -167,6 +173,73 @@ export function usePromptGeneration({
             trigger?: PromptGenerationTrigger;
         } = {},
     ) {
+        const connection = getAdapterForSettings(sourceConnectionSettings);
+        const request = await buildGenerationRequest(
+            sourceMessages,
+            sourceCharacter,
+            sourceMode,
+            sourceUserStatus,
+            options,
+        );
+        const generationMessages = request.messages;
+        const result = await connection.generate(request);
+
+        const message = await applyOutputMiddlewares(
+            result.message,
+            generationMessages,
+            sourceCharacter,
+            sourceMode,
+            sourceUserStatus,
+            result,
+        );
+
+        return { ...result, message };
+    }
+
+    async function getDebugPayload(
+        sourceMessages: Message[],
+        sourceCharacter: SmileyCharacter,
+        sourceMode: ChatMode,
+        sourceUserStatus: UserStatus,
+        sourceConnectionSettings: ConnectionSettings,
+        options: {
+            promptCharacter?: SmileyCharacter;
+            sourceChat?: ChatSession;
+            stream?: boolean;
+            targetMessageId?: string;
+            trigger?: PromptGenerationTrigger;
+        } = {},
+    ): Promise<DebugGenerationPayload> {
+        const connection = getAdapterForSettings(sourceConnectionSettings);
+        const request = await buildGenerationRequest(
+            sourceMessages,
+            sourceCharacter,
+            sourceMode,
+            sourceUserStatus,
+            options,
+        );
+        const payload = await connection.buildPayload(request);
+
+        return { request, payload };
+    }
+
+    async function buildGenerationRequest(
+        sourceMessages: Message[],
+        sourceCharacter: SmileyCharacter,
+        sourceMode: ChatMode,
+        sourceUserStatus: UserStatus,
+        options: {
+            onImage?: (url: string) => void;
+            promptCharacter?: SmileyCharacter;
+            onReasoningToken?: (token: string) => void;
+            onToken?: (token: string) => void;
+            signal?: AbortSignal;
+            sourceChat?: ChatSession;
+            stream?: boolean;
+            targetMessageId?: string;
+            trigger?: PromptGenerationTrigger;
+        } = {},
+    ): Promise<ChatGenerationRequest> {
         const sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );
@@ -223,7 +296,6 @@ export function usePromptGeneration({
             ],
         });
         const generationMessages = promptBuild.messages;
-        const connection = getAdapterForSettings(sourceConnectionSettings);
         const promptMessages = await applyPromptMiddlewares(
             promptBuild.promptMessages,
             generationMessages,
@@ -234,7 +306,8 @@ export function usePromptGeneration({
         assertPromptMessagesWithinBudget(promptMessages, contextTokenBudget);
         const materializedPromptMessages =
             await materializeChatGenerationMessageImages(promptMessages);
-        const result = await connection.generate({
+
+        return {
             generation: activePreset?.generation,
             messages: generationMessages,
             debug: promptBuild.debug,
@@ -244,17 +317,7 @@ export function usePromptGeneration({
             promptMessages: materializedPromptMessages,
             signal: options.signal,
             stream: options.stream,
-        });
-        const message = await applyOutputMiddlewares(
-            result.message,
-            generationMessages,
-            sourceCharacter,
-            sourceMode,
-            sourceUserStatus,
-            result,
-        );
-
-        return { ...result, message };
+        };
     }
 
     async function loadNativeLorebooks(
@@ -364,7 +427,9 @@ export function usePromptGeneration({
 
     return {
         applyInputMiddlewares,
+        buildGenerationRequest,
         generateWithPreset,
+        getDebugPayload,
         resolveChatMacros,
     };
 }

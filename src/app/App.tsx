@@ -4,6 +4,7 @@ import { computed } from "@preact/signals";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
+import { ChatPayloadModal } from "#frontend/features/chat/chat-payload-modal";
 import { PluginModalHost } from "#frontend/features/plugins/plugin-surfaces";
 
 import {
@@ -48,6 +49,7 @@ import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
+import type { DebugGenerationPayload } from "./hooks/use-prompt-generation";
 
 import type {
     CharacterSummaryCollection,
@@ -120,6 +122,9 @@ export function App() {
     const [preferencesLoadError, setPreferencesLoadError] = useState("");
     const [preferencesSaveStatus, setPreferencesSaveStatus] = useState("");
     const [localApiWarning, setLocalApiWarning] = useState("");
+    const [isPayloadModalOpen, setIsPayloadModalOpen] = useState(false);
+    const [debugPayloadData, setDebugPayloadData] =
+        useState<DebugGenerationPayload | null>(null);
     const [connectionSettingsLoaded, setConnectionSettingsLoaded] = useState(false);
     const [startupStatus, setStartupStatus] = useState<StartupStatus>("loading");
     const [startupLabel, setStartupLabel] = useState("Loading preferences...");
@@ -748,6 +753,22 @@ export function App() {
     const handlePanelUpdateAuthorNote = useEventCallback((authorNote: ChatAuthorNote) => {
         handleUpdateChatMetadata({ authorNote });
     });
+    const handleShowDebugPayload = useEventCallback(async () => {
+        try {
+            const data = await chatSession.getDebugPayload();
+
+            setDebugPayloadData(data);
+            setIsPayloadModalOpen(true);
+            setLocalApiWarning("");
+        } catch (error) {
+            setLocalApiWarning(
+                `Could not build prompt payload: ${messageFromError(error)}`,
+            );
+        }
+    });
+    const handleClosePayloadModal = useEventCallback(() => {
+        setIsPayloadModalOpen(false);
+    });
     const handleCharacterPanelChange = useEventCallback(
         (nextCharacter: SmileyCharacter) => {
             updateActiveCharacter(nextCharacter);
@@ -918,6 +939,7 @@ export function App() {
                     onChange={handleGroupPanelChange}
                     onChangeAvatar={handleGroupPanelChangeAvatar}
                     onForceReply={handleGroupPanelForceReply}
+                    onShowDebugPayload={handleShowDebugPayload}
                     onUpdateAuthorNote={handlePanelUpdateAuthorNote}
                 />
             ) : hasCharacters ? (
@@ -929,6 +951,7 @@ export function App() {
                     onChange={handleCharacterPanelChange}
                     onBeforeAvatarUpload={handleCharacterPanelBeforeAvatarUpload}
                     onSavedCharacter={handleCharacterPanelSavedCharacter}
+                    onShowDebugPayload={handleShowDebugPayload}
                     onUpdateAuthorNote={handlePanelUpdateAuthorNote}
                 />
             ) : null}
@@ -966,6 +989,12 @@ export function App() {
             />
 
             <PluginModalHost snapshot={pluginSnapshot} />
+            {isPayloadModalOpen && debugPayloadData ? (
+                <ChatPayloadModal
+                    data={debugPayloadData}
+                    onClose={handleClosePayloadModal}
+                />
+            ) : null}
         </main>
     );
 }

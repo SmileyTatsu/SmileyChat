@@ -30,6 +30,7 @@ type CharacterPanelProps = {
         character: SmileyCharacter,
         summaries?: CharacterSummaryCollection,
     ) => void;
+    onShowDebugPayload: () => void;
     onUpdateAuthorNote: (authorNote: ChatAuthorNote) => void;
     pluginSnapshot: PluginAppSnapshot;
 };
@@ -41,6 +42,7 @@ export function CharacterPanel({
     onBeforeAvatarUpload,
     onChange,
     onSavedCharacter,
+    onShowDebugPayload,
     onUpdateAuthorNote,
     pluginSnapshot,
 }: CharacterPanelProps) {
@@ -358,6 +360,7 @@ export function CharacterPanel({
                             >
                                 <ChatDetailsPanel
                                     authorNote={authorNote}
+                                    onShowDebugPayload={onShowDebugPayload}
                                     onUpdateAuthorNote={onUpdateAuthorNote}
                                 />
                             </section>

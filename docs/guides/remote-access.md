@@ -60,24 +60,27 @@ If you chose Option A, your browser will prompt you for the username and passwor
 
 ## Connecting from Outside Your Home (Over the Internet)
 
-If you want to use SmileyChat on mobile data (4G/5G) or from a completely different location, simply using your local network IP address won't work. You need a way to expose your local server to the wider internet securely. 
+If you want to use SmileyChat on mobile data (4G/5G) or from a completely different location, simply using your local network IP address won't work. You need a way to expose your local server to the wider internet securely.
 
-While you *could* use Port Forwarding on your router, this is generally considered unsafe as it exposes your home network directly to attackers. Instead, we highly recommend using a secure tunnel.
+While you _could_ use Port Forwarding on your router, this is generally considered unsafe as it exposes your home network directly to attackers. Instead, we highly recommend using a secure tunnel.
 
 ### Option 1: Cloudflare Tunnels (Recommended for Domain Owners)
 
 **Why use a Cloudflare Tunnel?**
 Cloudflare Tunnels (`cloudflared`) create a secure, outbound connection from your computer to Cloudflare's network. This means:
+
 - You don't need to open any ports on your home router (no port forwarding).
 - Your true home IP address remains hidden from the public internet.
 - You can attach your SmileyChat instance to a custom domain name (e.g., `chat.yourdomain.com`).
 - You get automatic HTTPS/SSL encryption for your connection.
 
 **What you need:**
+
 - A Cloudflare account (free).
 - A domain name managed by Cloudflare.
 
 **Basic Setup Steps:**
+
 1. Log in to your Cloudflare Zero Trust dashboard.
 2. Navigate to **Networks > Tunnels** and create a new tunnel.
 3. Install the `cloudflared` connector on the same computer running SmileyChat, following the dashboard instructions.
@@ -89,22 +92,25 @@ Cloudflare Tunnels (`cloudflared`) create a secure, outbound connection from you
 If you don't have a domain name or Cloudflare account but want to test remote access quickly over the internet, you can use a **Quick Tunnel** (TryCloudflare). This generates a random, temporary URL that routes to your local machine.
 
 **Basic Setup Steps:**
+
 1. Download the [`cloudflared` command line tool](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
 2. Open your terminal or command prompt.
 3. Run the following command:
-   ```bash
-   cloudflared tunnel --url http://localhost:4173
-   ```
+    ```bash
+    cloudflared tunnel --url http://localhost:4173
+    ```
 4. Look at the terminal output. It will provide a random URL (e.g., `https://random-words.trycloudflare.com`). You can open this link on your phone from anywhere.
 
 **Important Considerations:**
+
 - **Security:** This URL is public. You **must** enable Option A (Username and Password) from Step 2 above in your `.env` file before starting the tunnel to protect your data.
 - **Temporary:** The URL changes every time you restart the command. It's excellent for temporary, quick access but not for permanent setups.
 
 ### Option 3: Tailscale (Easiest for Permanent Personal Use)
 
 If you use [Tailscale](https://tailscale.com/), SmileyChat detects it automatically. Tailscale connects your devices into a secure, private Virtual Private Network (VPN) using WireGuard.
+
 - You don't need a domain name.
 - Only devices logged into your Tailscale account can access the app.
-- Just install Tailscale on your PC and your phone. 
+- Just install Tailscale on your PC and your phone.
 - Use your PC's Tailscale IP (e.g., `http://100.x.x.x:4173`) from your phone, and it will just work! Tailscale connections bypass the `.env` password requirement because they are already securely authenticated by your Tailnet.

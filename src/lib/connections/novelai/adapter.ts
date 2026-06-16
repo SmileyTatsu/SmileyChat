@@ -10,6 +10,9 @@ export function createNovelAIConnection(config: NovelAIRuntimeConfig): Connectio
     return {
         id: "novelai",
         label: "NovelAI",
+        buildPayload(request) {
+            return createNovelAIBody(request, config);
+        },
         async generate(request) {
             const body = createNovelAIBody(request, config);
             const targetUrl = createNovelAICompletionUrl(config);

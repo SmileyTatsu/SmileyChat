@@ -14,6 +14,9 @@ export function createOpenAICompatibleConnection(
     return {
         id: "openai-compatible",
         label: "OpenAI compatible",
+        buildPayload(request) {
+            return createChatCompletionBody(request, config);
+        },
         async generate(request) {
             const body = createChatCompletionBody(request, config);
             const targetUrl = `${trimTrailingSlash(config.baseUrl)}/chat/completions`;

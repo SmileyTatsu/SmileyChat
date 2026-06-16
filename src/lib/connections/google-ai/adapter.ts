@@ -15,6 +15,9 @@ export function createGoogleAIConnection(
     return {
         id: "google-ai",
         label: "Google AI",
+        buildPayload(request) {
+            return createGoogleAIGenerateBody(request, config);
+        },
         async generate(request) {
             const body = createGoogleAIGenerateBody(request, config);
             const targetUrl = createGoogleAIGenerateUrl(config, request.stream === true);

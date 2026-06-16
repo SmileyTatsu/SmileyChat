@@ -33,6 +33,7 @@ type GroupPanelProps = {
     onChange: (chat: ChatSession) => void;
     onChangeAvatar: (chatId: string, file: File) => void;
     onForceReply: (characterId: string) => void;
+    onShowDebugPayload: () => void;
     onUpdateAuthorNote: (authorNote: ChatAuthorNote) => void;
 };
 
@@ -44,6 +45,7 @@ export function GroupPanel({
     onChange,
     onChangeAvatar,
     onForceReply,
+    onShowDebugPayload,
     onUpdateAuthorNote,
 }: GroupPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -644,6 +646,7 @@ export function GroupPanel({
                         >
                             <ChatDetailsPanel
                                 authorNote={authorNote}
+                                onShowDebugPayload={onShowDebugPayload}
                                 onUpdateAuthorNote={onUpdateAuthorNote}
                             />
                         </section>

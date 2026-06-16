@@ -253,13 +253,17 @@
 }
 
 .chat-details-panel {
+    display: grid;
+    align-content: start;
+    gap: 12px;
     min-height: 0;
     overflow-y: auto;
     padding-right: 4px;
     scrollbar-gutter: stable;
 }
 
-.author-note-card {
+.author-note-card,
+.prompt-debug-card {
     display: grid;
     gap: 14px;
     border: 1px solid #303440;
@@ -268,14 +272,20 @@
     padding: 14px;
 }
 
-.author-note-card-header {
+.prompt-debug-card {
+    background: var(--surface-2);
+}
+
+.author-note-card-header,
+.prompt-debug-card-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
 }
 
-.author-note-card-header h3 {
+.author-note-card-header h3,
+.prompt-debug-card-header h3 {
     display: flex;
     align-items: center;
     gap: 7px;
@@ -284,11 +294,23 @@
     font-size: 0.94rem;
 }
 
-.author-note-card-header p {
+.author-note-card-header p,
+.prompt-debug-card-header p {
     margin: 6px 0 0;
     color: #9fa7ba;
     font-size: 0.82rem;
     line-height: 1.45;
+}
+
+.prompt-debug-card .secondary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    justify-self: stretch;
+    width: 100%;
+    border: 1px solid var(--line-subtle);
+    background: var(--surface-3);
 }
 
 .author-note-switch {

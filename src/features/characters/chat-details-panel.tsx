@@ -1,10 +1,11 @@
-import { FileText } from "lucide-preact";
+import { FileText, Terminal } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import type { ChatAuthorNote } from "#frontend/types";
 
 type ChatDetailsPanelProps = {
     authorNote?: ChatAuthorNote;
+    onShowDebugPayload: () => void;
     onUpdateAuthorNote: (authorNote: ChatAuthorNote) => void;
 };
 
@@ -42,6 +43,7 @@ export function isAuthorNoteActive(authorNote: ChatAuthorNote | undefined) {
 
 export function ChatDetailsPanel({
     authorNote,
+    onShowDebugPayload,
     onUpdateAuthorNote,
 }: ChatDetailsPanelProps) {
     const saveTimerRef = useRef<number | undefined>();
@@ -204,6 +206,26 @@ export function ChatDetailsPanel({
                         </select>
                     </label>
                 </div>
+            </section>
+
+            <section className="prompt-debug-card" aria-labelledby="prompt-debug-title">
+                <div className="prompt-debug-card-header">
+                    <div>
+                        <h3 id="prompt-debug-title">
+                            <Terminal size={16} />
+                            Prompt Debug
+                        </h3>
+                        <p>Inspect the compiled prompt and provider request body.</p>
+                    </div>
+                </div>
+                <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={onShowDebugPayload}
+                >
+                    <Terminal size={15} />
+                    Show payload
+                </button>
             </section>
         </div>
     );

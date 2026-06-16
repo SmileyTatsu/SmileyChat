@@ -22,6 +22,9 @@ export function createOpenRouterConnection(
     return {
         id: "openrouter",
         label: "OpenRouter",
+        buildPayload(request) {
+            return createOpenRouterChatCompletionBody(request, config);
+        },
         async generate(request) {
             const body = createOpenRouterChatCompletionBody(request, config);
             const targetUrl = `${openRouterBaseUrl}/chat/completions`;

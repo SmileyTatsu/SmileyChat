@@ -1,4 +1,3 @@
-import { materializeChatGenerationMessageImages } from "../images";
 import { safeResponseText, trimTrailingSlash } from "../http";
 import type { ConnectionAdapter } from "../types";
 import {
@@ -17,17 +16,11 @@ export function createAnthropicConnection(
     return {
         id: "anthropic",
         label: "Anthropic",
+        buildPayload(request) {
+            return createAnthropicMessageBody(request, config);
+        },
         async generate(request) {
-            const promptMessages = request.promptMessages?.length
-                ? await materializeChatGenerationMessageImages(request.promptMessages)
-                : undefined;
-            const body = createAnthropicMessageBody(
-                {
-                    ...request,
-                    ...(promptMessages ? { promptMessages } : {}),
-                },
-                config,
-            );
+            const body = createAnthropicMessageBody(request, config);
             const targetUrl = createAnthropicMessagesUrl(config);
             const response = await fetch(targetUrl, {
                 method: "POST",

@@ -91,19 +91,23 @@ export function useChatSession({
         pendingChatIds,
         pendingSwipeMessageIds,
     } = useChatGenerationState();
-    const { applyInputMiddlewares, generateWithPreset, resolveChatMacros } =
-        usePromptGeneration({
-            character,
-            connectionSettings,
-            groupCharacters,
-            latestChatRef,
-            lorebookCollection,
-            mode,
-            persona,
-            preferences,
-            presetCollection,
-            userStatus,
-        });
+    const {
+        applyInputMiddlewares,
+        generateWithPreset,
+        getDebugPayload: buildDebugPayload,
+        resolveChatMacros,
+    } = usePromptGeneration({
+        character,
+        connectionSettings,
+        groupCharacters,
+        latestChatRef,
+        lorebookCollection,
+        mode,
+        persona,
+        preferences,
+        presetCollection,
+        userStatus,
+    });
     const {
         activateNextExistingSwipe,
         appendEmptySwipe,
@@ -575,6 +579,39 @@ export function useChatSession({
         }
     }
 
+    async function getDebugPayload() {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            throw new Error("No active chat is available for prompt debugging.");
+        }
+
+        const generationCharacter = selectGenerationCharacter({
+            character,
+            groupCharacters,
+            messages: sourceChat.messages,
+            sourceChat,
+        });
+
+        return buildDebugPayload(
+            sourceChat.messages,
+            generationCharacter,
+            mode,
+            userStatus,
+            connectionSettings,
+            {
+                promptCharacter: promptCharacterForGeneration({
+                    activeSpeaker: generationCharacter,
+                    groupCharacters,
+                    sourceChat,
+                }),
+                sourceChat,
+                stream: preferences.chat.streaming,
+                trigger: "send",
+            },
+        );
+    }
+
     function stopGeneration() {
         const activeChatId = latestChatRef.current?.id;
 
@@ -719,6 +756,7 @@ export function useChatSession({
         chatError,
         deleteMessage,
         editMessage,
+        getDebugPayload,
         isSending: activeChatId ? pendingChatIds.includes(activeChatId) : false,
         injectMessage,
         messages: chat?.messages ?? [],
