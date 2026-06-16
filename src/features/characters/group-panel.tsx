@@ -50,9 +50,7 @@ export function GroupPanel({
     const [activeTab, setActiveTab] = useState<ContextTab>("entity");
     const members = useMemo(
         () =>
-            (chat.members ?? [])
-                .slice()
-                .sort((left, right) => left.order - right.order),
+            (chat.members ?? []).slice().sort((left, right) => left.order - right.order),
         [chat.members],
     );
     const memberCharacterIds = useMemo(
@@ -60,10 +58,7 @@ export function GroupPanel({
         [members],
     );
     const availableCharacters = useMemo(
-        () =>
-            characters.filter(
-                (character) => !memberCharacterIds.has(character.id),
-            ),
+        () => characters.filter((character) => !memberCharacterIds.has(character.id)),
         [characters, memberCharacterIds],
     );
     const group = useMemo(() => normalizedGroup(chat.group), [chat.group]);

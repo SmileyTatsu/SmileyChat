@@ -1,10 +1,11 @@
-import type {
-    ChatAttachment,
-    Message,
-    MessageMetadata,
-    MessageSwipe,
-    SmileyCharacter,
-    SmileyPersona,
+import {
+    MessageRole,
+    type ChatAttachment,
+    type Message,
+    type MessageMetadata,
+    type MessageSwipe,
+    type SmileyCharacter,
+    type SmileyPersona,
 } from "../types";
 
 import { createId } from "./common/ids";
@@ -15,7 +16,7 @@ export function createUserMessage(
     attachments?: ChatAttachment[],
 ): Message {
     return createMessage(
-        "user",
+        MessageRole.User,
         persona.name.trim() || "Anon",
         content,
         {
@@ -34,7 +35,7 @@ export function createCharacterMessage(
     character?: Pick<SmileyCharacter, "id" | "avatar">,
 ): Message {
     return createMessage(
-        "character",
+        MessageRole.Character,
         author,
         content,
         {
@@ -59,9 +60,9 @@ export function createInjectedMessage(
         promptRole?: MessageMetadata["promptRole"];
     },
 ): Message {
-    if (role === "user") {
+    if (role === MessageRole.User) {
         return createMessage(
-            "user",
+            MessageRole.User,
             options.authorName?.trim() || options.persona.name.trim() || "Anon",
             content,
             {
@@ -78,9 +79,9 @@ export function createInjectedMessage(
         );
     }
 
-    if (role === "system") {
+    if (role === MessageRole.System) {
         return createMessage(
-            "character",
+            MessageRole.Character,
             options.authorName?.trim() || "System",
             content,
             {
@@ -100,7 +101,7 @@ export function createInjectedMessage(
     }
 
     return createMessage(
-        "character",
+        MessageRole.Character,
         options.authorName?.trim() || options.activeCharacter.data.name,
         content,
         {
@@ -118,7 +119,7 @@ export function createInjectedMessage(
 }
 
 export function createCharacterErrorMessage(author: string, content: string): Message {
-    return createMessage("character", author, content, undefined, "error");
+    return createMessage(MessageRole.Character, author, content, undefined, "error");
 }
 
 export function createCharacterGreetingMessage(
@@ -144,7 +145,7 @@ export function createCharacterGreetingMessage(
         author: character.data.name,
         authorCharacterId: character.id,
         ...(character.avatar?.path ? { authorAvatarPath: character.avatar.path } : {}),
-        role: "character",
+        role: MessageRole.Character,
         createdAt,
         activeSwipeIndex: 0,
         swipes,

@@ -1,10 +1,11 @@
-import { messageContentToText, parseDataImageUrl } from "../images";
+import { parseDataImageUrl } from "../images";
 import { legacyMessages } from "../legacy-messages";
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
     ChatGenerationResult,
 } from "../types";
+import { ChatGenerationMessageRole } from "../types";
 import type {
     AnthropicContentBlock,
     AnthropicCreateMessageRequest,
@@ -19,6 +20,7 @@ import {
     isClaudeOpus47OrLaterModel,
     stopSequencesForGeneration,
 } from "../generation-settings";
+import { splitLeadingSystemMessages } from "../chat-completions";
 
 export function createAnthropicMessageBody(
     request: ChatGenerationRequest,
@@ -27,7 +29,8 @@ export function createAnthropicMessageBody(
     const promptMessages = request.promptMessages?.length
         ? request.promptMessages
         : legacyMessages(request);
-    const { system, conversationMessages } = splitLeadingSystemMessages(promptMessages);
+    const { systemText, conversationMessages } =
+        splitLeadingSystemMessages(promptMessages);
     const messages = mergeConsecutiveMessages(
         conversationMessages
             .map(toAnthropicMessage)
@@ -51,7 +54,7 @@ export function createAnthropicMessageBody(
     return {
         model: config.model.id,
         max_tokens: maxTokens,
-        ...(system ? { system } : {}),
+        ...(systemText ? { system: systemText } : {}),
         messages,
         stream: request.stream === true,
         ...(stopSequencesForGeneration(request.generation)
@@ -59,39 +62,6 @@ export function createAnthropicMessageBody(
             : {}),
         ...(!isOpus47OrLater ? sampling : {}),
         ...(thinking ? { thinking } : {}),
-    };
-}
-
-function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
-    const systemMessages: string[] = [];
-    const conversationMessages: ChatGenerationMessage[] = [];
-    let conversationStarted = false;
-
-    for (const message of messages) {
-        const isSystemInstruction =
-            message.role === "developer" || message.role === "system";
-
-        if (
-            !conversationStarted &&
-            (message.role === "user" || message.role === "assistant")
-        ) {
-            conversationStarted = true;
-        }
-
-        if (isSystemInstruction && !conversationStarted) {
-            const text = messageContentToText(message.content).trim();
-            if (text) {
-                systemMessages.push(text);
-            }
-            continue;
-        }
-
-        conversationMessages.push(message);
-    }
-
-    return {
-        system: systemMessages.join("\n\n"),
-        conversationMessages,
     };
 }
 
@@ -240,7 +210,7 @@ function cleanAnthropicSamplingConfig(
 
 function toAnthropicMessage(message: ChatGenerationMessage): AnthropicMessage {
     return {
-        role: message.role === "assistant" ? "assistant" : "user",
+        role: message.role === ChatGenerationMessageRole.Assistant ? "assistant" : "user",
         content: generationMessageContentToAnthropicContent(message.content),
     };
 }

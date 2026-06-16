@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useMemo, useRef, useState } from "preact/hooks";
 
 import {
     createChat as createChatRequest,

@@ -255,14 +255,8 @@ export const MessageComposer = memo(function MessageComposer({
         });
     }
 
-    const pluginActions = useMemo(
-        () => getPluginComposerActions(),
-        [registryRevision],
-    );
-    const pluginOptions = useMemo(
-        () => getPluginComposerOptions(),
-        [registryRevision],
-    );
+    const pluginActions = useMemo(() => getPluginComposerActions(), [registryRevision]);
+    const pluginOptions = useMemo(() => getPluginComposerOptions(), [registryRevision]);
 
     return (
         <form className="composer" onSubmit={handleSubmit}>

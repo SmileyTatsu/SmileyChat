@@ -5,6 +5,8 @@ import {
 import { messageContentToText } from "../images";
 import { stopSequencesForGeneration } from "../generation-settings";
 import { defaultOutputTokenLimit } from "../output-tokens";
+import { MessageRole } from "#frontend/types";
+import { ChatGenerationMessageRole } from "../types";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 
 import { eratoLogitBias, kayraLogitBias } from "./constants";
@@ -22,8 +24,14 @@ export function createNovelAIBody(
     const stop = stopSequencesForGeneration(generation);
     const logitBias = logitBiasForModel(config.model.id);
     const messages = createChatCompletionMessages(request, {
-        mapPromptRole: (role) => (role === "developer" ? "system" : role),
-        mapHistoryRole: (message) => (message.role === "user" ? "user" : "assistant"),
+        mapPromptRole: (role) =>
+            role === ChatGenerationMessageRole.Developer
+                ? ChatGenerationMessageRole.System
+                : role,
+        mapHistoryRole: (message) =>
+            message.role === MessageRole.User
+                ? ChatGenerationMessageRole.User
+                : ChatGenerationMessageRole.Assistant,
     }).map((message) => ({
         role: message.role,
         content: messageContentToText(message.content),

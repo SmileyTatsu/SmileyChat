@@ -4,7 +4,9 @@ import {
     normalizeChatCompletionResponse,
 } from "../chat-completions";
 import { defaultOutputTokenLimit } from "../output-tokens";
+import { ChatGenerationMessageRole } from "../types";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
+import { MessageRole } from "#frontend/types";
 import type {
     OpenAICompatibleChatCompletionRequest,
     OpenAICompatibleChatCompletionResponse,
@@ -22,7 +24,10 @@ export function createChatCompletionBody(
     const messages = createChatCompletionMessages(request, {
         includeReasoningHistory,
         mapPromptRole: (role) => role,
-        mapHistoryRole: (message) => (message.role === "user" ? "user" : "assistant"),
+        mapHistoryRole: (message) =>
+            message.role === MessageRole.User
+                ? ChatGenerationMessageRole.User
+                : ChatGenerationMessageRole.Assistant,
     });
     const reasoning = cleanReasoningConfig(config.reasoning);
 

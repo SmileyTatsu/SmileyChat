@@ -1,7 +1,8 @@
 import { getMessageContent } from "#frontend/lib/messages";
 
-import type { Message } from "#frontend/types";
+import { MessageRole, type Message } from "#frontend/types";
 import type { ChatGenerationMessage, ChatGenerationRequest } from "./types";
+import { ChatGenerationMessageRole } from "./types";
 
 export function legacyMessages(request: ChatGenerationRequest): ChatGenerationMessage[] {
     const messages = request.messages.map(toPromptMessage);
@@ -12,7 +13,7 @@ export function legacyMessages(request: ChatGenerationRequest): ChatGenerationMe
 
     return [
         {
-            role: "system",
+            role: ChatGenerationMessageRole.System,
             content: request.context,
         },
         ...messages,
@@ -21,7 +22,10 @@ export function legacyMessages(request: ChatGenerationRequest): ChatGenerationMe
 
 export function toPromptMessage(message: Message): ChatGenerationMessage {
     return {
-        role: message.role === "user" ? "user" : "assistant",
+        role:
+            message.role === MessageRole.User
+                ? ChatGenerationMessageRole.User
+                : ChatGenerationMessageRole.Assistant,
         content: getMessageContent(message),
     };
 }

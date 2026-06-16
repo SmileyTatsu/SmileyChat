@@ -10,6 +10,14 @@ export type SettingsCategory =
     | "settings"
     | (string & {});
 
+export const MessageRole = {
+    Character: "character",
+    System: "system",
+    User: "user",
+} as const;
+
+export type MessageRole = (typeof MessageRole)[keyof typeof MessageRole];
+
 export type Message = {
     id: string;
     author: string;
@@ -17,7 +25,7 @@ export type Message = {
     authorAvatarPath?: string;
     authorPersonaId?: string;
     metadata?: MessageMetadata;
-    role: "character" | "user";
+    role: MessageRole;
     createdAt: string;
     activeSwipeIndex: number;
     swipes: MessageSwipe[];

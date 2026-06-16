@@ -4,8 +4,9 @@ import {
     getMessageReasoning,
     getMessageReasoningDetails,
 } from "#frontend/lib/messages";
-import type { Message } from "#frontend/types";
+import { MessageRole, type Message } from "#frontend/types";
 
+import { messageContentToText } from "./images";
 import { readChatCompletionStream } from "./streaming";
 import type {
     ChatGenerationMessage,
@@ -13,6 +14,7 @@ import type {
     ChatGenerationRequest,
     ChatGenerationResult,
 } from "./types";
+import { ChatGenerationMessageRole } from "./types";
 
 type ChatCompletionMessage<TRole extends string> = {
     role: TRole;
@@ -56,6 +58,41 @@ type NormalizeResponseOptions = {
 type StreamOptions = NormalizeResponseOptions & {
     streamErrorPrefix: string;
 };
+
+export function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
+    const systemMessages: string[] = [];
+    const conversationMessages: ChatGenerationMessage[] = [];
+    let conversationStarted = false;
+
+    for (const message of messages) {
+        const isSystemInstruction =
+            message.role === ChatGenerationMessageRole.Developer ||
+            message.role === ChatGenerationMessageRole.System;
+
+        if (
+            !conversationStarted &&
+            (message.role === ChatGenerationMessageRole.User ||
+                message.role === ChatGenerationMessageRole.Assistant)
+        ) {
+            conversationStarted = true;
+        }
+
+        if (isSystemInstruction && !conversationStarted) {
+            const text = messageContentToText(message.content).trim();
+            if (text) {
+                systemMessages.push(text);
+            }
+            continue;
+        }
+
+        conversationMessages.push(message);
+    }
+
+    return {
+        systemText: systemMessages.join("\n\n"),
+        conversationMessages,
+    };
+}
 
 export function createChatCompletionMessages<TRole extends string>(
     request: ChatGenerationRequest,
@@ -273,7 +310,7 @@ function legacyMessages<TRole extends string>(
 
     return [
         {
-            role: options.mapPromptRole("system"),
+            role: options.mapPromptRole(ChatGenerationMessageRole.System),
             content: request.context,
         },
         ...messages,

@@ -3,10 +3,12 @@ import type {
     ChatGenerationRequest,
     ChatGenerationResult,
 } from "../types";
+import { ChatGenerationMessageRole } from "../types";
 import { messageContentToText, parseDataImageUrl } from "../images";
 import { legacyMessages } from "../legacy-messages";
 import { defaultOutputTokenLimit } from "../output-tokens";
 import { stopSequencesForGeneration } from "../generation-settings";
+import { splitLeadingSystemMessages } from "../chat-completions";
 import type {
     GoogleAIContent,
     GoogleAIGenerateContentRequest,
@@ -87,39 +89,6 @@ export function createGoogleAIGenerateBody(
                 threshold: "BLOCK_NONE",
             },
         ],
-    };
-}
-
-function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
-    const systemMessages: string[] = [];
-    const conversationMessages: ChatGenerationMessage[] = [];
-    let conversationStarted = false;
-
-    for (const message of messages) {
-        const isSystemInstruction =
-            message.role === "developer" || message.role === "system";
-
-        if (
-            !conversationStarted &&
-            (message.role === "user" || message.role === "assistant")
-        ) {
-            conversationStarted = true;
-        }
-
-        if (isSystemInstruction && !conversationStarted) {
-            const text = messageContentToText(message.content).trim();
-            if (text) {
-                systemMessages.push(text);
-            }
-            continue;
-        }
-
-        conversationMessages.push(message);
-    }
-
-    return {
-        systemText: systemMessages.join("\n\n"),
-        conversationMessages,
     };
 }
 
@@ -249,7 +218,7 @@ function toGoogleAIContent(message: ChatGenerationMessage): GoogleAIContent {
     }
 
     return {
-        role: message.role === "assistant" ? "model" : "user",
+        role: message.role === ChatGenerationMessageRole.Assistant ? "model" : "user",
         parts: generationMessageContentToGoogleAIParts(message.content),
     };
 }
@@ -284,7 +253,7 @@ function mergeConsecutiveContents(contents: GoogleAIContent[]) {
 }
 
 function replayGoogleAIParts(message: ChatGenerationMessage): GoogleAIPart[] | undefined {
-    if (message.role !== "assistant") {
+    if (message.role !== ChatGenerationMessageRole.Assistant) {
         return undefined;
     }
 

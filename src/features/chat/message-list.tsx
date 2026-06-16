@@ -532,7 +532,6 @@ export const MessageList = memo(function MessageList({
             behavior: "smooth",
         });
     }
-
 });
 
 const LOAD_EARLIER_BATCH_SIZE = 50;

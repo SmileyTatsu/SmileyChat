@@ -1,3 +1,5 @@
+import { MessageRole } from "#frontend/types";
+import { ChatGenerationMessageRole } from "../types";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 import { defaultOutputTokenLimit } from "../output-tokens";
 import {
@@ -22,8 +24,14 @@ export function createOpenRouterChatCompletionBody(
 ): OpenRouterChatCompletionRequest {
     const messages = createChatCompletionMessages(request, {
         includeReasoningHistory: true,
-        mapPromptRole: (role) => (role === "developer" ? "system" : role),
-        mapHistoryRole: (message) => (message.role === "user" ? "user" : "assistant"),
+        mapPromptRole: (role) =>
+            role === ChatGenerationMessageRole.Developer
+                ? ChatGenerationMessageRole.System
+                : role,
+        mapHistoryRole: (message) =>
+            message.role === MessageRole.User
+                ? ChatGenerationMessageRole.User
+                : ChatGenerationMessageRole.Assistant,
     });
     const provider = cleanProviderPreferences(config.providerPreferences);
     const reasoning = cleanReasoningConfig(config.reasoning);

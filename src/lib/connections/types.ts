@@ -6,8 +6,18 @@ export type ChatGenerationMessageContentPart =
     | { type: "text"; text: string }
     | { type: "image_url"; image_url: { url: string } };
 
+export const ChatGenerationMessageRole = {
+    Assistant: "assistant",
+    Developer: "developer",
+    System: "system",
+    User: "user",
+} as const;
+
+export type ChatGenerationMessageRole =
+    (typeof ChatGenerationMessageRole)[keyof typeof ChatGenerationMessageRole];
+
 export type ChatGenerationMessage = {
-    role: "developer" | "system" | "user" | "assistant";
+    role: ChatGenerationMessageRole;
     content: string | ChatGenerationMessageContentPart[];
     reasoning?: string;
     reasoningDetails?: unknown;

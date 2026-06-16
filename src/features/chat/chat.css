@@ -300,12 +300,7 @@
     padding: 24px clamp(18px, 4vw, 52px);
     color: #b9bfd0;
     font-size: 0.92rem;
-    mask-image: linear-gradient(
-        to bottom,
-        transparent,
-        black 72px,
-        black 100%
-    );
+    mask-image: linear-gradient(to bottom, transparent, black 72px, black 100%);
 }
 
 .chat-loading-copy {
