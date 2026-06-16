@@ -338,6 +338,9 @@ export function App() {
     const handleDeleteMessage = useCallback((messageId: string) => {
         latestChatSessionForPluginsRef.current.deleteMessage(messageId);
     }, []);
+    const handleDeleteMessageSwipe = useCallback((messageId: string) => {
+        latestChatSessionForPluginsRef.current.removeActiveSwipe(messageId);
+    }, []);
     const handleEditMessage = useCallback((messageId: string, content: string) => {
         latestChatSessionForPluginsRef.current.editMessage(messageId, content);
     }, []);
@@ -918,6 +921,7 @@ export function App() {
                 emptyState={chatEmptyState}
                 onAbortGeneration={handleAbortGeneration}
                 onDeleteMessage={handleDeleteMessage}
+                onDeleteMessageSwipe={handleDeleteMessageSwipe}
                 onEditMessage={handleEditMessage}
                 onModeChange={handleModeChange}
                 onNextSwipe={handleNextSwipe}

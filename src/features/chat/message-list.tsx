@@ -39,6 +39,7 @@ type MessageListProps = {
     showRpCharacterImages: boolean;
 
     onDeleteMessage: (messageId: string) => void;
+    onDeleteMessageSwipe: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
@@ -60,6 +61,7 @@ export const MessageList = memo(function MessageList({
     showTimestamps,
     messageFormatting,
     onDeleteMessage,
+    onDeleteMessageSwipe,
     onEditMessage,
     onNextSwipe,
     onPreviousSwipe,
@@ -299,6 +301,15 @@ export const MessageList = memo(function MessageList({
         setDeleteCandidate(undefined);
     }
 
+    function confirmDeleteSwipe() {
+        if (!deleteCandidate || deleteCandidate.swipes.length <= 1) {
+            return;
+        }
+
+        onDeleteMessageSwipe(deleteCandidate.id);
+        setDeleteCandidate(undefined);
+    }
+
     const visibleMessages = messages.slice(-visibleCount);
     const hasEarlierMessages = visibleCount < messages.length;
 
@@ -475,7 +486,12 @@ export const MessageList = memo(function MessageList({
                             <h2>Delete message?</h2>
                         </header>
 
-                        <p>This removes the message from the current chat.</p>
+                        <p>
+                            This removes the message from the current chat
+                            {deleteCandidate.swipes.length > 1
+                                ? ", or only the currently selected swipe."
+                                : "."}
+                        </p>
                         <blockquote>{getMessageContent(deleteCandidate)}</blockquote>
 
                         <div className="message-confirm-actions">
@@ -485,6 +501,17 @@ export const MessageList = memo(function MessageList({
                             >
                                 Cancel
                             </button>
+
+                            {deleteCandidate.swipes.length > 1 && (
+                                <button
+                                    className="danger-button subtle-danger-button"
+                                    type="button"
+                                    onClick={confirmDeleteSwipe}
+                                >
+                                    <Trash2 size={15} />
+                                    Delete swipe
+                                </button>
+                            )}
 
                             <button
                                 className="danger-button"

@@ -62,6 +62,7 @@ type ChatWorkspaceProps = {
         onAction: () => void;
     };
     onDeleteMessage: (messageId: string) => void;
+    onDeleteMessageSwipe: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
     onModeChange: (mode: ChatMode) => void;
     onNextSwipe: (messageId: string) => void;
@@ -91,6 +92,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     pendingSwipeMessageId,
     emptyState,
     onDeleteMessage,
+    onDeleteMessageSwipe,
     onEditMessage,
     onModeChange,
     onNextSwipe,
@@ -160,6 +162,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     showTimestamps={preferences.appearance.showTimestamps}
                     messageFormatting={messageFormatting}
                     onDeleteMessage={onDeleteMessage}
+                    onDeleteMessageSwipe={onDeleteMessageSwipe}
                     onEditMessage={onEditMessage}
                     onNextSwipe={onNextSwipe}
                     onPreviousSwipe={onPreviousSwipe}

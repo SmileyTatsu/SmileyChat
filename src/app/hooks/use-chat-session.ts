@@ -765,6 +765,7 @@ export function useChatSession({
             ? (pendingSwipeMessageIds[activeChatId] ?? "")
             : "",
         previousSwipe,
+        removeActiveSwipe,
         forceGroupMemberResponse,
         sendMessage,
         stopGeneration,

@@ -746,6 +746,11 @@
     color: #ffb4bd;
 }
 
+.message-confirm-actions .subtle-danger-button {
+    background: #211d22;
+    color: #ffc9cf;
+}
+
 .swipe-controls {
     display: inline-flex;
     align-items: center;
