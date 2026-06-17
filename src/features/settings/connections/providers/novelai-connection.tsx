@@ -128,8 +128,9 @@ export function NovelAIConnection({
                         }
                     />
                     <p className="field-hint">
-                        Leave blank to route Xiaolong and GLM through text.novelai.net,
-                        and Erato, Kayra, Clio, or custom models through api.novelai.net.
+                        Leave blank to use text.novelai.net. Erato and Kayra use NovelAI's
+                        text generation API; Xiaolong, GLM, and custom models use the
+                        OpenAI-compatible chat endpoint.
                     </p>
                 </div>
             </details>

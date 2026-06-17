@@ -40,6 +40,39 @@ export type NovelAIGenerationRequest = {
     unified_quadratic?: number;
 };
 
+export type NovelAITextGenerationRequest = {
+    input: string;
+    model: string;
+    parameters: {
+        use_string: boolean;
+        temperature?: number;
+        min_length?: number;
+        max_length?: number;
+        min_p?: number;
+        repetition_penalty?: number;
+        repetition_penalty_frequency?: number;
+        repetition_penalty_presence?: number;
+        top_k?: number;
+        top_p?: number;
+    };
+};
+
+export type NovelAITextGenerationResponse = {
+    output?: string;
+};
+
+export type NovelAITextGenerationStreamChunk = {
+    token?: string;
+    output?: string;
+    final?: boolean;
+    ptr?: number;
+    error?:
+        | string
+        | {
+              message?: string;
+          };
+};
+
 export type NovelAICompletionResponse = {
     model?: string;
     choices?: Array<{

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createNovelAIBody } from "./mappers";
+import { createNovelAIBody, createNovelAITextGenerationBody } from "./mappers";
 
 describe("NovelAI connection mappers", () => {
     test("maps prompt messages and sampler settings", () => {
@@ -77,5 +77,51 @@ describe("NovelAI connection mappers", () => {
                 content: "Stay in character.",
             },
         ]);
+    });
+
+    test("builds text generation requests for Erato and Kayra", () => {
+        const body = createNovelAITextGenerationBody(
+            {
+                generation: {
+                    frequencyPenalty: 0.2,
+                    minP: 0.05,
+                    presencePenalty: 0.4,
+                    repetitionPenalty: 1.1,
+                    temperature: 0.8,
+                    topK: 50,
+                    topP: 0.95,
+                },
+                messages: [],
+                promptMessages: [
+                    { role: "system", content: "Stay in character." },
+                    { role: "user", content: "Hello." },
+                    { role: "assistant", content: "Hi." },
+                ],
+            },
+            {
+                maxOutputTokens: 400,
+                model: {
+                    source: "default",
+                    id: "kayra-v1",
+                },
+            },
+        );
+
+        expect(body).toEqual({
+            model: "kayra-v1",
+            input: "Stay in character.\n\nUser: Hello.\nAssistant: Hi.\nAssistant:",
+            parameters: {
+                use_string: true,
+                max_length: 250,
+                min_length: 1,
+                temperature: 0.8,
+                top_p: 0.95,
+                top_k: 50,
+                min_p: 0.05,
+                repetition_penalty: 1.1,
+                repetition_penalty_frequency: 0.2,
+                repetition_penalty_presence: 0.4,
+            },
+        });
     });
 });
