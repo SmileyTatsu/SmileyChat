@@ -3,6 +3,7 @@ import {
     Boxes,
     CheckCircle2,
     Power,
+    RefreshCw,
     Settings,
     XCircle,
 } from "lucide-preact";
@@ -32,7 +33,9 @@ export type PluginCardProps = {
     settingsPanels: ReturnType<typeof getPluginSettingsPanels>;
     pluginSnapshot: PluginAppSnapshot;
     requestState: RequestState;
+    isUpdating: boolean;
     onToggle: () => void;
+    onUpdate: () => void;
     onToggleConfigure: () => void;
 };
 
@@ -44,13 +47,20 @@ export function PluginCard({
     settingsPanels,
     pluginSnapshot,
     requestState,
+    isUpdating,
     onToggle,
+    onUpdate,
     onToggleConfigure,
 }: PluginCardProps) {
     const enabled = plugin.enabled !== false;
     const category: PluginCategory = plugin.category ?? "other";
     const CategoryIcon = CATEGORY_ICONS[category];
-    const isUnverified = plugin.source !== "core" && !registryStatus;
+    const sourceLabel = pluginSourceLabel(plugin, registryStatus);
+    const sourceClass = pluginSourceClass(plugin, registryStatus);
+    const isUnverified =
+        plugin.source !== "core" &&
+        (plugin.install ? plugin.install.source !== "registry" : !registryStatus);
+    const canUpdate = plugin.install !== undefined;
 
     return (
         <article className="plugin-card">
@@ -60,10 +70,8 @@ export function PluginCard({
                     <div>
                         <h3>
                             {plugin.name}
-                            <span
-                                className={`plugin-source-badge ${plugin.source === "core" ? "core" : "local"}`}
-                            >
-                                {plugin.source === "core" ? "Core" : "Local"}
+                            <span className={`plugin-source-badge ${sourceClass}`}>
+                                {sourceLabel}
                             </span>
                             <span className="plugin-category-badge">
                                 <CategoryIcon size={11} />
@@ -154,9 +162,19 @@ export function PluginCard({
             )}
 
             <div className="plugin-card-actions">
+                {canUpdate && (
+                    <button
+                        type="button"
+                        disabled={requestState === "loading"}
+                        onClick={onUpdate}
+                    >
+                        <RefreshCw size={15} aria-hidden="true" />
+                        {isUpdating ? "Updating..." : "Update"}
+                    </button>
+                )}
                 <button type="button" onClick={onToggleConfigure}>
                     <Settings size={15} />
-                    {showConfiguration ? "Hide configuration" : "Configure"}
+                    {showConfiguration ? "Hide Configuration" : "Configure"}
                 </button>
             </div>
 
@@ -191,6 +209,44 @@ export function PluginCard({
             )}
         </article>
     );
+}
+
+function pluginSourceLabel(
+    plugin: PluginManifest,
+    registryStatus?: PluginRegistryEntry["status"],
+) {
+    if (plugin.source === "core") {
+        return "Core";
+    }
+
+    if (plugin.install?.source === "manual-artifact") {
+        return "Manual";
+    }
+
+    if (plugin.install?.source === "registry" || registryStatus) {
+        return "Verified";
+    }
+
+    return "Local Folder";
+}
+
+function pluginSourceClass(
+    plugin: PluginManifest,
+    registryStatus?: PluginRegistryEntry["status"],
+) {
+    if (plugin.source === "core") {
+        return "core";
+    }
+
+    if (plugin.install?.source === "manual-artifact") {
+        return "manual";
+    }
+
+    if (plugin.install?.source === "registry" || registryStatus) {
+        return "verified-source";
+    }
+
+    return "local-folder";
 }
 
 function UnverifiedPluginWarning({ plugin }: { plugin: PluginManifest }) {

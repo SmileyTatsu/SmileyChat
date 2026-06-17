@@ -15,6 +15,9 @@ Plugins are trusted browser ESM modules. They run in the app page, register hook
 
 For local development, a plugin can be plain JavaScript. A build step is only needed when the plugin author wants TypeScript, JSX, bundling, or npm dependencies.
 
+Local folder plugins are development-only. They do not get `smileychat-install.json`
+and SmileyChat does not update them from the Extension Store.
+
 ## Minimal Plugin
 
 ```txt
@@ -152,3 +155,15 @@ Before sharing a plugin:
 - Styles are scoped to plugin-specific classes.
 - `main` and every `styles` path exists.
 - No API keys or user secrets are written to plugin storage unless clearly documented.
+
+## Publishing Checklist
+
+Before publishing a release artifact:
+
+- Build the plugin in the plugin repository.
+- Package only `plugin.json`, built files, declared styles, and needed assets.
+- Keep `plugin.json` at the ZIP root.
+- Do not include `src`, tests, `.git`, `node_modules`, lockfiles, build configs, `.env`, or local user data.
+- Install the generated ZIP through a clean SmileyChat manual artifact install or registry entry.
+- Confirm the user does not need `git`, dependency installation, or a build step.
+- Update the verified registry entry with `artifact.url` when the reviewed artifact is ready.

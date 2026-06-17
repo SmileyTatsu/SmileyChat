@@ -17,19 +17,19 @@ except port/host/CSRF secret.
 
 ## Layers, top to bottom
 
-| Layer                    | Purpose                                                            | Default                                  | Env vars                                                                 |
-| ------------------------ | ------------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------ |
-| Server binding           | What interfaces the OS can reach the server on                     | all interfaces (`0.0.0.0`)               | `SMILEYCHAT_HOST`, `SMILEYCHAT_PORT`                                     |
-| IP allowlist             | Network-level deny-by-default                                      | no allowlist                             | `SMILEYCHAT_IP_ALLOWLIST`, `SMILEYCHAT_IP_ALLOWLIST_ENABLED`             |
-| Trusted-interface bypass | Skip allowlist & auth for known-safe networks                      | Tailscale + Docker on                    | `SMILEYCHAT_BYPASS_AUTH_TAILSCALE`, `SMILEYCHAT_BYPASS_AUTH_DOCKER`      |
-| Rate limit               | Throttle abuse / accidental floods                                 | 600 req/min/IP                           | `SMILEYCHAT_RATE_LIMIT_ENABLED`, `SMILEYCHAT_RATE_LIMIT_DEFAULT`         |
-| Basic Auth               | Username/password gate                                             | unset → lockdown for non-loopback        | `SMILEYCHAT_BASIC_AUTH_USER/PASS/REALM`                                  |
-| Remote lockdown          | Fail-closed when neither allowlist nor Basic Auth is set           | enforced                                 | `SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK`, `_REMOTE`            |
-| Trusted private nets     | Which CIDRs count as "private" for the lockdown's purposes         | RFC 1918 + CGNAT + link-local + IPv6 ULA | `SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS`                                    |
-| CSRF                     | Origin/Referer + signed token + magic header on every write        | on                                       | `SMILEYCHAT_TRUSTED_ORIGINS`, `SMILEYCHAT_CSRF_SECRET`                   |
-| Security headers         | CSP, X-Frame-Options, Referrer-Policy, etc. on every response      | on                                       | _(none)_                                                                 |
-| Privileged gate          | Optional second-factor admin secret on destructive endpoints       | not used by core today                   | `SMILEYCHAT_ADMIN_SECRET`, `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK` |
-| SSRF guard               | Block plugin outbound fetches to loopback / private / reserved IPs | on                                       | `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH`                                |
+| Layer                    | Purpose                                                                           | Default                                  | Env vars                                                                         |
+| ------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| Server binding           | What interfaces the OS can reach the server on                                    | all interfaces (`0.0.0.0`)               | `SMILEYCHAT_HOST`, `SMILEYCHAT_PORT`                                             |
+| IP allowlist             | Network-level deny-by-default                                                     | no allowlist                             | `SMILEYCHAT_IP_ALLOWLIST`, `SMILEYCHAT_IP_ALLOWLIST_ENABLED`                     |
+| Trusted-interface bypass | Skip allowlist & auth for known-safe networks                                     | Tailscale + Docker on                    | `SMILEYCHAT_BYPASS_AUTH_TAILSCALE`, `SMILEYCHAT_BYPASS_AUTH_DOCKER`              |
+| Rate limit               | Throttle abuse / accidental floods                                                | 600 req/min/IP                           | `SMILEYCHAT_RATE_LIMIT_ENABLED`, `SMILEYCHAT_RATE_LIMIT_DEFAULT`                 |
+| Basic Auth               | Username/password gate                                                            | unset → lockdown for non-loopback        | `SMILEYCHAT_BASIC_AUTH_USER/PASS/REALM`                                          |
+| Remote lockdown          | Fail-closed when neither allowlist nor Basic Auth is set                          | enforced                                 | `SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK`, `_REMOTE`                    |
+| Trusted private nets     | Which CIDRs count as "private" for the lockdown's purposes                        | RFC 1918 + CGNAT + link-local + IPv6 ULA | `SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS`                                            |
+| CSRF                     | Origin/Referer + signed token + magic header on every write                       | on                                       | `SMILEYCHAT_TRUSTED_ORIGINS`, `SMILEYCHAT_CSRF_SECRET`                           |
+| Security headers         | CSP, X-Frame-Options, Referrer-Policy, etc. on every response                     | on                                       | _(none)_                                                                         |
+| Privileged gate          | Optional second-factor admin secret on destructive endpoints                      | not used by core today                   | `SMILEYCHAT_ADMIN_SECRET`, `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK`         |
+| SSRF guard               | Block plugin, registry, and artifact fetches to loopback / private / reserved IPs | on                                       | `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH`, `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS` |
 
 ## What each layer actually does
 
@@ -225,16 +225,15 @@ or future features (auto-update, "wipe all data," etc.).
 ### SSRF guard (`safeFetch`)
 
 `server/security/safe-fetch.ts` is the outbound-fetch wrapper used by
-the plugin `api.network.fetch` bridge. It refuses to
+the plugin `api.network.fetch` bridge and the plugin registry/artifact installer. It refuses to
 fetch any URL whose hostname resolves (via `dns.lookup({all, verbatim})`)
 to a loopback / RFC 1918 / link-local / CGNAT / metadata / reserved
 IPv4 or IPv6 range, follows up to 5 redirects with the same gate re-
 applied to each `Location` target, and respects an optional response-
 size cap.
 
-Outside the plugin fetch bridge, SmileyChat's server makes **no outbound HTTP
-calls** of its own. All LLM
-provider traffic goes browser-to-provider direct (see
+SmileyChat's server uses outbound HTTP only for plugin registry/artifact
+installation and the plugin fetch bridge. All LLM provider traffic goes browser-to-provider direct (see
 [`docs/development/architecture.md`](../development/architecture.md)). The plugin bridge is for
 trusted local plugins that need non-provider helper APIs affected by
 CORS. It allows HTTPS only, accepts `GET`, `POST`, `PUT`, `PATCH`, and
@@ -242,6 +241,9 @@ CORS. It allows HTTPS only, accepts `GET`, `POST`, `PUT`, `PATCH`, and
 1 MiB, and caps responses at 10 MiB by default.
 `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=false` is the global master
 switch.
+
+Plugin registry and artifact downloads are also HTTPS-only and size-limited. Manual
+artifact installation is disabled unless `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true`.
 
 ## Hot-reload
 

@@ -158,6 +158,10 @@ export function isPluginsOutboundFetchAllowed() {
     return isEnabledFlag(Bun.env.SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH);
 }
 
+export function isUnverifiedPluginsAllowed() {
+    return isEnabledFlag(Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS);
+}
+
 export function getPluginRegistryUrl() {
     return normalizeHttpsUrl(
         Bun.env.SMILEYCHAT_PLUGIN_REGISTRY_URL,

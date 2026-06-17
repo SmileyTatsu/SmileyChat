@@ -1,4 +1,12 @@
-import { AlertTriangle, Boxes, Layers, RefreshCw, Search, XCircle } from "lucide-preact";
+import {
+    AlertTriangle,
+    Boxes,
+    Download,
+    Layers,
+    RefreshCw,
+    Search,
+    XCircle,
+} from "lucide-preact";
 
 import {
     PLUGIN_CATEGORIES,
@@ -33,10 +41,14 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         groupedPlugins,
         installedFilter,
         installingPluginId,
+        installManualPlugin,
         installStorePlugin,
         isCustom,
         loadedState,
         localPluginIds,
+        manualArtifactAllowed,
+        manualArtifactUrl,
+        manualInstallBusy,
         openPluginId,
         plugins,
         refreshAll,
@@ -51,16 +63,28 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         setActiveView,
         setCategoryFilter,
         setInstalledFilter,
+        setManualArtifactUrl,
         setOpenPluginId,
         setSearchTerm,
         settingsPanelsForPlugin,
         statusMessage,
         togglePlugin,
+        updatingPluginId,
+        updateManagedPlugin,
+        updateStorePlugin,
         updateActiveProfileDetails,
     } = pluginSettings;
-    const unverifiedLocalPlugins = plugins.filter(
-        (plugin) => plugin.source !== "core" && !registryStatusById.has(plugin.id),
-    );
+    const unverifiedLocalPlugins = plugins.filter((plugin) => {
+        if (plugin.source === "core") {
+            return false;
+        }
+
+        if (plugin.install) {
+            return plugin.install.source !== "registry";
+        }
+
+        return !registryStatusById.has(plugin.id);
+    });
     const enabledUnverifiedCount = unverifiedLocalPlugins.filter(
         (plugin) => plugin.enabled !== false,
     ).length;
@@ -142,6 +166,8 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 <input
                     type="search"
                     className="marketplace-search"
+                    name="plugin-search"
+                    autoComplete="off"
                     value={searchTerm}
                     placeholder="Search extensions..."
                     onInput={(event) =>
@@ -236,13 +262,18 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                 <PluginCard
                                     key={plugin.id}
                                     plugin={plugin}
-                                    registryStatus={registryStatusById.get(plugin.id)}
+                                    registryStatus={registryStatusForPlugin(
+                                        plugin,
+                                        registryStatusById,
+                                    )}
                                     loaded={loadedState(plugin)}
                                     showConfiguration={openPluginId === plugin.id}
                                     settingsPanels={settingsPanelsForPlugin(plugin.id)}
                                     pluginSnapshot={pluginSnapshot}
                                     requestState={requestState}
+                                    isUpdating={updatingPluginId === plugin.id}
                                     onToggle={() => void togglePlugin(plugin)}
+                                    onUpdate={() => void updateManagedPlugin(plugin)}
                                     onToggleConfigure={() =>
                                         setOpenPluginId((current) =>
                                             current === plugin.id ? "" : plugin.id,
@@ -271,16 +302,69 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                 </div>
             ) : (
                 <div className="plugins-list">
+                    {manualArtifactAllowed && (
+                        <form
+                            className="manual-plugin-install"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                void installManualPlugin();
+                            }}
+                        >
+                            <div className="plugin-warning-panel" role="note">
+                                <AlertTriangle size={16} aria-hidden="true" />
+                                <div>
+                                    <strong>Manual Artifact Install</strong>
+                                    <p>
+                                        Manual plugins are trusted local code. Install
+                                        only ZIP artifacts from authors you trust.
+                                    </p>
+                                </div>
+                            </div>
+                            <label>
+                                Artifact URL
+                                <input
+                                    type="url"
+                                    name="manual-plugin-artifact-url"
+                                    inputMode="url"
+                                    autoComplete="off"
+                                    value={manualArtifactUrl}
+                                    placeholder="https://example.com/plugin-1.0.0.zip..."
+                                    disabled={manualInstallBusy}
+                                    onInput={(event) =>
+                                        setManualArtifactUrl(
+                                            (event.currentTarget as HTMLInputElement)
+                                                .value,
+                                        )
+                                    }
+                                />
+                            </label>
+                            <button
+                                type="submit"
+                                className="plugin-install-button"
+                                disabled={manualInstallBusy || requestState === "loading"}
+                            >
+                                <Download size={15} aria-hidden="true" />
+                                {manualInstallBusy ? "Installing..." : "Install Artifact"}
+                            </button>
+                        </form>
+                    )}
+
                     {filteredRegistryPlugins.map((plugin) => (
                         <StorePluginCard
                             key={plugin.id}
                             plugin={plugin}
                             installed={localPluginIds.has(plugin.id)}
+                            installedPlugin={plugins.find(
+                                (installedPlugin) => installedPlugin.id === plugin.id,
+                            )}
                             isBusy={
                                 requestState === "loading" &&
                                 installingPluginId === plugin.id
                             }
+                            isUpdating={updatingPluginId === plugin.id}
+                            isBlocked={requestState === "loading"}
                             onInstall={() => void installStorePlugin(plugin)}
+                            onUpdate={() => void updateStorePlugin(plugin)}
                         />
                     ))}
 
@@ -301,8 +385,25 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
             )}
 
             {statusMessage && (
-                <p className={`connection-status ${requestState}`}>{statusMessage}</p>
+                <p
+                    className={`connection-status ${requestState}`}
+                    role="status"
+                    aria-live="polite"
+                >
+                    {statusMessage}
+                </p>
             )}
         </section>
     );
+}
+
+function registryStatusForPlugin(
+    plugin: { id: string; install?: { source: string }; source?: string },
+    registryStatusById: Map<string, "official" | "verified">,
+) {
+    if (plugin.source === "core" || plugin.install?.source === "manual-artifact") {
+        return undefined;
+    }
+
+    return registryStatusById.get(plugin.id);
 }

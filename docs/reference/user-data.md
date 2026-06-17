@@ -34,6 +34,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `core-extensions/`: Storage for built-in extension data.
 - `userData/plugins/`: Folder for user-installed extension modules.
     - Each plugin folder contains `plugin.json`, browser ESM files, optional CSS, and plugin-owned `data/{key}.json` storage.
+    - Plugins installed or updated by SmileyChat also contain `smileychat-install.json`, which records whether the plugin came from the verified registry or a manual artifact URL.
 
 ## File Formats
 

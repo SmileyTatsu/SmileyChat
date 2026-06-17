@@ -296,24 +296,42 @@ export type PluginRegistryEntry = {
     author?: string;
     category: PluginCategory;
     status: "official" | "verified";
-    archive: { url: string; sha256: string };
+    repository?: string;
+    artifact: { url: string };
 };
 
 export type PluginRegistryPayload = {
     version: 1;
     plugins: PluginRegistryEntry[];
+    allowManualArtifactInstall?: boolean;
 };
 
 export function loadPluginRegistry() {
     return requestJson<PluginRegistryPayload>("/api/plugins/registry");
 }
 
-export function installVerifiedPlugin(pluginId: string) {
+export function installPlugin(pluginId: string) {
     return requestJson<{
         ok: true;
         plugin: PluginManifest;
         plugins: PluginManifest[];
     }>("/api/plugins/install", jsonInit("POST", { pluginId }));
+}
+
+export function installManualArtifact(artifactUrl: string) {
+    return requestJson<{
+        ok: true;
+        plugin: PluginManifest;
+        plugins: PluginManifest[];
+    }>("/api/plugins/install", jsonInit("POST", { artifactUrl }));
+}
+
+export function updatePlugin(pluginId: string) {
+    return requestJson<{
+        ok: true;
+        plugin: PluginManifest;
+        plugins: PluginManifest[];
+    }>(`/api/plugins/${encodeURIComponent(pluginId)}/update`, jsonInit("POST", {}));
 }
 
 export function savePluginEnabled(pluginId: string, enabled: boolean) {

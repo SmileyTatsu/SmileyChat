@@ -30,6 +30,7 @@ This folder contains user guides, reference material, plugin documentation, and 
 - [Plugin overview](plugins/README.md)
 - [Plugin quick start](plugins/quick-start.md)
 - [Plugin manifest](plugins/manifest.md)
+- [Plugin distribution](plugins/distribution.md)
 - [Plugin API reference](plugins/api-reference.md)
 - [Plugin examples](plugins/examples.md)
 - [Plugin security and limitations](plugins/security.md)

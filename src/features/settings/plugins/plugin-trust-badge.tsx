@@ -6,7 +6,7 @@ export function PluginTrustBadge({ status }: { status: PluginRegistryEntry["stat
     if (status === "official") {
         return (
             <span className="plugin-trust-badge official" title="Official plugin">
-                <Star size={11} />
+                <Star size={11} aria-hidden="true" />
                 Official
             </span>
         );
@@ -14,7 +14,7 @@ export function PluginTrustBadge({ status }: { status: PluginRegistryEntry["stat
 
     return (
         <span className="plugin-trust-badge verified" title="Verified community plugin">
-            <CheckCircle2 size={11} />
+            <CheckCircle2 size={11} aria-hidden="true" />
             Verified
         </span>
     );

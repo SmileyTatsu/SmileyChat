@@ -62,7 +62,23 @@ export type PluginManifest = {
     styleUrls?: string[];
     source?: "core" | "user";
     category?: PluginCategory;
+    install?: PluginInstallMetadata;
 };
+
+export type PluginInstallMetadata =
+    | {
+          source: "registry";
+          pluginId: string;
+          artifactUrl: string;
+          repository?: string;
+          installedAt: string;
+      }
+    | {
+          source: "manual-artifact";
+          artifactUrl: string;
+          installedAt: string;
+          unverified: true;
+      };
 
 export type LoadedPlugin = {
     manifest: PluginManifest;

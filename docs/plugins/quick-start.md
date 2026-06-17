@@ -1,8 +1,26 @@
 # Plugin Quick Start
 
+## Install From The Extension Store
+
+For normal use, open **Options > Plugins > Extension Store** and install a verified
+plugin. Store plugins are downloaded as prebuilt ZIP artifacts; SmileyChat validates
+the package, preserves plugin-owned `data/` during updates, and never compiles plugin
+code on the user's machine.
+
+If a Store plugin has install metadata, its card shows **Update** when you want to
+reinstall from the current registry artifact.
+
+## Manual Artifact Install
+
+Manual installs are hidden unless `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true` is set.
+When enabled, **Options > Plugins > Extension Store** shows an artifact URL field for
+HTTPS `.zip` files.
+
+Manual artifacts are trusted local code. Only install them from authors you trust.
+
 ## Folder Layout
 
-Install a plugin by placing it in `userData/plugins`:
+For development, place a plugin folder in `userData/plugins`:
 
 ```txt
 userData/plugins/
@@ -50,7 +68,7 @@ Open **Options > Plugins** to see installed plugins. The plugin card shows:
 - Version
 - Description
 - Status
-- Source, such as Core or Local
+- Source, such as Core, Verified, Manual, or Local Folder
 - Category
 - Permissions
 

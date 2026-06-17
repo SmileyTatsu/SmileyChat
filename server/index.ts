@@ -67,6 +67,7 @@ import {
     readPluginStorageSnapshot,
     servePluginAsset,
     updatePluginEnabled,
+    updateInstalledPlugin,
     writePluginStorage,
     writePluginStorageSnapshot,
 } from "./plugins";
@@ -170,6 +171,12 @@ const server = Bun.serve({
         "/api/plugins/profiles/:profileId": {
             DELETE: api(async (request) => {
                 return deleteUserPluginProfile(request.params.profileId);
+            }),
+        },
+
+        "/api/plugins/:pluginId/update": {
+            POST: api(async (request) => {
+                return updateInstalledPlugin(request.params.pluginId);
             }),
         },
 

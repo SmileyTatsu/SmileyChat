@@ -1,6 +1,6 @@
 import AdmZip from "adm-zip";
 import { Glob } from "bun";
-import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
+import { cp, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import {
     basename,
     dirname,
@@ -21,6 +21,7 @@ import {
 import {
     getPluginRegistryAllowedHostnames,
     getPluginRegistryUrl,
+    isUnverifiedPluginsAllowed,
     isPluginsOutboundFetchAllowed,
 } from "./config/runtime-config";
 import { BadRequestError, HttpError, json, writeJsonAtomic } from "./http";
@@ -78,12 +79,36 @@ type RegistryPlugin = {
     author?: string;
     category: PluginCategory;
     status: RegistryPluginStatus;
-    archive: { url: string; sha256: string };
+    repository?: string;
+    artifact: { url: string };
 };
 
 type PluginRegistry = {
     version: 1;
     plugins: RegistryPlugin[];
+};
+
+type PluginInstallSource =
+    | {
+          source: "registry";
+          pluginId: string;
+          artifactUrl: string;
+          repository?: string;
+      }
+    | {
+          source: "manual-artifact";
+          artifactUrl: string;
+          unverified: true;
+      };
+
+type PluginInstallMetadata = PluginInstallSource & {
+    installedAt: string;
+};
+
+type InstallArtifactOptions = {
+    expectedPluginId?: string;
+    pluginsRoot?: string;
+    source: PluginInstallSource;
 };
 
 export async function readPluginManifests(): Promise<PluginManifest[]> {
@@ -109,15 +134,18 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
                 continue;
             }
 
+            const pluginRoot = join(pluginsDir, folderName);
+            const cacheKey = await pluginCacheKey(pluginRoot, manifest);
+
             manifests.push({
                 ...manifest,
                 source: "user",
-                entryUrl: `/plugins/${encodeURIComponent(folderName)}/${encodePath(manifest.main)}`,
-                styleUrls: (manifest.styles ?? []).map(
-                    (style) =>
-                        `/plugins/${encodeURIComponent(folderName)}/${encodePath(style)}`,
+                entryUrl: pluginAssetUrl(folderName, manifest.main, cacheKey),
+                styleUrls: (manifest.styles ?? []).map((style) =>
+                    pluginAssetUrl(folderName, style, cacheKey),
                 ),
-            });
+                install: await readPluginInstallMetadata(pluginRoot),
+            } as PluginManifest);
         } catch (error) {
             console.warn(`Could not load plugin manifest ${manifestPath}:`, error);
         }
@@ -127,6 +155,14 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
 }
 
 export async function readPluginRegistry() {
+    const registry = await loadPluginRegistry();
+    return json({
+        ...registry,
+        allowManualArtifactInstall: isUnverifiedPluginsAllowed(),
+    });
+}
+
+async function loadPluginRegistry() {
     const registryUrl = getPluginRegistryUrl();
     const registryAllowedHostnames = getPluginRegistryAllowedHostnames();
     const response = await safeFetch(registryUrl, {
@@ -151,7 +187,7 @@ export async function readPluginRegistry() {
     );
 
     try {
-        return json(normalizePluginRegistry(JSON.parse(new TextDecoder().decode(bytes))));
+        return normalizePluginRegistry(JSON.parse(new TextDecoder().decode(bytes)));
     } catch (error) {
         if (error instanceof HttpError) {
             throw error;
@@ -161,47 +197,92 @@ export async function readPluginRegistry() {
 }
 
 export async function installVerifiedPlugin(body: unknown) {
+    const source = await resolveInstallSource(body);
+    const bytes = await downloadArtifact(source.artifactUrl, {
+        allowedHostnames:
+            source.source === "registry"
+                ? getPluginRegistryAllowedHostnames()
+                : undefined,
+        label: "Plugin artifact",
+    });
+    return installPluginArtifact(bytes, {
+        expectedPluginId: source.source === "registry" ? source.pluginId : undefined,
+        source,
+    });
+}
+
+export async function updateInstalledPlugin(pluginId: string) {
+    const safePluginId = safeSegment(pluginId);
+
+    if (safePluginId !== pluginId || corePluginIds.has(pluginId)) {
+        throw new BadRequestError("Plugin cannot be updated.");
+    }
+
+    const installRoot = join(pluginsDir, pluginId);
+    const metadata = await readPluginInstallMetadata(installRoot);
+
+    if (!metadata) {
+        throw new BadRequestError("Plugin was not installed by SmileyChat.");
+    }
+
+    const source =
+        metadata.source === "registry"
+            ? await latestRegistryInstallSource(pluginId)
+            : ({
+                  source: "manual-artifact",
+                  artifactUrl: metadata.artifactUrl,
+                  unverified: true,
+              } satisfies PluginInstallSource);
+
+    if (source.source === "manual-artifact" && !isUnverifiedPluginsAllowed()) {
+        throw new BadRequestError(
+            "Manual plugin updates are disabled. Set SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true to update this plugin.",
+        );
+    }
+
+    const bytes = await downloadArtifact(source.artifactUrl, {
+        allowedHostnames:
+            source.source === "registry"
+                ? getPluginRegistryAllowedHostnames()
+                : undefined,
+        label: "Plugin artifact",
+    });
+
+    return installPluginArtifact(bytes, {
+        expectedPluginId: pluginId,
+        source,
+    });
+}
+
+async function resolveInstallSource(body: unknown): Promise<PluginInstallSource> {
     if (!body || typeof body !== "object") {
         throw new BadRequestError("Invalid plugin install request.");
     }
 
-    const pluginId = stringField(
-        (body as Record<string, unknown>).pluginId,
-        "Plugin ID is required.",
-    );
-    const registryUrl = getPluginRegistryUrl();
-    const registryAllowedHostnames = getPluginRegistryAllowedHostnames();
-    const registryResponse = await safeFetch(registryUrl, {
-        maxResponseBytes: PLUGIN_REGISTRY_MAX_BYTES,
-        policy: {
-            allowedHostnames: registryAllowedHostnames,
-            allowedProtocols: ["https:"],
-        },
-    });
+    const request = body as Record<string, unknown>;
 
-    if (!registryResponse.ok) {
-        throw new HttpError(
-            502,
-            `Plugin registry fetch failed: ${registryResponse.status} ${registryResponse.statusText}`,
-        );
+    if (typeof request.pluginId === "string" && request.pluginId.trim()) {
+        return latestRegistryInstallSource(request.pluginId.trim());
     }
 
-    const registryBytes = await readResponseBytes(
-        registryResponse,
-        PLUGIN_REGISTRY_MAX_BYTES,
-        registryUrl,
-    );
-    let registry: PluginRegistry;
-    try {
-        registry = normalizePluginRegistry(
-            JSON.parse(new TextDecoder().decode(registryBytes)),
-        );
-    } catch (error) {
-        if (error instanceof HttpError) {
-            throw error;
+    if (typeof request.artifactUrl === "string" && request.artifactUrl.trim()) {
+        if (!isUnverifiedPluginsAllowed()) {
+            throw new BadRequestError(
+                "Manual plugin install is disabled. Set SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true to enable unverified artifact installs.",
+            );
         }
-        throw new HttpError(502, "Plugin registry returned invalid JSON.");
+
+        const artifactUrl = normalizeHttpsArtifactUrl(request.artifactUrl.trim());
+        return { source: "manual-artifact", artifactUrl, unverified: true };
     }
+
+    throw new BadRequestError("Plugin ID or artifact URL is required.");
+}
+
+async function latestRegistryInstallSource(
+    pluginId: string,
+): Promise<PluginInstallSource> {
+    const registry = await loadPluginRegistry();
     const registryPlugin = registry.plugins.find((plugin) => plugin.id === pluginId);
 
     if (!registryPlugin) {
@@ -212,41 +293,61 @@ export async function installVerifiedPlugin(body: unknown) {
         throw new BadRequestError("Registry plugin ID collides with a core extension.");
     }
 
-    const installRoot = join(pluginsDir, ".installing");
-    const tempRoot = join(installRoot, `${registryPlugin.id}-${Date.now()}`);
-    const backupRoot = join(installRoot, `${registryPlugin.id}-${Date.now()}-previous`);
-    const finalRoot = join(pluginsDir, registryPlugin.id);
+    return {
+        source: "registry",
+        pluginId: registryPlugin.id,
+        artifactUrl: registryPlugin.artifact.url,
+        repository: registryPlugin.repository,
+    };
+}
+
+async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifactOptions) {
+    const pluginsRoot = options.pluginsRoot ?? pluginsDir;
+    const installRoot = join(pluginsRoot, ".installing");
+    const candidateId =
+        options.expectedPluginId ?? pluginIdFromArtifactSource(options.source);
+    const tempRoot = join(installRoot, `${safeSegment(candidateId)}-${Date.now()}`);
+    const backupRoot = join(
+        installRoot,
+        `${safeSegment(candidateId)}-${Date.now()}-previous`,
+    );
+    let finalRoot = "";
     let backupCreated = false;
     let finalSwapped = false;
 
     await mkdir(tempRoot, { recursive: true });
 
     try {
-        const archive = await downloadRegistryArchive(
-            registryPlugin.archive,
-            registryAllowedHostnames,
-        );
-        await extractPluginArchive(archive.bytes, tempRoot);
-        await hoistSingleArchiveRoot(tempRoot);
+        await extractPluginArchive(bytes, tempRoot);
 
         const manifestFile = Bun.file(join(tempRoot, "plugin.json"));
 
         if (!(await manifestFile.exists())) {
-            throw new BadRequestError("Plugin install payload is missing plugin.json.");
+            throw new BadRequestError(
+                "Plugin install payload is missing root plugin.json.",
+            );
         }
 
-        const manifest = normalizePluginManifest(
-            await manifestFile.json(),
-            registryPlugin.id,
-        );
+        const manifest = normalizePluginManifest(await manifestFile.json(), "");
 
         if (!manifest) {
             throw new BadRequestError("Downloaded plugin manifest is invalid.");
         }
 
-        if (manifest.id !== registryPlugin.id) {
+        if (
+            !manifest.id ||
+            manifest.id === "." ||
+            manifest.id === ".." ||
+            manifest.id !== safeSegment(manifest.id)
+        ) {
             throw new BadRequestError(
-                "Downloaded plugin manifest ID does not match registry ID.",
+                "Downloaded plugin manifest ID is missing or is not a safe folder name.",
+            );
+        }
+
+        if (options.expectedPluginId && manifest.id !== options.expectedPluginId) {
+            throw new BadRequestError(
+                "Downloaded plugin manifest ID does not match expected ID.",
             );
         }
 
@@ -257,30 +358,59 @@ export async function installVerifiedPlugin(body: unknown) {
         }
 
         await assertInstalledManifestFilesExist(tempRoot, manifest);
+        finalRoot = join(pluginsRoot, manifest.id);
+
         if (await pathExists(finalRoot)) {
             await rename(finalRoot, backupRoot);
             backupCreated = true;
             await preserveExistingPluginData(backupRoot, tempRoot);
         }
+
+        await writePluginInstallMetadata(tempRoot, options.source);
         await rename(tempRoot, finalRoot);
         finalSwapped = true;
 
-        const plugins = await readPluginManifests();
-        const plugin = plugins.find((item) => item.id === registryPlugin.id);
+        const cacheKey = await pluginCacheKey(finalRoot, manifest);
+        const plugin = {
+            ...manifest,
+            source: "user",
+            entryUrl: pluginAssetUrl(manifest.id, manifest.main, cacheKey),
+            styleUrls: (manifest.styles ?? []).map((style) =>
+                pluginAssetUrl(manifest.id, style, cacheKey),
+            ),
+            install: await readPluginInstallMetadata(finalRoot),
+        };
+        const plugins =
+            pluginsRoot === pluginsDir
+                ? await readPluginManifests()
+                : [plugin as PluginManifest];
 
-        if (!plugin) {
+        if (!plugins.find((item) => item.id === manifest.id)) {
             throw new HttpError(500, "Plugin installed but could not be discovered.");
         }
 
         if (backupCreated) {
-            await rm(backupRoot, { recursive: true, force: true });
+            await rm(backupRoot, { recursive: true, force: true }).catch((error) => {
+                console.warn(
+                    `Could not remove plugin install backup ${backupRoot}:`,
+                    error,
+                );
+            });
         }
 
         return json({ ok: true, plugin, plugins });
     } catch (error) {
         await rm(tempRoot, { recursive: true, force: true });
-        if (backupCreated && !finalSwapped && !(await pathExists(finalRoot))) {
-            await rename(backupRoot, finalRoot).catch(() => undefined);
+        if (backupCreated && finalRoot) {
+            if (finalSwapped) {
+                await rm(finalRoot, { recursive: true, force: true }).catch(
+                    () => undefined,
+                );
+            }
+
+            if (!(await pathExists(finalRoot))) {
+                await rename(backupRoot, finalRoot).catch(() => undefined);
+            }
         }
         throw error;
     }
@@ -319,7 +449,7 @@ function normalizeRegistryPlugin(value: unknown): RegistryPlugin {
         throw new HttpError(502, `Registry plugin ID '${id}' is not a safe folder name.`);
     }
 
-    const archive = normalizeRegistryArchive(plugin.archive, id);
+    const artifact = normalizeRegistryArtifact(plugin.artifact, id);
 
     const status = plugin.status;
 
@@ -337,35 +467,44 @@ function normalizeRegistryPlugin(value: unknown): RegistryPlugin {
             `Registry plugin '${id}' needs a version.`,
         ),
         author: typeof plugin.author === "string" ? plugin.author : undefined,
-        category: normalizeCategory(plugin.category),
+        category: normalizeRegistryCategory(plugin.category, id),
         status,
-        archive,
+        repository:
+            typeof plugin.repository === "string" && plugin.repository.trim()
+                ? plugin.repository.trim()
+                : undefined,
+        artifact,
     };
 }
 
-function normalizeRegistryArchive(value: unknown, pluginId: string) {
+function normalizeRegistryArtifact(value: unknown, pluginId: string) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new HttpError(502, `Registry plugin '${pluginId}' needs an archive.`);
+        throw new HttpError(502, `Registry plugin '${pluginId}' needs an artifact.`);
     }
 
-    const archive = value as Record<string, unknown>;
+    const artifact = value as Record<string, unknown>;
     const url = registryString(
-        archive.url,
-        `Registry plugin '${pluginId}' archive needs a URL.`,
+        artifact.url,
+        `Registry plugin '${pluginId}' artifact needs a URL.`,
     );
-    const sha256 = registryString(
-        archive.sha256,
-        `Registry plugin '${pluginId}' archive needs a sha256 hash.`,
-    ).toLowerCase();
 
-    if (!/^[a-f0-9]{64}$/.test(sha256)) {
+    try {
+        const parsedUrl = new URL(url);
+
+        if (
+            parsedUrl.protocol !== "https:" ||
+            !parsedUrl.pathname.toLowerCase().endsWith(".zip")
+        ) {
+            throw new Error("invalid artifact URL");
+        }
+
+        return { url: parsedUrl.toString() };
+    } catch {
         throw new HttpError(
             502,
-            `Registry plugin '${pluginId}' archive has an invalid sha256.`,
+            `Registry plugin '${pluginId}' artifact URL must be an HTTPS ZIP URL.`,
         );
     }
-
-    return { url, sha256 };
 }
 
 function registryString(value: unknown, message: string) {
@@ -376,23 +515,15 @@ function registryString(value: unknown, message: string) {
     return value.trim();
 }
 
-async function downloadRegistryArchive(
-    archive: { url: string; sha256: string },
-    registryAllowedHostnames: string[],
+async function downloadArtifact(
+    artifactUrl: string,
+    options: { allowedHostnames?: string[]; label: string },
 ) {
-    const parsedUrl = new URL(archive.url);
-
-    if (
-        parsedUrl.protocol !== "https:" ||
-        !registryAllowedHostnames.includes(parsedUrl.hostname.toLowerCase())
-    ) {
-        throw new BadRequestError("Registry archive URL host is not trusted.");
-    }
-
+    const parsedUrl = new URL(artifactUrl);
     const response = await safeFetch(parsedUrl, {
         maxResponseBytes: PLUGIN_INSTALL_MAX_ARCHIVE_BYTES,
         policy: {
-            allowedHostnames: registryAllowedHostnames,
+            allowedHostnames: options.allowedHostnames,
             allowedProtocols: ["https:"],
         },
     });
@@ -400,19 +531,17 @@ async function downloadRegistryArchive(
     if (!response.ok) {
         throw new HttpError(
             502,
-            `Plugin archive download failed: ${response.status} ${response.statusText}`,
+            `${options.label} download failed: ${response.status} ${response.statusText}`,
         );
     }
 
-    const bytes = await readResponseBytesAndHash(
+    const bytes = await readResponseBytes(
         response,
         PLUGIN_INSTALL_MAX_ARCHIVE_BYTES,
-        PLUGIN_INSTALL_MAX_ARCHIVE_BYTES,
-        archive.url,
-        archive.sha256,
+        artifactUrl,
     );
 
-    return { bytes };
+    return bytes;
 }
 
 async function extractPluginArchive(bytes: Uint8Array, tempRoot: string) {
@@ -535,118 +664,26 @@ function validateArchiveEntryPath(archivePath: string) {
     }
 }
 
-async function hoistSingleArchiveRoot(tempRoot: string) {
-    if (await pathExists(join(tempRoot, "plugin.json"))) {
-        return;
-    }
-
-    const entries = await readdir(tempRoot, { withFileTypes: true });
-    const contentEntries = entries.filter(
-        (entry) => entry.name !== "__MACOSX" && entry.name !== ".DS_Store",
-    );
-
-    if (contentEntries.length !== 1 || !contentEntries[0].isDirectory()) {
-        return;
-    }
-
-    const nestedRoot = join(tempRoot, contentEntries[0].name);
-    const installRoot = dirname(tempRoot);
-    const hoistRoot = join(installRoot, `${basename(tempRoot)}-hoist`);
-
-    await rm(hoistRoot, { recursive: true, force: true });
-    await rename(nestedRoot, hoistRoot);
-    await rm(tempRoot, { recursive: true, force: true });
-    await rename(hoistRoot, tempRoot);
-}
-
-async function readResponseBytesAndHash(
-    response: Response,
-    maxFileBytes: number,
-    maxRemainingBytes: number,
-    url: string,
-    expectedSha256: string,
-) {
-    const reader = response.body?.getReader();
-
-    if (!reader) {
-        throw new HttpError(502, `Download from ${url} had no response body.`);
-    }
-
-    const hasher = new Bun.CryptoHasher("sha256");
-    const chunks: Uint8Array[] = [];
-    let totalBytes = 0;
-
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-
-            if (done) {
-                break;
-            }
-
-            totalBytes += value.byteLength;
-
-            if (totalBytes > maxFileBytes) {
-                await reader.cancel().catch(() => undefined);
-                throw new HttpError(
-                    502,
-                    `Plugin archive from ${url} exceeds ${maxFileBytes} bytes.`,
-                );
-            }
-
-            if (totalBytes > maxRemainingBytes) {
-                await reader.cancel().catch(() => undefined);
-                throw new HttpError(502, "Plugin archive download is too large.");
-            }
-
-            hasher.update(value);
-            chunks.push(value);
-        }
-    } finally {
-        reader.releaseLock();
-    }
-
-    const actualSha256 = hasher.digest("hex");
-
-    if (actualSha256 !== expectedSha256.toLowerCase()) {
-        throw new HttpError(502, `Plugin archive hash mismatch for ${url}.`);
-    }
-
-    const bytes = new Uint8Array(totalBytes);
-    let offset = 0;
-
-    for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
-    }
-
-    return bytes;
-}
-
 async function assertInstalledManifestFilesExist(
     tempRoot: string,
     manifest: PluginManifest,
 ) {
-    const mainPath = resolve(tempRoot, ...manifest.main.split(/[\\/]/));
-
-    if (!isSafeChild(tempRoot, mainPath)) {
-        throw new BadRequestError(
-            "Downloaded plugin main file path escapes install root.",
-        );
-    }
+    const mainPath = resolveManifestPath(
+        tempRoot,
+        manifest.main,
+        "Downloaded plugin main file path",
+    );
 
     if (!(await pathExists(mainPath))) {
         throw new BadRequestError("Downloaded plugin main file does not exist.");
     }
 
     for (const style of manifest.styles ?? []) {
-        const stylePath = resolve(tempRoot, ...style.split(/[\\/]/));
-
-        if (!isSafeChild(tempRoot, stylePath)) {
-            throw new BadRequestError(
-                `Downloaded plugin style file '${style}' escapes install root.`,
-            );
-        }
+        const stylePath = resolveManifestPath(
+            tempRoot,
+            style,
+            `Downloaded plugin style file '${style}'`,
+        );
 
         if (!(await pathExists(stylePath))) {
             throw new BadRequestError(
@@ -654,6 +691,91 @@ async function assertInstalledManifestFilesExist(
             );
         }
     }
+}
+
+function resolveManifestPath(root: string, relativePath: string, label: string) {
+    const manifestPath = normalizeManifestRelativePath(relativePath);
+    validateManifestRelativePath(manifestPath, label);
+
+    const resolvedPath = resolve(root, ...manifestPath.split("/"));
+
+    if (!isSafeChild(root, resolvedPath)) {
+        throw new BadRequestError(`${label} escapes install root.`);
+    }
+
+    return resolvedPath;
+}
+
+function normalizeManifestRelativePath(relativePath: string) {
+    let normalized = relativePath.replace(/\\/g, "/");
+
+    while (normalized.startsWith("./")) {
+        normalized = normalized.slice(2);
+    }
+
+    return normalized;
+}
+
+function validateManifestRelativePath(manifestPath: string, label: string) {
+    if (
+        !manifestPath ||
+        isAbsolute(manifestPath) ||
+        manifestPath.includes("\\") ||
+        /^[a-zA-Z]:/.test(manifestPath)
+    ) {
+        throw new BadRequestError(`${label} is not a safe relative path.`);
+    }
+
+    const segments = manifestPath.split("/");
+
+    if (
+        segments.some(
+            (segment) =>
+                !segment ||
+                segment === "." ||
+                segment === ".." ||
+                /^[a-zA-Z]:/.test(segment),
+        )
+    ) {
+        throw new BadRequestError(`${label} is not a safe relative path.`);
+    }
+}
+
+function pluginAssetUrl(folderName: string, relativePath: string, cacheKey: string) {
+    const path = normalizeManifestRelativePath(relativePath);
+    const query = cacheKey ? `?v=${encodeURIComponent(cacheKey)}` : "";
+
+    return `/plugins/${encodeURIComponent(folderName)}/${encodePath(path)}${query}`;
+}
+
+async function pluginCacheKey(root: string, manifest: PluginManifest) {
+    const installMetadata = await readPluginInstallMetadata(root);
+
+    if (installMetadata?.installedAt) {
+        return installMetadata.installedAt;
+    }
+
+    const paths = ["plugin.json", manifest.main, ...(manifest.styles ?? [])];
+    let newestMtime = 0;
+
+    for (const relativePath of paths) {
+        const normalizedPath = normalizeManifestRelativePath(relativePath);
+        const candidate = resolve(root, ...normalizedPath.split("/"));
+
+        if (!isSafeChild(root, candidate)) {
+            continue;
+        }
+
+        try {
+            const info = await stat(candidate);
+            newestMtime = Math.max(newestMtime, info.mtimeMs);
+        } catch {
+            // Local dev plugins can be mid-edit. Install validation handles
+            // missing packaged assets, so cache busting stays best effort here.
+        }
+    }
+
+    return newestMtime > 0 ? String(Math.trunc(newestMtime)) : "";
 }
 
 async function preserveExistingPluginData(finalRoot: string, tempRoot: string) {
@@ -665,7 +787,113 @@ async function preserveExistingPluginData(finalRoot: string, tempRoot: string) {
 
     const targetDataPath = join(tempRoot, "data");
     await rm(targetDataPath, { recursive: true, force: true });
-    await rename(dataPath, targetDataPath);
+    await cp(dataPath, targetDataPath, { recursive: true });
+}
+
+async function readPluginInstallMetadata(
+    pluginRoot: string,
+): Promise<PluginInstallMetadata | undefined> {
+    const file = Bun.file(join(pluginRoot, "smileychat-install.json"));
+
+    if (!(await file.exists())) {
+        return undefined;
+    }
+
+    try {
+        return normalizePluginInstallMetadata(await file.json());
+    } catch {
+        return undefined;
+    }
+}
+
+async function writePluginInstallMetadata(
+    pluginRoot: string,
+    source: PluginInstallSource,
+) {
+    await writeJsonAtomic(join(pluginRoot, "smileychat-install.json"), {
+        ...source,
+        installedAt: new Date().toISOString(),
+    });
+}
+
+function normalizePluginInstallMetadata(
+    value: unknown,
+): PluginInstallMetadata | undefined {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return undefined;
+    }
+
+    const metadata = value as Record<string, unknown>;
+    const installedAt =
+        typeof metadata.installedAt === "string"
+            ? metadata.installedAt
+            : new Date(0).toISOString();
+
+    if (metadata.source === "registry") {
+        const pluginId =
+            typeof metadata.pluginId === "string" ? metadata.pluginId.trim() : "";
+        const artifactUrl =
+            typeof metadata.artifactUrl === "string" ? metadata.artifactUrl.trim() : "";
+
+        if (!pluginId || !artifactUrl) {
+            return undefined;
+        }
+
+        return {
+            source: "registry",
+            pluginId,
+            artifactUrl,
+            repository:
+                typeof metadata.repository === "string" ? metadata.repository : undefined,
+            installedAt,
+        };
+    }
+
+    if (metadata.source === "manual-artifact") {
+        const artifactUrl =
+            typeof metadata.artifactUrl === "string" ? metadata.artifactUrl.trim() : "";
+
+        if (!artifactUrl) {
+            return undefined;
+        }
+
+        return {
+            source: "manual-artifact",
+            artifactUrl,
+            installedAt,
+            unverified: true,
+        };
+    }
+
+    return undefined;
+}
+
+function pluginIdFromArtifactSource(source: PluginInstallSource) {
+    if (source.source === "registry") {
+        return source.pluginId;
+    }
+
+    const pathname = new URL(source.artifactUrl).pathname;
+    return basename(pathname, ".zip") || "manual-plugin";
+}
+
+function normalizeHttpsArtifactUrl(
+    value: string,
+    message = "Artifact URL must be an HTTPS ZIP URL.",
+) {
+    let url: URL;
+
+    try {
+        url = new URL(value);
+    } catch {
+        throw new BadRequestError(message);
+    }
+
+    if (url.protocol !== "https:" || !url.pathname.toLowerCase().endsWith(".zip")) {
+        throw new BadRequestError(message);
+    }
+
+    return url.toString();
 }
 
 export async function updatePluginEnabled(pluginId: string, enabled: unknown) {
@@ -996,6 +1224,17 @@ function normalizeCategory(value: unknown): PluginCategory {
         : "other";
 }
 
+function normalizeRegistryCategory(value: unknown, pluginId: string): PluginCategory {
+    if (
+        typeof value === "string" &&
+        (PLUGIN_CATEGORIES as readonly string[]).includes(value)
+    ) {
+        return value as PluginCategory;
+    }
+
+    throw new HttpError(502, `Registry plugin '${pluginId}' has an invalid category.`);
+}
+
 async function readCorePluginManifests() {
     const manifests: PluginManifest[] = [];
 
@@ -1292,7 +1531,10 @@ async function readResponseBytes(
 
 export const pluginInstallTestInternals = {
     extractPluginArchive,
-    hoistSingleArchiveRoot,
+    installPluginArtifact,
     normalizePluginRegistry,
+    normalizeHttpsArtifactUrl,
     resolveArchiveEntryPath,
+    resolveInstallSource,
+    readPluginInstallMetadata,
 };

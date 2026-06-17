@@ -363,6 +363,24 @@
     color: #e1e7ff;
 }
 
+.plugin-title .plugin-source-badge.verified-source {
+    border-color: #3f6795;
+    background: #1e2a3b;
+    color: #a9d1ff;
+}
+
+.plugin-title .plugin-source-badge.manual {
+    border-color: #7a5524;
+    background: #2b2117;
+    color: #f0c879;
+}
+
+.plugin-title .plugin-source-badge.local-folder {
+    border-color: #465060;
+    background: #20242d;
+    color: #c9ceda;
+}
+
 .plugin-title .plugin-trust-badge,
 .plugin-title .plugin-installed-badge {
     display: inline-flex;
@@ -564,6 +582,8 @@
 
 .plugin-card-actions {
     display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     justify-content: flex-end;
 }
 
@@ -579,9 +599,21 @@
     padding: 0 10px;
 }
 
-.plugin-card-actions button:hover {
+.plugin-card-actions button:hover:not(:disabled) {
     border-color: #53627c;
     background: #2c313d;
+}
+
+.plugin-card-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.plugin-store-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 .plugin-install-button {
@@ -598,17 +630,80 @@
     white-space: nowrap;
 }
 
+.plugin-update-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #242832;
+    color: #ececf1;
+    font-weight: 800;
+    padding: 0 11px;
+    white-space: nowrap;
+}
+
 .plugin-install-button:hover:not(:disabled) {
     filter: brightness(1.06);
 }
 
-.plugin-install-button:disabled {
+.plugin-update-button:hover:not(:disabled) {
+    border-color: #53627c;
+    background: #2c313d;
+}
+
+.plugin-install-button:disabled,
+.plugin-update-button:disabled {
     cursor: not-allowed;
     opacity: 0.62;
 }
 
 .store-plugin-card .plugin-meta-grid {
     grid-template-columns: minmax(0, 120px) minmax(0, 1fr);
+}
+
+.plugin-meta-grid a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: #b9c8ff;
+    text-decoration: none;
+}
+
+.plugin-meta-grid a:hover {
+    color: #e1e7ff;
+    text-decoration: underline;
+}
+
+.manual-plugin-install {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 13px;
+}
+
+.manual-plugin-install .plugin-warning-panel {
+    grid-column: 1 / -1;
+}
+
+.manual-plugin-install label {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: #d9dce6;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.manual-plugin-install input {
+    min-width: 0;
 }
 
 .preset-generation-panel {

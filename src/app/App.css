@@ -1273,6 +1273,7 @@ textarea:disabled {
     .plugins-heading,
     .plugin-card header,
     .plugin-card-actions,
+    .plugin-store-actions,
     .preset-section-header,
     .settings-section-heading,
     .setting-row {
@@ -1284,6 +1285,7 @@ textarea:disabled {
     .button-row button,
     .plugins-heading button,
     .plugin-card-actions button,
+    .plugin-store-actions button,
     .preset-section-header button {
         justify-content: center;
         width: 100%;
@@ -1291,6 +1293,7 @@ textarea:disabled {
     }
 
     .openrouter-model-meta,
+    .manual-plugin-install,
     .plugin-meta-grid,
     .preset-toggle-row {
         grid-template-columns: 1fr;

@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { mergeCoreAndUserPluginManifests } from "#frontend/core-extensions";
 import {
     deletePluginProfile,
-    installVerifiedPlugin,
+    installManualArtifact,
+    installPlugin,
     loadPluginManifests,
     loadPluginProfiles,
     loadPluginRegistry,
     savePluginEnabled,
     savePluginProfilesState,
+    updatePlugin,
     type PluginRegistryEntry,
     type PluginProfilesPayload,
 } from "#frontend/lib/api/client";
@@ -63,8 +65,13 @@ export function usePluginSettings() {
     const [registryPlugins, setRegistryPlugins] = useState<PluginRegistryEntry[]>([]);
     const [registryLoaded, setRegistryLoaded] = useState(false);
     const [registryFailed, setRegistryFailed] = useState(false);
+    const [manualArtifactAllowed, setManualArtifactAllowed] = useState(false);
+    const [manualArtifactUrl, setManualArtifactUrl] = useState("");
     const [installingPluginId, setInstallingPluginId] = useState("");
+    const [updatingPluginId, setUpdatingPluginId] = useState("");
+    const [manualInstallBusy, setManualInstallBusy] = useState(false);
     const [, setRegistryRevision] = useState(0);
+    const operationInFlightRef = useRef(false);
     const loadedPlugins = getLoadedPlugins();
     const pluginSettingsPanels = getPluginSettingsPanels();
 
@@ -230,6 +237,11 @@ export function usePluginSettings() {
     }, [registryPlugins]);
 
     async function refreshAll() {
+        if (operationInFlightRef.current) {
+            return;
+        }
+
+        operationInFlightRef.current = true;
         setRequestState("loading");
 
         try {
@@ -245,6 +257,8 @@ export function usePluginSettings() {
         } catch (error) {
             setStatusMessage(messageFromError(error, "Could not load plugins."));
             setRequestState("error");
+        } finally {
+            operationInFlightRef.current = false;
         }
     }
 
@@ -252,10 +266,12 @@ export function usePluginSettings() {
         try {
             const registry = await loadPluginRegistry();
             setRegistryPlugins(registry.plugins);
+            setManualArtifactAllowed(registry.allowManualArtifactInstall === true);
             setRegistryLoaded(true);
             setRegistryFailed(false);
         } catch (error) {
             setRegistryPlugins([]);
+            setManualArtifactAllowed(false);
             setRegistryLoaded(true);
             setRegistryFailed(true);
             if (showStatus) {
@@ -268,9 +284,17 @@ export function usePluginSettings() {
     }
 
     async function togglePlugin(plugin: PluginManifest) {
+        if (operationInFlightRef.current) {
+            return;
+        }
+
+        operationInFlightRef.current = true;
         const nextEnabled = plugin.enabled === false;
         const enablingUnverified =
-            nextEnabled && plugin.source !== "core" && !registryStatusById.has(plugin.id);
+            nextEnabled &&
+            plugin.source !== "core" &&
+            plugin.install?.source !== "registry" &&
+            !registryStatusById.has(plugin.id);
         setRequestState("loading");
 
         try {
@@ -308,30 +332,22 @@ export function usePluginSettings() {
         } catch (error) {
             setStatusMessage(messageFromError(error, "Could not update plugin."));
             setRequestState("error");
+        } finally {
+            operationInFlightRef.current = false;
         }
     }
 
     async function installStorePlugin(plugin: PluginRegistryEntry) {
+        if (operationInFlightRef.current) {
+            return;
+        }
+
+        operationInFlightRef.current = true;
         setRequestState("loading");
         setInstallingPluginId(plugin.id);
 
         try {
-            const installResponse = await installVerifiedPlugin(plugin.id);
-            let installedPlugin = installResponse.plugin;
-            let nextPlugins = installResponse.plugins;
-
-            if (installedPlugin.enabled === false) {
-                const enableResponse = await savePluginEnabled(plugin.id, true);
-                installedPlugin = enableResponse.plugins?.find(
-                    (item) => item.id === plugin.id,
-                ) ??
-                    enableResponse.plugin ?? { ...installedPlugin, enabled: true };
-                nextPlugins = enableResponse.plugins ?? nextPlugins;
-            }
-
-            setPlugins(mergeCoreAndUserPluginManifests(nextPlugins));
-            setPluginEnabledState(plugin.id, true);
-            await loadRuntimePlugin({ ...installedPlugin, enabled: true });
+            await installAndApplyEnabled(plugin.id, true, () => installPlugin(plugin.id));
             setStatusMessage(`${plugin.name} installed and enabled.`);
             setRequestState("success");
         } catch (error) {
@@ -339,7 +355,152 @@ export function usePluginSettings() {
             setRequestState("error");
         } finally {
             setInstallingPluginId("");
+            operationInFlightRef.current = false;
         }
+    }
+
+    async function updateStorePlugin(plugin: PluginRegistryEntry) {
+        if (operationInFlightRef.current) {
+            return;
+        }
+
+        const installedPlugin = plugins.find((item) => item.id === plugin.id);
+
+        if (!installedPlugin) {
+            return;
+        }
+
+        operationInFlightRef.current = true;
+        setRequestState("loading");
+        setUpdatingPluginId(plugin.id);
+
+        try {
+            const shouldRemainEnabled = installedPlugin.enabled !== false;
+            const updatedPlugin = await installAndApplyEnabled(
+                plugin.id,
+                shouldRemainEnabled,
+                // Store updates intentionally resolve the current registry artifact.
+                // The managed update endpoint preserves the installed source, which is
+                // correct for Local Plugins but wrong for replacing a manual artifact
+                // with the verified Store entry of the same ID.
+                () => installPlugin(plugin.id),
+            );
+            setStatusMessage(
+                `${updatedPlugin.name} updated from the Extension Store${
+                    shouldRemainEnabled ? " and enabled" : ""
+                }.`,
+            );
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Could not update extension."));
+            setRequestState("error");
+        } finally {
+            setUpdatingPluginId("");
+            operationInFlightRef.current = false;
+        }
+    }
+
+    async function installManualPlugin() {
+        if (operationInFlightRef.current) {
+            return;
+        }
+
+        const artifactUrl = manualArtifactUrl.trim();
+
+        if (!artifactUrl) {
+            setStatusMessage("Enter an HTTPS ZIP artifact URL.");
+            setRequestState("error");
+            return;
+        }
+
+        operationInFlightRef.current = true;
+        setRequestState("loading");
+        setManualInstallBusy(true);
+
+        try {
+            const installedPlugin = await installAndApplyEnabled("", true, () =>
+                installManualArtifact(artifactUrl),
+            );
+            setManualArtifactUrl("");
+            setStatusMessage(
+                `${installedPlugin.name} installed from a manual artifact and enabled. Keep it enabled only if you trust the source.`,
+            );
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(
+                messageFromError(error, "Could not install manual artifact."),
+            );
+            setRequestState("error");
+        } finally {
+            setManualInstallBusy(false);
+            operationInFlightRef.current = false;
+        }
+    }
+
+    async function updateManagedPlugin(plugin: PluginManifest) {
+        if (!plugin.install || operationInFlightRef.current) {
+            return;
+        }
+
+        operationInFlightRef.current = true;
+        setRequestState("loading");
+        setUpdatingPluginId(plugin.id);
+
+        try {
+            const shouldRemainEnabled = plugin.enabled !== false;
+            const updatedPlugin = await installAndApplyEnabled(
+                plugin.id,
+                shouldRemainEnabled,
+                () => updatePlugin(plugin.id),
+            );
+            setStatusMessage(
+                `${updatedPlugin.name} updated${
+                    shouldRemainEnabled ? " and enabled" : ""
+                }.`,
+            );
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "Could not update plugin."));
+            setRequestState("error");
+        } finally {
+            setUpdatingPluginId("");
+            operationInFlightRef.current = false;
+        }
+    }
+
+    async function installAndApplyEnabled(
+        requestedPluginId: string,
+        enabled: boolean,
+        installRequest: () => Promise<{
+            ok: true;
+            plugin: PluginManifest;
+            plugins: PluginManifest[];
+        }>,
+    ) {
+        const installResponse = await installRequest();
+        let installedPlugin = installResponse.plugin;
+        const pluginId = requestedPluginId || installedPlugin.id;
+        let nextPlugins = installResponse.plugins;
+
+        if ((installedPlugin.enabled !== false) !== enabled) {
+            const enableResponse = await savePluginEnabled(pluginId, enabled);
+            installedPlugin = enableResponse.plugins?.find(
+                (item) => item.id === pluginId,
+            ) ??
+                enableResponse.plugin ?? { ...installedPlugin, enabled };
+            nextPlugins = enableResponse.plugins ?? nextPlugins;
+        }
+
+        setPlugins(mergeCoreAndUserPluginManifests(nextPlugins));
+        setPluginEnabledState(pluginId, enabled);
+
+        if (enabled) {
+            await loadRuntimePlugin({ ...installedPlugin, enabled: true });
+        } else {
+            deactivatePlugin(pluginId);
+        }
+
+        return { ...installedPlugin, enabled };
     }
 
     function loadedState(plugin: PluginManifest) {
@@ -545,9 +706,14 @@ export function usePluginSettings() {
         installedFilter,
         installingPluginId,
         installStorePlugin,
+        updateStorePlugin,
+        installManualPlugin,
         isCustom,
         loadedState,
         localPluginIds,
+        manualArtifactAllowed,
+        manualArtifactUrl,
+        manualInstallBusy,
         openPluginId,
         plugins,
         refreshAll,
@@ -562,11 +728,14 @@ export function usePluginSettings() {
         setActiveView,
         setCategoryFilter,
         setInstalledFilter,
+        setManualArtifactUrl,
         setOpenPluginId,
         setSearchTerm,
         settingsPanelsForPlugin,
         statusMessage,
         togglePlugin,
+        updatingPluginId,
+        updateManagedPlugin,
         updateActiveProfileDetails,
     };
 }
