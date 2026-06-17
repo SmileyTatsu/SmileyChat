@@ -5,6 +5,11 @@
 
 SmileyChat is a local-first frontend application for chatting, roleplay, and storytelling with AI chatbots. Designed to be clean, accessible, and friendly to both casual users and writers.
 
+## Related Repositories
+
+- [smileychat-plugins](https://github.com/SmileyTatsu/smileychat-plugins): verified plugin registry, registry schema, and plugin contribution docs.
+- [smileychat-plugin-template](https://github.com/SmileyTatsu/smileychat-plugin-template): starter template for building distributable SmileyChat plugins.
+
 ## Features
 
 - **Dual Visual Modes**: Seamlessly switch between a casual "Chatting" mode, like Discord, and a "Roleplaying / Storytelling" mode designed for reading and writing long scenes.
@@ -166,6 +171,12 @@ Check the [docs/](docs/) folder for guides, reference material, plugin docs, and
 - [Development Guide](docs/development/development.md)
 - [Core Architecture](docs/development/architecture.md)
 - [Plugins System](docs/plugins/README.md)
+
+## License
+
+SmileyChat is licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
+Third-party plugins that interact with SmileyChat only through the documented plugin runtime API may use their own licenses. Modified versions of SmileyChat itself remain covered by AGPL-3.0.
 
 ## AI Disclosure
 
