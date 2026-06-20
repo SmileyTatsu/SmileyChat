@@ -1,4 +1,4 @@
-.tool-window {
+﻿.tool-window {
     display: grid;
     gap: 14px;
     align-content: start;
@@ -1530,9 +1530,7 @@
 }
 
 .persona-detail-panel > label:nth-of-type(2) {
-    display: grid;
-    gap: 6px;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
 }
 
 .personas-list > div {

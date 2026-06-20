@@ -1,4 +1,4 @@
-import {
+﻿import {
     AlertTriangle,
     Boxes,
     Download,
@@ -173,7 +173,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     name="plugin-search"
                     autoComplete="off"
                     value={searchTerm}
-                    placeholder="Search extensions…"
+                    placeholder="Search extensionsâ€¦"
                     onInput={(event) =>
                         setSearchTerm((event.currentTarget as HTMLInputElement).value)
                     }

@@ -412,7 +412,7 @@ export function PresetSettings({
     }
 
     return (
-        <section className="tool-window">
+        <section className="tool-window presets-settings">
             <h2>Preset</h2>
             <div className="preset-toolbar">
                 <label>
