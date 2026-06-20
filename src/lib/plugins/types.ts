@@ -299,6 +299,8 @@ export type PluginComposerStatePatch = {
 export type PluginModelGenerateRequest = {
     messages: ChatGenerationMessage[];
     onImage?: (url: string) => void;
+    presetId?: string;
+    profileId?: string;
     onReasoningToken?: (token: string) => void;
     onToken?: (token: string) => void;
     stream?: boolean;

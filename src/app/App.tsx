@@ -35,7 +35,6 @@ import {
 } from "#frontend/lib/connections/config";
 import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
-import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
 import {
     defaultAppPreferences,
     normalizeAppPreferences,
@@ -43,7 +42,10 @@ import {
 } from "#frontend/lib/preferences/types";
 
 import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
-import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type {
+    PluginAppSnapshot,
+    PluginModelGenerateRequest,
+} from "#frontend/lib/plugins/types";
 
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
@@ -638,24 +640,24 @@ export function App() {
         }
     }
 
-    async function generatePluginModelResponse(request: {
-        messages: ChatGenerationMessage[];
-        onImage?: (url: string) => void;
-        onReasoningToken?: (token: string) => void;
-        onToken?: (token: string) => void;
-        stream?: boolean;
-    }) {
+    async function generatePluginModelResponse(request: PluginModelGenerateRequest) {
         if (!Array.isArray(request.messages) || request.messages.length === 0) {
             throw new Error("Plugin model request must include at least one message.");
         }
 
-        const connection = getAdapterForSettings(connectionSettings);
+        const connection = getAdapterForSettings(connectionSettings, request.profileId);
+        const preset =
+            (request.presetId
+                ? presetCollection.presets.find(
+                      (candidate) => candidate.id === request.presetId,
+                  )
+                : activePresetForPlugins) ?? activePresetForPlugins;
         const promptMessages = await materializeChatGenerationMessageImages(
             request.messages,
         );
 
         return connection.generate({
-            generation: activePresetForPlugins?.generation,
+            generation: preset?.generation,
             messages: [],
             onImage: request.onImage,
             onReasoningToken: request.onReasoningToken,
