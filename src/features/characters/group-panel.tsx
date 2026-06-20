@@ -661,7 +661,7 @@ function normalizedGroup(group: ChatSession["group"]): ChatGroup {
     return {
         autoResponses: group?.autoResponses ?? defaultAutoResponses(),
         avatar: group?.avatar ?? { type: "collage" },
-        replyOrder: group?.replyOrder ?? "list",
+        replyOrder: group?.replyOrder ?? "natural",
         generationMode: group?.generationMode ?? "swap-character-cards",
         greetingMode: group?.greetingMode ?? "all",
         joinPrefix: group?.joinPrefix ?? "",

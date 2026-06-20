@@ -66,7 +66,7 @@ export function createGroupChatSession({
                 maxTurns: 2,
             },
             avatar: { type: "collage" },
-            replyOrder: "list",
+            replyOrder: "natural",
             generationMode: "swap-character-cards",
             greetingMode,
             joinPrefix: "{{char}}:",

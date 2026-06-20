@@ -564,7 +564,7 @@ export function useChatLibrary({
                                 type: "custom",
                                 path: avatarPath,
                             },
-                            replyOrder: currentChat.group?.replyOrder ?? "list",
+                            replyOrder: currentChat.group?.replyOrder ?? "natural",
                             generationMode:
                                 currentChat.group?.generationMode ??
                                 "swap-character-cards",
