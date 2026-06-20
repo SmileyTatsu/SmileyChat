@@ -1,0 +1,236 @@
+.chs-settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.chs-note,
+.chs-status {
+    grid-column: 1 / -1;
+}
+
+.chs-note {
+    border: 1px solid rgba(244, 185, 94, 0.22);
+    border-radius: 8px;
+    background: rgba(61, 43, 19, 0.24);
+    color: #ffdca3;
+    padding: 10px 12px;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.chs-settings-group {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 12px;
+}
+
+.chs-settings-group.wide {
+    grid-column: 1 / -1;
+}
+
+.chs-settings-group h5 {
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.9rem;
+}
+
+.chs-field,
+.chs-toggle {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: #dfe3ef;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.chs-toggle {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.chs-toggle small {
+    display: block;
+    margin-top: 2px;
+    color: #9da3b4;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.chs-field input,
+.chs-field select,
+.chs-field textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    color: #ececf1;
+    outline: none;
+}
+
+.chs-field input,
+.chs-field select {
+    min-height: 36px;
+    padding: 0 10px;
+}
+
+.chs-field textarea {
+    resize: vertical;
+    padding: 10px;
+    line-height: 1.45;
+}
+
+.chs-button-row,
+.chs-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: start;
+    gap: 8px;
+}
+
+.chs-modal-actions {
+    align-self: start;
+}
+
+.chs-button-row button,
+.chs-modal-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    height: 34px;
+    min-height: 34px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #242832;
+    color: #ececf1;
+    padding: 0 10px;
+}
+
+.chs-status {
+    min-height: 1.2em;
+    margin: 0;
+    color: #9da3b4;
+    font-size: 0.8rem;
+}
+
+.plugin-modal:has(.chs-modal) {
+    width: min(900px, calc(100vw - 48px));
+    height: min(760px, calc(100dvh - 48px));
+}
+
+.plugin-modal:has(.chs-modal) .plugin-modal-body {
+    overflow: hidden;
+}
+
+.chs-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    min-height: 0;
+}
+
+.chs-summary-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.chs-summary-meta div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 9px 10px;
+}
+
+.chs-summary-meta span {
+    color: #9da3b4;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.chs-summary-meta strong {
+    min-width: 0;
+    overflow: hidden;
+    color: #ececf1;
+    font-size: 0.84rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chs-summary-meta strong.error,
+.chs-error {
+    color: #ffb4bd;
+}
+
+.chs-error {
+    border: 1px solid rgba(235, 87, 87, 0.34);
+    border-radius: 8px;
+    background: rgba(72, 26, 31, 0.28);
+    padding: 9px 10px;
+    font-size: 0.84rem;
+}
+
+.chs-modal-editor {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    color: #dfe3ef;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.chs-modal-editor textarea {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    resize: none;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    color: #ececf1;
+    outline: none;
+    padding: 12px;
+    line-height: 1.5;
+}
+
+.chs-empty {
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    color: #aab0bf;
+}
+
+@media (max-width: 820px) {
+    .chs-settings,
+    .chs-summary-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .plugin-modal:has(.chs-modal) {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 16px);
+    }
+
+    .chs-modal-actions button {
+        flex: 1 1 140px;
+    }
+}

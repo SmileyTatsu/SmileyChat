@@ -161,7 +161,7 @@ export function useAppPluginBridge({
         [pluginRegistryRevision],
     );
     const isLorebooksPluginEnabled = useMemo(
-        () => isPluginEnabled("lorebooks"),
+        () => isPluginEnabled("smiley-lorebooks"),
         [pluginRegistryRevision],
     );
 

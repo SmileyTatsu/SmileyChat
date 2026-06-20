@@ -1,8 +1,8 @@
 import type { PluginManifest } from "#frontend/lib/plugins/types";
 
 export const lorebooksManifest: PluginManifest = {
-    id: "lorebooks",
-    name: "LoreBook Manager",
+    id: "smiley-lorebooks",
+    name: "Smiley Lorebook Manager",
     version: "1.0.0",
     description: "Adds a focused sidebar and full editor for native LoreBooks.",
     main: "core-extensions/lorebooks",
