@@ -19,7 +19,7 @@ Current plugin surfaces:
 - Composer actions.
 - Runtime composer state controls.
 - Programmatic app actions.
-- Custom active-model requests.
+- Custom model requests, including background connection profile targeting.
 - Guarded outbound network fetch through the local server.
 - Sidebar panels, header actions, and app-hosted modals.
 - Chat input, prompt, and output middleware.

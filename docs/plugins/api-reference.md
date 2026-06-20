@@ -150,7 +150,7 @@ Presence is UI/runtime state and is not saved to `userData`. Multiple plugins ca
 
 ## `api.model.generate`
 
-Sends a custom temporary message history through the active connection/model and returns a normalized generation result. This does not append messages to the active chat and does not expose provider API keys to the plugin.
+Sends a custom temporary message history through a configured connection/model and returns a normalized generation result. By default this uses the active connection profile, but a plugin can pass a `profileId` from `api.state.getSnapshot().connectionSettings.profiles` to target another saved profile without changing the user's active UI state. This does not append messages to the active chat and does not expose provider API keys to the plugin.
 
 ```js
 const result = await api.model.generate({
@@ -167,6 +167,24 @@ const result = await api.model.generate({
 });
 
 console.log(result.message);
+```
+
+Use another saved connection profile or preset generation settings when needed:
+
+```js
+const snapshot = api.state.getSnapshot();
+const backgroundProfile = snapshot?.connectionSettings.profiles.find(
+    (profile) => profile.name === "Background tasks",
+);
+const quickPreset = snapshot?.presetCollection.presets.find(
+    (preset) => preset.title === "Fast summary",
+);
+
+const result = await api.model.generate({
+    profileId: backgroundProfile?.id,
+    presetId: quickPreset?.id,
+    messages: [{ role: "user", content: "Summarize the last scene." }],
+});
 ```
 
 Streaming callbacks are optional:
@@ -187,9 +205,11 @@ Requires `model:generate`.
 
 Notes:
 
-- Uses the active connection profile and provider adapter.
+- Uses the active connection profile and provider adapter by default.
+- `profileId` optionally selects another saved connection profile for this request only. Unknown profile IDs throw an error.
+- `presetId` optionally selects another preset's generation settings for this request only. Unknown preset IDs fall back to the active preset.
 - Uses only the messages supplied by the plugin.
-- Does not compile the active preset.
+- Uses preset generation settings, but does not compile preset prompts.
 - Does not run chat input, prompt, or output middleware.
 - Supports multimodal message parts where the active provider supports them.
 

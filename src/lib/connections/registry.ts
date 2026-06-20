@@ -15,10 +15,7 @@ import { createNovelAIConnection } from "./novelai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
 
-export function getAdapterForSettings(
-    settings: ConnectionSettings,
-    profileId?: string,
-) {
+export function getAdapterForSettings(settings: ConnectionSettings, profileId?: string) {
     const profile = profileId
         ? settings.profiles.find((candidate) => candidate.id === profileId)
         : getActiveConnectionProfile(settings);
