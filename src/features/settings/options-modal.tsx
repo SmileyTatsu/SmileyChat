@@ -273,33 +273,30 @@ export function OptionsModal({
                                 <ChevronsLeft size={16} />
                             )}
                         </button>
-                        {!isSettingsNavCollapsed && (
-                            <nav
-                                className="settings-nav"
-                                aria-label="Settings categories"
-                            >
-                                {settingsCategories.map((category) => {
-                                    const Icon = category.icon;
-                                    return (
-                                        <button
-                                            className={
-                                                activeCategory === category.id
-                                                    ? "active"
-                                                    : ""
-                                            }
-                                            key={category.id}
-                                            type="button"
-                                            onClick={() =>
-                                                setActiveSettingsCategory(category.id)
-                                            }
-                                        >
-                                            <Icon size={18} />
-                                            <span>{category.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </nav>
-                        )}
+                        <nav className="settings-nav" aria-label="Settings categories">
+                            {settingsCategories.map((category) => {
+                                const Icon = category.icon;
+                                return (
+                                    <button
+                                        className={
+                                            activeCategory === category.id
+                                                ? "active"
+                                                : ""
+                                        }
+                                        key={category.id}
+                                        type="button"
+                                        title={category.label}
+                                        aria-label={category.label}
+                                        onClick={() =>
+                                            setActiveSettingsCategory(category.id)
+                                        }
+                                    >
+                                        <Icon size={18} />
+                                        <span>{category.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
                     </aside>
 
                     <div className="settings-content">

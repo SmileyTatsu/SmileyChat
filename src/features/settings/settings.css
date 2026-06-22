@@ -2057,7 +2057,7 @@
 }
 
 .settings-layout.nav-collapsed {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: max-content minmax(0, 1fr);
 }
 
 .settings-nav-panel {
@@ -2069,14 +2069,25 @@
 }
 
 .settings-layout.nav-collapsed .settings-nav-panel {
-    padding-right: 8px;
+    padding-right: 16px;
+}
+
+.settings-layout.nav-collapsed .settings-nav button {
+    justify-content: center;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+}
+
+.settings-layout.nav-collapsed .settings-nav button span {
+    display: none;
 }
 
 .settings-nav-toggle {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     border: 1px solid #303440;
     border-radius: 8px;
     background: #20232b;
