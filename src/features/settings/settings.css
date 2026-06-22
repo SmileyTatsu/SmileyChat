@@ -2294,10 +2294,6 @@
     padding: 14px 12px;
 }
 
-.settings-layout.nav-collapsed .settings-nav-panel {
-    padding: 14px 8px;
-}
-
 .settings-layout.nav-collapsed .settings-nav button {
     justify-content: center;
     width: 40px;
