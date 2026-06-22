@@ -693,6 +693,10 @@
     width: min(400px, calc(100vw - 48px));
 }
 
+.message-confirm-dialog.character-delete-dialog {
+    width: min(450px, calc(100vw - 48px));
+}
+
 .message-confirm-dialog header {
     display: flex;
     align-items: center;
@@ -724,6 +728,7 @@
 
 .message-confirm-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
 }
@@ -731,6 +736,7 @@
 .message-confirm-actions button {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
     min-height: 36px;
     border: 1px solid #303440;
@@ -738,6 +744,7 @@
     background: #242832;
     color: #ececf1;
     padding: 0 12px;
+    white-space: nowrap;
 }
 
 .message-confirm-actions .danger-button {
