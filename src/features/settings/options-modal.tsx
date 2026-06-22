@@ -13,6 +13,7 @@ import {
 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
+import { useLocalStorageBoolean } from "#frontend/app/hooks/use-local-storage-boolean";
 import {
     activeSettingsCategory,
     setActiveSettingsCategory,
@@ -86,6 +87,7 @@ const settingsCategories = [
 }>;
 
 const settingsModalExpandedStorageKey = "smileychat.optionsModal.expanded";
+const settingsNavCollapsedStorageKey = "smileychat.optionsModal.navCollapsed";
 
 export function OptionsModal({
     connectionLoadError,
@@ -119,10 +121,11 @@ export function OptionsModal({
     userStatus,
 }: OptionsModalProps) {
     const activeCategory = activeSettingsCategory.value;
-    const [isSettingsModalExpanded, setIsSettingsModalExpanded] = useState(
-        () => localStorage.getItem(settingsModalExpandedStorageKey) === "true",
+    const [isSettingsModalExpanded, setIsSettingsModalExpanded] =
+        useLocalStorageBoolean(settingsModalExpandedStorageKey);
+    const [settingsNavCollapsed, setSettingsNavCollapsed] = useLocalStorageBoolean(
+        settingsNavCollapsedStorageKey,
     );
-    const [settingsNavCollapsed, setSettingsNavCollapsed] = useState(false);
     const [isMobileSettingsLayout, setIsMobileSettingsLayout] = useState(
         () => window.matchMedia("(max-width: 820px)").matches,
     );
@@ -200,11 +203,7 @@ export function OptionsModal({
     }
 
     function handleSettingsModalSizeToggle() {
-        setIsSettingsModalExpanded((expanded) => {
-            const nextExpanded = !expanded;
-            localStorage.setItem(settingsModalExpandedStorageKey, String(nextExpanded));
-            return nextExpanded;
-        });
+        setIsSettingsModalExpanded((expanded) => !expanded);
     }
 
     return (
