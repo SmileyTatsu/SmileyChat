@@ -1,4 +1,4 @@
-@import "../features/sidebar/sidebar.css";
+﻿@import "../features/sidebar/sidebar.css";
 @import "../features/chat/chat.css";
 @import "../features/characters/characters.css";
 @import "../features/settings/settings.css";
@@ -1197,15 +1197,6 @@ textarea:disabled {
         padding: 0;
     }
 
-    .settings-modal.expanded {
-        width: calc(100vw - 16px);
-        height: calc(100dvh - 16px);
-    }
-
-    .settings-modal-size-toggle {
-        display: none;
-    }
-
     .modal-header {
         min-height: 56px;
         margin-bottom: 0;
@@ -1429,11 +1420,6 @@ textarea:disabled {
         padding-right: max(12px, env(safe-area-inset-right));
         padding-bottom: max(12px, env(safe-area-inset-bottom));
         padding-left: max(12px, env(safe-area-inset-left));
-    }
-
-    .settings-modal.expanded {
-        width: 100vw;
-        height: 100dvh;
     }
 
     .settings-nav button {

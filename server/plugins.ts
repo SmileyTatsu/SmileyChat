@@ -28,7 +28,11 @@ import { BadRequestError, HttpError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
 import { safeFetch } from "./security/safe-fetch";
 
-const corePluginIds = new Set(["smiley-chat-formatter", "lorebooks"]);
+const corePluginIds = new Set([
+    "smiley-chat-formatter",
+    "smiley-lorebooks",
+    "smiley-chat-summarizer",
+]);
 const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_TOTAL_BYTES = 50 * 1024 * 1024;
@@ -1250,7 +1254,7 @@ async function readCorePluginManifest(pluginId: string): Promise<PluginManifest>
 
     return {
         id: pluginId,
-        name: pluginId,
+        name: corePluginNames[pluginId] ?? pluginId,
         version: "0.0.0",
         main: "",
         enabled: state.enabled,
@@ -1261,14 +1265,22 @@ async function readCorePluginManifest(pluginId: string): Promise<PluginManifest>
 
 const corePluginCategories: Record<string, PluginCategory> = {
     "smiley-chat-formatter": "interface",
-    lorebooks: "memory-lore",
+    "smiley-chat-summarizer": "memory-lore",
+    "smiley-lorebooks": "memory-lore",
+};
+
+const corePluginNames: Record<string, string> = {
+    "smiley-chat-formatter": "smiley-chat-formatter",
+    "smiley-chat-summarizer": "smiley-chat-summarizer",
+    "smiley-lorebooks": "smiley-lorebooks",
 };
 
 async function readCorePluginState(pluginId: string) {
     const file = Bun.file(corePluginEnabledPath(pluginId));
+    const defaultEnabled = corePluginDefaultEnabled[pluginId] ?? true;
 
     if (!(await file.exists())) {
-        return { enabled: true };
+        return { enabled: defaultEnabled };
     }
 
     try {
@@ -1277,9 +1289,13 @@ async function readCorePluginState(pluginId: string) {
             enabled: value.enabled !== false,
         };
     } catch {
-        return { enabled: true };
+        return { enabled: defaultEnabled };
     }
 }
+
+const corePluginDefaultEnabled: Record<string, boolean> = {
+    "smiley-chat-summarizer": false,
+};
 
 async function writeCorePluginEnabled(pluginId: string, enabled: boolean) {
     const folder = pluginDataDir(pluginId, "core");

@@ -15,11 +15,17 @@ import { createNovelAIConnection } from "./novelai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
 
-export function getAdapterForSettings(settings: ConnectionSettings) {
-    const profile = getActiveConnectionProfile(settings);
+export function getAdapterForSettings(settings: ConnectionSettings, profileId?: string) {
+    const profile = profileId
+        ? settings.profiles.find((candidate) => candidate.id === profileId)
+        : getActiveConnectionProfile(settings);
 
     if (!profile) {
-        throw new Error("No connection profile is configured.");
+        throw new Error(
+            profileId
+                ? `Connection profile ${profileId} is not configured.`
+                : "No connection profile is configured.",
+        );
     }
 
     if (isOpenAICompatibleProfile(profile)) {

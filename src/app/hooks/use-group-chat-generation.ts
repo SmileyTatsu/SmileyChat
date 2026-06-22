@@ -33,7 +33,7 @@ export function selectGenerationCharacter({
         return groupCharacters[0] ?? character;
     }
 
-    const replyOrder = sourceChat.group?.replyOrder ?? "list";
+    const replyOrder = sourceChat.group?.replyOrder ?? "natural";
 
     if (replyOrder === "pooled") {
         return selectPooledGroupCharacter(availableCharacters, messages);

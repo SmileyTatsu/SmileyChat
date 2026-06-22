@@ -1,8 +1,13 @@
 import type { PluginManifest } from "../lib/plugins/types";
+import { chatSummarizerPlugin } from "./chat-summarizer";
 import { lorebooksPlugin } from "./lorebooks";
 import { smileyChatFormatterPlugin } from "./smiley-chat-formatter";
 
-export const corePlugins = [smileyChatFormatterPlugin, lorebooksPlugin];
+export const corePlugins = [
+    smileyChatFormatterPlugin,
+    lorebooksPlugin,
+    chatSummarizerPlugin,
+];
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
 
 export function getCorePluginManifests() {

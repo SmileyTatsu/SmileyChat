@@ -133,7 +133,10 @@ export function OptionsModal({
     const isSettingsNavCollapsed = settingsNavCollapsed && !isMobileSettingsLayout;
 
     useEffect(() => {
+        const previouslyFocusedElement = document.activeElement as HTMLElement | null;
         modalRef.current?.focus();
+
+        return () => previouslyFocusedElement?.focus();
     }, []);
 
     useEffect(() => {
@@ -213,13 +216,15 @@ export function OptionsModal({
                 ref={modalRef}
                 role="dialog"
                 aria-modal="true"
-                aria-label="Settings"
+                aria-labelledby="settings-modal-title"
                 tabIndex={-1}
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={handleModalKeyDown}
             >
                 <header className="modal-header">
-                    <h2>Options</h2>
+                    <div className="modal-title-block">
+                        <h2 id="settings-modal-title">Options</h2>
+                    </div>
                     <div className="modal-header-actions">
                         <button
                             className="icon-button settings-modal-size-toggle"
@@ -233,9 +238,9 @@ export function OptionsModal({
                             onClick={handleSettingsModalSizeToggle}
                         >
                             {isSettingsModalExpanded ? (
-                                <Minimize2 size={18} />
+                                <Minimize2 size={18} aria-hidden="true" />
                             ) : (
-                                <Maximize2 size={18} />
+                                <Maximize2 size={18} aria-hidden="true" />
                             )}
                         </button>
 
@@ -243,9 +248,10 @@ export function OptionsModal({
                             className="icon-button"
                             type="button"
                             title="Close"
+                            aria-label="Close options"
                             onClick={onClose}
                         >
-                            <X size={18} />
+                            <X size={18} aria-hidden="true" />
                         </button>
                     </div>
                 </header>
@@ -257,6 +263,12 @@ export function OptionsModal({
                         <button
                             className="settings-nav-toggle"
                             type="button"
+                            aria-label={
+                                isSettingsNavCollapsed
+                                    ? "Show options navigation"
+                                    : "Hide options navigation"
+                            }
+                            aria-expanded={!isSettingsNavCollapsed}
                             title={
                                 isSettingsNavCollapsed
                                     ? "Show options navigation"
@@ -267,9 +279,9 @@ export function OptionsModal({
                             }
                         >
                             {isSettingsNavCollapsed ? (
-                                <ChevronsRight size={16} />
+                                <ChevronsRight size={16} aria-hidden="true" />
                             ) : (
-                                <ChevronsLeft size={16} />
+                                <ChevronsLeft size={16} aria-hidden="true" />
                             )}
                         </button>
                         <nav className="settings-nav" aria-label="Settings categories">
@@ -290,7 +302,7 @@ export function OptionsModal({
                                             setActiveSettingsCategory(category.id)
                                         }
                                     >
-                                        <Icon size={18} />
+                                        <Icon size={18} aria-hidden="true" />
                                         <span>{category.label}</span>
                                     </button>
                                 );

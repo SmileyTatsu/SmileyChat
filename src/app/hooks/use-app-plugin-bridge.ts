@@ -1,9 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import type {
-    ChatGenerationMessage,
-    ChatGenerationResult,
-} from "#frontend/lib/connections/types";
+import type { ChatGenerationResult } from "#frontend/lib/connections/types";
 import {
     getPluginCharacterPresence,
     getPluginComposerState,
@@ -17,6 +14,7 @@ import {
 import type {
     PluginAppDataChangedEvent,
     PluginAppSnapshot,
+    PluginModelGenerateRequest,
 } from "#frontend/lib/plugins/types";
 
 import { openSettings } from "../ui-state";
@@ -42,13 +40,7 @@ type MutableRef<T> = {
 
 type UseAppPluginBridgeOptions = {
     generateModelResponseRef: MutableRef<
-        (request: {
-            messages: ChatGenerationMessage[];
-            onImage?: (url: string) => void;
-            onReasoningToken?: (token: string) => void;
-            onToken?: (token: string) => void;
-            stream?: boolean;
-        }) => Promise<ChatGenerationResult>
+        (request: PluginModelGenerateRequest) => Promise<ChatGenerationResult>
     >;
     loadCharacterCollection: () => Promise<void>;
     loadLorebookCollection: () => Promise<void>;
@@ -169,7 +161,7 @@ export function useAppPluginBridge({
         [pluginRegistryRevision],
     );
     const isLorebooksPluginEnabled = useMemo(
-        () => isPluginEnabled("lorebooks"),
+        () => isPluginEnabled("smiley-lorebooks"),
         [pluginRegistryRevision],
     );
 

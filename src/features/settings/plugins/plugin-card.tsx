@@ -36,7 +36,7 @@ export type PluginCardProps = {
     isUpdating: boolean;
     onToggle: () => void;
     onUpdate: () => void;
-    onToggleConfigure: () => void;
+    onToggleConfigure?: () => void;
 };
 
 export function PluginCard({
@@ -169,13 +169,15 @@ export function PluginCard({
                         onClick={onUpdate}
                     >
                         <RefreshCw size={15} aria-hidden="true" />
-                        {isUpdating ? "Updating..." : "Update"}
+                        {isUpdating ? "Updating…" : "Update"}
                     </button>
                 )}
-                <button type="button" onClick={onToggleConfigure}>
-                    <Settings size={15} />
-                    {showConfiguration ? "Hide Configuration" : "Configure"}
-                </button>
+                {onToggleConfigure && (
+                    <button type="button" onClick={onToggleConfigure}>
+                        <Settings size={15} aria-hidden="true" />
+                        {showConfiguration ? "Hide Configuration" : "Configure"}
+                    </button>
+                )}
             </div>
 
             {showConfiguration && (

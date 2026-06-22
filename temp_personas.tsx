@@ -1,4 +1,4 @@
-import { ImageOff, ImagePlus, Plus, Trash2 } from "lucide-preact";
+﻿import { ImageOff, ImagePlus, Plus, Trash2 } from "lucide-preact";
 import { useRef, useState } from "preact/hooks";
 
 import { uploadPersonaAvatar } from "#frontend/lib/api/client";
