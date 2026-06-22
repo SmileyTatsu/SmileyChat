@@ -1197,6 +1197,15 @@ textarea:disabled {
         padding: 14px;
     }
 
+    .settings-modal.expanded {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 16px);
+    }
+
+    .settings-modal-size-toggle {
+        display: none;
+    }
+
     .modal-header {
         margin-bottom: 12px;
         padding-bottom: 12px;
@@ -1359,6 +1368,11 @@ textarea:disabled {
         height: 100dvh;
         border-radius: 0;
         padding: 12px;
+    }
+
+    .settings-modal.expanded {
+        width: 100vw;
+        height: 100dvh;
     }
 
     .settings-nav button {

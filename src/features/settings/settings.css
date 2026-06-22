@@ -2023,6 +2023,11 @@
     padding: 18px;
 }
 
+.settings-modal.expanded {
+    width: 90vw;
+    height: 90dvh;
+}
+
 .modal-header {
     display: flex;
     align-items: center;
@@ -2031,6 +2036,12 @@
     border-bottom: 1px solid #292c35;
     margin-bottom: 16px;
     padding-bottom: 14px;
+}
+
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .modal-header h2 {

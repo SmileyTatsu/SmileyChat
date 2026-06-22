@@ -3,6 +3,8 @@ import {
     ChevronsRight,
     KeyRound,
     LibraryBig,
+    Maximize2,
+    Minimize2,
     Puzzle,
     Settings,
     SlidersHorizontal,
@@ -83,6 +85,8 @@ const settingsCategories = [
     icon: typeof KeyRound;
 }>;
 
+const settingsModalExpandedStorageKey = "smileychat.optionsModal.expanded";
+
 export function OptionsModal({
     connectionLoadError,
     connectionSettings,
@@ -115,6 +119,9 @@ export function OptionsModal({
     userStatus,
 }: OptionsModalProps) {
     const activeCategory = activeSettingsCategory.value;
+    const [isSettingsModalExpanded, setIsSettingsModalExpanded] = useState(
+        () => localStorage.getItem(settingsModalExpandedStorageKey) === "true",
+    );
     const [settingsNavCollapsed, setSettingsNavCollapsed] = useState(false);
     const [isMobileSettingsLayout, setIsMobileSettingsLayout] = useState(
         () => window.matchMedia("(max-width: 820px)").matches,
@@ -192,10 +199,18 @@ export function OptionsModal({
         }
     }
 
+    function handleSettingsModalSizeToggle() {
+        setIsSettingsModalExpanded((expanded) => {
+            const nextExpanded = !expanded;
+            localStorage.setItem(settingsModalExpandedStorageKey, String(nextExpanded));
+            return nextExpanded;
+        });
+    }
+
     return (
         <div className="modal-backdrop" role="presentation" onClick={onClose}>
             <section
-                className="settings-modal"
+                className={`settings-modal ${isSettingsModalExpanded ? "expanded" : ""}`}
                 ref={modalRef}
                 role="dialog"
                 aria-modal="true"
@@ -206,14 +221,34 @@ export function OptionsModal({
             >
                 <header className="modal-header">
                     <h2>Options</h2>
-                    <button
-                        className="icon-button"
-                        type="button"
-                        title="Close"
-                        onClick={onClose}
-                    >
-                        <X size={18} />
-                    </button>
+                    <div className="modal-header-actions">
+                        <button
+                            className="icon-button settings-modal-size-toggle"
+                            type="button"
+                            title={
+                                isSettingsModalExpanded
+                                    ? "Restore options size"
+                                    : "Expand options"
+                            }
+                            aria-pressed={isSettingsModalExpanded}
+                            onClick={handleSettingsModalSizeToggle}
+                        >
+                            {isSettingsModalExpanded ? (
+                                <Minimize2 size={18} />
+                            ) : (
+                                <Maximize2 size={18} />
+                            )}
+                        </button>
+
+                        <button
+                            className="icon-button"
+                            type="button"
+                            title="Close"
+                            onClick={onClose}
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                 </header>
 
                 <div
