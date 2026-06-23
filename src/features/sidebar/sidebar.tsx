@@ -896,7 +896,7 @@ export function Sidebar({
                     onClick={() => setCharacterDeleteCandidate(undefined)}
                 >
                     <section
-                        className="message-confirm-dialog compact"
+                        className="message-confirm-dialog compact character-delete-dialog"
                         role="dialog"
                         aria-modal="true"
                         aria-label="Delete character"
