@@ -3,6 +3,8 @@ import {
     ChevronsRight,
     KeyRound,
     LibraryBig,
+    Maximize2,
+    Minimize2,
     Puzzle,
     Settings,
     SlidersHorizontal,
@@ -11,6 +13,7 @@ import {
 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
+import { useLocalStorageBoolean } from "#frontend/app/hooks/use-local-storage-boolean";
 import {
     activeSettingsCategory,
     setActiveSettingsCategory,
@@ -83,6 +86,9 @@ const settingsCategories = [
     icon: typeof KeyRound;
 }>;
 
+const settingsModalExpandedStorageKey = "smileychat.optionsModal.expanded";
+const settingsNavCollapsedStorageKey = "smileychat.optionsModal.navCollapsed";
+
 export function OptionsModal({
     connectionLoadError,
     connectionSettings,
@@ -115,7 +121,11 @@ export function OptionsModal({
     userStatus,
 }: OptionsModalProps) {
     const activeCategory = activeSettingsCategory.value;
-    const [settingsNavCollapsed, setSettingsNavCollapsed] = useState(false);
+    const [isSettingsModalExpanded, setIsSettingsModalExpanded] =
+        useLocalStorageBoolean(settingsModalExpandedStorageKey);
+    const [settingsNavCollapsed, setSettingsNavCollapsed] = useLocalStorageBoolean(
+        settingsNavCollapsedStorageKey,
+    );
     const [isMobileSettingsLayout, setIsMobileSettingsLayout] = useState(
         () => window.matchMedia("(max-width: 820px)").matches,
     );
@@ -195,10 +205,14 @@ export function OptionsModal({
         }
     }
 
+    function handleSettingsModalSizeToggle() {
+        setIsSettingsModalExpanded((expanded) => !expanded);
+    }
+
     return (
         <div className="modal-backdrop" role="presentation" onClick={onClose}>
             <section
-                className="settings-modal"
+                className={`settings-modal ${isSettingsModalExpanded ? "expanded" : ""}`}
                 ref={modalRef}
                 role="dialog"
                 aria-modal="true"
@@ -211,15 +225,35 @@ export function OptionsModal({
                     <div className="modal-title-block">
                         <h2 id="settings-modal-title">Options</h2>
                     </div>
-                    <button
-                        className="icon-button"
-                        type="button"
-                        title="Close"
-                        aria-label="Close options"
-                        onClick={onClose}
-                    >
-                        <X size={18} aria-hidden="true" />
-                    </button>
+                    <div className="modal-header-actions">
+                        <button
+                            className="icon-button settings-modal-size-toggle"
+                            type="button"
+                            title={
+                                isSettingsModalExpanded
+                                    ? "Restore options size"
+                                    : "Expand options"
+                            }
+                            aria-pressed={isSettingsModalExpanded}
+                            onClick={handleSettingsModalSizeToggle}
+                        >
+                            {isSettingsModalExpanded ? (
+                                <Minimize2 size={18} aria-hidden="true" />
+                            ) : (
+                                <Maximize2 size={18} aria-hidden="true" />
+                            )}
+                        </button>
+
+                        <button
+                            className="icon-button"
+                            type="button"
+                            title="Close"
+                            aria-label="Close options"
+                            onClick={onClose}
+                        >
+                            <X size={18} aria-hidden="true" />
+                        </button>
+                    </div>
                 </header>
 
                 <div
@@ -250,33 +284,30 @@ export function OptionsModal({
                                 <ChevronsLeft size={16} aria-hidden="true" />
                             )}
                         </button>
-                        {!isSettingsNavCollapsed && (
-                            <nav
-                                className="settings-nav"
-                                aria-label="Settings categories"
-                            >
-                                {settingsCategories.map((category) => {
-                                    const Icon = category.icon;
-                                    return (
-                                        <button
-                                            className={
-                                                activeCategory === category.id
-                                                    ? "active"
-                                                    : ""
-                                            }
-                                            key={category.id}
-                                            type="button"
-                                            onClick={() =>
-                                                setActiveSettingsCategory(category.id)
-                                            }
-                                        >
-                                            <Icon size={18} aria-hidden="true" />
-                                            <span>{category.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </nav>
-                        )}
+                        <nav className="settings-nav" aria-label="Settings categories">
+                            {settingsCategories.map((category) => {
+                                const Icon = category.icon;
+                                return (
+                                    <button
+                                        className={
+                                            activeCategory === category.id
+                                                ? "active"
+                                                : ""
+                                        }
+                                        key={category.id}
+                                        type="button"
+                                        title={category.label}
+                                        aria-label={category.label}
+                                        onClick={() =>
+                                            setActiveSettingsCategory(category.id)
+                                        }
+                                    >
+                                        <Icon size={18} aria-hidden="true" />
+                                        <span>{category.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
                     </aside>
 
                     <div className="settings-content">
