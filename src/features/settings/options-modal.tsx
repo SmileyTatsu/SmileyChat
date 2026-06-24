@@ -121,8 +121,9 @@ export function OptionsModal({
     userStatus,
 }: OptionsModalProps) {
     const activeCategory = activeSettingsCategory.value;
-    const [isSettingsModalExpanded, setIsSettingsModalExpanded] =
-        useLocalStorageBoolean(settingsModalExpandedStorageKey);
+    const [isSettingsModalExpanded, setIsSettingsModalExpanded] = useLocalStorageBoolean(
+        settingsModalExpandedStorageKey,
+    );
     const [settingsNavCollapsed, setSettingsNavCollapsed] = useLocalStorageBoolean(
         settingsNavCollapsedStorageKey,
     );
@@ -290,9 +291,7 @@ export function OptionsModal({
                                 return (
                                     <button
                                         className={
-                                            activeCategory === category.id
-                                                ? "active"
-                                                : ""
+                                            activeCategory === category.id ? "active" : ""
                                         }
                                         key={category.id}
                                         type="button"
