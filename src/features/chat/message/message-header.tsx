@@ -2,11 +2,13 @@ import type { ComponentChildren } from "preact";
 
 import { formatShortTime } from "#frontend/lib/common/time";
 import { getMessageCreatedAt } from "#frontend/lib/messages";
+import type { TimeFormat } from "#frontend/lib/preferences/types";
 import type { Message } from "#frontend/types";
 
 type MessageHeaderProps = {
     message: Message;
     showTimestamps: boolean;
+    timeFormat: TimeFormat;
     characterAvatarPath?: string;
 
     children: ComponentChildren;
@@ -22,7 +24,7 @@ export function MessageHeader(props: MessageHeaderProps) {
 
                 {props.showTimestamps && (
                     <time dateTime={messageDateTime}>
-                        {formatShortTime(messageDateTime)}
+                        {formatShortTime(messageDateTime, props.timeFormat)}
                     </time>
                 )}
             </div>

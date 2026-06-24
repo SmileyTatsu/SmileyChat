@@ -838,6 +838,9 @@ export function App() {
                     : undefined,
             }}
         >
+            {preferences.appearance.customCss && (
+                <style>{preferences.appearance.customCss}</style>
+            )}
             <ResponsiveBackdrops
                 characterOpenSignal={characterOpenSignal}
                 hasCharacters={hasCharacters}

@@ -2128,6 +2128,32 @@
     color: #798194;
 }
 
+.settings-custom-css-input {
+    justify-self: end;
+    width: min(100%, 560px);
+    min-height: 150px;
+    resize: vertical;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #12151a;
+    color: #e3e7f0;
+    padding: 10px 11px;
+    font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    tab-size: 2;
+}
+
+.settings-custom-css-input::placeholder {
+    color: #798194;
+}
+
+.settings-custom-css-input:focus-visible {
+    border-color: #7583a7;
+    outline: 2px solid rgba(117, 131, 167, 0.28);
+    outline-offset: 1px;
+}
+
 .settings-number-input {
     justify-self: end;
     width: 108px;
@@ -2170,6 +2196,11 @@
 .settings-segmented-control button.active {
     background: #303440;
     color: #ececf1;
+}
+
+.settings-segmented-control button:focus-visible {
+    outline: 2px solid #8d9ac0;
+    outline-offset: 1px;
 }
 
 .settings-segmented-control button.active {

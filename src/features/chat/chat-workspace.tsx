@@ -160,6 +160,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     resetKey={activeChatId}
                     showRpCharacterImages={preferences.appearance.showRpCharacterImages}
                     showTimestamps={preferences.appearance.showTimestamps}
+                    timeFormat={preferences.appearance.timeFormat}
                     messageFormatting={messageFormatting}
                     onDeleteMessage={onDeleteMessage}
                     onDeleteMessageSwipe={onDeleteMessageSwipe}

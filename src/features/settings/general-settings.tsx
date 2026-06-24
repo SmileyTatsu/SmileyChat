@@ -1,12 +1,14 @@
-import { MessageSquareText, PanelRight, Send, Type } from "lucide-preact";
+import { Code2, MessageSquareText, PanelRight, Send, Type } from "lucide-preact";
 import type { ComponentChildren } from "preact";
 
 import type {
     AppPreferences,
     FontScale,
     MessageDensity,
+    TimeFormat,
 } from "#frontend/lib/preferences/types";
 import { clampInteger } from "#frontend/lib/common/math";
+import { formatShortTime } from "#frontend/lib/common/time";
 import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
 import type { ChatMode } from "#frontend/types";
 
@@ -141,6 +143,18 @@ export function GeneralSettings({
                     onChange={(showTimestamps) => updateAppearance({ showTimestamps })}
                 />
 
+                <SettingField label="Hour format">
+                    <SegmentedControl<TimeFormat>
+                        ariaLabel="Hour format"
+                        value={preferences.appearance.timeFormat}
+                        options={[
+                            { value: "12h", label: "a.m. / p.m." },
+                            { value: "24h", label: "24-hour" },
+                        ]}
+                        onChange={(timeFormat) => updateAppearance({ timeFormat })}
+                    />
+                </SettingField>
+
                 <ToggleRow
                     checked={preferences.appearance.showRpCharacterImages}
                     description="Display the active character image beside character messages in Roleplaying mode."
@@ -262,6 +276,33 @@ export function GeneralSettings({
                 />
             </section>
 
+            <section className="settings-card">
+                <header>
+                    <Code2 aria-hidden="true" size={18} />
+                    <div>
+                        <h3>Custom CSS</h3>
+                        <p>Apply local style overrides across the application.</p>
+                    </div>
+                </header>
+
+                <SettingField label="CSS overrides">
+                    <textarea
+                        aria-label="Custom CSS overrides"
+                        autoComplete="off"
+                        className="settings-custom-css-input"
+                        name="custom-css"
+                        placeholder="/* Example: increase chat spacing… */"
+                        spellcheck={false}
+                        value={preferences.appearance.customCss}
+                        onInput={(event) =>
+                            updateAppearance({
+                                customCss: event.currentTarget.value,
+                            })
+                        }
+                    />
+                </SettingField>
+            </section>
+
             <section className="settings-card preview-card">
                 <header>
                     <Type size={18} />
@@ -280,7 +321,14 @@ export function GeneralSettings({
                 >
                     <strong>
                         Mira
-                        {preferences.appearance.showTimestamps && <time>10:24 PM</time>}
+                        {preferences.appearance.showTimestamps && (
+                            <time>
+                                {formatShortTime(
+                                    new Date(2000, 0, 1, 22, 24),
+                                    preferences.appearance.timeFormat,
+                                )}
+                            </time>
+                        )}
                     </strong>
                     <p>
                         The room settles into quiet light.{" "}
@@ -380,17 +428,21 @@ function NumberInput({
 }
 
 function SegmentedControl<T extends string>({
+    ariaLabel,
     options,
     value,
     onChange,
 }: {
+    ariaLabel?: string;
     options: Array<{ value: T; label: string }>;
     value: T;
     onChange: (value: T) => void;
 }) {
     return (
         <div
+            aria-label={ariaLabel}
             className="settings-segmented-control"
+            role={ariaLabel ? "group" : undefined}
             style={{
                 gridTemplateColumns: `repeat(${options.length}, minmax(0, auto))`,
             }}

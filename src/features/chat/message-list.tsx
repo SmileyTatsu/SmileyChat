@@ -18,6 +18,7 @@ import {
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type { TimeFormat } from "#frontend/lib/preferences/types";
 import type { ChatMode, Message } from "#frontend/types";
 
 import { MessageItem } from "./message/message-item";
@@ -33,6 +34,7 @@ type MessageListProps = {
     mode: ChatMode;
 
     showTimestamps: boolean;
+    timeFormat: TimeFormat;
     messageFormatting: MessageFormattingOptions;
     pendingSwipeMessageId?: string;
     resetKey: string;
@@ -59,6 +61,7 @@ export const MessageList = memo(function MessageList({
     resetKey,
     showRpCharacterImages,
     showTimestamps,
+    timeFormat,
     messageFormatting,
     onDeleteMessage,
     onDeleteMessageSwipe,
@@ -437,6 +440,7 @@ export const MessageList = memo(function MessageList({
                             messageFormatting={messageFormatting}
                             showRpCharacterImages={showRpCharacterImages}
                             showTimestamps={showTimestamps}
+                            timeFormat={timeFormat}
                             onCancelEdit={cancelEdit}
                             onCloseMenu={closeMessageMenu}
                             onCopyMessage={copyMessage}

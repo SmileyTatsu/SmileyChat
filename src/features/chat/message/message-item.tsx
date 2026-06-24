@@ -31,6 +31,7 @@ import {
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
 import type { ChatMode, Message } from "#frontend/types";
+import type { TimeFormat } from "#frontend/lib/preferences/types";
 
 import { MessageAttachments } from "./message-attachment";
 import { MessageContent } from "./message-content";
@@ -58,6 +59,7 @@ export type MessageItemProps = {
     renderer?: MessageRenderer;
     showRpCharacterImages: boolean;
     showTimestamps: boolean;
+    timeFormat: TimeFormat;
     onCancelEdit: () => void;
     onCloseMenu: () => void;
     onCopyMessage: (message: Message) => void | Promise<void>;
@@ -91,6 +93,7 @@ export const MessageItem = memo(function MessageItem({
     renderer,
     showRpCharacterImages,
     showTimestamps,
+    timeFormat,
     onCancelEdit,
     onCloseMenu,
     onCopyMessage,
@@ -156,6 +159,7 @@ export const MessageItem = memo(function MessageItem({
                 message={message}
                 characterAvatarPath={characterAvatarPath}
                 showTimestamps={showTimestamps}
+                timeFormat={timeFormat}
             >
                 <div className="message-overlay-actions">
                     {showSwipeControls && (
@@ -356,6 +360,7 @@ function areMessageItemPropsEqual(
         previous.renderer === next.renderer &&
         previous.showRpCharacterImages === next.showRpCharacterImages &&
         previous.showTimestamps === next.showTimestamps &&
+        previous.timeFormat === next.timeFormat &&
         previous.onCancelEdit === next.onCancelEdit &&
         previous.onCloseMenu === next.onCloseMenu &&
         previous.onCopyMessage === next.onCopyMessage &&

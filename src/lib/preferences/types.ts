@@ -3,6 +3,7 @@ import type { ChatMode } from "#frontend/types";
 
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type FontScale = "small" | "default" | "large";
+export type TimeFormat = "12h" | "24h";
 
 export type AppPreferences = {
     version: 1;
@@ -10,6 +11,7 @@ export type AppPreferences = {
         messageDensity: MessageDensity;
         showTimestamps: boolean;
         showRpCharacterImages: boolean;
+        timeFormat: TimeFormat;
         fontScale: FontScale;
         highlightQuotedTextInChat: boolean;
         highlightQuotedTextInRp: boolean;
@@ -17,6 +19,7 @@ export type AppPreferences = {
         italicizeRpMessages: boolean;
         uiFontFamily: string;
         chatFontFamily: string;
+        customCss: string;
     };
     chat: {
         enterToSend: boolean;
@@ -36,6 +39,7 @@ export const defaultAppPreferences: AppPreferences = {
         messageDensity: "comfortable",
         showTimestamps: true,
         showRpCharacterImages: false,
+        timeFormat: "12h",
         fontScale: "default",
         highlightQuotedTextInChat: true,
         highlightQuotedTextInRp: true,
@@ -43,6 +47,7 @@ export const defaultAppPreferences: AppPreferences = {
         italicizeRpMessages: true,
         uiFontFamily: "",
         chatFontFamily: "",
+        customCss: "",
     },
     chat: {
         enterToSend: true,
@@ -77,6 +82,10 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 appearance.showRpCharacterImages,
                 defaultAppPreferences.appearance.showRpCharacterImages,
             ),
+            timeFormat: normalizeTimeFormat(
+                appearance.timeFormat,
+                defaultAppPreferences.appearance.timeFormat,
+            ),
             fontScale: normalizeFontScale(
                 appearance.fontScale,
                 defaultAppPreferences.appearance.fontScale,
@@ -105,6 +114,10 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 appearance.chatFontFamily,
                 defaultAppPreferences.appearance.chatFontFamily,
             ),
+            customCss:
+                typeof appearance.customCss === "string"
+                    ? appearance.customCss
+                    : defaultAppPreferences.appearance.customCss,
         },
         chat: {
             enterToSend: booleanOrFallback(
@@ -149,6 +162,10 @@ function normalizeFontScale(value: unknown, fallback: FontScale) {
     return value === "small" || value === "default" || value === "large"
         ? value
         : fallback;
+}
+
+function normalizeTimeFormat(value: unknown, fallback: TimeFormat) {
+    return value === "12h" || value === "24h" ? value : fallback;
 }
 
 function normalizeChatMode(value: unknown, fallback: ChatMode) {
