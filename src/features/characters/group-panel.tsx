@@ -12,41 +12,48 @@ import { useMemo, useRef, useState } from "preact/hooks";
 
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import { defaultGroupTitle } from "#frontend/lib/chats/normalize";
+import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type {
-    ChatAuthorNote,
     CharacterSummary,
     ChatGroup,
     ChatGroupMember,
+    ChatMetadata,
     ChatSession,
     GroupGreetingMode,
 } from "#frontend/types";
 
-import { ChatDetailsPanel, isAuthorNoteActive } from "./chat-details-panel";
+import {
+    ChatDetailsPanel,
+    hasChatLorebooks,
+    isAuthorNoteActive,
+} from "./chat-details-panel";
 import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
 import { GroupAvatar } from "../chat/group-avatar";
 
 type GroupPanelProps = {
-    authorNote?: ChatAuthorNote;
     characters: CharacterSummary[];
+    chatMetadata?: ChatMetadata;
     chat: ChatSession;
     isOpen: boolean;
+    lorebookCollection: LorebookCollection;
     onChange: (chat: ChatSession) => void;
     onChangeAvatar: (chatId: string, file: File) => void;
     onForceReply: (characterId: string) => void;
     onShowDebugPayload: () => void;
-    onUpdateAuthorNote: (authorNote: ChatAuthorNote) => void;
+    onUpdateChatMetadata: (metadata: ChatMetadata) => void;
 };
 
 export function GroupPanel({
-    authorNote,
     characters,
+    chatMetadata,
     chat,
     isOpen,
+    lorebookCollection,
     onChange,
     onChangeAvatar,
     onForceReply,
     onShowDebugPayload,
-    onUpdateAuthorNote,
+    onUpdateChatMetadata,
 }: GroupPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<ContextTab>("entity");
@@ -176,7 +183,10 @@ export function GroupPanel({
                     <ContextTabs
                         activeTab={activeTab}
                         entityLabel="Group"
-                        hasActiveAuthorNote={isAuthorNoteActive(authorNote)}
+                        hasActiveChatDetails={
+                            isAuthorNoteActive(chatMetadata?.authorNote) ||
+                            hasChatLorebooks(chatMetadata)
+                        }
                         idBase={contextIdBase}
                         onTabChange={setActiveTab}
                     />
@@ -645,9 +655,10 @@ export function GroupPanel({
                             hidden={activeTab !== "chat"}
                         >
                             <ChatDetailsPanel
-                                authorNote={authorNote}
+                                chatMetadata={chatMetadata}
+                                lorebookCollection={lorebookCollection}
                                 onShowDebugPayload={onShowDebugPayload}
-                                onUpdateAuthorNote={onUpdateAuthorNote}
+                                onUpdateChatMetadata={onUpdateChatMetadata}
                             />
                         </section>
                     </div>

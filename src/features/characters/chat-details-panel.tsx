@@ -1,12 +1,14 @@
-import { FileText, Terminal } from "lucide-preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { BookOpen, FileText, Search, Terminal, X } from "lucide-preact";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import type { ChatAuthorNote } from "#frontend/types";
+import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
+import type { ChatAuthorNote, ChatMetadata } from "#frontend/types";
 
 type ChatDetailsPanelProps = {
-    authorNote?: ChatAuthorNote;
+    chatMetadata?: ChatMetadata;
+    lorebookCollection: LorebookCollection;
     onShowDebugPayload: () => void;
-    onUpdateAuthorNote: (authorNote: ChatAuthorNote) => void;
+    onUpdateChatMetadata: (metadata: ChatMetadata) => void;
 };
 
 function normalizeAuthorNoteDepth(depth: unknown) {
@@ -41,11 +43,18 @@ export function isAuthorNoteActive(authorNote: ChatAuthorNote | undefined) {
     return authorNote?.isEnabled !== false && Boolean(authorNote?.content?.trim());
 }
 
+export function hasChatLorebooks(chatMetadata: ChatMetadata | undefined) {
+    return Boolean(chatMetadata?.lorebookIds?.length);
+}
+
 export function ChatDetailsPanel({
-    authorNote,
+    chatMetadata,
+    lorebookCollection,
     onShowDebugPayload,
-    onUpdateAuthorNote,
+    onUpdateChatMetadata,
 }: ChatDetailsPanelProps) {
+    const authorNote = chatMetadata?.authorNote;
+    const selectedLorebookIds = chatMetadata?.lorebookIds ?? [];
     const saveTimerRef = useRef<number | undefined>();
     const lastSavedKeyRef = useRef(authorNoteKey(authorNoteFromProp(authorNote)));
 
@@ -55,6 +64,40 @@ export function ChatDetailsPanel({
         () => authorNote?.role ?? "system",
     );
     const [isEnabled, setIsEnabled] = useState(() => authorNote?.isEnabled ?? true);
+    const [lorebookQuery, setLorebookQuery] = useState("");
+    const [isLorebookPickerOpen, setIsLorebookPickerOpen] = useState(false);
+    const selectedLorebooks = useMemo(
+        () =>
+            selectedLorebookIds
+                .map((lorebookId) =>
+                    lorebookCollection.lorebooks.find(
+                        (lorebook) => lorebook.id === lorebookId,
+                    ),
+                )
+                .filter((lorebook): lorebook is LorebookCollection["lorebooks"][number] =>
+                    Boolean(lorebook),
+                ),
+        [lorebookCollection.lorebooks, selectedLorebookIds],
+    );
+    const availableLorebooks = useMemo(() => {
+        const selectedIds = new Set(selectedLorebookIds);
+        const query = lorebookQuery.trim().toLowerCase();
+
+        return lorebookCollection.lorebooks.filter((lorebook) => {
+            if (selectedIds.has(lorebook.id)) {
+                return false;
+            }
+
+            if (!query) {
+                return true;
+            }
+
+            return [lorebook.title, lorebook.description]
+                .join(" ")
+                .toLowerCase()
+                .includes(query);
+        });
+    }, [lorebookCollection.lorebooks, lorebookQuery, selectedLorebookIds]);
 
     useEffect(() => {
         const nextAuthorNote = authorNoteFromProp(authorNote);
@@ -78,11 +121,11 @@ export function ChatDetailsPanel({
         saveTimerRef.current = window.setTimeout(() => {
             saveTimerRef.current = undefined;
             lastSavedKeyRef.current = nextKey;
-            onUpdateAuthorNote(nextAuthorNote);
+            onUpdateChatMetadata({ authorNote: nextAuthorNote });
         }, 500);
 
         return clearPendingSave;
-    }, [content, depthInput, role, isEnabled, onUpdateAuthorNote]);
+    }, [content, depthInput, role, isEnabled, onUpdateChatMetadata]);
 
     useEffect(function () {
         return clearPendingSave;
@@ -129,7 +172,7 @@ export function ChatDetailsPanel({
         }
 
         lastSavedKeyRef.current = nextKey;
-        onUpdateAuthorNote(nextAuthorNote);
+        onUpdateChatMetadata({ authorNote: nextAuthorNote });
     }
 
     function handleDepthBlur() {
@@ -137,6 +180,22 @@ export function ChatDetailsPanel({
 
         setDepthInput(normalizedDepthInput);
         flushSave({ depthInput: normalizedDepthInput });
+    }
+
+    function addLorebook(lorebookId: string) {
+        if (selectedLorebookIds.includes(lorebookId)) {
+            return;
+        }
+
+        onUpdateChatMetadata({
+            lorebookIds: Array.from(new Set([...selectedLorebookIds, lorebookId])),
+        });
+    }
+
+    function removeLorebook(lorebookId: string) {
+        onUpdateChatMetadata({
+            lorebookIds: selectedLorebookIds.filter((id) => id !== lorebookId),
+        });
     }
 
     return (
@@ -206,6 +265,129 @@ export function ChatDetailsPanel({
                         </select>
                     </label>
                 </div>
+            </section>
+
+            <section
+                className="chat-lorebooks-card"
+                aria-labelledby="chat-lorebooks-title"
+            >
+                <div className="chat-lorebooks-card-header">
+                    <div>
+                        <h3 id="chat-lorebooks-title">
+                            <BookOpen size={16} />
+                            LoreBooks
+                        </h3>
+                        <p>Include LoreBooks that stay active for this chat.</p>
+                    </div>
+                    {selectedLorebookIds.length > 0 && (
+                        <span>{selectedLorebookIds.length}</span>
+                    )}
+                </div>
+
+                {lorebookCollection.lorebooks.length === 0 ? (
+                    <p className="chat-lorebooks-empty">
+                        Import LoreBooks in Options to attach them to this chat.
+                    </p>
+                ) : (
+                    <>
+                        <div className="chat-lorebook-selected-list">
+                            {selectedLorebooks.length === 0 ? (
+                                <p>No LoreBooks selected for this chat.</p>
+                            ) : (
+                                selectedLorebooks.map((lorebook) => (
+                                    <div
+                                        className="chat-lorebook-selected-row"
+                                        key={lorebook.id}
+                                    >
+                                        <span>
+                                            <strong>{lorebook.title}</strong>
+                                            <small>
+                                                {lorebook.entryCount} entries,{" "}
+                                                {lorebook.enabledEntryCount} enabled
+                                            </small>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            title={`Remove ${lorebook.title}`}
+                                            onClick={() => removeLorebook(lorebook.id)}
+                                        >
+                                            <X size={13} />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <button
+                            className="chat-lorebook-picker-trigger"
+                            type="button"
+                            aria-expanded={isLorebookPickerOpen}
+                            onClick={() => setIsLorebookPickerOpen((open) => !open)}
+                        >
+                            <Search size={15} />
+                            Search LoreBooks
+                        </button>
+
+                        {isLorebookPickerOpen && (
+                            <div className="chat-lorebook-picker">
+                                <div className="chat-lorebook-picker-header">
+                                    <label className="chat-lorebook-search">
+                                        <Search size={15} />
+                                        <input
+                                            type="search"
+                                            placeholder="Type to filter"
+                                            value={lorebookQuery}
+                                            autoFocus
+                                            onInput={(event) =>
+                                                setLorebookQuery(
+                                                    event.currentTarget.value,
+                                                )
+                                            }
+                                        />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        title="Close LoreBook picker"
+                                        onClick={() => {
+                                            setLorebookQuery("");
+                                            setIsLorebookPickerOpen(false);
+                                        }}
+                                    >
+                                        <X size={15} />
+                                    </button>
+                                </div>
+
+                                <div className="chat-lorebook-list">
+                                    {availableLorebooks.length === 0 ? (
+                                        <p className="chat-lorebooks-empty">
+                                            {lorebookQuery.trim()
+                                                ? "No matching LoreBooks."
+                                                : "All imported LoreBooks are selected."}
+                                        </p>
+                                    ) : (
+                                        availableLorebooks.map((lorebook) => (
+                                            <button
+                                                key={lorebook.id}
+                                                className="chat-lorebook-row"
+                                                type="button"
+                                                onClick={() => addLorebook(lorebook.id)}
+                                            >
+                                                <span>
+                                                    <strong>{lorebook.title}</strong>
+                                                    <small>
+                                                        {lorebook.entryCount} entries,{" "}
+                                                        {lorebook.enabledEntryCount}{" "}
+                                                        enabled
+                                                    </small>
+                                                </span>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
             </section>
 
             <section className="prompt-debug-card" aria-labelledby="prompt-debug-title">

@@ -9,21 +9,27 @@ import {
     setCharacterTagline,
 } from "#frontend/lib/characters/normalize";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type {
-    ChatAuthorNote,
+    ChatMetadata,
     CharacterSummaryCollection,
     SmileyCharacter,
     TavernCardDataV2,
 } from "#frontend/types";
 
-import { ChatDetailsPanel, isAuthorNoteActive } from "./chat-details-panel";
+import {
+    ChatDetailsPanel,
+    hasChatLorebooks,
+    isAuthorNoteActive,
+} from "./chat-details-panel";
 import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
 import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
 
 type CharacterPanelProps = {
-    authorNote?: ChatAuthorNote;
+    chatMetadata?: ChatMetadata;
     character: SmileyCharacter;
     isOpen: boolean;
+    lorebookCollection: LorebookCollection;
     onBeforeAvatarUpload?: () => void | Promise<void>;
     onChange: (character: SmileyCharacter) => void;
     onSavedCharacter?: (
@@ -31,19 +37,20 @@ type CharacterPanelProps = {
         summaries?: CharacterSummaryCollection,
     ) => void;
     onShowDebugPayload: () => void;
-    onUpdateAuthorNote: (authorNote: ChatAuthorNote) => void;
+    onUpdateChatMetadata: (metadata: ChatMetadata) => void;
     pluginSnapshot: PluginAppSnapshot;
 };
 
 export function CharacterPanel({
-    authorNote,
+    chatMetadata,
     character,
     isOpen,
+    lorebookCollection,
     onBeforeAvatarUpload,
     onChange,
     onSavedCharacter,
     onShowDebugPayload,
-    onUpdateAuthorNote,
+    onUpdateChatMetadata,
     pluginSnapshot,
 }: CharacterPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -195,7 +202,10 @@ export function CharacterPanel({
                         <ContextTabs
                             activeTab={activeTab}
                             entityLabel="Character"
-                            hasActiveAuthorNote={isAuthorNoteActive(authorNote)}
+                            hasActiveChatDetails={
+                                isAuthorNoteActive(chatMetadata?.authorNote) ||
+                                hasChatLorebooks(chatMetadata)
+                            }
                             idBase={contextIdBase}
                             onTabChange={setActiveTab}
                         />
@@ -359,9 +369,10 @@ export function CharacterPanel({
                                 hidden={activeTab !== "chat"}
                             >
                                 <ChatDetailsPanel
-                                    authorNote={authorNote}
+                                    chatMetadata={chatMetadata}
+                                    lorebookCollection={lorebookCollection}
                                     onShowDebugPayload={onShowDebugPayload}
-                                    onUpdateAuthorNote={onUpdateAuthorNote}
+                                    onUpdateChatMetadata={onUpdateChatMetadata}
                                 />
                             </section>
                         </div>

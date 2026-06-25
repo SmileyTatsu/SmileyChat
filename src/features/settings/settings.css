@@ -304,9 +304,6 @@
     min-height: 100%;
     box-sizing: border-box;
     align-content: start;
-    border: 0;
-    background: transparent;
-    padding: 2px;
 }
 
 .plugin-list-item {
@@ -1285,9 +1282,6 @@
 .lorebook-detail-panel > .settings-card {
     min-height: 100%;
     box-sizing: border-box;
-    border: 0;
-    background: transparent;
-    padding: 2px;
 }
 
 .empty-lorebook-state {
@@ -1318,53 +1312,6 @@
 .lorebook-empty-detail p {
     margin: 0;
     color: #aeb5c5;
-}
-
-.lorebook-manager-bridge {
-    display: grid;
-    gap: 11px;
-    border: 1px solid #485678;
-    border-radius: 8px;
-    background: #202634;
-    padding: 12px;
-}
-
-.lorebook-manager-bridge header {
-    display: flex;
-    align-items: start;
-    gap: 10px;
-}
-
-.lorebook-manager-bridge header svg {
-    flex: 0 0 auto;
-    color: #dce4ff;
-    margin-top: 1px;
-}
-
-.lorebook-manager-bridge h3,
-.lorebook-manager-bridge p {
-    margin: 0;
-}
-
-.lorebook-manager-bridge h3 {
-    font-size: 0.94rem;
-}
-
-.lorebook-manager-bridge p {
-    color: #c9d0df;
-    font-size: 0.82rem;
-    line-height: 1.4;
-}
-
-.lorebook-manager-bridge button {
-    justify-content: center;
-    min-height: 36px;
-    border: 1px solid #8ea0ca;
-    border-radius: 8px;
-    background: #e1e7ff;
-    color: #15171d;
-    font-weight: 800;
-    padding: 0 12px;
 }
 
 .export-menu-wrap {
@@ -1453,7 +1400,7 @@
 
 .lorebook-list-section > div {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
     gap: 8px;
     min-width: 0;
@@ -1485,10 +1432,6 @@
     color: #fff;
 }
 
-.lorebook-toggle {
-    font-size: 0.72rem;
-}
-
 .lorebook-list strong,
 .lorebook-list small {
     min-width: 0;
@@ -1500,6 +1443,20 @@
 .lorebook-list small {
     color: #9da3b4;
     font-size: 0.75rem;
+}
+
+.lorebook-title-field {
+    display: grid;
+    gap: 7px;
+}
+
+.lorebook-title-field span {
+    color: #b9bfd0;
+    font-size: 0.82rem;
+}
+
+.lorebook-title-field input {
+    min-height: 38px;
 }
 
 .personas-list,

@@ -55,7 +55,6 @@ import type { DebugGenerationPayload } from "./hooks/use-prompt-generation";
 
 import type {
     CharacterSummaryCollection,
-    ChatAuthorNote,
     ChatMetadata,
     ChatMode,
     ChatSession,
@@ -755,8 +754,8 @@ export function App() {
     const handleGroupPanelForceReply = useEventCallback((characterId: string) => {
         void chatSession.forceGroupMemberResponse(characterId);
     });
-    const handlePanelUpdateAuthorNote = useEventCallback((authorNote: ChatAuthorNote) => {
-        handleUpdateChatMetadata({ authorNote });
+    const handlePanelUpdateChatMetadata = useEventCallback((metadata: ChatMetadata) => {
+        handleUpdateChatMetadata(metadata);
     });
     const handleShowDebugPayload = useEventCallback(async () => {
         try {
@@ -941,27 +940,29 @@ export function App() {
 
             {hasCharacters && activeChatIsGroup && activeChat ? (
                 <GroupPanelHost
-                    authorNote={activeChat.metadata?.authorNote}
                     characters={characterSummaries.characters}
+                    chatMetadata={activeChat.metadata}
                     chat={activeChat}
                     isOpenSignal={characterOpenSignal}
+                    lorebookCollection={lorebookCollection}
                     onChange={handleGroupPanelChange}
                     onChangeAvatar={handleGroupPanelChangeAvatar}
                     onForceReply={handleGroupPanelForceReply}
                     onShowDebugPayload={handleShowDebugPayload}
-                    onUpdateAuthorNote={handlePanelUpdateAuthorNote}
+                    onUpdateChatMetadata={handlePanelUpdateChatMetadata}
                 />
             ) : hasCharacters ? (
                 <CharacterPanelHost
-                    authorNote={activeChat?.metadata?.authorNote}
+                    chatMetadata={activeChat?.metadata}
                     character={character}
                     isOpenSignal={characterOpenSignal}
+                    lorebookCollection={lorebookCollection}
                     pluginSnapshot={pluginSnapshot}
                     onChange={handleCharacterPanelChange}
                     onBeforeAvatarUpload={handleCharacterPanelBeforeAvatarUpload}
                     onSavedCharacter={handleCharacterPanelSavedCharacter}
                     onShowDebugPayload={handleShowDebugPayload}
-                    onUpdateAuthorNote={handlePanelUpdateAuthorNote}
+                    onUpdateChatMetadata={handlePanelUpdateChatMetadata}
                 />
             ) : null}
 

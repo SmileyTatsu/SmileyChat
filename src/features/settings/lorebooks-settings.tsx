@@ -30,6 +30,7 @@ export function LorebooksSettings({
     const [activeLorebook, setActiveLorebook] = useState<Lorebook | undefined>();
     const [detailLoadError, setDetailLoadError] = useState("");
     const [status, setStatus] = useState("");
+    const [titleDraft, setTitleDraft] = useState("");
     const [isBusy, setIsBusy] = useState(false);
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,17 +43,6 @@ export function LorebooksSettings({
         () => collection.lorebooks.find((item) => item.id === selectedId),
         [collection, selectedId],
     );
-    const activeSummaries = useMemo(
-        () => collection.lorebooks.filter((lorebook) => lorebook.enabled !== false),
-        [collection],
-    );
-    const inactiveSummaries = useMemo(
-        () => collection.lorebooks.filter((lorebook) => lorebook.enabled === false),
-        [collection],
-    );
-    const activeLorebookEnabled = activeLorebook
-        ? activeLorebook.metadata?.enabled !== false
-        : selectedSummary?.enabled !== false;
 
     useEffect(() => {
         if (!selectedId) {
@@ -62,6 +52,10 @@ export function LorebooksSettings({
 
         void selectLorebook(selectedId);
     }, [selectedId]);
+
+    useEffect(() => {
+        setTitleDraft(activeLorebook?.title ?? "");
+    }, [activeLorebook?.id, activeLorebook?.title]);
 
     async function selectLorebook(lorebookId: string) {
         try {
@@ -166,73 +160,65 @@ export function LorebooksSettings({
         }
     }
 
-    async function toggleLorebook(lorebookId: string, enabled: boolean) {
-        const previousLorebook = activeLorebook;
-
-        try {
-            setIsBusy(true);
-            const sourceLorebook =
-                activeLorebook?.id === lorebookId
-                    ? activeLorebook
-                    : await loadLorebook(lorebookId);
-            const updatedLorebook: Lorebook = {
-                ...sourceLorebook,
-                metadata: {
-                    ...(sourceLorebook.metadata ?? {}),
-                    enabled,
-                },
-                updatedAt: new Date().toISOString(),
-            };
-
-            if (activeLorebook?.id === lorebookId) {
-                setActiveLorebook(updatedLorebook);
-            }
-
-            const result = await saveLorebook(updatedLorebook);
-
-            if (activeLorebook?.id === lorebookId) {
-                setActiveLorebook(result.lorebook);
-            }
-            if (result.lorebooks) {
-                applyCollection(result.lorebooks);
-            }
-            setStatus(enabled ? "Enabled LoreBook." : "Disabled LoreBook.");
-        } catch (error) {
-            setActiveLorebook(previousLorebook);
-            setStatus(messageFromError(error, "Failed to update LoreBook."));
-        } finally {
-            setIsBusy(false);
-        }
-    }
-
     function fallbackExportName(format: "json" | "smiley") {
         const base = activeLorebook?.title || selectedSummary?.title || "lorebook";
         return `${base}.${format === "smiley" ? "smiley-lorebook" : "worldinfo"}.json`;
     }
 
-    function openLorebookManager(lorebookId: string) {
+    function openLorebookManager(lorebookId?: string) {
         onClose();
         window.setTimeout(() => {
             emitPluginEvent("app:open-lorebook-manager", { lorebookId });
         }, 0);
     }
 
-    function renderLorebookSection(
-        title: string,
-        lorebooks: LorebookCollection["lorebooks"],
-    ) {
+    async function saveTitle() {
+        if (!activeLorebook) {
+            return;
+        }
+
+        const nextTitle = titleDraft.trim();
+
+        if (!nextTitle || nextTitle === activeLorebook.title) {
+            setTitleDraft(activeLorebook.title);
+            return;
+        }
+
+        try {
+            setIsBusy(true);
+            setStatus("");
+
+            const result = await saveLorebook({
+                ...activeLorebook,
+                title: nextTitle,
+                updatedAt: new Date().toISOString(),
+            });
+
+            setActiveLorebook(result.lorebook);
+            setTitleDraft(result.lorebook.title);
+
+            if (result.lorebooks) {
+                applyCollection(result.lorebooks);
+            }
+
+            setStatus("Renamed LoreBook.");
+        } catch (error) {
+            setTitleDraft(activeLorebook.title);
+            setStatus(messageFromError(error, "Rename failed."));
+        } finally {
+            setIsBusy(false);
+        }
+    }
+
+    function renderLorebookList(lorebooks: LorebookCollection["lorebooks"]) {
         return (
             <section className="lorebook-list-section">
                 <h3>
-                    {title}
+                    Imported
                     <span>{lorebooks.length}</span>
                 </h3>
                 {lorebooks.length === 0 ? (
-                    <p>
-                        {title === "Active"
-                            ? "No active LoreBooks."
-                            : "No inactive LoreBooks."}
-                    </p>
+                    <p>No LoreBooks imported.</p>
                 ) : (
                     lorebooks.map((lorebook) => (
                         <div
@@ -249,23 +235,6 @@ export function LorebooksSettings({
                                     {lorebook.enabledEntryCount} enabled
                                 </small>
                             </button>
-                            <label className="plugin-toggle lorebook-toggle">
-                                <span>{lorebook.enabled ? "On" : "Off"}</span>
-                                <input
-                                    type="checkbox"
-                                    checked={lorebook.enabled}
-                                    disabled={isBusy}
-                                    onChange={(event) =>
-                                        void toggleLorebook(
-                                            lorebook.id,
-                                            event.currentTarget.checked,
-                                        )
-                                    }
-                                />
-                                <span className="plugin-toggle-track">
-                                    <span />
-                                </span>
-                            </label>
                         </div>
                     ))
                 )}
@@ -278,7 +247,7 @@ export function LorebooksSettings({
             <header className="settings-section-heading">
                 <div>
                     <h2>LoreBooks</h2>
-                    <p>Import, export, enable, and delete native LoreBooks.</p>
+                    <p>Import, inspect, rename, export, and delete native LoreBooks.</p>
                 </div>
                 <div className="button-row">
                     <input
@@ -297,9 +266,28 @@ export function LorebooksSettings({
                         <Upload size={16} />
                         Import
                     </button>
+                    <button
+                        type="button"
+                        disabled={!isLorebooksPluginEnabled}
+                        title={
+                            isLorebooksPluginEnabled
+                                ? "Open LoreBook Manager"
+                                : "Enable the bundled LoreBooks plugin to edit entries."
+                        }
+                        onClick={() => openLorebookManager(selectedId || undefined)}
+                    >
+                        <BookOpen size={16} />
+                        Open Manager
+                    </button>
                 </div>
             </header>
 
+            {!isLorebooksPluginEnabled && (
+                <p className="connection-status">
+                    LoreBook Manager is unavailable until the bundled LoreBooks plugin is
+                    enabled.
+                </p>
+            )}
             {loadError && <p className="connection-status error">{loadError}</p>}
             {detailLoadError && (
                 <p className="connection-status error">{detailLoadError}</p>
@@ -314,10 +302,7 @@ export function LorebooksSettings({
                             <p>No LoreBooks imported.</p>
                         </div>
                     ) : (
-                        <>
-                            {renderLorebookSection("Active", activeSummaries)}
-                            {renderLorebookSection("Inactive", inactiveSummaries)}
-                        </>
+                        renderLorebookList(collection.lorebooks)
                     )}
                 </aside>
 
@@ -334,20 +319,26 @@ export function LorebooksSettings({
                                     </p>
                                 </div>
                             </header>
+                            <label className="lorebook-title-field">
+                                <span>Title</span>
+                                <input
+                                    value={titleDraft}
+                                    disabled={isBusy}
+                                    onInput={(event) =>
+                                        setTitleDraft(event.currentTarget.value)
+                                    }
+                                    onBlur={() => void saveTitle()}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            event.currentTarget.blur();
+                                        }
+                                    }}
+                                />
+                            </label>
                             <dl className="plugin-meta-grid">
                                 <div>
                                     <dt>Entries</dt>
                                     <dd>{activeLorebook.entries.length}</dd>
-                                </div>
-                                <div>
-                                    <dt>Enabled</dt>
-                                    <dd>
-                                        {
-                                            activeLorebook.entries.filter(
-                                                (entry) => entry.enabled,
-                                            ).length
-                                        }
-                                    </dd>
                                 </div>
                                 <div>
                                     <dt>Scan depth</dt>
@@ -360,45 +351,7 @@ export function LorebooksSettings({
                                     </dd>
                                 </div>
                             </dl>
-                            {isLorebooksPluginEnabled ? (
-                                <div className="lorebook-manager-bridge">
-                                    <header>
-                                        <BookOpen size={18} />
-                                        <div>
-                                            <h3>Edit in LoreBook Manager</h3>
-                                            <p>
-                                                Open the bundled editor for entries,
-                                                triggers, placement, and global settings.
-                                            </p>
-                                        </div>
-                                    </header>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            openLorebookManager(activeLorebook.id)
-                                        }
-                                    >
-                                        Edit in LoreBook Manager
-                                    </button>
-                                </div>
-                            ) : (
-                                <p className="connection-status">
-                                    Enable the bundled LoreBooks plugin to edit entries.
-                                </p>
-                            )}
                             <div className="button-row">
-                                <button
-                                    type="button"
-                                    disabled={isBusy}
-                                    onClick={() =>
-                                        void toggleLorebook(
-                                            activeLorebook.id,
-                                            !activeLorebookEnabled,
-                                        )
-                                    }
-                                >
-                                    {activeLorebookEnabled ? "Disable" : "Enable"}
-                                </button>
                                 <div className="export-menu-wrap">
                                     <button
                                         type="button"

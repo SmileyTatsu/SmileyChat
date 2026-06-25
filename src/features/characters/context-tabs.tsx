@@ -3,7 +3,7 @@ type ContextTab = "entity" | "chat";
 type ContextTabsProps = {
     activeTab: ContextTab;
     entityLabel: string;
-    hasActiveAuthorNote: boolean;
+    hasActiveChatDetails: boolean;
     idBase: string;
     onTabChange: (tab: ContextTab) => void;
 };
@@ -13,7 +13,7 @@ const tabs: ContextTab[] = ["entity", "chat"];
 export function ContextTabs({
     activeTab,
     entityLabel,
-    hasActiveAuthorNote,
+    hasActiveChatDetails,
     idBase,
     onTabChange,
 }: ContextTabsProps) {
@@ -62,10 +62,10 @@ export function ContextTabs({
                     onKeyDown={(event) => handleKeyDown(event, tab)}
                 >
                     <span>{tabLabel(tab)}</span>
-                    {tab === "chat" && hasActiveAuthorNote && (
+                    {tab === "chat" && hasActiveChatDetails && (
                         <span
                             className="context-tab-dot"
-                            aria-label="Author note active"
+                            aria-label="Chat details active"
                         />
                     )}
                 </button>

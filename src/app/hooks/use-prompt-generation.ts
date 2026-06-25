@@ -11,7 +11,6 @@ import type { ChatGenerationRequest } from "#frontend/lib/connections/types";
 import { isActiveSwipeError } from "#frontend/lib/messages";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
-import { isLorebookEnabled } from "#frontend/lib/lorebooks/normalize";
 import type { Lorebook, LorebookCollection } from "#frontend/lib/lorebooks/types";
 import {
     getInputMiddlewares,
@@ -328,7 +327,6 @@ export function usePromptGeneration({
             const lorebookIds = Array.from(
                 new Set(
                     [
-                        lorebookCollection.activeLorebookId,
                         ...(sourceChat.metadata?.lorebookIds ?? []),
                         sourceCharacter.metadata?.primaryLorebookId,
                         ...(sourceCharacter.metadata?.lorebookIds ?? []),
@@ -347,9 +345,7 @@ export function usePromptGeneration({
                 }),
             );
 
-            return lorebooks
-                .filter((item): item is Lorebook => Boolean(item))
-                .filter(isLorebookEnabled);
+            return lorebooks.filter((item): item is Lorebook => Boolean(item));
         } catch (error) {
             console.warn("Failed to load native LoreBooks:", error);
             return [];
