@@ -174,6 +174,7 @@ export function App() {
         deleteCharacter,
         deleteChat,
         exportCharacter,
+        forkChatAtMessage,
         importCharacterFiles,
         importChatFile,
         loadCharacterCollection,
@@ -345,6 +346,12 @@ export function App() {
     const handleEditMessage = useCallback((messageId: string, content: string) => {
         latestChatSessionForPluginsRef.current.editMessage(messageId, content);
     }, []);
+    const handleForkMessage = useCallback(
+        (messageId: string) => {
+            void forkChatAtMessage(messageId);
+        },
+        [forkChatAtMessage],
+    );
     const handleModeChange = useCallback((nextMode: ChatMode) => {
         latestChangeModeForWorkspaceRef.current(nextMode);
     }, []);
@@ -922,11 +929,17 @@ export function App() {
                 mode={mode}
                 preferences={preferences}
                 pendingSwipeMessageId={chatSession.pendingSwipeMessageId}
+                canForkMessages={
+                    Boolean(activeChat) &&
+                    !chatSession.isSending &&
+                    !chatSession.pendingSwipeMessageId
+                }
                 emptyState={chatEmptyState}
                 onAbortGeneration={handleAbortGeneration}
                 onDeleteMessage={handleDeleteMessage}
                 onDeleteMessageSwipe={handleDeleteMessageSwipe}
                 onEditMessage={handleEditMessage}
+                onForkMessage={handleForkMessage}
                 onModeChange={handleModeChange}
                 onNextSwipe={handleNextSwipe}
                 onPreviousSwipe={handlePreviousSwipe}

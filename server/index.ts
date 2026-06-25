@@ -25,6 +25,7 @@ import {
     createChat,
     deleteChatById,
     deleteChatsByCharacterId,
+    forkChatAtMessage,
     readChatById,
     readChatSummaryCollection,
     updateChatIndex,
@@ -406,6 +407,17 @@ const server = Bun.serve({
         "/api/chats/:chatId/export-group.json": {
             GET: api(async (request) => {
                 return exportGroupChatDefinition(request.params.chatId);
+            }),
+        },
+
+        "/api/chats/:chatId/fork": {
+            POST: api(async (request) => {
+                const result = await forkChatAtMessage(
+                    request.params.chatId,
+                    await readJsonBody(request),
+                );
+
+                return json({ ok: true, ...result });
             }),
         },
 

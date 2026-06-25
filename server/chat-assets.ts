@@ -1,7 +1,7 @@
-import { mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import { basename, extname, resolve } from "node:path";
 
-import type { ChatAttachment } from "#frontend/types";
+import type { ChatAttachment, Message } from "#frontend/types";
 
 import { BadRequestError, NotFoundError } from "./http";
 import { chatAssetsDir, maxChatAssetBytes } from "./paths";
@@ -81,6 +81,72 @@ export async function deleteChatAssetDirectory(chatId: string) {
     await rm(resolve(chatAssetsDir, cleanChatId), { recursive: true, force: true });
 }
 
+export async function copyChatMessageAssets(
+    sourceChatId: string,
+    targetChatId: string,
+    messages: Message[],
+) {
+    const cleanSourceChatId = safePathSegment(sourceChatId);
+    const cleanTargetChatId = safePathSegment(targetChatId);
+
+    if (!cleanSourceChatId || !cleanTargetChatId) {
+        throw new BadRequestError("Invalid chat id.");
+    }
+
+    const targetFiles = new Set<string>();
+    const rewrittenMessages = rewriteMessageAttachmentUrls(
+        cleanSourceChatId,
+        cleanTargetChatId,
+        messages,
+        targetFiles,
+    );
+
+    if (targetFiles.size === 0) {
+        return rewrittenMessages;
+    }
+
+    const targetDir = resolve(chatAssetsDir, cleanTargetChatId);
+    await mkdir(targetDir, { recursive: true });
+
+    for (const fileName of targetFiles) {
+        await copyFile(
+            chatAssetPath(cleanSourceChatId, fileName),
+            chatAssetPath(cleanTargetChatId, fileName),
+        );
+    }
+
+    return rewrittenMessages;
+}
+
+export function rewriteMessageAttachmentUrls(
+    sourceChatId: string,
+    targetChatId: string,
+    messages: Message[],
+    copiedFiles: Set<string> = new Set(),
+) {
+    const sourcePrefix = `/api/chats/${encodeURIComponent(sourceChatId)}/attachments/`;
+    const targetPrefix = `/api/chats/${encodeURIComponent(targetChatId)}/attachments/`;
+
+    return messages.map((message) => ({
+        ...message,
+        swipes: message.swipes.map((swipe) => ({
+            ...swipe,
+            ...(swipe.attachments
+                ? {
+                      attachments: swipe.attachments.map((attachment) =>
+                          rewriteAttachmentUrl(
+                              attachment,
+                              sourcePrefix,
+                              targetPrefix,
+                              copiedFiles,
+                          ),
+                      ),
+                  }
+                : {}),
+        })),
+    }));
+}
+
 export async function readUploadedChatAssets(request: Request) {
     const formData = await request.formData();
     const files = formData
@@ -121,6 +187,34 @@ function chatAssetPath(chatId: string, fileName: string) {
     }
 
     return targetPath;
+}
+
+function rewriteAttachmentUrl(
+    attachment: ChatAttachment,
+    sourcePrefix: string,
+    targetPrefix: string,
+    copiedFiles: Set<string>,
+) {
+    const fileName = attachment.url.startsWith(sourcePrefix)
+        ? decodeURIComponent(attachment.url.slice(sourcePrefix.length))
+        : "";
+
+    if (!fileName) {
+        return attachment;
+    }
+
+    const cleanFileName = safePathSegment(fileName);
+
+    if (!cleanFileName) {
+        return attachment;
+    }
+
+    copiedFiles.add(cleanFileName);
+
+    return {
+        ...attachment,
+        url: `${targetPrefix}${encodeURIComponent(cleanFileName)}`,
+    };
 }
 
 function safePathSegment(value: string) {

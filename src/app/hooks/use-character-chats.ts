@@ -254,6 +254,7 @@ export function useCharacterChats({
         deleteCharacter,
         deleteChat: chatLibrary.deleteChat,
         exportCharacter: importExport.exportCharacter,
+        forkChatAtMessage: chatLibrary.forkChatAtMessage,
         groupCharacters: chatLibrary.groupCharacters,
         importCharacterFiles: importExport.importCharacterFiles,
         importChatFile: importExport.importChatFile,

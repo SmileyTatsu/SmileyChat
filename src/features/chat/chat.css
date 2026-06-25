@@ -594,9 +594,14 @@
     text-align: left;
 }
 
-.message-menu button:hover {
+.message-menu button:hover:not(:disabled) {
     background: #242832;
     color: #ececf1;
+}
+
+.message-menu button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
 }
 
 .message-menu .danger-menu-item {

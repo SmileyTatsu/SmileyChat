@@ -32,6 +32,7 @@ type MessageListProps = {
     isTyping?: boolean;
     messages: Message[];
     mode: ChatMode;
+    canForkMessages: boolean;
 
     showTimestamps: boolean;
     timeFormat: TimeFormat;
@@ -43,6 +44,7 @@ type MessageListProps = {
     onDeleteMessage: (messageId: string) => void;
     onDeleteMessageSwipe: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
+    onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     getPluginSnapshot: () => PluginAppSnapshot;
@@ -57,6 +59,7 @@ export const MessageList = memo(function MessageList({
     isTyping,
     messages,
     mode,
+    canForkMessages,
     pendingSwipeMessageId,
     resetKey,
     showRpCharacterImages,
@@ -66,6 +69,7 @@ export const MessageList = memo(function MessageList({
     onDeleteMessage,
     onDeleteMessageSwipe,
     onEditMessage,
+    onForkMessage,
     onNextSwipe,
     onPreviousSwipe,
     getPluginSnapshot,
@@ -250,7 +254,7 @@ export const MessageList = memo(function MessageList({
             const list = listRef.current;
             const listRect = list?.getBoundingClientRect();
             const triggerRect = trigger.getBoundingClientRect();
-            const estimatedMenuHeight = 146 + pluginMessageActions.length * 32;
+            const estimatedMenuHeight = 178 + pluginMessageActions.length * 32;
 
             if (listRect) {
                 const spaceBelow = listRect.bottom - triggerRect.bottom;
@@ -438,6 +442,7 @@ export const MessageList = memo(function MessageList({
                             pluginMessageActions={pluginMessageActions}
                             renderer={messageRenderers[0]}
                             messageFormatting={messageFormatting}
+                            canForkMessages={canForkMessages}
                             showRpCharacterImages={showRpCharacterImages}
                             showTimestamps={showTimestamps}
                             timeFormat={timeFormat}
@@ -445,6 +450,7 @@ export const MessageList = memo(function MessageList({
                             onCloseMenu={closeMessageMenu}
                             onCopyMessage={copyMessage}
                             onDeleteMessage={requestDeleteMessage}
+                            onForkMessage={onForkMessage}
                             onNextSwipe={onNextSwipe}
                             onPreviousSwipe={onPreviousSwipe}
                             onSaveEdit={saveEdit}

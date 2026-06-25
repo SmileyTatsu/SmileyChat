@@ -55,6 +55,7 @@ type ChatWorkspaceProps = {
     mode: ChatMode;
     preferences: AppPreferences;
     pendingSwipeMessageId?: string;
+    canForkMessages: boolean;
     emptyState?: {
         title: string;
         description: string;
@@ -64,6 +65,7 @@ type ChatWorkspaceProps = {
     onDeleteMessage: (messageId: string) => void;
     onDeleteMessageSwipe: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
+    onForkMessage: (messageId: string) => void;
     onModeChange: (mode: ChatMode) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
@@ -90,10 +92,12 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     mode,
     preferences,
     pendingSwipeMessageId,
+    canForkMessages,
     emptyState,
     onDeleteMessage,
     onDeleteMessageSwipe,
     onEditMessage,
+    onForkMessage,
     onModeChange,
     onNextSwipe,
     onPreviousSwipe,
@@ -162,9 +166,11 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     showTimestamps={preferences.appearance.showTimestamps}
                     timeFormat={preferences.appearance.timeFormat}
                     messageFormatting={messageFormatting}
+                    canForkMessages={canForkMessages}
                     onDeleteMessage={onDeleteMessage}
                     onDeleteMessageSwipe={onDeleteMessageSwipe}
                     onEditMessage={onEditMessage}
+                    onForkMessage={onForkMessage}
                     onNextSwipe={onNextSwipe}
                     onPreviousSwipe={onPreviousSwipe}
                     getPluginSnapshot={getPluginSnapshot}

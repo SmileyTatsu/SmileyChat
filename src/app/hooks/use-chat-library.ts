@@ -4,6 +4,7 @@ import {
     createChat as createChatRequest,
     deleteChatAttachment,
     deleteChat as deleteChatRequest,
+    forkChat as forkChatRequest,
     loadChat,
     loadChatSummaries,
     saveChatIndex,
@@ -369,6 +370,45 @@ export function useChatLibrary({
 
             setChatLoadError("");
             return createdChat;
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+            return undefined;
+        }
+    }
+
+    async function forkChatAtMessage(messageId: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            setChatLoadError("Open a chat before forking a message.");
+            return undefined;
+        }
+
+        await flushPendingChatAutosaveWithoutStateUpdate();
+
+        try {
+            const result = (await forkChatRequest(sourceChat.id, messageId)) as {
+                chat: ChatSession;
+                chats?: ChatSummaryCollection;
+            };
+            const forkedChat = normalizeChat(result.chat);
+
+            if (!forkedChat) {
+                throw new Error("Invalid forked chat.");
+            }
+
+            setActiveChat(forkedChat);
+            await activateGroupCharactersForChat(forkedChat);
+            setMode(forkedChat.mode);
+
+            if (result.chats) {
+                setChatSummaries(result.chats);
+            } else {
+                updateChatSummary(chatToSummary(forkedChat));
+            }
+
+            setChatLoadError("");
+            return forkedChat;
         } catch (error) {
             setChatLoadError(messageFromError(error));
             return undefined;
@@ -743,6 +783,7 @@ export function useChatLibrary({
         createGroupChat,
         deleteChat,
         flushPendingChatAutosaveWithoutStateUpdate,
+        forkChatAtMessage,
         groupCharacters,
         isChatLoading,
         latestChatRef,

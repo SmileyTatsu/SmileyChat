@@ -2,11 +2,13 @@ import { rm } from "node:fs/promises";
 
 import {
     chatLastMessageAt,
+    chatDisplayTitle,
     chatToSummary,
     isGroupChat,
     normalizeChat,
     normalizeChatSummaryCollection,
 } from "#frontend/lib/chats/normalize";
+import { createId } from "#frontend/lib/common/ids";
 import type {
     ChatIndex,
     ChatSession,
@@ -14,7 +16,7 @@ import type {
 } from "#frontend/lib/chats/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
-import { deleteChatAssetDirectory } from "./chat-assets";
+import { copyChatMessageAssets, deleteChatAssetDirectory } from "./chat-assets";
 import { chatFilePath } from "./chat-file-paths";
 import {
     discoverJsonFiles,
@@ -23,7 +25,7 @@ import {
     readFileBackedIndex,
     writeFileBackedIndex,
 } from "./file-store";
-import { BadRequestError, writeJsonAtomic } from "./http";
+import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
 import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
 
 export async function readChatSummaryCollection(): Promise<ChatSummaryCollection> {
@@ -78,6 +80,72 @@ export async function createChat(value: unknown) {
         chat,
         summary: chatToSummary(chat),
         chats: await readChatSummaryCollection(),
+    };
+}
+
+export async function forkChatAtMessage(chatId: string, value: unknown) {
+    const sourceChat = await readChatById(chatId);
+
+    if (!sourceChat) {
+        throw new NotFoundError("Chat not found.");
+    }
+
+    const now = new Date().toISOString();
+    const forkId = createId("chat");
+    const forkChat = createForkedChatDraft({
+        forkId,
+        messageId: isRecord(value) ? asString(value.messageId) : "",
+        now,
+        sourceChat,
+    });
+    const forkMessages = await copyChatMessageAssets(
+        sourceChat.id,
+        forkId,
+        forkChat.messages,
+    );
+
+    return createChat({
+        ...forkChat,
+        messages: forkMessages,
+    });
+}
+
+export function createForkedChatDraft({
+    forkId,
+    messageId,
+    now,
+    sourceChat,
+}: {
+    forkId: string;
+    messageId: string;
+    now: string;
+    sourceChat: ChatSession;
+}): ChatSession {
+    const targetIndex = sourceChat.messages.findIndex(
+        (message) => message.id === messageId,
+    );
+
+    if (!messageId || targetIndex < 0) {
+        throw new BadRequestError("Choose a message from this chat to fork.");
+    }
+
+    return {
+        id: forkId,
+        version: 1,
+        ...(isGroupChat(sourceChat)
+            ? {
+                  kind: "group" as const,
+                  members: sourceChat.members,
+                  group: sourceChat.group,
+              }
+            : {}),
+        characterId: sourceChat.characterId,
+        defaultTitle: `Fork of ${chatDisplayTitle(sourceChat)}`,
+        mode: sourceChat.mode,
+        ...(sourceChat.metadata ? { metadata: sourceChat.metadata } : {}),
+        messages: sourceChat.messages.slice(0, targetIndex + 1),
+        createdAt: now,
+        updatedAt: now,
     };
 }
 
@@ -374,4 +442,8 @@ function moveChatIdToFront(chatIds: string[], chatId: string) {
 function timestampMs(value: string) {
     const ms = Date.parse(value);
     return Number.isFinite(ms) ? ms : 0;
+}
+
+function asString(value: unknown) {
+    return typeof value === "string" ? value : "";
 }

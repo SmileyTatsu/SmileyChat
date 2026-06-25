@@ -454,6 +454,14 @@ export function createChat(chat: ChatSession) {
     }>("/api/chats", jsonInit("POST", chat));
 }
 
+export function forkChat(chatId: string, messageId: string) {
+    return requestJson<{
+        ok: true;
+        chat: ChatSession;
+        chats?: ChatSummaryCollection;
+    }>(`/api/chats/${encodeURIComponent(chatId)}/fork`, jsonInit("POST", { messageId }));
+}
+
 export function saveChat(chat: ChatSession) {
     return requestJson<{
         ok: true;

@@ -4,6 +4,7 @@ import {
     ChevronRight,
     Copy,
     FilePenLine,
+    GitFork,
     MoreHorizontal,
     Trash2,
     User,
@@ -52,6 +53,7 @@ export type MessageItemProps = {
     menuPlacement: "above" | "below";
     message: Message;
     mode: ChatMode;
+    canForkMessages: boolean;
     openMenuRef: { current: HTMLDivElement | null };
     getPluginSnapshot: () => PluginAppSnapshot;
     messageFormatting: MessageFormattingOptions;
@@ -64,6 +66,7 @@ export type MessageItemProps = {
     onCloseMenu: () => void;
     onCopyMessage: (message: Message) => void | Promise<void>;
     onDeleteMessage: (message: Message) => void;
+    onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     onSaveEdit: (messageId: string, content: string) => void;
@@ -86,6 +89,7 @@ export const MessageItem = memo(function MessageItem({
     menuPlacement,
     message,
     mode,
+    canForkMessages,
     openMenuRef,
     getPluginSnapshot,
     messageFormatting,
@@ -98,6 +102,7 @@ export const MessageItem = memo(function MessageItem({
     onCloseMenu,
     onCopyMessage,
     onDeleteMessage,
+    onForkMessage,
     onNextSwipe,
     onPreviousSwipe,
     onSaveEdit,
@@ -244,6 +249,27 @@ export const MessageItem = memo(function MessageItem({
                                     <Copy size={14} />
                                     Copy
                                 </button>
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    disabled={!canForkMessages}
+                                    title={
+                                        canForkMessages
+                                            ? "Fork chat from this message"
+                                            : "Fork is unavailable while generation is active"
+                                    }
+                                    onClick={() => {
+                                        if (!canForkMessages) {
+                                            return;
+                                        }
+
+                                        onCloseMenu();
+                                        onForkMessage(message.id);
+                                    }}
+                                >
+                                    <GitFork size={14} />
+                                    Fork
+                                </button>
                                 {pluginMessageActions.map((action) => (
                                     <button
                                         key={action.id}
@@ -353,6 +379,7 @@ function areMessageItemPropsEqual(
         previous.menuPlacement === next.menuPlacement &&
         previous.message === next.message &&
         previous.mode === next.mode &&
+        previous.canForkMessages === next.canForkMessages &&
         previous.openMenuRef === next.openMenuRef &&
         previous.getPluginSnapshot === next.getPluginSnapshot &&
         previous.messageFormatting === next.messageFormatting &&
@@ -365,6 +392,7 @@ function areMessageItemPropsEqual(
         previous.onCloseMenu === next.onCloseMenu &&
         previous.onCopyMessage === next.onCopyMessage &&
         previous.onDeleteMessage === next.onDeleteMessage &&
+        previous.onForkMessage === next.onForkMessage &&
         previous.onNextSwipe === next.onNextSwipe &&
         previous.onPreviousSwipe === next.onPreviousSwipe &&
         previous.onSaveEdit === next.onSaveEdit &&
