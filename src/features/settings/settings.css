@@ -5,8 +5,7 @@
 }
 
 .personas-settings,
-.lorebooks-settings,
-.presets-settings {
+.lorebooks-settings {
     grid-template-rows: auto minmax(0, 1fr);
 }
 
