@@ -1,5 +1,6 @@
 import type { h } from "preact";
 
+import { createId } from "../common/ids";
 import type { ConnectionProfile } from "../connections/config";
 import type { ConnectionAdapter } from "../connections/types";
 import type {
@@ -486,7 +487,7 @@ export function createPluginApi(
                 requirePluginPermission(manifest, "ui:modals");
                 const modalId = pluginScopedId(
                     manifest.id,
-                    `${modal.id}-${crypto.randomUUID()}`,
+                    `${modal.id}-${createId("modal")}`,
                 );
                 modalInstances.push({
                     pluginId: manifest.id,

@@ -4,6 +4,7 @@ import { BookOpen, Plus, Save, Search } from "lucide-preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 
 import { loadLorebook, saveLorebook } from "#frontend/lib/api/client";
+import { createId } from "#frontend/lib/common/ids";
 import type {
     Lorebook,
     LorebookEntry,
@@ -820,7 +821,7 @@ function CheckboxField({
 
 function createEntry(): LorebookEntry {
     return {
-        id: `lore-entry-${crypto.randomUUID()}`,
+        id: createId("lore-entry"),
         enabled: true,
         title: "New entry",
         keys: ["new entry"],

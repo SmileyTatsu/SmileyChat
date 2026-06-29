@@ -8,6 +8,7 @@ import {
     getEditableCharacterTagline,
     setCharacterTagline,
 } from "#frontend/lib/characters/normalize";
+import { createId } from "#frontend/lib/common/ids";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type {
@@ -625,5 +626,5 @@ export function CharacterPanel({
 }
 
 function createAlternateGreetingKey() {
-    return crypto.randomUUID();
+    return createId("alternate-greeting");
 }

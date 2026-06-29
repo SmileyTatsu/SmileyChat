@@ -3,6 +3,7 @@ import { memo } from "preact/compat";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
+import { createId } from "#frontend/lib/common/ids";
 import {
     getPluginComposerActions,
     getPluginComposerOptions,
@@ -198,7 +199,7 @@ export const MessageComposer = memo(function MessageComposer({
         setStagedImages((current) => [
             ...current,
             ...images.map((file) => ({
-                id: crypto.randomUUID(),
+                id: createId("staged-image"),
                 file,
                 previewUrl: URL.createObjectURL(file),
             })),
