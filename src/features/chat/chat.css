@@ -71,9 +71,7 @@
 
     &[data-mode="rp"][data-group="true"] {
         grid-template-columns: minmax(0, 1fr);
-        grid-template-areas:
-            "character-name"
-            "chat-title";
+        grid-template-areas: "chat-title";
     }
 
     .chat-character-title {
@@ -241,8 +239,11 @@
     border-radius: 999px;
     background: #e1e7ff;
     color: #15171d;
-    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.38);
+    box-shadow:
+        0 14px 32px rgba(0, 0, 0, 0.38),
+        0 0 0 10px rgba(16, 17, 20, 0.68);
     padding: 0;
+    backdrop-filter: blur(10px);
 }
 
 .jump-to-bottom-button:hover {
@@ -448,7 +449,7 @@
 
 .message-header {
     grid-area: header;
-    @apply flex gap-2;
+    @apply flex items-center gap-2;
 
     .character-title {
         @apply font-bold;
@@ -1189,7 +1190,7 @@
     border: 1px solid #303440;
     background: #111318;
 
-    @apply relative size-16 gap-2 overflow-hidden rounded-md;
+    @apply relative size-16 overflow-hidden rounded-md;
 }
 
 .composer-staged-image img {
@@ -1231,7 +1232,7 @@
 }
 
 .chat-composer-area {
-    @apply flex w-full items-start gap-3 p-2;
+    @apply flex w-full items-end gap-3 p-2;
 
     .composer-image-button {
         display: grid;
