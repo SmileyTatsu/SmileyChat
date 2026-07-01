@@ -111,6 +111,7 @@ function PluginModalFrame({
                         className="icon-button"
                         type="button"
                         title="Close"
+                        aria-label="Close"
                         onClick={close}
                     >
                         <X size={18} />

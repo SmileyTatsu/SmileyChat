@@ -228,6 +228,7 @@
     .plugin-modal:has(.chs-modal) {
         width: calc(100vw - 16px);
         height: calc(100dvh - 16px);
+        max-height: calc(100dvh - 16px);
     }
 
     .chs-modal-actions button {

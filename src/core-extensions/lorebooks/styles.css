@@ -6,7 +6,7 @@
 
 .lbm-add-button,
 .lbm-entry-editor-header > button,
-.lbm-editor-header button {
+.lbm-editor-toolbar button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -22,6 +22,7 @@
 .plugin-modal:has(.lbm-manager) {
     width: min(1120px, calc(100vw - 48px));
     height: min(780px, calc(100dvh - 48px));
+    max-height: min(780px, calc(100dvh - 48px));
 }
 
 .plugin-modal:has(.lbm-manager) .plugin-modal-body {
@@ -184,36 +185,48 @@
     min-height: 0;
 }
 
-.lbm-editor-header {
+.lbm-editor-toolbar {
     display: flex;
-    align-items: start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
     border-bottom: 1px solid #292c35;
     padding: 14px 16px;
 }
 
-.lbm-editor-header h3,
-.lbm-editor-header p {
+.lbm-editor-status {
+    min-width: 0;
+}
+
+.lbm-editor-status strong,
+.lbm-editor-status p {
     margin: 0;
 }
 
-.lbm-editor-header h3 {
+.lbm-editor-status strong {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
     font-size: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.lbm-editor-header p {
+.lbm-editor-status p {
     margin-top: 3px;
     color: #9ea4b3;
     font-size: 0.84rem;
 }
 
-.lbm-editor-header > div:last-child {
+.lbm-editor-toolbar-actions {
     display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
 }
 
-.lbm-editor-header button.primary {
+.lbm-editor-toolbar button.primary {
     background: #e1e7ff;
     color: #15171d;
     font-weight: 800;
@@ -330,6 +343,7 @@
     .plugin-modal:has(.lbm-manager) {
         width: calc(100vw - 16px);
         height: calc(100dvh - 16px);
+        max-height: calc(100dvh - 16px);
     }
 
     .lbm-manager {
@@ -342,16 +356,22 @@
         border-bottom: 1px solid #292c35;
     }
 
-    .lbm-editor-header {
+    .lbm-editor-toolbar {
+        align-items: stretch;
         flex-direction: column;
     }
 
-    .lbm-editor-header > div:last-child {
+    .lbm-editor-toolbar-actions {
         width: 100%;
     }
 
-    .lbm-editor-header button {
-        flex: 1;
+    .lbm-editor-toolbar-actions button {
+        flex: 1 1 140px;
+        min-width: min(160px, 100%);
+    }
+
+    .lbm-editor-toolbar-actions .lbm-back-button {
+        flex-basis: 100%;
     }
 
     .lbm-entry-editor-header {

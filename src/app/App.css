@@ -1039,59 +1039,6 @@ textarea:disabled {
 
 @media (max-width: 1120px) {
     .app-shell {
-        grid-template-columns: 320px minmax(360px, 1fr) auto;
-    }
-
-    .app-shell.sidebar-collapsed {
-        grid-template-columns: 72px minmax(360px, 1fr) auto;
-    }
-
-    .character-mobile-backdrop {
-        display: block;
-    }
-
-    .character-panel {
-        position: fixed;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        z-index: 50;
-        width: 320px;
-        max-width: calc(100vw - 44px);
-        transform: translateX(100%);
-        visibility: hidden;
-        pointer-events: none;
-        transition:
-            transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-            box-shadow 0.2s ease,
-            visibility 0s linear 0.2s;
-        box-shadow: 0 0 40px rgba(0, 0, 0, 0);
-    }
-
-    .character-panel.open {
-        width: 320px;
-        transform: translateX(0);
-        visibility: visible;
-        pointer-events: auto;
-        transition:
-            transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-            box-shadow 0.2s ease,
-            visibility 0s linear 0s;
-        box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
-    }
-
-    .character-panel.collapsed {
-        width: 0;
-        border-left: 0;
-        transform: translateX(100%);
-        visibility: hidden;
-        pointer-events: none;
-        box-shadow: none;
-    }
-}
-
-@media (max-width: 820px) {
-    .app-shell {
         grid-template-columns: 1fr;
     }
 
@@ -1145,6 +1092,51 @@ textarea:disabled {
         box-shadow: none;
     }
 
+    .character-mobile-backdrop {
+        display: block;
+    }
+
+    .character-panel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 50;
+        width: 320px;
+        max-width: calc(100vw - 44px);
+        transform: translateX(100%);
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+            transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.2s ease,
+            visibility 0s linear 0.2s;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0);
+    }
+
+    .character-panel.open {
+        width: 320px;
+        transform: translateX(0);
+        visibility: visible;
+        pointer-events: auto;
+        transition:
+            transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.2s ease,
+            visibility 0s linear 0s;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .character-panel.collapsed {
+        width: 0;
+        border-left: 0;
+        transform: translateX(100%);
+        visibility: hidden;
+        pointer-events: none;
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 820px) {
     .chat-header {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 36px;
@@ -1190,6 +1182,11 @@ textarea:disabled {
     }
 
     .modal-backdrop {
+        align-items: stretch;
+        padding: 8px;
+    }
+
+    .plugin-modal-backdrop {
         align-items: stretch;
         padding: 8px;
     }

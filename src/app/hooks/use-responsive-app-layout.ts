@@ -8,8 +8,8 @@ import {
     mobileSidebarOpen,
 } from "../ui-state";
 
-const MOBILE_SIDEBAR_BREAKPOINT = 820;
 const CHARACTER_DRAWER_BREAKPOINT = 1120;
+const MOBILE_SIDEBAR_BREAKPOINT = CHARACTER_DRAWER_BREAKPOINT;
 
 function useMediaQuery(query: string) {
     const [matches, setMatches] = useState(() => window.matchMedia(query).matches);

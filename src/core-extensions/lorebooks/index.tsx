@@ -344,17 +344,18 @@ function LorebookManager({
             </aside>
 
             <main className="lbm-editor">
-                <header className="lbm-editor-header">
-                    <div>
-                        <h3>{activeLorebook?.title ?? "No LoreBook selected"}</h3>
+                <div className="lbm-editor-toolbar">
+                    <div className="lbm-editor-status">
+                        <strong>{activeLorebook?.title ?? "No LoreBook selected"}</strong>
                         <p>
                             {status ||
                                 activeLorebook?.description ||
                                 "Native LoreBook editor."}
                         </p>
                     </div>
-                    <div>
+                    <div className="lbm-editor-toolbar-actions">
                         <button
+                            className="lbm-back-button"
                             type="button"
                             onClick={() => {
                                 close();
@@ -364,9 +365,6 @@ function LorebookManager({
                             }}
                         >
                             Back to Settings
-                        </button>
-                        <button type="button" onClick={close}>
-                            Close
                         </button>
                         <button
                             className="primary"
@@ -378,7 +376,7 @@ function LorebookManager({
                             <span>{saving ? "Saving" : "Save"}</span>
                         </button>
                     </div>
-                </header>
+                </div>
 
                 {!activeLorebook ? (
                     <div className="lbm-empty-editor">
