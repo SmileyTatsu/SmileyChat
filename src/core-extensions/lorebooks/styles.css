@@ -5,6 +5,7 @@
 }
 
 .lbm-add-button,
+.lbm-entry-editor-header > button,
 .lbm-editor-header button {
     display: inline-flex;
     align-items: center;
@@ -218,6 +219,18 @@
     font-weight: 800;
 }
 
+.lbm-entry-editor-header > button.danger-button {
+    border-color: #633038;
+    background: #2a171b;
+    color: #ffb7bf;
+}
+
+.lbm-entry-editor-header > button.danger-button:hover {
+    border-color: #9c4652;
+    background: #3a1c22;
+    color: #ffdbe0;
+}
+
 .lbm-form,
 .lbm-entry-editor {
     min-height: 0;
@@ -263,13 +276,20 @@
     gap: 8px 14px;
 }
 
+.lbm-entry-editor-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
 .lbm-tabs {
     display: inline-flex;
     gap: 5px;
     border: 1px solid #303440;
     border-radius: 8px;
     background: #15181e;
-    margin-bottom: 14px;
     padding: 4px;
 }
 
@@ -331,6 +351,20 @@
     }
 
     .lbm-editor-header button {
+        flex: 1;
+    }
+
+    .lbm-entry-editor-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .lbm-tabs {
+        width: 100%;
+    }
+
+    .lbm-tabs button,
+    .lbm-entry-editor-header > button {
         flex: 1;
     }
 }

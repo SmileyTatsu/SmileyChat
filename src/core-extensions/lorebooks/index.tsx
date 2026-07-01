@@ -1,6 +1,6 @@
 import styles from "./styles.css?raw";
 
-import { BookOpen, Plus, Save, Search } from "lucide-preact";
+import { BookOpen, Plus, Save, Search, Trash2 } from "lucide-preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 
 import { loadLorebook, saveLorebook } from "#frontend/lib/api/client";
@@ -200,6 +200,38 @@ function LorebookManager({
         setEntryTab("content");
     }
 
+    function deleteEntry(entryId: string) {
+        if (!activeLorebook) {
+            return;
+        }
+
+        const entry = activeLorebook.entries.find((item) => item.id === entryId);
+
+        if (!entry) {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Delete "${entry.title || "Untitled entry"}" from this LoreBook? Save the LoreBook to make this permanent.`,
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const nextEntries = activeLorebook.entries.filter((item) => item.id !== entryId);
+        const deletedIndex = activeLorebook.entries.findIndex(
+            (item) => item.id === entryId,
+        );
+        const nextSelection =
+            nextEntries[Math.min(deletedIndex, nextEntries.length - 1)]?.id ?? "settings";
+
+        updateLorebook({ entries: nextEntries });
+        setSelection(nextSelection);
+        setEntryTab("content");
+        setStatus("Entry deleted. Save the LoreBook to keep this change.");
+    }
+
     async function persist() {
         if (!activeLorebook) {
             return;
@@ -365,6 +397,7 @@ function LorebookManager({
                         tab={entryTab}
                         onTabChange={setEntryTab}
                         onChange={(patch) => updateEntry(selectedEntry.id, patch)}
+                        onDelete={() => deleteEntry(selectedEntry.id)}
                     />
                 ) : (
                     <div className="lbm-empty-editor">Select an entry to edit.</div>
@@ -496,37 +529,45 @@ function EntryEditor({
     tab,
     onTabChange,
     onChange,
+    onDelete,
 }: {
     entry: LorebookEntry;
     tab: EntryTab;
     onTabChange: (tab: EntryTab) => void;
     onChange: (patch: Partial<LorebookEntry>) => void;
+    onDelete: () => void;
 }) {
     return (
         <div className="lbm-entry-editor">
-            <nav className="lbm-tabs">
-                <button
-                    className={tab === "content" ? "active" : ""}
-                    type="button"
-                    onClick={() => onTabChange("content")}
-                >
-                    Content
+            <div className="lbm-entry-editor-header">
+                <nav className="lbm-tabs" aria-label="Entry editor sections">
+                    <button
+                        className={tab === "content" ? "active" : ""}
+                        type="button"
+                        onClick={() => onTabChange("content")}
+                    >
+                        Content
+                    </button>
+                    <button
+                        className={tab === "triggers" ? "active" : ""}
+                        type="button"
+                        onClick={() => onTabChange("triggers")}
+                    >
+                        Triggers & Logic
+                    </button>
+                    <button
+                        className={tab === "placement" ? "active" : ""}
+                        type="button"
+                        onClick={() => onTabChange("placement")}
+                    >
+                        Placement & Budget
+                    </button>
+                </nav>
+                <button className="danger-button" type="button" onClick={onDelete}>
+                    <Trash2 size={15} />
+                    <span>Delete Entry</span>
                 </button>
-                <button
-                    className={tab === "triggers" ? "active" : ""}
-                    type="button"
-                    onClick={() => onTabChange("triggers")}
-                >
-                    Triggers & Logic
-                </button>
-                <button
-                    className={tab === "placement" ? "active" : ""}
-                    type="button"
-                    onClick={() => onTabChange("placement")}
-                >
-                    Placement & Budget
-                </button>
-            </nav>
+            </div>
 
             {tab === "content" && (
                 <div className="lbm-form">
