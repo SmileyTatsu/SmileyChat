@@ -66,6 +66,11 @@ import { NovelAIConnection } from "./providers/novelai-connection";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
+const cachedModelsByProfileId: Record<string, OpenAICompatibleModel[]> = {};
+const cachedOpenRouterModelsByProfileId: Record<string, OpenRouterModel[]> = {};
+const cachedGoogleAIModelsByProfileId: Record<string, GoogleAIModel[]> = {};
+const cachedAnthropicModelsByProfileId: Record<string, AnthropicModel[]> = {};
+
 type ConnectionsSettingsProps = {
     loadError?: string;
     settings: ConnectionSettings;
@@ -79,16 +84,16 @@ export function ConnectionsSettings({
 }: ConnectionsSettingsProps) {
     const [modelsByProfileId, setModelsByProfileId] = useState<
         Record<string, OpenAICompatibleModel[]>
-    >({});
+    >(() => ({ ...cachedModelsByProfileId }));
     const [openRouterModelsByProfileId, setOpenRouterModelsByProfileId] = useState<
         Record<string, OpenRouterModel[]>
-    >({});
+    >(() => ({ ...cachedOpenRouterModelsByProfileId }));
     const [googleAIModelsByProfileId, setGoogleAIModelsByProfileId] = useState<
         Record<string, GoogleAIModel[]>
-    >({});
+    >(() => ({ ...cachedGoogleAIModelsByProfileId }));
     const [anthropicModelsByProfileId, setAnthropicModelsByProfileId] = useState<
         Record<string, AnthropicModel[]>
-    >({});
+    >(() => ({ ...cachedAnthropicModelsByProfileId }));
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
     const [, setRegistryRevision] = useState(0);
@@ -128,44 +133,6 @@ export function ConnectionsSettings({
             ),
         [],
     );
-
-    useEffect(() => {
-        if (!activeProfile) {
-            return;
-        }
-
-        setModelsByProfileId((current) => ({
-            ...current,
-            [activeProfile.id]: [],
-        }));
-        setOpenRouterModelsByProfileId((current) => ({
-            ...current,
-            [activeProfile.id]: [],
-        }));
-        setGoogleAIModelsByProfileId((current) => ({
-            ...current,
-            [activeProfile.id]: [],
-        }));
-        setAnthropicModelsByProfileId((current) => ({
-            ...current,
-            [activeProfile.id]: [],
-        }));
-    }, [
-        activeProfile?.id,
-        isOpenAICompatibleProfile(activeProfile)
-            ? activeProfile.config.baseUrl
-            : undefined,
-        isOpenAICompatibleProfile(activeProfile)
-            ? activeProfile.config.apiKey
-            : undefined,
-        isOpenRouterProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
-        isGoogleAIProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
-        isGoogleAIProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
-        isAnthropicProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
-        isAnthropicProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
-        isNovelAIProfile(activeProfile) ? activeProfile.config.baseUrl : undefined,
-        isNovelAIProfile(activeProfile) ? activeProfile.config.apiKey : undefined,
-    ]);
 
     async function saveSettings(nextSettings = settings) {
         setRequestState("loading");
@@ -404,6 +371,7 @@ export function ConnectionsSettings({
                     apiKey: activeProfile.config.apiKey?.trim() || undefined,
                 });
 
+                cachedOpenRouterModelsByProfileId[activeProfile.id] = nextModels;
                 setOpenRouterModelsByProfileId((current) => ({
                     ...current,
                     [activeProfile.id]: nextModels,
@@ -445,6 +413,7 @@ export function ConnectionsSettings({
                     baseUrl: activeProfile.config.baseUrl,
                 });
 
+                cachedGoogleAIModelsByProfileId[activeProfile.id] = nextModels;
                 setGoogleAIModelsByProfileId((current) => ({
                     ...current,
                     [activeProfile.id]: nextModels,
@@ -493,6 +462,7 @@ export function ConnectionsSettings({
                     baseUrl: activeProfile.config.baseUrl,
                 });
 
+                cachedAnthropicModelsByProfileId[activeProfile.id] = nextModels;
                 setAnthropicModelsByProfileId((current) => ({
                     ...current,
                     [activeProfile.id]: nextModels,
@@ -540,6 +510,7 @@ export function ConnectionsSettings({
                 baseUrl: activeProfile.config.baseUrl,
             });
 
+            cachedModelsByProfileId[activeProfile.id] = nextModels;
             setModelsByProfileId((current) => ({
                 ...current,
                 [activeProfile.id]: nextModels,
@@ -730,21 +701,25 @@ export function ConnectionsSettings({
             delete next[activeProfile.id];
             return next;
         });
+        delete cachedModelsByProfileId[activeProfile.id];
         setOpenRouterModelsByProfileId((current) => {
             const next = { ...current };
             delete next[activeProfile.id];
             return next;
         });
+        delete cachedOpenRouterModelsByProfileId[activeProfile.id];
         setGoogleAIModelsByProfileId((current) => {
             const next = { ...current };
             delete next[activeProfile.id];
             return next;
         });
+        delete cachedGoogleAIModelsByProfileId[activeProfile.id];
         setAnthropicModelsByProfileId((current) => {
             const next = { ...current };
             delete next[activeProfile.id];
             return next;
         });
+        delete cachedAnthropicModelsByProfileId[activeProfile.id];
         setStatusMessage("Deleted connection profile. Saving automatically.");
         setRequestState("success");
     }

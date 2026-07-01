@@ -150,19 +150,18 @@ export function CatalogModelField<TModel>({
                             )
                         }
                     >
-                        {!hasLoadedApiModels &&
-                            defaultModelCategories.map((category) => (
-                                <optgroup key={category.id} label={category.label}>
-                                    {category.models.map((defaultModel) => (
-                                        <option
-                                            key={defaultModel.id}
-                                            value={`default:${defaultModel.id}`}
-                                        >
-                                            {defaultModel.label}
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            ))}
+                        {defaultModelCategories.map((category) => (
+                            <optgroup key={category.id} label={category.label}>
+                                {category.models.map((defaultModel) => (
+                                    <option
+                                        key={defaultModel.id}
+                                        value={`default:${defaultModel.id}`}
+                                    >
+                                        {defaultModel.label}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        ))}
                         {hasLoadedApiModels ? (
                             <optgroup label="Other">
                                 {apiModels.map((apiModel) => {
