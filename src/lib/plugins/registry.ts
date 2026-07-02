@@ -7,6 +7,7 @@ import { requireDeclaredPluginPermission } from "./permissions";
 import type {
     ChatInputMiddleware,
     ChatOutputMiddleware,
+    ChatOutputMiddlewareRegistration,
     LoadedPlugin,
     MessageRenderer,
     PluginActionsApi,
@@ -21,6 +22,7 @@ import type {
     PluginEventsApi,
     PluginHeaderAction,
     PluginMacroResolver,
+    PluginMacroResolveOptions,
     PluginManifest,
     PluginModelApi,
     PluginModalInstance,
@@ -49,6 +51,7 @@ type OwnedEventListener = {
     pluginId: string;
     listener: (payload: unknown) => void;
 };
+type StoredOutputMiddleware = ChatOutputMiddlewareRegistration;
 
 const loadedPlugins: LoadedPlugin[] = [];
 const settingsPanels: Array<Owned<PluginSettingsPanel>> = [];
@@ -62,7 +65,7 @@ const inputMiddlewares: Array<Owned<ChatInputMiddleware>> = [];
 const promptContextMiddlewares: Array<Owned<PluginPromptContextMiddleware>> = [];
 const promptInjectors: Array<Owned<PluginPromptInjector>> = [];
 const promptMiddlewares: Array<Owned<PromptMiddleware>> = [];
-const outputMiddlewares: Array<Owned<ChatOutputMiddleware>> = [];
+const outputMiddlewares: Array<Owned<StoredOutputMiddleware>> = [];
 const modalInstances: Array<Owned<PluginModalInstance>> = [];
 const macroResolvers = new Map<string, Owned<PluginMacroResolver>>();
 const connectionProviders = new Map<string, Owned<PluginConnectionProvider>>();
@@ -78,6 +81,7 @@ let latestSnapshot: PluginAppSnapshot | undefined;
 let appActionHandlers: Partial<PluginAppActionHandlers> = {};
 let draftActionHandlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">> = {};
 let modelHandlers: Partial<PluginModelApi> = {};
+let presetHandlers: Partial<PluginPresetHandlers> = {};
 
 type PluginAppActionHandlers = Pick<
     PluginActionsApi,
@@ -90,6 +94,9 @@ type PluginAppActionHandlers = Pick<
             pluginId: string;
         },
     ) => Promise<void>;
+};
+type PluginPresetHandlers = {
+    resolveMacros: (text: string, options?: PluginMacroResolveOptions) => string;
 };
 
 export function subscribeToPluginRegistry(listener: Listener) {
@@ -206,6 +213,11 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedItems(promptInjectors, pluginId);
     removeOwnedItems(promptMiddlewares, pluginId);
     removeOwnedItems(outputMiddlewares, pluginId);
+    for (const item of modalInstances) {
+        if (item.pluginId === pluginId && item.value.onClose) {
+            callPluginCallback(pluginId, "modal close handler", item.value.onClose);
+        }
+    }
     removeOwnedItems(modalInstances, pluginId);
     removeOwnedMapValues(macroResolvers, pluginId);
     removeOwnedMapValues(connectionProviders, pluginId);
@@ -284,7 +296,14 @@ export function closePluginModal(modalId: string) {
     const index = modalInstances.findIndex((item) => item.value.id === modalId);
 
     if (index >= 0) {
-        modalInstances.splice(index, 1);
+        const [modal] = modalInstances.splice(index, 1);
+        if (modal.value.onClose) {
+            callPluginCallback(
+                modal.pluginId,
+                "modal close handler",
+                modal.value.onClose,
+            );
+        }
         notifyRegistryChanged();
     }
 }
@@ -306,7 +325,9 @@ export function getPromptInjectors() {
 }
 
 export function getOutputMiddlewares() {
-    return enabledValues(outputMiddlewares);
+    return enabledValues(outputMiddlewares)
+        .sort((left, right) => (right.priority ?? 0) - (left.priority ?? 0))
+        .map((middleware) => middleware.run);
 }
 
 export function getPluginMacroValue(
@@ -357,6 +378,10 @@ export function setPluginDraftActionHandlers(
 
 export function setPluginModelHandlers(handlers: Partial<PluginModelApi>) {
     modelHandlers = handlers;
+}
+
+export function setPluginPresetHandlers(handlers: Partial<PluginPresetHandlers>) {
+    presetHandlers = handlers;
 }
 
 export function getPluginCharacterPresence(): PluginCharacterPresence {
@@ -570,7 +595,25 @@ export function createPluginApi(
             },
             registerOutputMiddleware(middleware) {
                 requireDeclaredPluginPermission(manifest, "chat:output");
-                outputMiddlewares.push({ pluginId: manifest.id, value: middleware });
+                if (typeof middleware === "function") {
+                    outputMiddlewares.push({
+                        pluginId: manifest.id,
+                        value: {
+                            id: createId("output-middleware"),
+                            run: middleware,
+                        },
+                    });
+                    return;
+                }
+
+                const middlewareId = pluginScopedId(manifest.id, middleware.id);
+                upsertOwnedItem(outputMiddlewares, manifest.id, middlewareId, {
+                    pluginId: manifest.id,
+                    value: {
+                        ...middleware,
+                        id: middlewareId,
+                    },
+                });
             },
         },
         presets: {
@@ -580,6 +623,16 @@ export function createPluginApi(
                     pluginId: manifest.id,
                     value: resolver,
                 });
+            },
+            resolveMacros(text, options) {
+                requireDeclaredPluginPermission(manifest, "presets:macros");
+                const handler = presetHandlers.resolveMacros;
+
+                if (!handler) {
+                    throw new Error("Plugin macro resolution API is not available.");
+                }
+
+                return handler(text, options);
             },
         },
         connections: {

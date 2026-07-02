@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import {
+    closePluginModal,
     createPluginApi,
+    getOutputMiddlewares,
     getPluginConnectionProviderOwnerId,
     getPluginMacroValue,
+    getPluginModalInstances,
+    setPluginPresetHandlers,
     setPluginEnabledState,
     setPluginSnapshot,
     subscribeToPluginRegistry,
@@ -131,6 +135,68 @@ describe("plugin registry runtime isolation", () => {
 
         expect(getPluginConnectionProviderOwnerId(providerId)).toBe(firstPluginId);
         expect(String(warnings[0]?.[0])).toContain("duplicate plugin key");
+    });
+
+    test("output middleware registrations run by descending priority", async () => {
+        const api = pluginApi(uniqueId("output-priority"), ["chat:output"]);
+        const order: string[] = [];
+
+        api.chat.registerOutputMiddleware({
+            id: "low",
+            priority: 99_999,
+            run: (content) => {
+                order.push("low");
+                return content;
+            },
+        });
+        api.chat.registerOutputMiddleware({
+            id: "high",
+            priority: 100_000,
+            run: (content) => {
+                order.push("high");
+                return content;
+            },
+        });
+
+        for (const middleware of getOutputMiddlewares()) {
+            await middleware("", {} as never);
+        }
+
+        expect(order).toEqual(["high", "low"]);
+    });
+
+    test("modal onClose runs when a plugin modal is closed", () => {
+        const api = pluginApi(uniqueId("modal-close"), ["ui:modals"]);
+        let closeCount = 0;
+
+        api.ui.openModal({
+            id: "review",
+            onClose: () => {
+                closeCount += 1;
+            },
+            render: () => null,
+        });
+
+        const modals = getPluginModalInstances();
+        const modal = modals[modals.length - 1];
+
+        expect(modal).toBeDefined();
+
+        closePluginModal(modal?.id ?? "");
+
+        expect(closeCount).toBe(1);
+    });
+
+    test("preset macro resolution delegates to app handler", () => {
+        const api = pluginApi(uniqueId("macro-resolve"), ["presets:macros"]);
+
+        setPluginPresetHandlers({
+            resolveMacros: (text) => text.replace("{{char}}", "Luna"),
+        });
+
+        expect(api.presets.resolveMacros("Hi {{char}}")).toBe("Hi Luna");
+
+        setPluginPresetHandlers({});
     });
 });
 

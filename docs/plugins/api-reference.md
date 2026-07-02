@@ -26,30 +26,30 @@ Permissions are runtime API declarations for trusted local plugins. They make pl
 
 These permissions are currently checked:
 
-| API                                              | Required permission     |
-| ------------------------------------------------ | ----------------------- |
-| `api.state.getSnapshot`, `api.state.subscribe`   | `state:read`            |
-| `api.actions.*`                                  | `actions`               |
-| `api.model.generate`                             | `model:generate`        |
-| `api.network.fetch`                              | `network:fetch`         |
-| `api.ui.registerSettingsPanel`                   | `ui:settings`           |
-| `api.ui.registerSidebarPanel`                    | `ui:sidebar`            |
-| `api.ui.registerMessageRenderer`                 | `ui:messages`           |
-| `api.ui.registerMessageAction`                   | `ui:message-actions`    |
-| `api.ui.registerComposerAction`                  | `ui:composer`           |
-| `api.ui.registerComposerOption`                  | `ui:composer`           |
-| `api.ui.setComposerState`                        | `ui:composer-state`     |
-| `api.ui.registerHeaderAction`                    | `ui:header`             |
-| `api.ui.openModal`                               | `ui:modals`             |
-| `api.ui.addStyles` and manifest `styles` loading | `ui:styles`             |
-| `api.chat.registerInputMiddleware`               | `chat:input`            |
-| `api.chat.registerPromptContextMiddleware`       | `chat:prompt-context`   |
-| `api.chat.registerPromptInjector`                | `chat:prompt-inject`    |
-| `api.chat.registerPromptMiddleware`              | `chat:prompt`           |
-| `api.chat.registerOutputMiddleware`              | `chat:output`           |
-| `api.presets.registerMacro`                      | `presets:macros`        |
-| `api.connections.registerProvider`               | `connections:providers` |
-| `api.events.on`, `api.events.emit`               | `events`                |
+| API                                                      | Required permission     |
+| -------------------------------------------------------- | ----------------------- |
+| `api.state.getSnapshot`, `api.state.subscribe`           | `state:read`            |
+| `api.actions.*`                                          | `actions`               |
+| `api.model.generate`                                     | `model:generate`        |
+| `api.network.fetch`                                      | `network:fetch`         |
+| `api.ui.registerSettingsPanel`                           | `ui:settings`           |
+| `api.ui.registerSidebarPanel`                            | `ui:sidebar`            |
+| `api.ui.registerMessageRenderer`                         | `ui:messages`           |
+| `api.ui.registerMessageAction`                           | `ui:message-actions`    |
+| `api.ui.registerComposerAction`                          | `ui:composer`           |
+| `api.ui.registerComposerOption`                          | `ui:composer`           |
+| `api.ui.setComposerState`                                | `ui:composer-state`     |
+| `api.ui.registerHeaderAction`                            | `ui:header`             |
+| `api.ui.openModal`                                       | `ui:modals`             |
+| `api.ui.addStyles` and manifest `styles` loading         | `ui:styles`             |
+| `api.chat.registerInputMiddleware`                       | `chat:input`            |
+| `api.chat.registerPromptContextMiddleware`               | `chat:prompt-context`   |
+| `api.chat.registerPromptInjector`                        | `chat:prompt-inject`    |
+| `api.chat.registerPromptMiddleware`                      | `chat:prompt`           |
+| `api.chat.registerOutputMiddleware`                      | `chat:output`           |
+| `api.presets.registerMacro`, `api.presets.resolveMacros` | `presets:macros`        |
+| `api.connections.registerProvider`                       | `connections:providers` |
+| `api.events.on`, `api.events.emit`                       | `events`                |
 
 `api.storage` is available to loaded plugins without a separate runtime permission, but `storage` is still a useful manifest label for user visibility.
 
@@ -430,11 +430,17 @@ Requires `ui:header`. If the action opens a modal, the plugin also needs `ui:mod
 ## `api.ui.openModal`
 
 Opens an app-hosted plugin modal. The returned function closes that modal.
+Use `onClose` for plugin-owned workflows that must resolve or cancel pending work
+when the user closes the modal, the plugin is deactivated, or the modal is closed
+programmatically.
 
 ```js
 const close = api.ui.openModal({
     id: "custom-dialog",
     title: "Custom Dialog",
+    onClose: () => {
+        console.log("Dialog closed.");
+    },
     render: ({ close, snapshot }) =>
         api.ui.h("section", null, [
             api.ui.h("p", null, snapshot?.character.data.name ?? "No snapshot"),
@@ -538,6 +544,10 @@ Requires `chat:prompt-inject`.
 ## `api.chat.registerOutputMiddleware`
 
 Runs after the provider returns a response and before the character message is saved.
+Output middleware is awaited, so long-running middleware can delay final message
+saving. If a middleware opens a review modal or starts a cancellable workflow, it must
+always resolve or reject on accept, reject, cancel, modal close, plugin deactivation,
+and errors.
 
 ```js
 api.chat.registerOutputMiddleware((content) => {
@@ -545,11 +555,43 @@ api.chat.registerOutputMiddleware((content) => {
 });
 ```
 
+Named middleware can set a priority. Higher priority middleware runs first.
+
+```js
+api.chat.registerOutputMiddleware({
+    id: "rewrite-review",
+    priority: 50,
+    async run(content, context) {
+        if (context.trigger === "swipe") {
+            return content;
+        }
+
+        console.log(context.chatId, context.targetMessageId);
+        console.log(context.originalPromptMessages.length);
+        return content.trim();
+    },
+});
+```
+
+Context includes:
+
+- `chatId`
+- `sourceChat`
+- `targetMessageId`
+- `trigger`
+- `originalPromptMessages`
+- `result`
+- `character`
+- `messages`
+- `mode`
+- `persona`
+- `userStatus`
+
 This is the right hook for cleanup, censorship, formatting, translation, or test transformations.
 
 Requires `chat:output`.
 
-## `api.presets.registerMacro`
+## `api.presets.registerMacro` and `api.presets.resolveMacros`
 
 Adds a macro that works in presets and user text macro resolution.
 
@@ -566,6 +608,30 @@ Users can then write:
 ```txt
 {{mood}}
 ```
+
+Resolve SmileyChat macros against the current app snapshot when a plugin needs to
+build temporary prompts for `api.model.generate`.
+
+```js
+const prompt = api.presets.resolveMacros(
+    "Rewrite the latest {{char}} reply for {{user}}:\n{{last_char_message}}",
+);
+```
+
+Pass partial context overrides for plugin-owned temporary workflows.
+
+```js
+const prompt = api.presets.resolveMacros(
+    "Transform this as {{char}}:\n{{last_message}}",
+    {
+        messages: snapshot.messages.slice(-4),
+        metadata: { reason: "post-processing" },
+    },
+);
+```
+
+`resolveMacros` uses the active snapshot by default and includes registered plugin
+macros. It does not compile presets or run prompt middleware.
 
 ## `api.connections.registerProvider`
 

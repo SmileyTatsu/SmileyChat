@@ -22,6 +22,7 @@ import type { MacroContext } from "../presets/macros";
 import type { PresetCollection } from "../presets/types";
 import type {
     PromptBuildContext,
+    PromptGenerationTrigger,
     PromptContextMiddleware,
     PromptInjection,
     PromptInjector,
@@ -221,15 +222,30 @@ export type PluginPromptInjector = PromptInjector;
 
 export type ChatOutputMiddleware = (
     content: string,
-    context: ChatPipelineContext & {
-        result: ChatGenerationResult;
-    },
+    context: ChatOutputMiddlewareContext,
 ) => string | Promise<string>;
+
+export type ChatOutputMiddlewareContext = ChatPipelineContext & {
+    chatId?: string;
+    originalPromptMessages: ChatGenerationMessage[];
+    result: ChatGenerationResult;
+    sourceChat?: ChatSession;
+    targetMessageId?: string;
+    trigger: PromptGenerationTrigger;
+};
+
+export type ChatOutputMiddlewareRegistration = {
+    id: string;
+    priority?: number;
+    run: ChatOutputMiddleware;
+};
 
 export type PluginMacroResolver = (
     context: MacroContext,
     key: string,
 ) => string | undefined;
+
+export type PluginMacroResolveOptions = Partial<MacroContext>;
 
 export type PluginConnectionProvider = {
     id: string;
@@ -331,6 +347,7 @@ export type PluginModalProps = {
 export type PluginModal = {
     id: string;
     title?: string;
+    onClose?: () => void;
     render: (props: PluginModalProps) => ComponentChildren;
 };
 
@@ -365,10 +382,13 @@ export type SmileyPluginApi = {
         registerPromptContextMiddleware(middleware: PluginPromptContextMiddleware): void;
         registerPromptInjector(injector: PluginPromptInjector): void;
         registerPromptMiddleware(middleware: PromptMiddleware): void;
-        registerOutputMiddleware(middleware: ChatOutputMiddleware): void;
+        registerOutputMiddleware(
+            middleware: ChatOutputMiddleware | ChatOutputMiddlewareRegistration,
+        ): void;
     };
     presets: {
         registerMacro(name: string, resolver: PluginMacroResolver): void;
+        resolveMacros(text: string, options?: PluginMacroResolveOptions): string;
     };
     connections: {
         registerProvider(provider: PluginConnectionProvider): void;

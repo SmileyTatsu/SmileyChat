@@ -1,12 +1,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { ChatGenerationResult } from "#frontend/lib/connections/types";
+import { isGroupChat } from "#frontend/lib/chats/normalize";
 import {
     getPluginCharacterPresence,
     getPluginComposerState,
+    getPluginSnapshot,
     isPluginEnabled,
     setPluginAppActionHandlers,
     setPluginModelHandlers,
+    setPluginPresetHandlers,
     setPluginSnapshot,
     subscribeToPluginEvent,
     subscribeToPluginRegistry,
@@ -14,8 +17,10 @@ import {
 import type {
     PluginAppDataChangedEvent,
     PluginAppSnapshot,
+    PluginMacroResolveOptions,
     PluginModelGenerateRequest,
 } from "#frontend/lib/plugins/types";
+import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 
 import { openSettings } from "../ui-state";
 
@@ -156,6 +161,14 @@ export function useAppPluginBridge({
         return () => setPluginModelHandlers({});
     }, [generateModelResponseRef]);
 
+    useEffect(() => {
+        setPluginPresetHandlers({
+            resolveMacros: resolvePluginMacros,
+        });
+
+        return () => setPluginPresetHandlers({});
+    }, []);
+
     const characterPresence = useMemo(
         () => getPluginCharacterPresence(),
         [pluginRegistryRevision],
@@ -174,6 +187,39 @@ export function useAppPluginBridge({
         isLorebooksPluginEnabled,
         pluginComposerState,
     };
+}
+
+function resolvePluginMacros(text: string, options: PluginMacroResolveOptions = {}) {
+    const snapshot = getPluginSnapshot();
+
+    if (!snapshot) {
+        throw new Error("Plugin macro resolution requires an active app snapshot.");
+    }
+
+    const activeChat = snapshot.activeChat;
+    const group =
+        options.group ??
+        (activeChat && isGroupChat(activeChat)
+            ? {
+                  joinPrefix: activeChat.group?.joinPrefix,
+                  memberIds: (activeChat.members ?? []).map(
+                      (member) => member.characterId,
+                  ),
+              }
+            : undefined);
+
+    return resolvePresetMacros(text, {
+        character: options.character ?? snapshot.character,
+        generation: options.generation,
+        group,
+        messages: options.messages ?? snapshot.messages,
+        metadata: options.metadata,
+        mode: options.mode ?? snapshot.mode,
+        outlets: options.outlets,
+        personaDescription: options.personaDescription ?? snapshot.persona.description,
+        personaName: options.personaName ?? snapshot.persona.name,
+        userStatus: options.userStatus ?? snapshot.userStatus,
+    });
 }
 
 export function usePluginSnapshotPublisher(pluginSnapshot: PluginAppSnapshot) {

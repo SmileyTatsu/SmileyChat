@@ -114,7 +114,7 @@ function PluginModalFrame({
                         aria-label="Close"
                         onClick={close}
                     >
-                        <X size={18} />
+                        <X size={18} aria-hidden="true" />
                     </button>
                 </header>
                 <div className="plugin-modal-body">

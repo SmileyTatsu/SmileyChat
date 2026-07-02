@@ -7,7 +7,10 @@ import {
 } from "#frontend/lib/connections/config";
 import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
-import type { ChatGenerationRequest } from "#frontend/lib/connections/types";
+import type {
+    ChatGenerationMessage,
+    ChatGenerationRequest,
+} from "#frontend/lib/connections/types";
 import { isActiveSwipeError } from "#frontend/lib/messages";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
@@ -186,10 +189,12 @@ export function usePromptGeneration({
         const message = await applyOutputMiddlewares(
             result.message,
             generationMessages,
+            request.promptMessages ?? [],
             sourceCharacter,
             sourceMode,
             sourceUserStatus,
             result,
+            options,
         );
 
         return { ...result, message };
@@ -400,20 +405,32 @@ export function usePromptGeneration({
     async function applyOutputMiddlewares(
         content: string,
         messages: Message[],
+        originalPromptMessages: ChatGenerationMessage[],
         sourceCharacter: SmileyCharacter,
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
         result: Awaited<ReturnType<ReturnType<typeof getAdapterForSettings>["generate"]>>,
+        options: {
+            sourceChat?: ChatSession;
+            targetMessageId?: string;
+            trigger?: PromptGenerationTrigger;
+        } = {},
     ) {
         let nextContent = content;
+        const sourceChat = options.sourceChat ?? latestChatRef.current;
 
         for (const middleware of getOutputMiddlewares()) {
             nextContent = await middleware(nextContent, {
+                chatId: sourceChat?.id,
                 character: sourceCharacter,
                 messages,
                 mode: sourceMode,
+                originalPromptMessages,
                 persona,
                 result,
+                sourceChat,
+                targetMessageId: options.targetMessageId,
+                trigger: options.trigger ?? "send",
                 userStatus: sourceUserStatus,
             });
         }
