@@ -669,6 +669,7 @@ export function App() {
             onReasoningToken: request.onReasoningToken,
             onToken: request.onToken,
             promptMessages,
+            signal: request.signal,
             stream: request.stream,
         });
     }

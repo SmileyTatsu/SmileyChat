@@ -81,7 +81,7 @@ let modelHandlers: Partial<PluginModelApi> = {};
 
 type PluginAppActionHandlers = Pick<
     PluginActionsApi,
-    "generateResponse" | "sendMessage" | "switchCharacter"
+    "editMessage" | "generateResponse" | "sendMessage" | "switchCharacter"
 > & {
     injectMessage: (
         role: Parameters<PluginActionsApi["injectMessage"]>[0],
@@ -650,6 +650,16 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
                 ...options,
                 pluginId: manifest.id,
             });
+        },
+        async editMessage(messageId, content) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.editMessage;
+
+            if (!handler) {
+                throw new Error("Plugin editMessage action is not available.");
+            }
+
+            await handler(messageId, content);
         },
         async generateResponse() {
             requireDeclaredPluginPermission(manifest, "actions");

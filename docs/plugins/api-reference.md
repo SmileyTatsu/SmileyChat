@@ -101,6 +101,7 @@ await api.actions.injectMessage("system", "Luna went offline.", {
 });
 await api.actions.generateResponse();
 await api.actions.switchCharacter("character-id");
+await api.actions.editMessage("message-id", "Updated message text.");
 api.actions.setCharacterPresence("away");
 api.actions.setDraft("Draft text");
 api.actions.insertDraft(" appended text");
@@ -136,6 +137,16 @@ Options:
 - `promptRole`: optional prompt role when included: `assistant`, `user`, `system`, or `none`.
 
 Injected messages are stored in the active chat JSON using normal chat autosave. System messages are represented as visible message metadata, not as registered characters.
+
+### `api.actions.editMessage`
+
+Edits the active swipe content of an existing message in the active chat.
+
+```js
+await api.actions.editMessage(message.id, "Rewritten message text.");
+```
+
+This uses the same message editing path as the built-in chat UI, including normal chat autosave and macro resolution against the surrounding chat messages. It only changes the active swipe content; attachments and other swipe metadata are preserved unless the core edit path changes them.
 
 ### `api.actions.setCharacterPresence`
 
@@ -203,6 +214,20 @@ const result = await api.model.generate({
 });
 ```
 
+Pass an `AbortSignal` when a plugin-owned workflow needs user cancellation:
+
+```js
+const controller = new AbortController();
+
+const resultPromise = api.model.generate({
+    messages: [{ role: "user", content: "Rewrite this paragraph: ..." }],
+    signal: controller.signal,
+    stream: true,
+});
+
+controller.abort();
+```
+
 Requires `model:generate`.
 
 Notes:
@@ -214,6 +239,7 @@ Notes:
 - Uses preset generation settings, but does not compile preset prompts.
 - Does not run chat input, prompt, or output middleware.
 - Supports multimodal message parts where the active provider supports them.
+- `signal` is forwarded to the active provider adapter so supported requests can be aborted.
 
 ## `api.network.fetch`
 

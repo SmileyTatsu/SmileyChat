@@ -20,6 +20,7 @@ import type {
 import { openSettings } from "../ui-state";
 
 type ChatSessionActions = {
+    editMessage: (messageId: string, content: string) => void;
     injectMessage: (
         role: "character" | "system" | "user",
         content: string,
@@ -133,6 +134,9 @@ export function useAppPluginBridge({
 
     useEffect(() => {
         setPluginAppActionHandlers({
+            editMessage: async (messageId, content) => {
+                chatSessionRef.current.editMessage(messageId, content);
+            },
             generateResponse: () => chatSessionRef.current.sendMessage(""),
             injectMessage: (role, content, options) =>
                 chatSessionRef.current.injectMessage(role, content, options),

@@ -275,6 +275,7 @@ export type PluginActionsApi = {
         content: string,
         options?: PluginInjectMessageOptions,
     ): Promise<void>;
+    editMessage(messageId: string, content: string): Promise<void>;
     generateResponse(): Promise<void>;
     switchCharacter(characterId: string): Promise<void>;
     setCharacterPresence(status: PluginCharacterPresenceStatus): void;
@@ -301,6 +302,7 @@ export type PluginModelGenerateRequest = {
     onImage?: (url: string) => void;
     presetId?: string;
     profileId?: string;
+    signal?: AbortSignal;
     onReasoningToken?: (token: string) => void;
     onToken?: (token: string) => void;
     stream?: boolean;
