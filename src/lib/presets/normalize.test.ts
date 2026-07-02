@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { importSillyTavernPreset, normalizePreset } from "./normalize";
 
 describe("preset normalization", () => {
-    test("adds default sampler settings when a preset has none", () => {
+    test("preserves presets without generation overrides", () => {
         const preset = normalizePreset({
             id: "preset-a",
             title: "Preset A",
@@ -18,12 +18,29 @@ describe("preset normalization", () => {
             promptOrder: [{ promptId: "prompt-a", enabled: true }],
         });
 
+        expect(preset.generation).toBeUndefined();
+    });
+
+    test("normalizes only explicit generation settings", () => {
+        const preset = normalizePreset({
+            id: "preset-a",
+            title: "Preset A",
+            prompts: [
+                {
+                    id: "prompt-a",
+                    title: "Prompt A",
+                    role: "system",
+                    content: "Hello",
+                },
+            ],
+            promptOrder: [{ promptId: "prompt-a", enabled: true }],
+            generation: {
+                temperature: 0.8,
+            },
+        });
+
         expect(preset.generation).toEqual({
-            frequencyPenalty: 0,
-            presencePenalty: 0,
-            repetitionPenalty: 1,
-            temperature: 1,
-            topP: 1,
+            temperature: 0.8,
         });
     });
 
@@ -57,5 +74,46 @@ describe("preset normalization", () => {
         });
         expect(summary.importedGenerationFields).toEqual(["temperature", "top_p"]);
         expect(summary.ignoredFields).toContain("openai_max_tokens");
+    });
+
+    test("imports the real SillyTavern character prompt order before dummy orders", () => {
+        const { preset } = importSillyTavernPreset(
+            {
+                name: "Imported",
+                prompts: [
+                    {
+                        identifier: "main",
+                        name: "Main",
+                        role: "system",
+                        content: "Main prompt",
+                    },
+                    {
+                        identifier: "extra",
+                        name: "Extra",
+                        role: "system",
+                        content: "Extra prompt",
+                    },
+                ],
+                prompt_order: [
+                    {
+                        character_id: 100000,
+                        order: [
+                            { identifier: "main", enabled: true },
+                            { identifier: "extra", enabled: true },
+                        ],
+                    },
+                    {
+                        character_id: 100001,
+                        order: [{ identifier: "main", enabled: false }],
+                    },
+                ],
+            },
+            "Imported",
+        );
+
+        expect(preset.promptOrder).toEqual([
+            { promptId: "main", enabled: false },
+            { promptId: "extra", enabled: true },
+        ]);
     });
 });

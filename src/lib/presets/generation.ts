@@ -28,7 +28,11 @@ export const sillyTavernGenerationFieldMap = {
 export function normalizePresetGenerationSettings(
     value: unknown,
 ): PresetGenerationSettings | undefined {
-    const source = isRecord(value) ? value : {};
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const source = value;
     const output: PresetGenerationSettings = {};
 
     assignNumber(output, "temperature", source.temperature, 0, 2);
@@ -46,10 +50,7 @@ export function normalizePresetGenerationSettings(
         output.stopSequences = stopSequences;
     }
 
-    return {
-        ...defaultPresetGenerationSettings,
-        ...output,
-    };
+    return Object.keys(output).length ? output : undefined;
 }
 
 export function normalizeSillyTavernGenerationSettings(value: unknown): {

@@ -116,6 +116,9 @@ export function normalizePreset(value: unknown): SmileyPreset {
               })
         : [];
     const orderedIds = new Set(promptOrder.map((entry) => entry.promptId));
+    const generation = normalizePresetGenerationSettings(preset.generation);
+    const metadata = normalizeRecord(preset.metadata);
+    const extensions = normalizeRecord(preset.extensions);
 
     for (const { prompt, sourceEnabled } of promptEntries) {
         if (!orderedIds.has(prompt.id)) {
@@ -131,15 +134,9 @@ export function normalizePreset(value: unknown): SmileyPreset {
         title: stringOrFallback(preset.title, "Untitled preset"),
         prompts,
         promptOrder,
-        ...(normalizePresetGenerationSettings(preset.generation)
-            ? { generation: normalizePresetGenerationSettings(preset.generation) }
-            : {}),
-        ...(normalizeRecord(preset.metadata)
-            ? { metadata: normalizeRecord(preset.metadata) }
-            : {}),
-        ...(normalizeRecord(preset.extensions)
-            ? { extensions: normalizeRecord(preset.extensions) }
-            : {}),
+        ...(generation ? { generation } : {}),
+        ...(metadata ? { metadata } : {}),
+        ...(extensions ? { extensions } : {}),
         createdAt: stringOrFallback(preset.createdAt, now),
         updatedAt: stringOrFallback(preset.updatedAt, now),
     };
@@ -249,6 +246,7 @@ export function createPresetFromDefault(title = "New preset"): SmileyPreset {
 
 function normalizePrompt(value: unknown): PresetPrompt {
     const prompt = isRecord(value) ? value : {};
+    const anchor = normalizePromptAnchor(prompt.anchor);
 
     return {
         id: stringOrFallback(prompt.id, createId("prompt")),
@@ -260,9 +258,7 @@ function normalizePrompt(value: unknown): PresetPrompt {
         injectionPosition: normalizeInjectionPosition(prompt.injectionPosition),
         injectionDepth: numberOrFallback(prompt.injectionDepth, 4),
         forbidOverrides: prompt.forbidOverrides === true,
-        ...(normalizePromptAnchor(prompt.anchor)
-            ? { anchor: normalizePromptAnchor(prompt.anchor) }
-            : {}),
+        ...(anchor ? { anchor } : {}),
     };
 }
 
@@ -277,6 +273,7 @@ function normalizeOrderEntry(value: unknown): PresetPromptOrderEntry {
 
 function normalizeSillyTavernPrompt(value: unknown, index: number): PresetPrompt {
     const prompt = isRecord(value) ? value : {};
+    const anchor = normalizePromptAnchor(prompt.anchor);
 
     return {
         id: stringOrFallback(prompt.identifier, `prompt-${index + 1}`),
@@ -290,9 +287,7 @@ function normalizeSillyTavernPrompt(value: unknown, index: number): PresetPrompt
         ),
         injectionDepth: numberOrFallback(prompt.injection_depth, 4),
         forbidOverrides: prompt.forbid_overrides === true,
-        ...(normalizePromptAnchor(prompt.anchor)
-            ? { anchor: normalizePromptAnchor(prompt.anchor) }
-            : {}),
+        ...(anchor ? { anchor } : {}),
     };
 }
 
@@ -310,19 +305,18 @@ function selectSillyTavernPromptOrder(value: unknown): unknown[] {
         return [];
     }
 
-    let selected: unknown[] = [];
+    const candidates = value.filter(
+        (candidate): candidate is Record<string, unknown> =>
+            isRecord(candidate) && Array.isArray(candidate.order),
+    );
 
-    for (const candidate of value) {
-        if (!isRecord(candidate) || !Array.isArray(candidate.order)) {
-            continue;
-        }
+    const preferredCandidate =
+        candidates.find((candidate) => candidate.character_id === 100001) ??
+        candidates.find((candidate) => candidate.character_id === 100000) ??
+        candidates.find((candidate) => typeof candidate.character_id !== "number") ??
+        candidates[0];
 
-        if (candidate.order.length >= selected.length) {
-            selected = candidate.order;
-        }
-    }
-
-    return selected;
+    return Array.isArray(preferredCandidate?.order) ? preferredCandidate.order : [];
 }
 
 function normalizeRole(value: unknown): PresetPromptRole {
