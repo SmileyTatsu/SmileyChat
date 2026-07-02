@@ -101,7 +101,9 @@ export function setPluginSnapshot(snapshot: PluginAppSnapshot) {
 
     for (const item of snapshotListeners) {
         if (isPluginEnabled(item.pluginId)) {
-            item.listener(snapshot);
+            callPluginCallback(item.pluginId, "snapshot listener", () =>
+                item.listener(snapshot),
+            );
         }
     }
 }
@@ -126,7 +128,9 @@ export function subscribeToPluginEvent(
 export function emitPluginEvent(eventName: string, payload?: unknown) {
     for (const item of eventListeners.get(eventName) ?? []) {
         if (item.pluginId === "app" || isPluginEnabled(item.pluginId)) {
-            item.listener(payload);
+            callPluginCallback(item.pluginId, `event listener for "${eventName}"`, () =>
+                item.listener(payload),
+            );
         }
     }
 }
@@ -309,9 +313,21 @@ export function getPluginMacroValue(
     context: Parameters<PluginMacroResolver>[0],
 ) {
     const resolver = macroResolvers.get(name);
-    return resolver && isPluginEnabled(resolver.pluginId)
-        ? resolver.value(context, name)
-        : undefined;
+
+    if (!resolver || !isPluginEnabled(resolver.pluginId)) {
+        return undefined;
+    }
+
+    try {
+        return resolver.value(context, name);
+    } catch (error) {
+        warnPluginCallbackError(
+            resolver.pluginId,
+            `macro resolver for "{{${name}}}"`,
+            error,
+        );
+        return undefined;
+    }
 }
 
 export function getPluginConnectionProvider(providerId: string) {
@@ -394,8 +410,12 @@ export function createPluginApi(
                 const item = { pluginId: manifest.id, listener };
                 snapshotListeners.add(item);
 
-                if (latestSnapshot) {
-                    listener(latestSnapshot);
+                const snapshot = latestSnapshot;
+
+                if (snapshot) {
+                    callPluginCallback(manifest.id, "snapshot listener", () =>
+                        listener(snapshot),
+                    );
                 }
 
                 return () => snapshotListeners.delete(item);
@@ -696,8 +716,29 @@ function pluginScopedId(pluginId: string, itemId: string) {
 
 function notifyRegistryChanged() {
     for (const listener of listeners) {
-        listener();
+        callRegistryCallback("registry listener", listener);
     }
+}
+
+function callPluginCallback(pluginId: string, action: string, callback: () => void) {
+    try {
+        callback();
+    } catch (error) {
+        warnPluginCallbackError(pluginId, action, error);
+    }
+}
+
+function callRegistryCallback(action: string, callback: () => void) {
+    try {
+        callback();
+    } catch (error) {
+        console.warn(`Plugin ${action} failed:`, error);
+    }
+}
+
+function warnPluginCallbackError(pluginId: string, action: string, error: unknown) {
+    const displayName = pluginId === "app" ? "app" : getPluginDisplayName(pluginId);
+    console.warn(`Plugin ${displayName} ${action} failed:`, error);
 }
 
 function enabledValues<T>(items: Array<Owned<T>>) {
