@@ -23,16 +23,15 @@ export async function applyProfileToPlugins(
     plugins: PluginManifest[],
 ): Promise<ProfileActivationResult> {
     const appliedEnabled = buildAppliedEnabledMap(profile, plugins);
-    const configsToApply: Record<string, PluginConfigSnapshot> = profile.pluginConfig
-        ? profile.pluginConfig
-        : Object.fromEntries(plugins.map((plugin) => [plugin.id, {}]));
+    const configsToApply: Record<string, PluginConfigSnapshot> =
+        profile.pluginConfig ?? {};
     const enabledChanges: Array<{ plugin: PluginManifest; enabled: boolean }> = [];
-    const configChanges: string[] = [];
+    const configChanges = new Set<string>();
 
     for (const [pluginId, snapshot] of Object.entries(configsToApply)) {
         try {
             await savePluginStorageSnapshot(pluginId, snapshot);
-            configChanges.push(pluginId);
+            configChanges.add(pluginId);
         } catch (error) {
             console.warn(`Could not restore plugin storage for ${pluginId}:`, error);
         }
@@ -41,7 +40,7 @@ export async function applyProfileToPlugins(
     for (const plugin of plugins) {
         const currentEnabled = plugin.enabled !== false;
         const targetEnabled = appliedEnabled[plugin.id] ?? true;
-        const configRestored = configChanges.includes(plugin.id);
+        const configRestored = configChanges.has(plugin.id);
 
         if (currentEnabled !== targetEnabled) {
             await applyEnabledChange(plugin, targetEnabled);
@@ -54,7 +53,7 @@ export async function applyProfileToPlugins(
         }
     }
 
-    return { appliedEnabled, enabledChanges, configChanges };
+    return { appliedEnabled, enabledChanges, configChanges: [...configChanges] };
 }
 
 export async function snapshotAllPluginConfigs(
