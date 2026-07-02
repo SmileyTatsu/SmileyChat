@@ -356,9 +356,11 @@ function normalizeSillyTavernInjectionPosition(value: unknown): PresetInjectionP
 function normalizePromptAnchor(value: unknown): PresetPromptAnchor | undefined {
     switch (value) {
         case "after-character":
+        case "after-examples":
         case "after-history":
         case "after-scenario":
         case "before-character":
+        case "before-examples":
         case "before-history":
         case "before-scenario":
             return value;

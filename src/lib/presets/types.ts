@@ -3,9 +3,11 @@ export type PresetPromptRole = "system" | "user" | "assistant";
 export type PresetInjectionPosition = "none" | "before" | "after";
 export type PresetPromptAnchor =
     | "after-character"
+    | "after-examples"
     | "after-history"
     | "after-scenario"
     | "before-character"
+    | "before-examples"
     | "before-history"
     | "before-scenario";
 

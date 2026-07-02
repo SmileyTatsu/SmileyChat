@@ -48,7 +48,7 @@ export function createDefaultPreset(now = new Date().toISOString()): SmileyPrese
             injectionPosition: "none",
             injectionDepth: 4,
             forbidOverrides: false,
-            anchor: "after-character",
+            anchor: "after-examples",
         },
         {
             id: dynamicPromptIds.characterPersonality,

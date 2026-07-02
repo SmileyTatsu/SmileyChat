@@ -75,9 +75,13 @@ function anchorTargetIndex(messages: AnchoredPromptMessage[], anchor: PromptAnch
     switch (anchor) {
         case "before-character":
         case "after-character":
+            return messages.findIndex((item) => item.anchor === "after-character");
         case "before-examples":
         case "after-examples":
-            return messages.findIndex((item) => item.anchor === "after-character");
+            return firstMatchingAnchorIndex(messages, [
+                "before-examples",
+                "after-examples",
+            ]);
         case "before-scenario":
         case "after-scenario":
             return messages.findIndex((item) => item.anchor === "after-scenario");
@@ -88,6 +92,21 @@ function anchorTargetIndex(messages: AnchoredPromptMessage[], anchor: PromptAnch
         default:
             return -1;
     }
+}
+
+function firstMatchingAnchorIndex(
+    messages: AnchoredPromptMessage[],
+    anchors: PromptAnchor[],
+) {
+    const index = messages.findIndex(
+        (item) => item.anchor !== undefined && anchors.includes(item.anchor),
+    );
+
+    if (index >= 0) {
+        return index;
+    }
+
+    return messages.findIndex((item) => item.anchor === "after-character");
 }
 
 function firstHistoryIndex(messages: AnchoredPromptMessage[]) {
@@ -115,10 +134,12 @@ function atDepthIndex(messages: AnchoredPromptMessage[], depth: number) {
     }
 
     const safeDepth = Number.isFinite(depth) ? Math.max(0, Math.floor(depth)) : 0;
-    const targetHistoryIndex =
-        historyIndexes[Math.max(0, historyIndexes.length - 1 - safeDepth)];
 
-    return targetHistoryIndex;
+    if (safeDepth === 0) {
+        return historyIndexes[historyIndexes.length - 1] + 1;
+    }
+
+    return historyIndexes[Math.max(0, historyIndexes.length - safeDepth)];
 }
 
 function isBeforeAnchor(anchor: PromptAnchor) {

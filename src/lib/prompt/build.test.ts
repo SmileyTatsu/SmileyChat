@@ -78,7 +78,7 @@ describe("buildPromptForGeneration", () => {
 
         expect(depthIndex).toBeGreaterThan(-1);
         expect(lastUserIndex).toBeGreaterThan(-1);
-        expect(depthIndex).toBeLessThan(lastUserIndex);
+        expect(depthIndex).toBeGreaterThan(lastUserIndex);
     });
 
     test("renders outlet injections through outlet macros", async () => {
