@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import {
     createPluginApi,
+    getPluginConnectionProviderOwnerId,
     getPluginMacroValue,
     setPluginEnabledState,
     setPluginSnapshot,
@@ -92,6 +93,44 @@ describe("plugin registry runtime isolation", () => {
         });
 
         expect(getPluginMacroValue(macroName, {} as never)).toBeUndefined();
+    });
+
+    test("duplicate macro names keep the first plugin owner", () => {
+        const warnings: unknown[][] = [];
+        console.warn = (...args) => warnings.push(args);
+        const macroName = uniqueId("duplicate-macro");
+        const firstApi = pluginApi(uniqueId("macro-first"), ["presets:macros"]);
+        const secondApi = pluginApi(uniqueId("macro-second"), ["presets:macros"]);
+
+        firstApi.presets.registerMacro(macroName, () => "first");
+        secondApi.presets.registerMacro(macroName, () => "second");
+
+        expect(getPluginMacroValue(macroName, {} as never)).toBe("first");
+        expect(String(warnings[0]?.[0])).toContain("duplicate plugin key");
+    });
+
+    test("duplicate connection provider IDs keep the first plugin owner", () => {
+        const warnings: unknown[][] = [];
+        console.warn = (...args) => warnings.push(args);
+        const providerId = uniqueId("duplicate-provider");
+        const firstPluginId = uniqueId("provider-first");
+        const firstApi = pluginApi(firstPluginId, ["connections:providers"]);
+        const secondApi = pluginApi(uniqueId("provider-second"), [
+            "connections:providers",
+        ]);
+        const provider = {
+            id: providerId,
+            label: providerId,
+            createAdapter() {
+                throw new Error("unused");
+            },
+        };
+
+        firstApi.connections.registerProvider(provider);
+        secondApi.connections.registerProvider(provider);
+
+        expect(getPluginConnectionProviderOwnerId(providerId)).toBe(firstPluginId);
+        expect(String(warnings[0]?.[0])).toContain("duplicate plugin key");
     });
 });
 

@@ -17,12 +17,14 @@ export function activate(api) {
 }
 ```
 
-The API shape is defined in `src/lib/plugins/types.ts`. Most runtime APIs require matching `permissions` entries in `plugin.json`.
+The API shape is defined in `src/lib/plugins/types.ts`. Most runtime APIs require matching `permissions` declarations in `plugin.json`.
 `api.state.getSnapshot()` can return `undefined` before the app has published its first plugin snapshot.
 
 ## Permissions
 
-These permissions are currently enforced:
+Permissions are runtime API declarations for trusted local plugins. They make plugin behavior visible and cause undeclared API calls to fail, but they are not a browser sandbox or security boundary.
+
+These permissions are currently checked:
 
 | API                                              | Required permission     |
 | ------------------------------------------------ | ----------------------- |

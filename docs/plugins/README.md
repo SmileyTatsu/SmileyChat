@@ -28,7 +28,7 @@ Current plugin surfaces:
 - Connection provider registration.
 - Plugin-owned JSON storage.
 
-Plugin API permissions are enforced by the runtime for most hooks. A plugin that calls a protected API without the matching manifest permission fails to load or fails when that API is called.
+Plugin API permissions are runtime declarations checked by most protected hooks. A plugin that calls a protected API without the matching manifest permission fails to load or fails when that API is called, but plugins are trusted local code and are not sandboxed.
 
 ## Plugin Profiles
 

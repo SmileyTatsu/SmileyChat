@@ -3,6 +3,7 @@ import type { h } from "preact";
 import { createId } from "../common/ids";
 import type { ConnectionProfile } from "../connections/config";
 import type { ConnectionAdapter } from "../connections/types";
+import { requireDeclaredPluginPermission } from "./permissions";
 import type {
     ChatInputMiddleware,
     ChatOutputMiddleware,
@@ -402,11 +403,11 @@ export function createPluginApi(
         plugin: manifest,
         state: {
             getSnapshot() {
-                requirePluginPermission(manifest, "state:read");
+                requireDeclaredPluginPermission(manifest, "state:read");
                 return getPluginSnapshot();
             },
             subscribe(listener) {
-                requirePluginPermission(manifest, "state:read");
+                requireDeclaredPluginPermission(manifest, "state:read");
                 const item = { pluginId: manifest.id, listener };
                 snapshotListeners.add(item);
 
@@ -425,14 +426,14 @@ export function createPluginApi(
         model: pluginModel(manifest),
         network: {
             fetch(url, init) {
-                requirePluginPermission(manifest, "network:fetch");
+                requireDeclaredPluginPermission(manifest, "network:fetch");
                 return network.fetch(url, init);
             },
         },
         ui: {
             h: preactH,
             registerSettingsPanel(panel) {
-                requirePluginPermission(manifest, "ui:settings");
+                requireDeclaredPluginPermission(manifest, "ui:settings");
                 settingsPanels.push({
                     pluginId: manifest.id,
                     value: { ...panel, id: pluginScopedId(manifest.id, panel.id) },
@@ -440,7 +441,7 @@ export function createPluginApi(
                 notifyRegistryChanged();
             },
             registerSidebarPanel(panel) {
-                requirePluginPermission(manifest, "ui:sidebar");
+                requireDeclaredPluginPermission(manifest, "ui:sidebar");
                 const panelId = pluginScopedId(manifest.id, panel.id);
                 upsertOwnedItem(sidebarPanels, manifest.id, panelId, {
                     pluginId: manifest.id,
@@ -452,7 +453,7 @@ export function createPluginApi(
                 notifyRegistryChanged();
             },
             registerMessageRenderer(renderer) {
-                requirePluginPermission(manifest, "ui:messages");
+                requireDeclaredPluginPermission(manifest, "ui:messages");
                 const rendererId = pluginScopedId(manifest.id, renderer.id);
                 upsertOwnedItem(messageRenderers, manifest.id, rendererId, {
                     pluginId: manifest.id,
@@ -464,7 +465,7 @@ export function createPluginApi(
                 notifyRegistryChanged();
             },
             registerMessageAction(action) {
-                requirePluginPermission(manifest, "ui:message-actions");
+                requireDeclaredPluginPermission(manifest, "ui:message-actions");
                 messageActions.push({
                     pluginId: manifest.id,
                     value: { ...action, id: pluginScopedId(manifest.id, action.id) },
@@ -472,7 +473,7 @@ export function createPluginApi(
                 notifyRegistryChanged();
             },
             registerComposerAction(action) {
-                requirePluginPermission(manifest, "ui:composer");
+                requireDeclaredPluginPermission(manifest, "ui:composer");
                 composerActions.push({
                     pluginId: manifest.id,
                     value: { ...action, id: pluginScopedId(manifest.id, action.id) },
@@ -480,7 +481,7 @@ export function createPluginApi(
                 notifyRegistryChanged();
             },
             registerComposerOption(option) {
-                requirePluginPermission(manifest, "ui:composer");
+                requireDeclaredPluginPermission(manifest, "ui:composer");
                 const optionId = pluginScopedId(manifest.id, option.id);
                 upsertOwnedItem(composerOptions, manifest.id, optionId, {
                     pluginId: manifest.id,
@@ -492,7 +493,7 @@ export function createPluginApi(
                 notifyRegistryChanged();
             },
             registerHeaderAction(action) {
-                requirePluginPermission(manifest, "ui:header");
+                requireDeclaredPluginPermission(manifest, "ui:header");
                 const actionId = pluginScopedId(manifest.id, action.id);
                 upsertOwnedItem(headerActions, manifest.id, actionId, {
                     pluginId: manifest.id,
@@ -504,7 +505,7 @@ export function createPluginApi(
                 notifyRegistryChanged();
             },
             openModal(modal) {
-                requirePluginPermission(manifest, "ui:modals");
+                requireDeclaredPluginPermission(manifest, "ui:modals");
                 const modalId = pluginScopedId(
                     manifest.id,
                     `${modal.id}-${createId("modal")}`,
@@ -522,14 +523,14 @@ export function createPluginApi(
                 return () => closePluginModal(modalId);
             },
             addStyles(cssText) {
-                requirePluginPermission(manifest, "ui:styles");
+                requireDeclaredPluginPermission(manifest, "ui:styles");
                 const style = document.createElement("style");
                 style.dataset.pluginId = manifest.id;
                 style.textContent = cssText;
                 document.head.append(style);
             },
             setComposerState(state) {
-                requirePluginPermission(manifest, "ui:composer-state");
+                requireDeclaredPluginPermission(manifest, "ui:composer-state");
                 const nextState = {
                     ...(typeof state.disabled === "boolean"
                         ? { disabled: state.disabled }
@@ -549,33 +550,33 @@ export function createPluginApi(
         },
         chat: {
             registerInputMiddleware(middleware) {
-                requirePluginPermission(manifest, "chat:input");
+                requireDeclaredPluginPermission(manifest, "chat:input");
                 inputMiddlewares.push({ pluginId: manifest.id, value: middleware });
             },
             registerPromptContextMiddleware(middleware) {
-                requirePluginPermission(manifest, "chat:prompt-context");
+                requireDeclaredPluginPermission(manifest, "chat:prompt-context");
                 promptContextMiddlewares.push({
                     pluginId: manifest.id,
                     value: middleware,
                 });
             },
             registerPromptInjector(injector) {
-                requirePluginPermission(manifest, "chat:prompt-inject");
+                requireDeclaredPluginPermission(manifest, "chat:prompt-inject");
                 promptInjectors.push({ pluginId: manifest.id, value: injector });
             },
             registerPromptMiddleware(middleware) {
-                requirePluginPermission(manifest, "chat:prompt");
+                requireDeclaredPluginPermission(manifest, "chat:prompt");
                 promptMiddlewares.push({ pluginId: manifest.id, value: middleware });
             },
             registerOutputMiddleware(middleware) {
-                requirePluginPermission(manifest, "chat:output");
+                requireDeclaredPluginPermission(manifest, "chat:output");
                 outputMiddlewares.push({ pluginId: manifest.id, value: middleware });
             },
         },
         presets: {
             registerMacro(name, resolver) {
-                requirePluginPermission(manifest, "presets:macros");
-                macroResolvers.set(name.trim(), {
+                requireDeclaredPluginPermission(manifest, "presets:macros");
+                registerOwnedMapValue(macroResolvers, name.trim(), {
                     pluginId: manifest.id,
                     value: resolver,
                 });
@@ -583,12 +584,18 @@ export function createPluginApi(
         },
         connections: {
             registerProvider(provider) {
-                requirePluginPermission(manifest, "connections:providers");
-                connectionProviders.set(provider.id, {
-                    pluginId: manifest.id,
-                    value: provider,
-                });
-                notifyRegistryChanged();
+                requireDeclaredPluginPermission(manifest, "connections:providers");
+                const registered = registerOwnedMapValue(
+                    connectionProviders,
+                    provider.id,
+                    {
+                        pluginId: manifest.id,
+                        value: provider,
+                    },
+                );
+                if (registered) {
+                    notifyRegistryChanged();
+                }
             },
         },
         storage,
@@ -607,7 +614,7 @@ export function createAdapterFromPluginProvider(
 function pluginModel(manifest: PluginManifest): PluginModelApi {
     return {
         async generate(request) {
-            requirePluginPermission(manifest, "model:generate");
+            requireDeclaredPluginPermission(manifest, "model:generate");
             const handler = modelHandlers.generate;
 
             if (!handler) {
@@ -622,7 +629,7 @@ function pluginModel(manifest: PluginManifest): PluginModelApi {
 function pluginActions(manifest: PluginManifest): PluginActionsApi {
     return {
         async sendMessage(content, options) {
-            requirePluginPermission(manifest, "actions");
+            requireDeclaredPluginPermission(manifest, "actions");
             const handler = appActionHandlers.sendMessage;
 
             if (!handler) {
@@ -632,7 +639,7 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             await handler(content, options);
         },
         async injectMessage(role, content, options) {
-            requirePluginPermission(manifest, "actions");
+            requireDeclaredPluginPermission(manifest, "actions");
             const handler = appActionHandlers.injectMessage;
 
             if (!handler) {
@@ -645,7 +652,7 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             });
         },
         async generateResponse() {
-            requirePluginPermission(manifest, "actions");
+            requireDeclaredPluginPermission(manifest, "actions");
             const handler = appActionHandlers.generateResponse;
 
             if (!handler) {
@@ -655,7 +662,7 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             await handler();
         },
         async switchCharacter(characterId) {
-            requirePluginPermission(manifest, "actions");
+            requireDeclaredPluginPermission(manifest, "actions");
             const handler = appActionHandlers.switchCharacter;
 
             if (!handler) {
@@ -665,7 +672,7 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             await handler(characterId);
         },
         setCharacterPresence(status) {
-            requirePluginPermission(manifest, "actions");
+            requireDeclaredPluginPermission(manifest, "actions");
 
             if (!["online", "away", "dnd", "offline"].includes(status)) {
                 throw new Error(`Unsupported character presence status: ${status}`);
@@ -675,7 +682,7 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             notifyRegistryChanged();
         },
         setDraft(text) {
-            requirePluginPermission(manifest, "actions");
+            requireDeclaredPluginPermission(manifest, "actions");
             const handler = draftActionHandlers.setDraft;
 
             if (!handler) {
@@ -685,7 +692,7 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             handler(text);
         },
         insertDraft(text) {
-            requirePluginPermission(manifest, "actions");
+            requireDeclaredPluginPermission(manifest, "actions");
             const handler = draftActionHandlers.insertDraft;
 
             if (!handler) {
@@ -700,11 +707,11 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
 function pluginEvents(manifest: PluginManifest): PluginEventsApi {
     return {
         on(eventName, listener) {
-            requirePluginPermission(manifest, "events");
+            requireDeclaredPluginPermission(manifest, "events");
             return subscribeToPluginEvent(eventName, listener, manifest.id);
         },
         emit(eventName, payload) {
-            requirePluginPermission(manifest, "events");
+            requireDeclaredPluginPermission(manifest, "events");
             emitPluginEvent(eventName, payload);
         },
     };
@@ -747,14 +754,6 @@ function enabledValues<T>(items: Array<Owned<T>>) {
         .map((item) => item.value);
 }
 
-function requirePluginPermission(manifest: PluginManifest, permission: string) {
-    if (manifest.permissions?.includes(permission)) {
-        return;
-    }
-
-    throw new Error(`${manifest.name} needs "${permission}" permission.`);
-}
-
 function removeOwnedItems<T>(items: Array<Owned<T>>, pluginId: string) {
     for (let index = items.length - 1; index >= 0; index -= 1) {
         if (items[index].pluginId === pluginId) {
@@ -786,4 +785,22 @@ function removeOwnedMapValues<T>(items: Map<string, Owned<T>>, pluginId: string)
             items.delete(key);
         }
     }
+}
+
+function registerOwnedMapValue<T>(
+    items: Map<string, Owned<T>>,
+    key: string,
+    item: Owned<T>,
+) {
+    const current = items.get(key);
+
+    if (current && current.pluginId !== item.pluginId) {
+        console.warn(
+            `Plugin ${getPluginDisplayName(item.pluginId)} tried to register duplicate plugin key "${key}" already owned by ${getPluginDisplayName(current.pluginId)}.`,
+        );
+        return false;
+    }
+
+    items.set(key, item);
+    return true;
 }

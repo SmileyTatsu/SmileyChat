@@ -14,6 +14,7 @@ import {
     recordLoadedPlugin,
     recordPluginDisposer,
 } from "./registry";
+import { requireDeclaredPluginPermission } from "./permissions";
 import type {
     PluginManifest,
     PluginNetworkApi,
@@ -103,13 +104,15 @@ export async function loadRuntimePlugin(manifest: PluginManifest) {
             throw new Error(`${manifest.name} does not define a plugin entry URL.`);
         }
 
+        assertLocalPluginAssetUrl(manifest.entryUrl, "entry URL");
         deactivatePlugin(manifest.id);
 
         if (manifest.styleUrls?.length) {
-            requirePluginPermission(manifest, "ui:styles");
+            requireDeclaredPluginPermission(manifest, "ui:styles");
         }
 
         for (const styleUrl of manifest.styleUrls ?? []) {
+            assertLocalPluginAssetUrl(styleUrl, "stylesheet URL");
             attachPluginStylesheet(manifest.id, styleUrl);
         }
 
@@ -146,11 +149,7 @@ export async function loadRuntimePlugin(manifest: PluginManifest) {
 }
 
 function attachPluginStylesheet(pluginId: string, href: string) {
-    if (
-        document.querySelector(
-            `link[data-plugin-id="${CSS.escape(pluginId)}"][href="${href}"]`,
-        )
-    ) {
+    if (document.querySelector(pluginStylesheetSelector(pluginId, href))) {
         return;
     }
 
@@ -234,10 +233,29 @@ function pluginStorageUrl(pluginId: string, key: string) {
     return `/api/plugins/${encodeURIComponent(pluginId)}/storage/${encodeURIComponent(key)}`;
 }
 
-function requirePluginPermission(manifest: PluginManifest, permission: string) {
-    if (manifest.permissions?.includes(permission)) {
+export function isLocalPluginAssetUrl(
+    value: string,
+    baseHref = globalThis.location?.href,
+) {
+    try {
+        const base = baseHref ?? "http://smileychat.local/";
+        const url = new URL(value, base);
+        const baseUrl = new URL(base);
+
+        return url.origin === baseUrl.origin && url.pathname.startsWith("/plugins/");
+    } catch {
+        return false;
+    }
+}
+
+export function assertLocalPluginAssetUrl(value: string, label: string) {
+    if (isLocalPluginAssetUrl(value)) {
         return;
     }
 
-    throw new Error(`${manifest.name} needs "${permission}" permission.`);
+    throw new Error(`Plugin ${label} must be a local /plugins/... URL.`);
+}
+
+export function pluginStylesheetSelector(pluginId: string, href: string) {
+    return `link[data-plugin-id="${CSS.escape(pluginId)}"][href="${CSS.escape(href)}"]`;
 }

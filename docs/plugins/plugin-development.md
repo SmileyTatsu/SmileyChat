@@ -60,7 +60,7 @@ export function activate(api) {
 
 Keep `id` stable. Plugin storage, profiles, and registry installs are keyed by plugin ID.
 
-Use the narrowest permissions that match the plugin behavior. Permission labels are enforced by the runtime for protected APIs, but plugins are still trusted local code and are not a sandbox.
+Use the narrowest permissions that match the plugin behavior. Permission labels are runtime declarations checked by protected APIs, but plugins are still trusted local code and are not sandboxed.
 
 Use `category` to make the plugin easier to find in Options > Plugins:
 
