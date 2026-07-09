@@ -31,6 +31,7 @@ export function MessageAttachments({
                             href={attachment.url}
                             target="_blank"
                             rel="noreferrer"
+                            download={attachment.name ?? ""}
                         >
                             <FileText size={16} />
                             <span>{attachment.name ?? "Attachment"}</span>

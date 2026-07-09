@@ -36,7 +36,10 @@ async function materializeMessageAttachments(
                         type: "file" as const,
                         file: {
                             ...part.file,
-                            file_data: await attachmentUrlToDataUrl(part.file.url),
+                            file_data: await attachmentUrlToDataUrl(
+                                part.file.url,
+                                part.file.mime_type,
+                            ),
                         },
                     }
                   : part,
@@ -183,7 +186,7 @@ export async function filePartToBlob(file: {
     throw new Error("File input is missing data.");
 }
 
-async function attachmentUrlToDataUrl(url: string) {
+async function attachmentUrlToDataUrl(url: string, preferredMimeType?: string) {
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -191,7 +194,11 @@ async function attachmentUrlToDataUrl(url: string) {
     }
 
     const blob = await response.blob();
-    const mimeType = blob.type || response.headers.get("Content-Type") || "image/png";
+    const mimeType =
+        preferredMimeType ||
+        blob.type ||
+        response.headers.get("Content-Type") ||
+        "image/png";
     const buffer = await blob.arrayBuffer();
     const base64 = arrayBufferToBase64(buffer);
 

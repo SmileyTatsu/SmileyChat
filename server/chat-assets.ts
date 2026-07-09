@@ -25,9 +25,10 @@ async function writeChatAsset(chatId: string, file: File): Promise<ChatAttachmen
 
     const originalName = basename(file.name || "file");
     const inferredMimeType = file.type || mimeTypeFromFileName(originalName);
-    const isImage =
-        inferredMimeType.startsWith("image/") ||
-        isImageExtension(extname(originalName).toLowerCase());
+    const isImage = isSafeInlineImage(
+        inferredMimeType,
+        extname(originalName).toLowerCase(),
+    );
     const maxBytes = isImage ? maxChatAssetBytes : maxChatFileAssetBytes;
 
     if (file.size > maxBytes) {
@@ -70,7 +71,20 @@ export async function serveChatAsset(chatId: string, fileName: string) {
         throw new NotFoundError("Attachment not found.");
     }
 
-    return new Response(file);
+    const contentType = safeInlineImageMimeType(fileName) || undefined;
+    const headers = new Headers({
+        "Content-Type": contentType ?? "application/octet-stream",
+        "X-Content-Type-Options": "nosniff",
+    });
+
+    headers.set(
+        "Content-Disposition",
+        contentType
+            ? `inline; filename="${contentDispositionFilename(fileName)}"`
+            : `attachment; filename="${contentDispositionFilename(fileName)}"`,
+    );
+
+    return new Response(file, { headers });
 }
 
 export async function deleteChatAsset(chatId: string, fileName: string) {
@@ -243,10 +257,45 @@ function cleanAttachmentExtension(fileName: string, mimeType: string, isImage: b
     return ".img";
 }
 
-function isImageExtension(extension: string) {
-    return [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif"].includes(
-        extension,
-    );
+function isSafeInlineImage(mimeType: string, extension: string) {
+    const mimeFromExtension = safeInlineImageMimeType(`file${extension}`);
+
+    if (!mimeFromExtension) {
+        return false;
+    }
+
+    if (!mimeType) {
+        return true;
+    }
+
+    return safeInlineImageMimeTypes().has(mimeType.toLowerCase());
+}
+
+function safeInlineImageMimeType(fileName: string) {
+    const extension = extname(fileName).toLowerCase();
+
+    if (extension === ".png") return "image/png";
+    if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+    if (extension === ".webp") return "image/webp";
+    if (extension === ".gif") return "image/gif";
+    if (extension === ".bmp") return "image/bmp";
+    if (extension === ".avif") return "image/avif";
+    return "";
+}
+
+function safeInlineImageMimeTypes() {
+    return new Set([
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+        "image/bmp",
+        "image/avif",
+    ]);
+}
+
+function contentDispositionFilename(fileName: string) {
+    return basename(fileName).replace(/["\\\r\n]/g, "_") || "attachment";
 }
 
 function mimeTypeFromFileName(fileName: string) {
