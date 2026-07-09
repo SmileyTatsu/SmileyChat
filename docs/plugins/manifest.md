@@ -74,6 +74,10 @@ Recommended labels:
 
 `storage` is currently a user-visible label only. The storage API is available to loaded plugins without a separate runtime permission.
 
+`model:generate` covers custom model requests plus related local model utilities:
+`api.model.generate`, `api.model.estimateTokens`, and
+`api.model.getContextBudget`.
+
 `enabled`
 
 Optional boolean. Defaults to `true`. The Options > Plugins toggle writes this field.

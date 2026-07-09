@@ -26,30 +26,29 @@ Permissions are runtime API declarations for trusted local plugins. They make pl
 
 These permissions are currently checked:
 
-| API                                                      | Required permission     |
-| -------------------------------------------------------- | ----------------------- |
-| `api.state.getSnapshot`, `api.state.subscribe`           | `state:read`            |
-| `api.actions.*`                                          | `actions`               |
-| `api.model.generate`                                     | `model:generate`        |
-| `api.network.fetch`                                      | `network:fetch`         |
-| `api.ui.registerSettingsPanel`                           | `ui:settings`           |
-| `api.ui.registerSidebarPanel`                            | `ui:sidebar`            |
-| `api.ui.registerMessageRenderer`                         | `ui:messages`           |
-| `api.ui.registerMessageAction`                           | `ui:message-actions`    |
-| `api.ui.registerComposerAction`                          | `ui:composer`           |
-| `api.ui.registerComposerOption`                          | `ui:composer`           |
-| `api.ui.setComposerState`                                | `ui:composer-state`     |
-| `api.ui.registerHeaderAction`                            | `ui:header`             |
-| `api.ui.openModal`                                       | `ui:modals`             |
-| `api.ui.addStyles` and manifest `styles` loading         | `ui:styles`             |
-| `api.chat.registerInputMiddleware`                       | `chat:input`            |
-| `api.chat.registerPromptContextMiddleware`               | `chat:prompt-context`   |
-| `api.chat.registerPromptInjector`                        | `chat:prompt-inject`    |
-| `api.chat.registerPromptMiddleware`                      | `chat:prompt`           |
-| `api.chat.registerOutputMiddleware`                      | `chat:output`           |
-| `api.presets.registerMacro`, `api.presets.resolveMacros` | `presets:macros`        |
-| `api.connections.registerProvider`                       | `connections:providers` |
-| `api.events.on`, `api.events.emit`                       | `events`                |
+| API                                                                            | Required permission     |
+| ------------------------------------------------------------------------------ | ----------------------- |
+| `api.state.getSnapshot`, `api.state.subscribe`                                 | `state:read`            |
+| `api.actions.*`                                                                | `actions`               |
+| `api.model.generate`, `api.model.estimateTokens`, `api.model.getContextBudget` | `model:generate`        |
+| `api.network.fetch`                                                            | `network:fetch`         |
+| `api.ui.registerSettingsPanel`                                                 | `ui:settings`           |
+| `api.ui.registerSidebarPanel`                                                  | `ui:sidebar`            |
+| `api.ui.registerMessageRenderer`                                               | `ui:messages`           |
+| `api.ui.registerMessageAction`                                                 | `ui:message-actions`    |
+| `api.ui.registerComposerAction`, `api.ui.registerComposerOption`               | `ui:composer`           |
+| `api.ui.setComposerState`                                                      | `ui:composer-state`     |
+| `api.ui.registerHeaderAction`                                                  | `ui:header`             |
+| `api.ui.openModal`                                                             | `ui:modals`             |
+| `api.ui.addStyles` and manifest `styles` loading                               | `ui:styles`             |
+| `api.chat.registerInputMiddleware`                                             | `chat:input`            |
+| `api.chat.registerPromptContextMiddleware`                                     | `chat:prompt-context`   |
+| `api.chat.registerPromptInjector`                                              | `chat:prompt-inject`    |
+| `api.chat.registerPromptMiddleware`                                            | `chat:prompt`           |
+| `api.chat.registerOutputMiddleware`                                            | `chat:output`           |
+| `api.presets.registerMacro`, `api.presets.resolveMacros`                       | `presets:macros`        |
+| `api.connections.registerProvider`                                             | `connections:providers` |
+| `api.events.on`, `api.events.emit`                                             | `events`                |
 
 `api.storage` is available to loaded plugins without a separate runtime permission, but `storage` is still a useful manifest label for user visibility.
 
@@ -242,6 +241,73 @@ Notes:
 - Does not run chat input, prompt, or output middleware.
 - Supports multimodal message parts where the active provider supports them.
 - `signal` is forwarded to the active provider adapter so supported requests can be aborted.
+
+## `api.model.estimateTokens`
+
+Returns SmileyChat's estimated token count for a plugin-supplied temporary message
+history. This uses the same local estimator SmileyChat uses for generation message
+budget checks. It is an estimate, not a provider tokenizer.
+
+```js
+const messages = [
+    { role: "system", content: "Keep the reply brief." },
+    { role: "user", content: "Summarize this scene: ..." },
+];
+
+const estimatedTokens = api.model.estimateTokens(messages);
+console.log(`${estimatedTokens} tokens estimated`);
+```
+
+Requires `model:generate`.
+
+Notes:
+
+- Accepts the same message shape used by `api.model.generate`.
+- Counts text, image parts, and file parts with SmileyChat's local heuristic.
+- Does not contact the provider and does not expose API keys.
+
+## `api.model.getContextBudget`
+
+Returns the configured context token limit for a connection profile. By default this
+uses the active connection profile. Pass `profileId` to inspect another saved
+profile without changing the user's active UI state.
+
+```js
+const snapshot = api.state.getSnapshot();
+const backgroundProfile = snapshot?.connectionSettings.profiles.find(
+    (profile) => profile.name === "Background tasks",
+);
+
+const activeBudget = api.model.getContextBudget();
+const backgroundBudget = api.model.getContextBudget({
+    profileId: backgroundProfile?.id,
+});
+```
+
+Requires `model:generate`.
+
+Use `estimateTokens` and `getContextBudget` together when a plugin needs to trim its
+own temporary request history:
+
+```js
+let messages = buildPluginMessages();
+const budget = api.model.getContextBudget({ profileId: backgroundProfile?.id });
+
+while (api.model.estimateTokens(messages) > budget && messages.length > 2) {
+    messages = [messages[0], ...messages.slice(2)];
+}
+
+const result = await api.model.generate({
+    profileId: backgroundProfile?.id,
+    messages,
+});
+```
+
+Notes:
+
+- Unknown `profileId` values fall back to SmileyChat's default context budget.
+- The returned value is the local context limit configured in Connections, not a
+  live provider model limit.
 
 ## `api.network.fetch`
 
