@@ -8,6 +8,7 @@ import {
     isNovelAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
+    isXAIProfile,
     type ConnectionSettings,
 } from "./config";
 import { createAnthropicConnection } from "./anthropic/adapter";
@@ -15,6 +16,7 @@ import { createGoogleAIConnection } from "./google-ai/adapter";
 import { createNovelAIConnection } from "./novelai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
+import { createXAIConnection } from "./xai/adapter";
 
 export function getAdapterForSettings(
     settings: ConnectionSettings,
@@ -89,6 +91,17 @@ export function getAdapterForSettings(
         });
     }
 
+    if (isXAIProfile(profile)) {
+        if (!profile.config.model.id.trim()) {
+            throw new Error(`${profile.name} needs a model.`);
+        }
+
+        return createXAIConnection({
+            ...profile.config,
+            apiKey: profile.config.apiKey?.trim() || undefined,
+        });
+    }
+
     const pluginAdapter = createAdapterFromPluginProvider(profile.provider, profile);
 
     if (!pluginAdapter) {
@@ -113,7 +126,8 @@ function applyTemporaryModelOverride(
         isOpenRouterProfile(profile) ||
         isGoogleAIProfile(profile) ||
         isAnthropicProfile(profile) ||
-        isNovelAIProfile(profile)
+        isNovelAIProfile(profile) ||
+        isXAIProfile(profile)
     ) {
         return {
             ...profile,

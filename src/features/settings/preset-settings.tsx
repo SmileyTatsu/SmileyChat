@@ -816,6 +816,34 @@ function collectGenerationWarnings(
         );
     }
 
+    if (
+        profile.provider === "xai" &&
+        (generation.topK !== undefined ||
+            generation.minP !== undefined ||
+            generation.topA !== undefined ||
+            generation.repetitionPenalty !== undefined)
+    ) {
+        warnings.push(
+            "xAI Chat Completions does not use Top K, Min P, Top A, or Repetition penalty. Those fields will be omitted.",
+        );
+    }
+
+    if (profile.provider === "xai") {
+        const reasoning = (profile.config as Record<string, unknown>)["reasoning"];
+
+        if (
+            isRecord(reasoning) &&
+            reasoning.enabled === true &&
+            (generation.presencePenalty !== undefined ||
+                generation.frequencyPenalty !== undefined ||
+                generation.stopSequences?.length)
+        ) {
+            warnings.push(
+                "xAI reasoning models reject presence penalty, frequency penalty, and stop sequences when reasoning effort is active. Those fields will be omitted.",
+            );
+        }
+    }
+
     if (profile.provider === "anthropic") {
         const modelId = isRecord(profile.config.model)
             ? String(profile.config.model.id ?? "")

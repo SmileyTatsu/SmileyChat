@@ -12,6 +12,7 @@ import {
     isNovelAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
+    isXAIProfile,
     sanitizeConnectionSecrets,
     sanitizeConnectionSettings,
     type ConnectionProfile,
@@ -40,6 +41,12 @@ import type { OpenAICompatibleModel } from "#frontend/lib/connections/openai-com
 import { createOpenRouterConnection } from "#frontend/lib/connections/openrouter/adapter";
 import { listOpenRouterModels } from "#frontend/lib/connections/openrouter/models";
 import type { OpenRouterModel } from "#frontend/lib/connections/openrouter/types";
+import {
+    createXAIChatCompletionsUrl,
+    createXAIConnection,
+} from "#frontend/lib/connections/xai/adapter";
+import { listXAIModels } from "#frontend/lib/connections/xai/models";
+import type { XAIModel } from "#frontend/lib/connections/xai/types";
 import { createUserMessage } from "#frontend/lib/messages";
 import { defaultPersona } from "#frontend/lib/personas/defaults";
 import {
@@ -63,6 +70,7 @@ import { AnthropicConnection } from "./providers/anthropic-connection";
 import { OpenAICompatibleConnection } from "./providers/openai-compatible-connection";
 import { OpenRouterConnection } from "./providers/openrouter-connection";
 import { NovelAIConnection } from "./providers/novelai-connection";
+import { XAIConnection } from "./providers/xai-connection";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
@@ -70,6 +78,7 @@ const cachedModelsByProfileId: Record<string, OpenAICompatibleModel[]> = {};
 const cachedOpenRouterModelsByProfileId: Record<string, OpenRouterModel[]> = {};
 const cachedGoogleAIModelsByProfileId: Record<string, GoogleAIModel[]> = {};
 const cachedAnthropicModelsByProfileId: Record<string, AnthropicModel[]> = {};
+const cachedXAIModelsByProfileId: Record<string, XAIModel[]> = {};
 
 type ConnectionsSettingsProps = {
     loadError?: string;
@@ -94,6 +103,9 @@ export function ConnectionsSettings({
     const [anthropicModelsByProfileId, setAnthropicModelsByProfileId] = useState<
         Record<string, AnthropicModel[]>
     >(() => ({ ...cachedAnthropicModelsByProfileId }));
+    const [xaiModelsByProfileId, setXAIModelsByProfileId] = useState<
+        Record<string, XAIModel[]>
+    >(() => ({ ...cachedXAIModelsByProfileId }));
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
     const [, setRegistryRevision] = useState(0);
@@ -109,6 +121,9 @@ export function ConnectionsSettings({
         : [];
     const activeAnthropicModels = activeProfile
         ? (anthropicModelsByProfileId[activeProfile.id] ?? [])
+        : [];
+    const activeXAIModels = activeProfile
+        ? (xaiModelsByProfileId[activeProfile.id] ?? [])
         : [];
     const pluginProviders = getPluginConnectionProviders();
     const activePluginProvider = activeProfile
@@ -311,6 +326,34 @@ export function ConnectionsSettings({
                 return;
             }
 
+            if (isXAIProfile(activeProfile)) {
+                const targetUrl = createXAIChatCompletionsUrl(activeProfile.config);
+
+                setRequestState("loading");
+                setStatusMessage(`Testing POST ${targetUrl}`);
+
+                try {
+                    const adapter = createXAIConnection({
+                        ...activeProfile.config,
+                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    });
+                    const result = await adapter.generate({
+                        context: "Reply briefly to confirm the connection works.",
+                        messages: [createUserMessage("hello", defaultPersona)],
+                    });
+
+                    setStatusMessage(`xAI connection test succeeded: ${result.message}`);
+                    setRequestState("success");
+                } catch (error) {
+                    setStatusMessage(
+                        messageFromError(error, "Unexpected connection error."),
+                    );
+                    setRequestState("error");
+                }
+
+                return;
+            }
+
             if (!activePluginProvider?.testConnection) {
                 setStatusMessage(
                     `${activeProfile.name} does not provide a connection test.`,
@@ -495,6 +538,51 @@ export function ConnectionsSettings({
             return;
         }
 
+        if (isXAIProfile(activeProfile)) {
+            setRequestState("loading");
+            setStatusMessage(
+                `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
+            );
+
+            try {
+                const nextModels = await listXAIModels({
+                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
+                    baseUrl: activeProfile.config.baseUrl,
+                });
+
+                cachedXAIModelsByProfileId[activeProfile.id] = nextModels;
+                setXAIModelsByProfileId((current) => ({
+                    ...current,
+                    [activeProfile.id]: nextModels,
+                }));
+
+                if (nextModels[0] && activeProfile.config.model.source !== "custom") {
+                    const currentId = activeProfile.config.model.id;
+                    const currentIsLoaded =
+                        activeProfile.config.model.source === "api" &&
+                        nextModels.some((model) => model.id === currentId);
+
+                    if (!currentIsLoaded) {
+                        updateActiveProfileConfig({
+                            ...activeProfile.config,
+                            model: {
+                                source: "api",
+                                id: nextModels[0].id,
+                            },
+                        });
+                    }
+                }
+
+                setStatusMessage(`Loaded ${nextModels.length} xAI model(s).`);
+                setRequestState("success");
+            } catch (error) {
+                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setRequestState("error");
+            }
+
+            return;
+        }
+
         if (!isOpenAICompatibleProfile(activeProfile)) {
             return;
         }
@@ -624,7 +712,8 @@ export function ConnectionsSettings({
             providerId === "openrouter" ||
             providerId === "google-ai" ||
             providerId === "anthropic" ||
-            providerId === "novelai"
+            providerId === "novelai" ||
+            providerId === "xai"
                 ? undefined
                 : (provider?.defaultConfig ?? {});
         const nextProfile = createConnectionProfile(
@@ -637,7 +726,9 @@ export function ConnectionsSettings({
                     ? "Anthropic"
                     : providerId === "novelai"
                       ? "NovelAI"
-                      : (provider?.label ?? "OpenAI compatible"),
+                      : providerId === "xai"
+                        ? "xAI"
+                        : (provider?.label ?? "OpenAI compatible"),
             config,
         );
 
@@ -720,6 +811,12 @@ export function ConnectionsSettings({
             return next;
         });
         delete cachedAnthropicModelsByProfileId[activeProfile.id];
+        setXAIModelsByProfileId((current) => {
+            const next = { ...current };
+            delete next[activeProfile.id];
+            return next;
+        });
+        delete cachedXAIModelsByProfileId[activeProfile.id];
         setStatusMessage("Deleted connection profile. Saving automatically.");
         setRequestState("success");
     }
@@ -806,6 +903,7 @@ export function ConnectionsSettings({
                                 <option value="google-ai">Google AI</option>
                                 <option value="anthropic">Anthropic</option>
                                 <option value="novelai">NovelAI</option>
+                                <option value="xai">xAI</option>
                                 {pluginProviders.map((provider) => (
                                     <option key={provider.id} value={provider.id}>
                                         {provider.label}
@@ -869,6 +967,16 @@ export function ConnectionsSettings({
                             disabled={isBusy}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
+                            onTest={testConnection}
+                        />
+                    ) : isXAIProfile(activeProfile) ? (
+                        <XAIConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            models={activeXAIModels}
+                            onChange={(config) => updateActiveProfileConfig(config)}
+                            onClearApiKey={clearApiKey}
+                            onLoadModels={loadModels}
                             onTest={testConnection}
                         />
                     ) : activePluginProvider?.renderSettings ? (

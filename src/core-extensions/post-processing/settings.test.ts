@@ -11,7 +11,7 @@ describe("post-processing settings", () => {
         expect(settings.enabled).toBe(false);
         expect(settings.autoRun).toBe(false);
         expect(settings.showDiff).toBe(true);
-        expect(pipeline?.passes.length).toBe(1);
+        expect(pipeline?.passes.length).toBe(4);
     });
 
     test("clamps numeric settings and removes invalid pipelines", () => {

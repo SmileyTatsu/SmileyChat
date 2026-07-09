@@ -1,0 +1,161 @@
+import { describe, expect, test } from "bun:test";
+
+import { createXAIChatCompletionBody, normalizeXAIChatCompletion } from "./mappers";
+
+describe("xAI connection mappers", () => {
+    test("builds a chat completion payload with prompt messages", () => {
+        const body = createXAIChatCompletionBody(
+            {
+                messages: [],
+                promptMessages: [
+                    { role: "developer", content: "Follow the house style." },
+                    { role: "user", content: "Hello" },
+                ],
+            },
+            {
+                baseUrl: "https://api.x.ai/v1",
+                model: { source: "default", id: "grok-4.5" },
+                maxCompletionTokens: 250,
+            },
+        );
+
+        expect(body).toMatchObject({
+            model: "grok-4.5",
+            max_completion_tokens: 250,
+            stream: false,
+            messages: [
+                { role: "system", content: "Follow the house style." },
+                { role: "user", content: "Hello" },
+            ],
+        });
+    });
+
+    test("maps standard preset generation settings without unsupported fields", () => {
+        const body = createXAIChatCompletionBody(
+            {
+                generation: {
+                    frequencyPenalty: 0.2,
+                    presencePenalty: 0.4,
+                    seed: 123,
+                    stopSequences: ["END"],
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.9,
+                },
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+            },
+            {
+                baseUrl: "https://api.x.ai/v1",
+                model: { source: "default", id: "grok-4.5" },
+            },
+        );
+
+        expect(body).toMatchObject({
+            frequency_penalty: 0.2,
+            presence_penalty: 0.4,
+            seed: 123,
+            stop: ["END"],
+            temperature: 0.7,
+            top_p: 0.9,
+        });
+        expect("top_k" in body).toBe(false);
+    });
+
+    test("adds reasoning effort and filters incompatible reasoning fields", () => {
+        const body = createXAIChatCompletionBody(
+            {
+                generation: {
+                    frequencyPenalty: 0.2,
+                    presencePenalty: 0.4,
+                    stopSequences: ["END"],
+                    temperature: 0.7,
+                },
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+            },
+            {
+                baseUrl: "https://api.x.ai/v1",
+                model: { source: "default", id: "grok-4.5" },
+                reasoning: { enabled: true, effort: "high" },
+            },
+        );
+
+        expect(body.reasoning_effort).toBe("high");
+        expect(body.temperature).toBe(0.7);
+        expect(body.frequency_penalty).toBeUndefined();
+        expect(body.presence_penalty).toBeUndefined();
+        expect(body.stop).toBeUndefined();
+    });
+
+    test("preserves image content parts", () => {
+        const content = [
+            { type: "text" as const, text: "Describe this image." },
+            {
+                type: "image_url" as const,
+                image_url: { url: "data:image/png;base64,abc" },
+            },
+        ];
+        const body = createXAIChatCompletionBody(
+            {
+                messages: [],
+                promptMessages: [{ role: "user", content }],
+            },
+            {
+                baseUrl: "https://api.x.ai/v1",
+                model: { source: "default", id: "grok-4.5" },
+            },
+        );
+
+        expect(body.messages[0]?.content).toEqual(content);
+    });
+
+    test("normalizes assistant responses", () => {
+        const result = normalizeXAIChatCompletion({
+            id: "chatcmpl-test",
+            object: "chat.completion",
+            created: 1,
+            model: "grok-4.5",
+            choices: [
+                {
+                    index: 0,
+                    message: {
+                        role: "assistant",
+                        content: "Hello",
+                        reasoning: "Reasoned first",
+                    },
+                    finish_reason: "stop",
+                },
+            ],
+        });
+
+        expect(result).toMatchObject({
+            message: "Hello",
+            provider: "xai",
+            model: "grok-4.5",
+            reasoning: "Reasoned first",
+        });
+        expect(result.raw).toBeTruthy();
+    });
+
+    test("throws for empty assistant responses", () => {
+        expect(() =>
+            normalizeXAIChatCompletion({
+                id: "chatcmpl-test",
+                object: "chat.completion",
+                created: 1,
+                model: "grok-4.5",
+                choices: [
+                    {
+                        index: 0,
+                        message: {
+                            role: "assistant",
+                            content: "",
+                        },
+                        finish_reason: "stop",
+                    },
+                ],
+            }),
+        ).toThrow("xAI response did not include message content.");
+    });
+});

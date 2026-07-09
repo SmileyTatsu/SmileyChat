@@ -18,6 +18,8 @@ import {
 import type { OpenAICompatibleConnectionConfig } from "./openai-compatible/types";
 import { defaultOpenRouterConfig, normalizeOpenRouterConfig } from "./openrouter/config";
 import type { OpenRouterConnectionConfig } from "./openrouter/types";
+import { defaultXAIConfig, normalizeXAIConfig } from "./xai/config";
+import type { XAIConnectionConfig } from "./xai/types";
 
 export type ConnectionProviderId =
     | "openai-compatible"
@@ -25,6 +27,7 @@ export type ConnectionProviderId =
     | "google-ai"
     | "anthropic"
     | "novelai"
+    | "xai"
     | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
@@ -77,12 +80,22 @@ export type NovelAIConnectionProfile = {
     updatedAt: string;
 };
 
+export type XAIConnectionProfile = {
+    id: string;
+    name: string;
+    provider: "xai";
+    contextTokenBudget: number;
+    config: XAIConnectionConfig;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type PluginConnectionProfile = {
     id: string;
     name: string;
     provider: Exclude<
         ConnectionProviderId,
-        "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai"
+        "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai"
     >;
     contextTokenBudget: number;
     config: Record<string, unknown>;
@@ -96,6 +109,7 @@ export type ConnectionProfile =
     | GoogleAIConnectionProfile
     | AnthropicConnectionProfile
     | NovelAIConnectionProfile
+    | XAIConnectionProfile
     | PluginConnectionProfile;
 
 export type ConnectionSettings = {
@@ -122,6 +136,7 @@ export {
     defaultNovelAIConfig,
     defaultOpenAICompatibleConfig,
     defaultOpenRouterConfig,
+    defaultXAIConfig,
 };
 
 export const defaultConnectionSettings: ConnectionSettings = {
@@ -288,6 +303,18 @@ export function createConnectionProfile(
         };
     }
 
+    if (provider === "xai") {
+        return {
+            id: createConnectionProfileId(),
+            name,
+            provider,
+            contextTokenBudget: defaultContextTokenBudget,
+            config: normalizeXAIConfig(defaultConfig ?? defaultXAIConfig),
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
     if (provider !== "openai-compatible") {
         return {
             id: createConnectionProfileId(),
@@ -350,6 +377,12 @@ export function isNovelAIProfile(
     return profile?.provider === "novelai";
 }
 
+export function isXAIProfile(
+    profile: ConnectionProfile | undefined,
+): profile is XAIConnectionProfile {
+    return profile?.provider === "xai";
+}
+
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {
     const sourceProfiles = Array.isArray(settings.profiles) ? settings.profiles : [];
     const profiles = sourceProfiles
@@ -399,7 +432,9 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                       ? normalizeAnthropicConfig(profile.config)
                       : provider === "novelai"
                         ? normalizeNovelAIConfig(profile.config)
-                        : normalizePluginConfig(profile.config),
+                        : provider === "xai"
+                          ? normalizeXAIConfig(profile.config)
+                          : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;
