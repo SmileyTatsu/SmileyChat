@@ -59,9 +59,16 @@ describe("chat forking", () => {
                         name: "image.png",
                     },
                     {
+                        id: "document.pdf",
+                        type: "file",
+                        url: "/api/chats/chat_source/attachments/document.pdf",
+                        name: "document.pdf",
+                        mimeType: "application/pdf",
+                    },
+                    {
                         id: "external",
-                        type: "image",
-                        url: "https://example.com/image.png",
+                        type: "file",
+                        url: "https://example.com/document.pdf",
                     },
                 ]),
             ],
@@ -72,9 +79,12 @@ describe("chat forking", () => {
             "/api/chats/chat_fork/attachments/image.png",
         );
         expect(messages[0].swipes[0].attachments?.[1]?.url).toBe(
-            "https://example.com/image.png",
+            "/api/chats/chat_fork/attachments/document.pdf",
         );
-        expect(Array.from(copiedFiles)).toEqual(["image.png"]);
+        expect(messages[0].swipes[0].attachments?.[2]?.url).toBe(
+            "https://example.com/document.pdf",
+        );
+        expect(Array.from(copiedFiles)).toEqual(["image.png", "document.pdf"]);
     });
 });
 

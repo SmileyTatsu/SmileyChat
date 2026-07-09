@@ -372,10 +372,26 @@ function messageContentWithAttachments(
 
     return [
         ...(content ? [{ type: "text" as const, text: content }] : []),
-        ...attachments.map((attachment) => ({
-            type: "image_url" as const,
-            image_url: { url: attachment.url },
-        })),
+        ...attachments.map((attachment) =>
+            attachment.type === "image"
+                ? {
+                      type: "image_url" as const,
+                      image_url: { url: attachment.url },
+                  }
+                : {
+                      type: "file" as const,
+                      file: {
+                          url: attachment.url,
+                          ...(attachment.name ? { filename: attachment.name } : {}),
+                          ...(attachment.mimeType
+                              ? { mime_type: attachment.mimeType }
+                              : {}),
+                          ...(attachment.sizeBytes !== undefined
+                              ? { size_bytes: attachment.sizeBytes }
+                              : {}),
+                      },
+                  },
+        ),
     ];
 }
 

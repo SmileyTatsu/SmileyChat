@@ -69,8 +69,10 @@ type ChatWorkspaceProps = {
     onModeChange: (mode: ChatMode) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
+    onRemoveAttachment: (messageId: string, attachmentId: string) => void;
+    onRemoveAllAttachments: (messageId: string) => void;
     onAbortGeneration: () => void;
-    onSendMessage: (draft: string, images?: File[]) => void | Promise<void>;
+    onSendMessage: (draft: string, files?: File[]) => void | Promise<void>;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
     pluginComposerState?: PluginComposerStatePatch;
@@ -101,6 +103,8 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     onModeChange,
     onNextSwipe,
     onPreviousSwipe,
+    onRemoveAttachment,
+    onRemoveAllAttachments,
     onAbortGeneration,
     onSendMessage,
     onToggleSidebar,
@@ -173,6 +177,8 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     onForkMessage={onForkMessage}
                     onNextSwipe={onNextSwipe}
                     onPreviousSwipe={onPreviousSwipe}
+                    onRemoveAttachment={onRemoveAttachment}
+                    onRemoveAllAttachments={onRemoveAllAttachments}
                     getPluginSnapshot={getPluginSnapshot}
                 />
             )}

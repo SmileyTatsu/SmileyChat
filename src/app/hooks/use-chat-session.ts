@@ -7,6 +7,7 @@ import {
     createCharacterErrorMessage,
     createCharacterMessage,
     createUserMessage,
+    getMessageAttachments,
     updateActiveSwipeContent,
 } from "#frontend/lib/messages";
 import {
@@ -30,6 +31,7 @@ import type {
 
 import { useChatGenerationState } from "./use-chat-generation-state";
 import {
+    deleteLocalChatAttachments,
     imageUrlsToAttachments,
     uploadMessageAttachments,
 } from "./chat-session-attachments";
@@ -58,7 +60,7 @@ type UseChatSessionOptions = {
 type SendMessageOptions = {
     autoTurnCount?: number;
     forcedCharacterId?: string;
-    images?: File[];
+    files?: File[];
     suppressAutoResponses?: boolean;
 };
 
@@ -145,8 +147,8 @@ export function useChatSession({
         [],
     );
 
-    async function sendMessage(draft: string, images: File[] = []) {
-        return sendMessageWithOptions(draft, { images });
+    async function sendMessage(draft: string, files: File[] = []) {
+        return sendMessageWithOptions(draft, { files });
     }
 
     async function forceGroupMemberResponse(characterId: string) {
@@ -171,7 +173,7 @@ export function useChatSession({
         draft: string,
         options: SendMessageOptions = {},
     ) {
-        const images = options.images ?? [];
+        const files = options.files ?? [];
         const sourceChat = latestChatRef.current;
 
         if (!sourceChat) {
@@ -179,7 +181,7 @@ export function useChatSession({
         }
 
         if (
-            (draft.trim() || images.length || options.forcedCharacterId) &&
+            (draft.trim() || files.length || options.forcedCharacterId) &&
             !options.autoTurnCount
         ) {
             clearAutomaticResponseTimer();
@@ -209,7 +211,7 @@ export function useChatSession({
 
         if (
             !text &&
-            images.length === 0 &&
+            files.length === 0 &&
             performance.now() < (suppressEmptyGenerationUntilRef.current[chatId] ?? 0)
         ) {
             return;
@@ -218,8 +220,8 @@ export function useChatSession({
         let attachments: ChatAttachment[] = [];
 
         try {
-            attachments = images.length
-                ? await uploadMessageAttachments(chatId, images)
+            attachments = files.length
+                ? await uploadMessageAttachments(chatId, files)
                 : [];
         } catch (error) {
             setChatError(`Attachment upload failed: ${messageFromError(error)}`);
@@ -750,6 +752,58 @@ export function useChatSession({
         }
     }
 
+    async function removeMessageAttachment(messageId: string, attachmentId: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        const message = sourceChat.messages.find((item) => item.id === messageId);
+
+        if (!message) {
+            return;
+        }
+
+        const attachments = getMessageAttachments(message);
+        const removed = attachments.filter(
+            (attachment) => attachment.id === attachmentId,
+        );
+        const remaining = attachments.filter(
+            (attachment) => attachment.id !== attachmentId,
+        );
+
+        if (removed.length === 0) {
+            return;
+        }
+
+        updateMessageAttachments(messageId, remaining);
+        await deleteLocalChatAttachments(sourceChat.id, removed);
+    }
+
+    async function removeAllMessageAttachments(messageId: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return;
+        }
+
+        const message = sourceChat.messages.find((item) => item.id === messageId);
+
+        if (!message) {
+            return;
+        }
+
+        const attachments = getMessageAttachments(message);
+
+        if (attachments.length === 0) {
+            return;
+        }
+
+        updateMessageAttachments(messageId, []);
+        await deleteLocalChatAttachments(sourceChat.id, attachments);
+    }
+
     const activeChatId = chat?.id ?? "";
 
     return {
@@ -766,6 +820,8 @@ export function useChatSession({
             : "",
         previousSwipe,
         removeActiveSwipe,
+        removeAllMessageAttachments,
+        removeMessageAttachment,
         forceGroupMemberResponse,
         sendMessage,
         stopGeneration,

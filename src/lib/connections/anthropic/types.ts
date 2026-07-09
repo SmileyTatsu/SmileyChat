@@ -55,7 +55,19 @@ export type AnthropicContentBlock =
               | {
                     type: "url";
                     url: string;
+                }
+              | {
+                    type: "file";
+                    file_id: string;
                 };
+      }
+    | {
+          type: "document";
+          source: {
+              type: "file";
+              file_id: string;
+          };
+          title?: string;
       }
     | AnthropicThinkingBlock
     | AnthropicRedactedThinkingBlock

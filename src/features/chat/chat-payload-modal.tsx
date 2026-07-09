@@ -12,7 +12,7 @@ type ChatPayloadModalProps = {
 
 type PayloadTab = "structured" | "json";
 
-const maxInlineImageStringLength = 240;
+const maxInlineMediaStringLength = 240;
 const base64PreviewLength = 96;
 
 export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
@@ -20,7 +20,7 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
     const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
     const promptMessages = data.request.promptMessages ?? [];
     const payloadJson = useMemo(
-        () => JSON.stringify(data.payload, truncateInlineImagePayloads, 2),
+        () => JSON.stringify(data.payload, truncateInlineMediaPayloads, 2),
         [data.payload],
     );
 
@@ -130,12 +130,12 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
     );
 }
 
-function truncateInlineImagePayloads(_key: string, value: unknown) {
-    if (typeof value !== "string" || value.length <= maxInlineImageStringLength) {
+function truncateInlineMediaPayloads(_key: string, value: unknown) {
+    if (typeof value !== "string" || value.length <= maxInlineMediaStringLength) {
         return value;
     }
 
-    const dataImageMatch = value.match(/^(data:image\/[^;]+;base64,)(.+)$/);
+    const dataImageMatch = value.match(/^(data:[^;]+;base64,)(.+)$/);
 
     if (dataImageMatch) {
         return `${dataImageMatch[1]}${dataImageMatch[2].slice(
@@ -194,9 +194,17 @@ function renderContent(content: ChatGenerationMessage["content"]) {
             );
         }
 
+        if (part.type === "image_url") {
+            return (
+                <p key={index} className="chat-payload-image-part">
+                    image_url: {part.image_url.url}
+                </p>
+            );
+        }
+
         return (
             <p key={index} className="chat-payload-image-part">
-                image_url: {part.image_url.url}
+                file: {part.file.filename ?? part.file.mime_type ?? "attachment"}
             </p>
         );
     });

@@ -567,7 +567,7 @@
     top: 34px;
     right: -8px;
     display: grid;
-    min-width: 138px;
+    min-width: 164px;
     max-height: min(320px, calc(100vh - 24px));
     border: 1px solid #303440;
     border-radius: 8px;
@@ -583,7 +583,8 @@
 }
 
 .message-menu button {
-    display: flex;
+    display: grid;
+    grid-template-columns: 18px 1fr;
     align-items: center;
     gap: 8px;
     min-height: 32px;
@@ -593,6 +594,18 @@
     color: #d9dce6;
     padding: 0 9px;
     text-align: left;
+    white-space: nowrap;
+}
+
+.message-menu button > svg,
+.message-menu button > :first-child {
+    justify-self: center;
+}
+
+.message-menu button > svg {
+    width: 15px;
+    height: 15px;
+    stroke-width: 2;
 }
 
 .message-menu button:hover:not(:disabled) {
@@ -1193,8 +1206,37 @@
     @apply relative size-16 overflow-hidden rounded-md;
 }
 
+.composer-staged-image[data-kind="file"] {
+    display: flex;
+    align-items: center;
+    width: 190px;
+    gap: 8px;
+    padding: 10px 34px 10px 10px;
+}
+
 .composer-staged-image img {
     @apply size-full object-cover;
+}
+
+.composer-staged-file-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: #20242d;
+    color: #d8dcea;
+}
+
+.composer-staged-file-name {
+    min-width: 0;
+    overflow: hidden;
+    color: #d8dcea;
+    font-size: 12px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .composer-staged-image button {
@@ -1215,11 +1257,21 @@
 .message-attachments {
     @apply flex flex-wrap gap-2;
 
-    a {
+    .message-attachment-item {
+        position: relative;
+        display: inline-flex;
+        max-width: min(360px, 100%);
+    }
+
+    .message-attachment-item > a {
         max-width: min(320px, 100%);
         border: 1px solid #303440;
         background: #111318;
 
+        @apply overflow-hidden rounded-md;
+    }
+
+    .message-attachment-item > a:not(.message-file-attachment) {
         @apply block overflow-hidden rounded-md;
     }
 
@@ -1228,6 +1280,62 @@
         max-width: min(320px, 100%);
 
         @apply block object-contain;
+    }
+
+    .message-attachment-item > .message-file-attachment {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        max-width: min(360px, 100%);
+        color: #d8dcea;
+        padding: 8px 38px 8px 10px;
+        text-decoration: none;
+    }
+
+    .message-attachment-item > .message-file-attachment span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .message-attachment-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(10, 11, 14, 0.82);
+        color: #ececf1;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.12s ease;
+    }
+
+    .message-attachment-remove svg {
+        width: 14px;
+        height: 14px;
+        stroke-width: 2.25;
+    }
+
+    .message-attachment-item:hover .message-attachment-remove,
+    .message-attachment-item:focus-within .message-attachment-remove,
+    .message-attachment-remove:focus-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+@media (hover: none) {
+    .message-attachments .message-attachment-remove {
+        opacity: 1;
+        pointer-events: auto;
     }
 }
 

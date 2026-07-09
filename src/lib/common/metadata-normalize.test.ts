@@ -32,6 +32,54 @@ describe("metadata preservation", () => {
         expect(chat?.metadata?.custom).toEqual({ ok: true });
     });
 
+    test("preserves chat file attachments during normalization", () => {
+        const chat = normalizeChat({
+            id: "chat-1",
+            characterId: "char-1",
+            defaultTitle: "Chat",
+            mode: "chat",
+            messages: [
+                {
+                    id: "message-1",
+                    author: "Anon",
+                    role: "user",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    activeSwipeIndex: 0,
+                    swipes: [
+                        {
+                            id: "swipe-1",
+                            content: "Edited text",
+                            createdAt: "2026-01-01T00:00:00.000Z",
+                            attachments: [
+                                {
+                                    id: "notes.txt",
+                                    type: "file",
+                                    url: "/api/chats/chat-1/attachments/notes.txt",
+                                    name: "notes.txt",
+                                    mimeType: "text/plain",
+                                    sizeBytes: 12,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+        });
+
+        expect(chat?.messages[0]?.swipes[0]?.attachments).toEqual([
+            {
+                id: "notes.txt",
+                type: "file",
+                url: "/api/chats/chat-1/attachments/notes.txt",
+                name: "notes.txt",
+                mimeType: "text/plain",
+                sizeBytes: 12,
+            },
+        ]);
+    });
+
     test("preserves character metadata", () => {
         const character = normalizeCharacter({
             id: "char-1",

@@ -1,5 +1,6 @@
+import { filePartToBlob, hasFileContent, mapFileContentParts } from "../images";
 import { safeResponseText, trimTrailingSlash } from "../http";
-import type { ConnectionAdapter } from "../types";
+import type { ChatGenerationRequest, ConnectionAdapter } from "../types";
 import {
     createAnthropicMessageBody,
     createAnthropicReasoningDetails,
@@ -20,60 +21,111 @@ export function createAnthropicConnection(
             return createAnthropicMessageBody(request, config);
         },
         async generate(request) {
-            const body = createAnthropicMessageBody(request, config);
-            const targetUrl = createAnthropicMessagesUrl(config);
-            const response = await fetch(targetUrl, {
-                method: "POST",
-                headers: createAnthropicHeaders(config),
-                body: JSON.stringify(body),
-                signal: request.signal,
-            });
+            const uploadedFileIds: string[] = [];
 
-            if (!response.ok) {
-                throw new Error(
-                    `Anthropic request failed at ${targetUrl}: ${response.status} ${await safeResponseText(response)}`,
+            try {
+                const preparedRequest = await uploadAnthropicFiles(
+                    request,
+                    config,
+                    uploadedFileIds,
                 );
-            }
+                const body = createAnthropicMessageBody(preparedRequest, config);
+                const targetUrl = createAnthropicMessagesUrl(config);
+                const response = await fetch(targetUrl, {
+                    method: "POST",
+                    headers: createAnthropicHeaders(config, {
+                        filesBeta:
+                            uploadedFileIds.length > 0 ||
+                            hasFileContent(preparedRequest.promptMessages ?? []),
+                    }),
+                    body: JSON.stringify(body),
+                    signal: request.signal,
+                });
 
-            if (body.stream) {
-                const stream = await readAnthropicStream(
-                    response,
-                    (tokens) => {
-                        if (tokens.reasoning) {
-                            request.onReasoningToken?.(tokens.reasoning);
-                        }
-
-                        if (tokens.message) {
-                            request.onToken?.(tokens.message);
-                        }
-                    },
-                    request.signal,
-                );
-
-                if (!stream.message.trim()) {
-                    throw new Error("Anthropic stream did not include message content.");
+                if (!response.ok) {
+                    throw new Error(
+                        `Anthropic request failed at ${targetUrl}: ${response.status} ${await safeResponseText(response)}`,
+                    );
                 }
 
-                const reasoningDetails = createAnthropicReasoningDetails(
-                    stream.response,
-                    stream.message.trim(),
-                );
+                if (body.stream) {
+                    const stream = await readAnthropicStream(
+                        response,
+                        (tokens) => {
+                            if (tokens.reasoning) {
+                                request.onReasoningToken?.(tokens.reasoning);
+                            }
 
-                return {
-                    message: stream.message.trim(),
-                    provider: "anthropic",
-                    model: stream.response.model,
-                    ...(stream.reasoning.trim()
-                        ? { reasoning: stream.reasoning.trim() }
-                        : {}),
-                    ...(reasoningDetails ? { reasoningDetails } : {}),
-                };
+                            if (tokens.message) {
+                                request.onToken?.(tokens.message);
+                            }
+                        },
+                        request.signal,
+                    );
+
+                    if (!stream.message.trim()) {
+                        throw new Error(
+                            "Anthropic stream did not include message content.",
+                        );
+                    }
+
+                    const reasoningDetails = createAnthropicReasoningDetails(
+                        stream.response,
+                        stream.message.trim(),
+                    );
+
+                    return {
+                        message: stream.message.trim(),
+                        provider: "anthropic",
+                        model: stream.response.model,
+                        ...(stream.reasoning.trim()
+                            ? { reasoning: stream.reasoning.trim() }
+                            : {}),
+                        ...(reasoningDetails ? { reasoningDetails } : {}),
+                    };
+                }
+
+                const data = (await response.json()) as AnthropicCreateMessageResponse;
+                return normalizeAnthropicResponse(data);
+            } finally {
+                await deleteAnthropicFiles(config, uploadedFileIds);
             }
-
-            const data = (await response.json()) as AnthropicCreateMessageResponse;
-            return normalizeAnthropicResponse(data);
         },
     };
+}
+
+async function uploadAnthropicFiles(
+    request: ChatGenerationRequest,
+    config: AnthropicRuntimeConfig,
+    uploadedFileIds: string[],
+) {
+    return mapFileContentParts(request, async (file) => {
+        if (!file.file_data) {
+            return file;
+        }
+
+        const mimeType = file.mime_type ?? "";
+        const isSupported =
+            mimeType === "application/pdf" ||
+            mimeType === "text/plain" ||
+            mimeType.startsWith("image/");
+
+        if (!isSupported) {
+            throw new Error(
+                `Anthropic file input does not support ${mimeType || "this file type"}. Use PDF, plain text, or images.`,
+            );
+        }
+
+        const blob = await filePartToBlob(file);
+        const uploaded = await uploadAnthropicFile(config, blob, file.filename);
+        uploadedFileIds.push(uploaded.id);
+
+        return {
+            filename: file.filename,
+            mime_type: uploaded.mimeType || file.mime_type || blob.type,
+            url: uploaded.id,
+        };
+    });
 }
 
 export function createAnthropicMessagesUrl(
@@ -82,16 +134,78 @@ export function createAnthropicMessagesUrl(
     return `${trimTrailingSlash(config.baseUrl)}/messages`;
 }
 
-export function createAnthropicHeaders(config: Pick<AnthropicRuntimeConfig, "apiKey">) {
+export function createAnthropicHeaders(
+    config: Pick<AnthropicRuntimeConfig, "apiKey">,
+    options: { filesBeta?: boolean } = {},
+) {
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         "anthropic-version": anthropicVersion,
         "anthropic-dangerous-direct-browser-access": "true",
     };
 
+    if (options.filesBeta) {
+        headers["anthropic-beta"] = "files-api-2025-04-14";
+    }
+
     if (config.apiKey?.trim()) {
         headers["x-api-key"] = config.apiKey.trim();
     }
 
     return headers;
+}
+
+async function uploadAnthropicFile(
+    config: AnthropicRuntimeConfig,
+    blob: Blob,
+    filename = "attachment",
+) {
+    const formData = new FormData();
+    formData.append("file", blob, filename);
+
+    const response = await fetch(`${trimTrailingSlash(config.baseUrl)}/files`, {
+        method: "POST",
+        headers: createAnthropicUploadHeaders(config),
+        body: formData,
+    });
+
+    if (!response.ok) {
+        throw new Error(
+            `Anthropic file upload failed: ${response.status} ${await safeResponseText(response)}`,
+        );
+    }
+
+    const data = (await response.json()) as {
+        id?: string;
+        mime_type?: string;
+    };
+
+    if (!data.id) {
+        throw new Error("Anthropic file upload response was missing a file id.");
+    }
+
+    return {
+        id: data.id,
+        mimeType: data.mime_type,
+    };
+}
+
+function createAnthropicUploadHeaders(config: Pick<AnthropicRuntimeConfig, "apiKey">) {
+    const headers = createAnthropicHeaders(config, { filesBeta: true });
+    delete headers["Content-Type"];
+    return headers;
+}
+
+async function deleteAnthropicFiles(config: AnthropicRuntimeConfig, fileIds: string[]) {
+    await Promise.allSettled(
+        fileIds.map((fileId) =>
+            fetch(
+                `${trimTrailingSlash(config.baseUrl)}/files/${encodeURIComponent(fileId)}`,
+                {
+                    method: "DELETE",
+                    headers: createAnthropicHeaders(config, { filesBeta: true }),
+                },
+            ),
+        ),
+    );
 }

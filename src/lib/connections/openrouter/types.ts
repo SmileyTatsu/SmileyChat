@@ -99,6 +99,49 @@ export type OpenRouterChatCompletionResponse = {
     };
 };
 
+export type OpenRouterResponsesRequest = {
+    input: Array<{
+        content: Array<
+            | {
+                  type: "input_text";
+                  text: string;
+              }
+            | {
+                  type: "input_image";
+                  image_url: string;
+              }
+            | {
+                  type: "input_file";
+                  file_id?: string;
+                  file_url?: string;
+                  filename?: string;
+                  file_data?: string;
+              }
+        >;
+        role: "assistant" | "system" | "user";
+    }>;
+    max_output_tokens?: number;
+    model: string;
+    provider?: OpenRouterProviderPreferences;
+    reasoning?: OpenRouterReasoningConfig;
+    stream?: boolean;
+    temperature?: number;
+    top_p?: number;
+};
+
+export type OpenRouterResponsesResponse = {
+    id?: string;
+    model?: string;
+    output?: Array<{
+        content?: Array<{
+            text?: string;
+            type?: string;
+        }>;
+        type?: string;
+    }>;
+    output_text?: string;
+};
+
 export type OpenRouterErrorResponse = {
     error?: {
         code?: number | string;

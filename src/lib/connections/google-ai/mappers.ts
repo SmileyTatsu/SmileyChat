@@ -311,6 +311,21 @@ function generationMessageContentToGoogleAIParts(
             return { text: part.text };
         }
 
+        if (part.type === "file") {
+            if (!part.file.url || !part.file.mime_type) {
+                throw new Error(
+                    "Google AI file input must be uploaded before generation.",
+                );
+            }
+
+            return {
+                fileData: {
+                    fileUri: part.file.url,
+                    mimeType: part.file.mime_type,
+                },
+            };
+        }
+
         const image = parseDataImageUrl(part.image_url.url);
 
         if (!image) {
@@ -347,7 +362,7 @@ function mergeGoogleAIParts(left: GoogleAIPart[], right: GoogleAIPart[]) {
 }
 
 function hasVisiblePart(part: GoogleAIPart) {
-    return Boolean(part.text?.trim() || part.inlineData);
+    return Boolean(part.text?.trim() || part.inlineData || part.fileData);
 }
 
 function isTextOnlyPart(part: GoogleAIPart) {
@@ -375,9 +390,18 @@ function isGoogleAIPart(value: unknown): value is GoogleAIPart {
     return (
         typeof value.text === "string" ||
         isGoogleAIInlineData(value.inlineData) ||
+        isGoogleAIFileData(value.fileData) ||
         typeof value.thought === "boolean" ||
         typeof value.thoughtSignature === "string" ||
         typeof value.thought_signature === "string"
+    );
+}
+
+function isGoogleAIFileData(value: unknown) {
+    return (
+        isRecord(value) &&
+        typeof value.fileUri === "string" &&
+        typeof value.mimeType === "string"
     );
 }
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createGoogleAIConnection } from "./adapter";
+import { createGoogleAIConnection, googleAIUploadBaseUrl } from "./adapter";
 
 const originalFetch = globalThis.fetch;
 
@@ -62,5 +62,14 @@ describe("Google AI connection adapter", () => {
                 visibleText: "answer",
             },
         });
+    });
+
+    test("builds the resumable upload base URL before the API version", () => {
+        expect(
+            googleAIUploadBaseUrl("https://generativelanguage.googleapis.com/v1beta"),
+        ).toBe("https://generativelanguage.googleapis.com/upload/v1beta");
+        expect(googleAIUploadBaseUrl("https://example.com/v1")).toBe(
+            "https://example.com/upload/v1",
+        );
     });
 });

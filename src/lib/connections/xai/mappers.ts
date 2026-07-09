@@ -13,6 +13,8 @@ import type {
     XAIChatCompletionResponse,
     XAIConnectionConfig,
     XAIReasoningConfig,
+    XAIResponsesRequest,
+    XAIResponsesResponse,
 } from "./types";
 
 export function createXAIChatCompletionBody(
@@ -63,6 +65,101 @@ export function normalizeXAIChatCompletion(
         provider: "xai",
         emptyMessage: "xAI response did not include message content.",
     });
+}
+
+export function createXAIResponsesBody(
+    request: ChatGenerationRequest,
+    config: XAIConnectionConfig,
+): XAIResponsesRequest {
+    const generation = request.generation;
+    const reasoning = cleanXAIReasoningConfig(config.reasoning);
+    const input = (request.promptMessages ?? []).map((message) => ({
+        role:
+            message.role === ChatGenerationMessageRole.Assistant
+                ? ("assistant" as const)
+                : message.role === ChatGenerationMessageRole.System
+                  ? ("system" as const)
+                  : ("user" as const),
+        content:
+            typeof message.content === "string"
+                ? [{ type: "input_text" as const, text: message.content }]
+                : message.content.flatMap<
+                      XAIResponsesRequest["input"][number]["content"][number]
+                  >((part) => {
+                      if (part.type === "text") {
+                          return [{ type: "input_text" as const, text: part.text }];
+                      }
+
+                      if (part.type === "file") {
+                          const fileUrl = isHttpUrl(part.file.url)
+                              ? part.file.url
+                              : undefined;
+                          const fileId =
+                              part.file.url && !fileUrl ? part.file.url : undefined;
+
+                          return [
+                              {
+                                  type: "input_file" as const,
+                                  ...(fileId ? { file_id: fileId } : {}),
+                                  ...(fileUrl ? { file_url: fileUrl } : {}),
+                                  ...(part.file.file_data
+                                      ? { file_data: part.file.file_data }
+                                      : {}),
+                                  ...(part.file.filename
+                                      ? { filename: part.file.filename }
+                                      : {}),
+                              },
+                          ];
+                      }
+
+                      return [
+                          {
+                              type: "input_image" as const,
+                              image_url: part.image_url.url,
+                          },
+                      ];
+                  }),
+    }));
+
+    return {
+        model: config.model.id,
+        input,
+        max_output_tokens: config.maxCompletionTokens ?? defaultOutputTokenLimit,
+        ...(typeof generation?.temperature === "number"
+            ? { temperature: generation.temperature }
+            : {}),
+        ...(typeof generation?.topP === "number" ? { top_p: generation.topP } : {}),
+        ...(reasoning?.effort ? { reasoning_effort: reasoning.effort } : {}),
+        stream: request.stream === true,
+    };
+}
+
+function isHttpUrl(value: string | undefined) {
+    return Boolean(value && /^https?:\/\//i.test(value));
+}
+
+export function normalizeXAIResponsesResponse(
+    response: XAIResponsesResponse,
+): ChatGenerationResult {
+    const message =
+        response.output_text?.trim() ||
+        response.output
+            ?.flatMap((item) => item.content ?? [])
+            .map((item) => item.text ?? "")
+            .join("")
+            .trim() ||
+        "";
+
+    if (!message) {
+        throw new Error("xAI response did not include message content.");
+    }
+
+    return {
+        message,
+        provider: "xai",
+        model: response.model,
+        raw: response,
+    };
 }
 
 export function cleanXAIReasoningConfig(

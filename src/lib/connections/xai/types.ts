@@ -79,6 +79,48 @@ export type XAIChatCompletionResponse = {
     };
 };
 
+export type XAIResponsesRequest = {
+    input: Array<{
+        content: Array<
+            | {
+                  type: "input_text";
+                  text: string;
+              }
+            | {
+                  type: "input_image";
+                  image_url: string;
+              }
+            | {
+                  type: "input_file";
+                  file_id?: string;
+                  file_url?: string;
+                  filename?: string;
+                  file_data?: string;
+              }
+        >;
+        role: "assistant" | "system" | "user";
+    }>;
+    max_output_tokens?: number;
+    model: string;
+    reasoning_effort?: Extract<XAIReasoningConfig, { enabled: true }>["effort"];
+    stream?: boolean;
+    temperature?: number;
+    top_p?: number;
+};
+
+export type XAIResponsesResponse = {
+    id?: string;
+    model?: string;
+    output?: Array<{
+        content?: Array<{
+            text?: string;
+            type?: string;
+        }>;
+        type?: string;
+    }>;
+    output_text?: string;
+};
+
 export type XAIErrorResponse = {
     error?: {
         message?: string;

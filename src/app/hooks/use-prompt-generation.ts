@@ -5,7 +5,7 @@ import {
     type ConnectionSettings,
     getActiveConnectionProfile,
 } from "#frontend/lib/connections/config";
-import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
+import { materializeChatGenerationMessageAttachments } from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import type {
     ChatGenerationMessage,
@@ -309,7 +309,7 @@ export function usePromptGeneration({
         );
         assertPromptMessagesWithinBudget(promptMessages, contextTokenBudget);
         const materializedPromptMessages =
-            await materializeChatGenerationMessageImages(promptMessages);
+            await materializeChatGenerationMessageAttachments(promptMessages);
 
         return {
             generation: activePreset?.generation,

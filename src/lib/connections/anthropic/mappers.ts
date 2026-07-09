@@ -231,6 +231,35 @@ function generationMessageContentToAnthropicContent(
             continue;
         }
 
+        if (part.type === "file") {
+            if (!part.file.url) {
+                throw new Error(
+                    "Anthropic file input must be uploaded before generation.",
+                );
+            }
+
+            if (part.file.mime_type?.startsWith("image/")) {
+                imageBlocks.push({
+                    type: "image",
+                    source: {
+                        type: "file",
+                        file_id: part.file.url,
+                    },
+                });
+                continue;
+            }
+
+            imageBlocks.push({
+                type: "document",
+                source: {
+                    type: "file",
+                    file_id: part.file.url,
+                },
+                ...(part.file.filename ? { title: part.file.filename } : {}),
+            });
+            continue;
+        }
+
         const image = parseDataImageUrl(part.image_url.url);
 
         if (!image) {
@@ -312,7 +341,10 @@ function hasVisibleContent(content: AnthropicMessage["content"]) {
     }
 
     return content.some(
-        (block) => (block.type === "text" && block.text.trim()) || block.type === "image",
+        (block) =>
+            (block.type === "text" && block.text.trim()) ||
+            block.type === "image" ||
+            block.type === "document",
     );
 }
 

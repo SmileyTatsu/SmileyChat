@@ -42,9 +42,11 @@ export type MessageMetadata = {
 
 export type ChatAttachment = {
     id: string;
-    type: "image";
+    type: "image" | "file";
     url: string;
+    mimeType?: string;
     name?: string;
+    sizeBytes?: number;
 };
 
 export type MessageSwipe = {

@@ -1,12 +1,19 @@
-import type { ChatGenerationMessage } from "./types";
+import type {
+    ChatGenerationMessage,
+    ChatGenerationMessageContentPart,
+    ChatGenerationRequest,
+} from "./types";
 
-export async function materializeChatGenerationMessageImages(
+export async function materializeChatGenerationMessageAttachments(
     messages: ChatGenerationMessage[],
 ): Promise<ChatGenerationMessage[]> {
-    return Promise.all(messages.map(materializeMessageImages));
+    return Promise.all(messages.map(materializeMessageAttachments));
 }
 
-async function materializeMessageImages(
+export const materializeChatGenerationMessageImages =
+    materializeChatGenerationMessageAttachments;
+
+async function materializeMessageAttachments(
     message: ChatGenerationMessage,
 ): Promise<ChatGenerationMessage> {
     if (typeof message.content === "string") {
@@ -19,10 +26,20 @@ async function materializeMessageImages(
                 ? {
                       type: "image_url" as const,
                       image_url: {
-                          url: await imageUrlToDataUrl(part.image_url.url),
+                          url: await attachmentUrlToDataUrl(part.image_url.url),
                       },
                   }
-                : part,
+                : part.type === "file" &&
+                    part.file.url &&
+                    isLocalChatAttachmentUrl(part.file.url)
+                  ? {
+                        type: "file" as const,
+                        file: {
+                            ...part.file,
+                            file_data: await attachmentUrlToDataUrl(part.file.url),
+                        },
+                    }
+                  : part,
         ),
     );
 
@@ -38,7 +55,11 @@ export function messageContentToText(content: ChatGenerationMessage["content"]):
     }
 
     return content
-        .map((part) => (part.type === "text" ? part.text : "[image]"))
+        .map((part) => {
+            if (part.type === "text") return part.text;
+            if (part.type === "image_url") return "[image]";
+            return `[file: ${part.file.filename ?? "attachment"}]`;
+        })
         .join("\n");
 }
 
@@ -50,6 +71,49 @@ export function hasImageContent(
             Array.isArray(message.content) &&
             message.content.some((part) => part.type === "image_url"),
     );
+}
+
+export function hasFileContent(
+    messages: Array<{ content: ChatGenerationMessage["content"] }>,
+) {
+    return messages.some(
+        (message) =>
+            Array.isArray(message.content) &&
+            message.content.some((part) => part.type === "file"),
+    );
+}
+
+export async function mapFileContentParts(
+    request: ChatGenerationRequest,
+    mapFile: (
+        file: Extract<ChatGenerationMessageContentPart, { type: "file" }>["file"],
+    ) => Promise<Extract<ChatGenerationMessageContentPart, { type: "file" }>["file"]>,
+): Promise<ChatGenerationRequest> {
+    if (!request.promptMessages?.length) {
+        return request;
+    }
+
+    return {
+        ...request,
+        promptMessages: await Promise.all(
+            request.promptMessages.map(async (message) => {
+                if (typeof message.content === "string") {
+                    return message;
+                }
+
+                return {
+                    ...message,
+                    content: await Promise.all(
+                        message.content.map(async (part) =>
+                            part.type === "file"
+                                ? { ...part, file: await mapFile(part.file) }
+                                : part,
+                        ),
+                    ),
+                };
+            }),
+        ),
+    };
 }
 
 export function parseDataImageUrl(url: string) {
@@ -69,7 +133,57 @@ function isLocalChatAttachmentUrl(url: string) {
     return /^\/api\/chats\/[^/]+\/attachments\/[^/]+/.test(url);
 }
 
-async function imageUrlToDataUrl(url: string) {
+export function parseDataUrl(url: string) {
+    const match = /^data:([^;,]+);base64,(.*)$/s.exec(url);
+
+    if (!match) {
+        return undefined;
+    }
+
+    return {
+        mimeType: match[1],
+        data: match[2],
+    };
+}
+
+export async function filePartToBlob(file: {
+    file_data?: string;
+    mime_type?: string;
+    url?: string;
+}) {
+    if (file.file_data) {
+        const dataUrl = parseDataUrl(file.file_data);
+
+        if (!dataUrl) {
+            throw new Error("File input must be a base64 data URL.");
+        }
+
+        const binary = atob(dataUrl.data);
+        const bytes = new Uint8Array(binary.length);
+
+        for (let index = 0; index < binary.length; index += 1) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+
+        return new Blob([bytes], { type: file.mime_type || dataUrl.mimeType });
+    }
+
+    if (file.url) {
+        const response = await fetch(file.url);
+
+        if (!response.ok) {
+            throw new Error(
+                `Could not read file attachment ${file.url}: ${response.status}`,
+            );
+        }
+
+        return response.blob();
+    }
+
+    throw new Error("File input is missing data.");
+}
+
+async function attachmentUrlToDataUrl(url: string) {
     const response = await fetch(url);
 
     if (!response.ok) {

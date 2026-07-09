@@ -286,7 +286,10 @@ export type PluginAppDataChangedEvent = {
 };
 
 export type PluginActionsApi = {
-    sendMessage(content: string, options?: { images?: File[] }): Promise<void>;
+    sendMessage(
+        content: string,
+        options?: { files?: File[]; images?: File[] },
+    ): Promise<void>;
     injectMessage(
         role: PluginInjectMessageRole,
         content: string,

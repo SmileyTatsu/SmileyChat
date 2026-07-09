@@ -4,7 +4,17 @@ import type { PresetGenerationSettings } from "../presets/types";
 
 export type ChatGenerationMessageContentPart =
     | { type: "text"; text: string }
-    | { type: "image_url"; image_url: { url: string } };
+    | { type: "image_url"; image_url: { url: string } }
+    | {
+          type: "file";
+          file: {
+              filename?: string;
+              file_data?: string;
+              mime_type?: string;
+              size_bytes?: number;
+              url?: string;
+          };
+      };
 
 export const ChatGenerationMessageRole = {
     Assistant: "assistant",

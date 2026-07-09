@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { createXAIChatCompletionBody, normalizeXAIChatCompletion } from "./mappers";
+import {
+    createXAIChatCompletionBody,
+    createXAIResponsesBody,
+    normalizeXAIChatCompletion,
+} from "./mappers";
 
 describe("xAI connection mappers", () => {
     test("builds a chat completion payload with prompt messages", () => {
@@ -108,6 +112,50 @@ describe("xAI connection mappers", () => {
         );
 
         expect(body.messages[0]?.content).toEqual(content);
+    });
+
+    test("builds a Responses payload with file inputs", () => {
+        const body = createXAIResponsesBody(
+            {
+                messages: [],
+                promptMessages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Summarize this." },
+                            {
+                                type: "file",
+                                file: {
+                                    filename: "notes.txt",
+                                    url: "file-123",
+                                },
+                            },
+                            {
+                                type: "image_url",
+                                image_url: {
+                                    url: "data:image/png;base64,abc",
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                baseUrl: "https://api.x.ai/v1",
+                model: { source: "default", id: "grok-4.5" },
+                reasoning: { enabled: true, effort: "high" },
+            },
+        );
+
+        expect(body.input[0]).toEqual({
+            role: "user",
+            content: [
+                { type: "input_text", text: "Summarize this." },
+                { type: "input_file", file_id: "file-123", filename: "notes.txt" },
+                { type: "input_image", image_url: "data:image/png;base64,abc" },
+            ],
+        });
+        expect(body.reasoning_effort).toBe("high");
     });
 
     test("normalizes assistant responses", () => {

@@ -4,7 +4,7 @@ import { basename, extname, resolve } from "node:path";
 import type { ChatAttachment, Message } from "#frontend/types";
 
 import { BadRequestError, NotFoundError } from "./http";
-import { chatAssetsDir, maxChatAssetBytes } from "./paths";
+import { chatAssetsDir, maxChatAssetBytes, maxChatFileAssetBytes } from "./paths";
 
 export async function writeChatAssets(chatId: string, files: File[]) {
     const attachments: ChatAttachment[] = [];
@@ -23,16 +23,20 @@ async function writeChatAsset(chatId: string, file: File): Promise<ChatAttachmen
         throw new BadRequestError("Invalid chat id.");
     }
 
-    if (!file.type.startsWith("image/")) {
-        throw new BadRequestError("Only image attachments are supported.");
+    const originalName = basename(file.name || "file");
+    const inferredMimeType = file.type || mimeTypeFromFileName(originalName);
+    const isImage =
+        inferredMimeType.startsWith("image/") ||
+        isImageExtension(extname(originalName).toLowerCase());
+    const maxBytes = isImage ? maxChatAssetBytes : maxChatFileAssetBytes;
+
+    if (file.size > maxBytes) {
+        throw new BadRequestError(
+            isImage ? "Image attachment is too large." : "File attachment is too large.",
+        );
     }
 
-    if (file.size > maxChatAssetBytes) {
-        throw new BadRequestError("Image attachment is too large.");
-    }
-
-    const originalName = basename(file.name || "image");
-    const extension = cleanImageExtension(originalName, file.type);
+    const extension = cleanAttachmentExtension(originalName, inferredMimeType, isImage);
     const fileName = `${Bun.randomUUIDv7()}${extension}`;
     const targetDir = resolve(chatAssetsDir, cleanChatId);
     const targetPath = resolve(targetDir, fileName);
@@ -49,9 +53,11 @@ async function writeChatAsset(chatId: string, file: File): Promise<ChatAttachmen
 
     return {
         id: fileName,
-        type: "image",
+        type: isImage ? "image" : "file",
         url: `/api/chats/${encodeURIComponent(cleanChatId)}/attachments/${encodeURIComponent(fileName)}`,
+        ...(inferredMimeType ? { mimeType: inferredMimeType } : {}),
         ...(originalName ? { name: originalName } : {}),
+        sizeBytes: file.size,
     };
 }
 
@@ -162,7 +168,7 @@ export async function readUploadedChatAssets(request: Request) {
     }
 
     if (files.length === 0) {
-        throw new BadRequestError("No image files were uploaded.");
+        throw new BadRequestError("No files were uploaded.");
     }
 
     return files;
@@ -222,16 +228,42 @@ function safePathSegment(value: string) {
     return clean && clean === value.trim() ? clean : "";
 }
 
-function cleanImageExtension(fileName: string, mimeType: string) {
+function cleanAttachmentExtension(fileName: string, mimeType: string, isImage: boolean) {
     const extension = extname(fileName).toLowerCase();
 
-    if ([".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(extension)) {
+    if (extension && /^[.][a-z0-9]{1,12}$/.test(extension)) {
         return extension;
     }
 
+    if (!isImage) return extension || ".bin";
     if (mimeType === "image/png") return ".png";
     if (mimeType === "image/jpeg") return ".jpg";
     if (mimeType === "image/webp") return ".webp";
     if (mimeType === "image/gif") return ".gif";
     return ".img";
+}
+
+function isImageExtension(extension: string) {
+    return [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif"].includes(
+        extension,
+    );
+}
+
+function mimeTypeFromFileName(fileName: string) {
+    const extension = extname(fileName).toLowerCase();
+
+    if (extension === ".png") return "image/png";
+    if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+    if (extension === ".webp") return "image/webp";
+    if (extension === ".gif") return "image/gif";
+    if (extension === ".bmp") return "image/bmp";
+    if (extension === ".avif") return "image/avif";
+    if (extension === ".pdf") return "application/pdf";
+    if (extension === ".txt") return "text/plain";
+    if (extension === ".md" || extension === ".markdown") return "text/markdown";
+    if (extension === ".json") return "application/json";
+    if (extension === ".csv") return "text/csv";
+    if (extension === ".xml") return "application/xml";
+    if (extension === ".html" || extension === ".htm") return "text/html";
+    return "";
 }

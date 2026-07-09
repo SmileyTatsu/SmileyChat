@@ -134,6 +134,32 @@ describe("OpenAI-compatible connection mappers", () => {
         });
     });
 
+    test("preserves inline file content parts", () => {
+        const content = [
+            { type: "text" as const, text: "Summarize this." },
+            {
+                type: "file" as const,
+                file: {
+                    filename: "notes.txt",
+                    file_data: "data:text/plain;base64,SGVsbG8=",
+                    mime_type: "text/plain",
+                },
+            },
+        ];
+        const body = createChatCompletionBody(
+            {
+                messages: [],
+                promptMessages: [{ role: "user", content }],
+            },
+            {
+                baseUrl: "https://api.openai.com/v1",
+                model: { source: "default", id: "gpt-5.5" },
+            },
+        );
+
+        expect(body.messages[0]?.content).toEqual(content);
+    });
+
     test("normalizes provider-returned reasoning", () => {
         const result = normalizeChatCompletion({
             id: "chatcmpl-test",

@@ -37,7 +37,7 @@ type ChatSessionActions = {
             promptRole?: "assistant" | "user" | "system" | "none";
         },
     ) => Promise<void>;
-    sendMessage: (draft: string, images?: File[]) => Promise<void>;
+    sendMessage: (draft: string, files?: File[]) => Promise<void>;
 };
 
 type MutableRef<T> = {
@@ -146,7 +146,10 @@ export function useAppPluginBridge({
             injectMessage: (role, content, options) =>
                 chatSessionRef.current.injectMessage(role, content, options),
             sendMessage: (content, options) =>
-                chatSessionRef.current.sendMessage(content, options?.images),
+                chatSessionRef.current.sendMessage(
+                    content,
+                    options?.files ?? options?.images,
+                ),
             switchCharacter: (characterId) => selectCharacterRef.current(characterId),
         });
 

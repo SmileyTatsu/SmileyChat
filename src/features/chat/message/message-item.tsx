@@ -69,6 +69,8 @@ export type MessageItemProps = {
     onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
+    onRemoveAttachment: (messageId: string, attachmentId: string) => void;
+    onRemoveAllAttachments: (message: Message) => void;
     onSaveEdit: (messageId: string, content: string) => void;
     onStartEditing: (messageId: string) => void;
     onToggleMenu: (
@@ -105,6 +107,8 @@ export const MessageItem = memo(function MessageItem({
     onForkMessage,
     onNextSwipe,
     onPreviousSwipe,
+    onRemoveAttachment,
+    onRemoveAllAttachments,
     onSaveEdit,
     onStartEditing,
     onToggleMenu,
@@ -113,6 +117,7 @@ export const MessageItem = memo(function MessageItem({
     const wasEditingRef = useRef(false);
     const [editingDraft, setEditingDraft] = useState("");
     const content = getMessageContent(message);
+    const attachments = getMessageAttachments(message);
     const isFailedSwipe = isActiveSwipeError(message);
 
     const canPagePrevious = message.activeSwipeIndex > 0;
@@ -303,6 +308,25 @@ export const MessageItem = memo(function MessageItem({
                                         {action.label}
                                     </button>
                                 ))}
+                                {attachments.length > 0 && (
+                                    <button
+                                        className="danger-menu-item"
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() =>
+                                            onRemoveAllAttachments(
+                                                getMessageWithLatestStreamingDraft(
+                                                    message,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        <Trash2 size={14} />
+                                        {attachments.length === 1
+                                            ? "Remove file"
+                                            : "Remove all attachments"}
+                                    </button>
+                                )}
                                 <button
                                     className="danger-menu-item"
                                     type="button"
@@ -357,6 +381,7 @@ export const MessageItem = memo(function MessageItem({
                         mode={mode}
                         messageFormatting={messageFormatting}
                         renderer={renderer}
+                        onRemoveAttachment={onRemoveAttachment}
                         onVisibleContentChange={onVisibleContentChange}
                     />
                 )}
@@ -395,6 +420,8 @@ function areMessageItemPropsEqual(
         previous.onForkMessage === next.onForkMessage &&
         previous.onNextSwipe === next.onNextSwipe &&
         previous.onPreviousSwipe === next.onPreviousSwipe &&
+        previous.onRemoveAttachment === next.onRemoveAttachment &&
+        previous.onRemoveAllAttachments === next.onRemoveAllAttachments &&
         previous.onSaveEdit === next.onSaveEdit &&
         previous.onStartEditing === next.onStartEditing &&
         previous.onToggleMenu === next.onToggleMenu &&
@@ -409,6 +436,7 @@ type MessageLiveContentProps = {
     mode: ChatMode;
     messageFormatting: MessageFormattingOptions;
     renderer?: MessageRenderer;
+    onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onVisibleContentChange: () => void;
 };
 
@@ -419,6 +447,7 @@ function MessageLiveContent({
     mode,
     messageFormatting,
     renderer,
+    onRemoveAttachment,
     onVisibleContentChange,
 }: MessageLiveContentProps) {
     const streamingDraft = getStreamingMessageDraftSignal(message.id).value;
@@ -441,7 +470,12 @@ function MessageLiveContent({
     return (
         <>
             <MessageReasoning reasoning={reasoning} />
-            <MessageAttachments attachments={attachments} />
+            <MessageAttachments
+                attachments={attachments}
+                onRemoveAttachment={(attachmentId) =>
+                    onRemoveAttachment(message.id, attachmentId)
+                }
+            />
 
             <MessageContent
                 renderer={renderer}

@@ -79,6 +79,47 @@ describe("compilePresetMessages", () => {
             "Custom examples.",
         ]);
     });
+
+    test("emits file content parts for non-image attachments", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const messages = [
+            {
+                ...message("m1", "user", "Review this"),
+                swipes: [
+                    {
+                        id: "m1-swipe",
+                        content: "Review this",
+                        createdAt: "2026-01-01T00:00:00.000Z",
+                        attachments: [
+                            {
+                                id: "notes.txt",
+                                type: "file" as const,
+                                url: "/api/chats/chat-1/attachments/notes.txt",
+                                name: "notes.txt",
+                                mimeType: "text/plain",
+                                sizeBytes: 12,
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        expect(compilePresetMessages(preset, context({ messages }))[0]?.content).toEqual([
+            { type: "text", text: "Review this" },
+            {
+                type: "file",
+                file: {
+                    url: "/api/chats/chat-1/attachments/notes.txt",
+                    filename: "notes.txt",
+                    mime_type: "text/plain",
+                    size_bytes: 12,
+                },
+            },
+        ]);
+    });
 });
 
 function context(overrides: { messages?: Message[] } = {}) {

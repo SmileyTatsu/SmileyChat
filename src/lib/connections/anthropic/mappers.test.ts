@@ -234,6 +234,91 @@ describe("Anthropic connection mappers", () => {
         ]);
     });
 
+    test("maps uploaded file references to document blocks", () => {
+        const body = createAnthropicMessageBody(
+            {
+                promptMessages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Summarize this." },
+                            {
+                                type: "file",
+                                file: {
+                                    filename: "notes.pdf",
+                                    mime_type: "application/pdf",
+                                    url: "file_123",
+                                },
+                            },
+                        ],
+                    },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-sonnet-4-6" },
+            },
+        );
+
+        expect(body.messages[0]?.content).toEqual([
+            {
+                type: "document",
+                source: {
+                    type: "file",
+                    file_id: "file_123",
+                },
+                title: "notes.pdf",
+            },
+            {
+                type: "text",
+                text: "Summarize this.",
+            },
+        ]);
+    });
+
+    test("maps uploaded image file references to image blocks", () => {
+        const body = createAnthropicMessageBody(
+            {
+                promptMessages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Describe this." },
+                            {
+                                type: "file",
+                                file: {
+                                    filename: "photo.png",
+                                    mime_type: "image/png",
+                                    url: "file_image_1",
+                                },
+                            },
+                        ],
+                    },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-sonnet-4-6" },
+            },
+        );
+
+        expect(body.messages[0]?.content).toEqual([
+            {
+                type: "image",
+                source: {
+                    type: "file",
+                    file_id: "file_image_1",
+                },
+            },
+            {
+                type: "text",
+                text: "Describe this.",
+            },
+        ]);
+    });
+
     test("adds adaptive thinking config", () => {
         const body = createAnthropicMessageBody(
             {

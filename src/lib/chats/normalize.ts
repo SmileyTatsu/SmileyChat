@@ -299,17 +299,28 @@ function normalizeAttachment(value: unknown): ChatAttachment | undefined {
     const id = asString(value.id) || createId("attachment");
     const url = asString(value.url);
 
-    if (value.type !== "image" || !url) {
+    const type = value.type === "image" || value.type === "file" ? value.type : undefined;
+
+    if (!type || !url) {
         return undefined;
     }
 
     const name = asString(value.name);
+    const mimeType = asString(value.mimeType);
+    const sizeBytes =
+        typeof value.sizeBytes === "number" &&
+        Number.isInteger(value.sizeBytes) &&
+        value.sizeBytes >= 0
+            ? value.sizeBytes
+            : undefined;
 
     return {
         id,
-        type: "image",
+        type,
         url,
+        ...(mimeType ? { mimeType } : {}),
         ...(name ? { name } : {}),
+        ...(sizeBytes !== undefined ? { sizeBytes } : {}),
     };
 }
 

@@ -30,6 +30,10 @@ export type GoogleAIModelSelection =
       };
 
 export type GoogleAIPart = {
+    fileData?: {
+        fileUri: string;
+        mimeType: string;
+    };
     inlineData?: {
         mimeType: string;
         data: string;

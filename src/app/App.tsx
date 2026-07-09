@@ -33,7 +33,7 @@ import {
     sanitizeConnectionSettings,
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
-import { materializeChatGenerationMessageImages } from "#frontend/lib/connections/images";
+import { materializeChatGenerationMessageAttachments } from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import {
     defaultAppPreferences,
@@ -343,6 +343,20 @@ export function App() {
     const handleDeleteMessageSwipe = useCallback((messageId: string) => {
         latestChatSessionForPluginsRef.current.removeActiveSwipe(messageId);
     }, []);
+    const handleRemoveAttachment = useCallback(
+        (messageId: string, attachmentId: string) => {
+            void latestChatSessionForPluginsRef.current.removeMessageAttachment(
+                messageId,
+                attachmentId,
+            );
+        },
+        [],
+    );
+    const handleRemoveAllAttachments = useCallback((messageId: string) => {
+        void latestChatSessionForPluginsRef.current.removeAllMessageAttachments(
+            messageId,
+        );
+    }, []);
     const handleEditMessage = useCallback((messageId: string, content: string) => {
         latestChatSessionForPluginsRef.current.editMessage(messageId, content);
     }, []);
@@ -361,8 +375,8 @@ export function App() {
     const handlePreviousSwipe = useCallback((messageId: string) => {
         latestChatSessionForPluginsRef.current.previousSwipe(messageId);
     }, []);
-    const handleSendMessage = useCallback((draft: string, images?: File[]) => {
-        return latestChatSessionForPluginsRef.current.sendMessage(draft, images);
+    const handleSendMessage = useCallback((draft: string, files?: File[]) => {
+        return latestChatSessionForPluginsRef.current.sendMessage(draft, files);
     }, []);
     const handleUpdateChatMetadata = useCallback(
         (metadata: ChatMetadata) => {
@@ -660,7 +674,7 @@ export function App() {
                       (candidate) => candidate.id === request.presetId,
                   )
                 : activePresetForPlugins) ?? activePresetForPlugins;
-        const promptMessages = await materializeChatGenerationMessageImages(
+        const promptMessages = await materializeChatGenerationMessageAttachments(
             request.messages,
         );
 
@@ -943,6 +957,8 @@ export function App() {
                 onDeleteMessageSwipe={handleDeleteMessageSwipe}
                 onEditMessage={handleEditMessage}
                 onForkMessage={handleForkMessage}
+                onRemoveAttachment={handleRemoveAttachment}
+                onRemoveAllAttachments={handleRemoveAllAttachments}
                 onModeChange={handleModeChange}
                 onNextSwipe={handleNextSwipe}
                 onPreviousSwipe={handlePreviousSwipe}

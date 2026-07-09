@@ -171,6 +171,44 @@ describe("Google AI connection mappers", () => {
         });
     });
 
+    test("maps uploaded file references to fileData parts", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Summarize this." },
+                            {
+                                type: "file",
+                                file: {
+                                    filename: "notes.txt",
+                                    mime_type: "text/plain",
+                                    url: "https://generativelanguage.googleapis.com/file/abc",
+                                },
+                            },
+                        ],
+                    },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.contents[0]?.parts).toEqual([
+            { text: "Summarize this." },
+            {
+                fileData: {
+                    fileUri: "https://generativelanguage.googleapis.com/file/abc",
+                    mimeType: "text/plain",
+                },
+            },
+        ]);
+    });
+
     test("adds includeThoughts request config", () => {
         const body = createGoogleAIGenerateBody(
             {

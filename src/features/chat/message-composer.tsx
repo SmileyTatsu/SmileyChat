@@ -1,4 +1,4 @@
-import { ImagePlus, SendHorizonal, Square, X } from "lucide-preact";
+import { FileText, Paperclip, SendHorizonal, Square, X } from "lucide-preact";
 import { memo } from "preact/compat";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
@@ -32,14 +32,14 @@ type MessageComposerProps = {
     placeholder?: string;
     resetKey: string;
     onAbortGeneration?: () => void;
-    onSubmit: (draft: string, images?: File[]) => void | Promise<void>;
+    onSubmit: (draft: string, files?: File[]) => void | Promise<void>;
     pluginSnapshot: PluginAppSnapshot;
 };
 
-type StagedImage = {
+type StagedFile = {
     id: string;
     file: File;
-    previewUrl: string;
+    previewUrl?: string;
 };
 
 type PluginComposerActionsProps = {
@@ -68,9 +68,9 @@ export const MessageComposer = memo(function MessageComposer({
 
     const [draft, setDraft] = useState("");
     const [registryRevision, setRegistryRevision] = useState(0);
-    const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
+    const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
 
-    const hasMessageContent = draft.trim().length > 0 || stagedImages.length > 0;
+    const hasMessageContent = draft.trim().length > 0 || stagedFiles.length > 0;
     const canSubmit = !disabled || isGenerating;
 
     useEffect(
@@ -95,12 +95,12 @@ export const MessageComposer = memo(function MessageComposer({
 
     useEffect(() => {
         setDraft("");
-        clearStagedImages();
+        clearStagedFiles();
     }, [resetKey]);
 
     useEffect(function () {
         return () => {
-            clearStagedImages();
+            clearStagedFiles();
         };
     }, []);
 
@@ -156,12 +156,12 @@ export const MessageComposer = memo(function MessageComposer({
 
     const submitDraft = useEventCallback(() => {
         const submittedDraft = draft;
-        const submittedImages = stagedImages.map((image) => image.file);
+        const submittedFiles = stagedFiles.map((item) => item.file);
 
         setDraft("");
-        clearStagedImages();
+        clearStagedFiles();
 
-        return onSubmit(submittedDraft, submittedImages);
+        return onSubmit(submittedDraft, submittedFiles);
     });
 
     const runComposerAction = useEventCallback(
@@ -185,23 +185,23 @@ export const MessageComposer = memo(function MessageComposer({
         onAbortGeneration?.();
     }
 
-    function openImagePicker() {
+    function openFilePicker() {
         fileInputRef.current?.click();
     }
 
-    function stageImages(files: File[]) {
-        const images = files.filter((file) => file.type.startsWith("image/"));
-
-        if (!images.length) {
+    function stageSelectedFiles(files: File[]) {
+        if (!files.length) {
             return false;
         }
 
-        setStagedImages((current) => [
+        setStagedFiles((current) => [
             ...current,
-            ...images.map((file) => ({
-                id: createId("staged-image"),
+            ...files.map((file) => ({
+                id: createId("staged-file"),
                 file,
-                previewUrl: URL.createObjectURL(file),
+                ...(file.type.startsWith("image/")
+                    ? { previewUrl: URL.createObjectURL(file) }
+                    : {}),
             })),
         ]);
 
@@ -209,7 +209,7 @@ export const MessageComposer = memo(function MessageComposer({
     }
 
     function stageFiles(files: FileList | null) {
-        const staged = stageImages(Array.from(files ?? []));
+        const staged = stageSelectedFiles(Array.from(files ?? []));
 
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
@@ -229,27 +229,29 @@ export const MessageComposer = memo(function MessageComposer({
             return file ? [file] : [];
         });
 
-        if (stageImages(files)) {
+        if (stageSelectedFiles(files)) {
             event.preventDefault();
         }
     }
 
-    function removeStagedImage(imageId: string) {
-        setStagedImages((current) => {
-            const target = current.find((image) => image.id === imageId);
+    function removeStagedFile(fileId: string) {
+        setStagedFiles((current) => {
+            const target = current.find((item) => item.id === fileId);
 
-            if (target) {
+            if (target?.previewUrl) {
                 URL.revokeObjectURL(target.previewUrl);
             }
 
-            return current.filter((image) => image.id !== imageId);
+            return current.filter((item) => item.id !== fileId);
         });
     }
 
-    function clearStagedImages() {
-        setStagedImages((current) => {
-            for (const image of current) {
-                URL.revokeObjectURL(image.previewUrl);
+    function clearStagedFiles() {
+        setStagedFiles((current) => {
+            for (const item of current) {
+                if (item.previewUrl) {
+                    URL.revokeObjectURL(item.previewUrl);
+                }
             }
 
             return [];
@@ -266,7 +268,6 @@ export const MessageComposer = memo(function MessageComposer({
                 ref={fileInputRef}
                 className="composer-file-input"
                 type="file"
-                accept="image/*"
                 multiple
                 onChange={(event) => stageFiles(event.currentTarget.files)}
             />
@@ -280,16 +281,32 @@ export const MessageComposer = memo(function MessageComposer({
                 />
             )}
 
-            {stagedImages.length > 0 && (
-                <div className="composer-staged-images" aria-label="Staged images">
-                    {stagedImages.map((image) => (
-                        <div className="composer-staged-image" key={image.id}>
-                            <img src={image.previewUrl} alt={image.file.name} />
+            {stagedFiles.length > 0 && (
+                <div className="composer-staged-images" aria-label="Staged files">
+                    {stagedFiles.map((item) => (
+                        <div
+                            className="composer-staged-image"
+                            data-kind={item.previewUrl ? "image" : "file"}
+                            key={item.id}
+                            title={item.file.name}
+                        >
+                            {item.previewUrl ? (
+                                <img src={item.previewUrl} alt={item.file.name} />
+                            ) : (
+                                <>
+                                    <span className="composer-staged-file-icon">
+                                        <FileText size={16} />
+                                    </span>
+                                    <span className="composer-staged-file-name">
+                                        {item.file.name}
+                                    </span>
+                                </>
+                            )}
                             <button
                                 type="button"
-                                title="Remove image"
+                                title="Remove file"
                                 disabled={disabled}
-                                onClick={() => removeStagedImage(image.id)}
+                                onClick={() => removeStagedFile(item.id)}
                             >
                                 <X size={13} />
                             </button>
@@ -301,13 +318,13 @@ export const MessageComposer = memo(function MessageComposer({
             <div className="chat-composer-area">
                 <button
                     type="button"
-                    title="Attach images"
-                    aria-label="Attach images"
+                    title="Attach files"
+                    aria-label="Attach files"
                     disabled={disabled}
                     className="composer-image-button"
-                    onClick={openImagePicker}
+                    onClick={openFilePicker}
                 >
-                    <ImagePlus size={18} />
+                    <Paperclip size={18} />
                 </button>
 
                 <textarea

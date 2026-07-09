@@ -117,6 +117,35 @@ function estimateContentTokens(content: ChatGenerationMessage["content"]) {
             return total + estimateTextTokens(part.text);
         }
 
-        return total + 1024 + estimateTextTokens(part.image_url.url);
+        if (part.type === "image_url") {
+            return total + 1024 + estimateTextTokens(part.image_url.url);
+        }
+
+        return total + estimateFilePartTokens(part.file);
     }, 0);
+}
+
+function estimateFilePartTokens(file: {
+    file_data?: string;
+    filename?: string;
+    mime_type?: string;
+    size_bytes?: number;
+    url?: string;
+}) {
+    const metadataTokens = estimateTextTokens(
+        [file.filename, file.mime_type, file.url].filter(Boolean).join(" "),
+    );
+
+    if (typeof file.size_bytes === "number" && file.size_bytes > 0) {
+        return 256 + metadataTokens + Math.ceil(file.size_bytes / 4);
+    }
+
+    if (file.file_data) {
+        const base64 = file.file_data.includes(",")
+            ? file.file_data.slice(file.file_data.indexOf(",") + 1)
+            : file.file_data;
+        return 256 + metadataTokens + Math.ceil((base64.length * 3) / 4 / 4);
+    }
+
+    return 1024 + metadataTokens;
 }

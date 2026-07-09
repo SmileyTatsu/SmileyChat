@@ -47,6 +47,8 @@ type MessageListProps = {
     onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
+    onRemoveAttachment: (messageId: string, attachmentId: string) => void;
+    onRemoveAllAttachments: (messageId: string) => void;
     getPluginSnapshot: () => PluginAppSnapshot;
 };
 
@@ -72,6 +74,8 @@ export const MessageList = memo(function MessageList({
     onForkMessage,
     onNextSwipe,
     onPreviousSwipe,
+    onRemoveAttachment,
+    onRemoveAllAttachments,
     getPluginSnapshot,
 }: MessageListProps) {
     const listRef = useRef<HTMLDivElement>(null);
@@ -95,6 +99,18 @@ export const MessageList = memo(function MessageList({
     const [registryRevision, setRegistryRevision] = useState(0);
     const [copyError, setCopyError] = useState("");
     const [deleteCandidate, setDeleteCandidate] = useState<Message | undefined>();
+    const [attachmentRemovalCandidate, setAttachmentRemovalCandidate] = useState<
+        | {
+              kind: "one";
+              message: Message;
+              attachmentId: string;
+          }
+        | {
+              kind: "all";
+              message: Message;
+          }
+        | undefined
+    >();
 
     useEffect(
         () => subscribeToPluginRegistry(() => setRegistryRevision((r) => r + 1)),
@@ -299,6 +315,32 @@ export const MessageList = memo(function MessageList({
         setOpenMenuMessageId("");
     }, []);
 
+    const requestRemoveAttachment = useCallback(
+        (messageId: string, attachmentId: string) => {
+            const message = messages.find((item) => item.id === messageId);
+
+            if (!message) {
+                return;
+            }
+
+            setAttachmentRemovalCandidate({
+                kind: "one",
+                message,
+                attachmentId,
+            });
+            setOpenMenuMessageId("");
+        },
+        [messages],
+    );
+
+    const requestRemoveAllAttachments = useCallback((message: Message) => {
+        setAttachmentRemovalCandidate({
+            kind: "all",
+            message,
+        });
+        setOpenMenuMessageId("");
+    }, []);
+
     function confirmDeleteMessage() {
         if (!deleteCandidate) {
             return;
@@ -315,6 +357,23 @@ export const MessageList = memo(function MessageList({
 
         onDeleteMessageSwipe(deleteCandidate.id);
         setDeleteCandidate(undefined);
+    }
+
+    function confirmRemoveAttachments() {
+        if (!attachmentRemovalCandidate) {
+            return;
+        }
+
+        if (attachmentRemovalCandidate.kind === "one") {
+            onRemoveAttachment(
+                attachmentRemovalCandidate.message.id,
+                attachmentRemovalCandidate.attachmentId,
+            );
+        } else {
+            onRemoveAllAttachments(attachmentRemovalCandidate.message.id);
+        }
+
+        setAttachmentRemovalCandidate(undefined);
     }
 
     const visibleMessages = messages.slice(-visibleCount);
@@ -453,6 +512,8 @@ export const MessageList = memo(function MessageList({
                             onForkMessage={onForkMessage}
                             onNextSwipe={onNextSwipe}
                             onPreviousSwipe={onPreviousSwipe}
+                            onRemoveAttachment={requestRemoveAttachment}
+                            onRemoveAllAttachments={requestRemoveAllAttachments}
                             onSaveEdit={saveEdit}
                             onStartEditing={startEditing}
                             onVisibleContentChange={scrollToBottomIfNeeded}
@@ -530,6 +591,53 @@ export const MessageList = memo(function MessageList({
                             >
                                 <Trash2 size={15} />
                                 Delete
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
+            {attachmentRemovalCandidate && (
+                <div
+                    className="message-confirm-backdrop"
+                    role="presentation"
+                    onClick={() => setAttachmentRemovalCandidate(undefined)}
+                >
+                    <section
+                        className="message-confirm-dialog compact"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Remove attachment"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <header>
+                            <AlertTriangle size={19} />
+                            <h2>
+                                {attachmentRemovalCandidate.kind === "one"
+                                    ? "Remove attachment?"
+                                    : "Remove all attachments?"}
+                            </h2>
+                        </header>
+
+                        <p>
+                            {attachmentRemovalCandidate.kind === "one"
+                                ? "This removes the attachment from the current swipe and deletes the local file when possible."
+                                : "This removes every attachment from the current swipe and deletes local files when possible."}
+                        </p>
+
+                        <div className="message-confirm-actions">
+                            <button
+                                type="button"
+                                onClick={() => setAttachmentRemovalCandidate(undefined)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="danger-button"
+                                type="button"
+                                onClick={confirmRemoveAttachments}
+                            >
+                                <Trash2 size={15} />
+                                Remove
                             </button>
                         </div>
                     </section>

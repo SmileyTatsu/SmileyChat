@@ -43,3 +43,4 @@ export const pluginProfilesPath = join(userDataDir, "settings", "plugin-profiles
 
 export const maxAvatarBytes = 20 * 1024 * 1024;
 export const maxChatAssetBytes = 25 * 1024 * 1024;
+export const maxChatFileAssetBytes = 48 * 1024 * 1024;

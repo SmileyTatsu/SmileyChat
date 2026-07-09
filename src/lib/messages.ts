@@ -275,7 +275,7 @@ export function updateActiveSwipeAttachments(
 
         return {
             ...message,
-            swipes: [{ ...swipe, ...(attachments.length ? { attachments } : {}) }],
+            swipes: [withSwipeAttachments(swipe, attachments)],
             activeSwipeIndex: 0,
         };
     }
@@ -284,13 +284,21 @@ export function updateActiveSwipeAttachments(
         ...message,
         swipes: message.swipes.map((swipe, index) =>
             index === message.activeSwipeIndex
-                ? {
-                      ...swipe,
-                      ...(attachments.length ? { attachments } : {}),
-                  }
+                ? withSwipeAttachments(swipe, attachments)
                 : swipe,
         ),
     };
+}
+
+function withSwipeAttachments(swipe: MessageSwipe, attachments: ChatAttachment[]) {
+    const nextSwipe = { ...swipe };
+    delete nextSwipe.attachments;
+
+    if (attachments.length > 0) {
+        nextSwipe.attachments = attachments;
+    }
+
+    return nextSwipe;
 }
 
 export function appendMessageSwipe(
