@@ -10,6 +10,11 @@ export type MessageFormattingOptions = {
 
 type H = typeof import("preact").h;
 
+export type QuotedTextRange = {
+    end: number;
+    start: number;
+};
+
 const quotePairs: Record<string, string> = {
     '"': '"',
     "\u201c": "\u201d",
@@ -45,12 +50,43 @@ export function renderQuotedText(
     const nodes: ComponentChild[] = [];
     let cursor = 0;
     let key = 0;
+    const ranges = findQuotedTextRanges(text);
+
+    for (const range of ranges) {
+        if (range.start > cursor) {
+            nodes.push(text.slice(cursor, range.start));
+        }
+
+        nodes.push(
+            h(
+                "span",
+                {
+                    className,
+                    key: `quote-${key}`,
+                },
+                text.slice(range.start, range.end),
+            ),
+        );
+
+        key += 1;
+        cursor = range.end;
+    }
+
+    if (cursor < text.length) {
+        nodes.push(text.slice(cursor));
+    }
+
+    return nodes.length ? nodes : [text];
+}
+
+export function findQuotedTextRanges(text: string): QuotedTextRange[] {
+    const ranges: QuotedTextRange[] = [];
+    let cursor = 0;
 
     while (cursor < text.length) {
         const opening = findOpeningQuote(text, cursor);
 
         if (!opening) {
-            nodes.push(text.slice(cursor));
             break;
         }
 
@@ -62,31 +98,15 @@ export function renderQuotedText(
         );
 
         if (closingIndex < 0) {
-            nodes.push(text.slice(cursor));
             break;
         }
 
-        if (opening.index > cursor) {
-            nodes.push(text.slice(cursor, opening.index));
-        }
-
         const end = closingIndex + closingQuote.length;
-        nodes.push(
-            h(
-                "span",
-                {
-                    className,
-                    key: `quote-${key}`,
-                },
-                text.slice(opening.index, end),
-            ),
-        );
-
-        key += 1;
+        ranges.push({ start: opening.index, end });
         cursor = end;
     }
 
-    return nodes.length ? nodes : [text];
+    return ranges;
 }
 
 function findOpeningQuote(text: string, startIndex: number) {
