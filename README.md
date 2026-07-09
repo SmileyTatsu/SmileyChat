@@ -178,6 +178,10 @@ SmileyChat is licensed under the [GNU Affero General Public License v3.0](LICENS
 
 Third-party plugins that interact with SmileyChat only through the documented plugin runtime API may use their own licenses. Modified versions of SmileyChat itself remain covered by AGPL-3.0.
 
+## Credits & Acknowledgements
+
+- **Post-Processing Default Prompts:** The default pipeline prompts for the post-processing extension were adapted from [closuretxt's recast-post-processing](https://github.com/closuretxt/recast-post-processing).
+
 ## AI Disclosure
 
 This project was built with the assistance of AI. Please note:

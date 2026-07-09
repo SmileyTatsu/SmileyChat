@@ -1,3 +1,4 @@
+import sharedStyles from "../shared-ui.css?raw";
 import styles from "./styles.css?raw";
 
 import { BookOpen, Plus, Save, Search, Trash2 } from "lucide-preact";
@@ -38,6 +39,7 @@ const triggerOptions: LorebookGenerationTrigger[] = [
 
 export function activate(api: SmileyPluginApi) {
     api.ui.addStyles(styles);
+    api.ui.addStyles(sharedStyles);
 
     return api.events.on("app:open-lorebook-manager", (payload) => {
         const snapshot = api.state.getSnapshot();

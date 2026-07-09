@@ -47,8 +47,7 @@
     padding: 14px;
 }
 
-.lbm-field,
-.lbm-check {
+.lbm-field {
     display: grid;
     gap: 6px;
     color: #dfe3ef;
@@ -271,16 +270,6 @@
     margin: 0;
     color: #ececf1;
     font-size: 0.92rem;
-}
-
-.lbm-check {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-}
-
-.lbm-check input {
-    width: 18px;
-    height: 18px;
 }
 
 .lbm-checkbox-grid {

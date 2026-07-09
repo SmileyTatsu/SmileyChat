@@ -372,6 +372,7 @@ export function usePromptGeneration({
                 messages,
                 mode: sourceMode,
                 persona,
+                presetCollection,
                 userStatus: sourceUserStatus,
             });
         }
@@ -395,6 +396,7 @@ export function usePromptGeneration({
                 mode: sourceMode,
                 persona,
                 promptMessages: nextMessages,
+                presetCollection,
                 userStatus: sourceUserStatus,
             });
         }
@@ -427,6 +429,7 @@ export function usePromptGeneration({
                 mode: sourceMode,
                 originalPromptMessages,
                 persona,
+                presetCollection,
                 result,
                 sourceChat,
                 targetMessageId: options.targetMessageId,

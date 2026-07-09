@@ -194,90 +194,19 @@
     gap: 0.8rem;
 }
 
+.scf-settings-card {
+    background: #101218;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
 .scf-settings p {
     color: #9ca6c0;
     margin: 0;
-}
-
-.scf-setting-row {
-    align-items: center;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 1rem;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    cursor: pointer;
-    padding: 0.35rem 0.2rem;
-    transition: background 140ms ease;
-}
-
-.scf-setting-row:hover {
-    background: rgba(48, 52, 64, 0.36);
-}
-
-.scf-setting-row span {
-    color: #e7ebf8;
-    min-width: 0;
-    font-weight: 700;
-}
-
-.scf-setting-row small {
-    color: #8f98ae;
-    display: block;
-    font-weight: 400;
-    line-height: 1.35;
-    margin-top: 0.2rem;
-}
-
-.scf-setting-row input[type="checkbox"] {
-    appearance: none;
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    height: 22px;
-    margin: 0;
-    width: 38px;
-    border: 1px solid #3a4050;
-    border-radius: 999px;
-    background: #242832;
-    color: #15171d;
-    padding: 2px;
-    transition:
-        background 140ms ease,
-        border-color 140ms ease,
-        box-shadow 140ms ease;
-}
-
-.scf-setting-row input[type="checkbox"]::before {
-    content: "";
-    width: 16px;
-    height: 16px;
-    border: 0;
-    border-radius: 999px;
-    background: #8991a3;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-    opacity: 1;
-    transform: translateX(0);
-    transition:
-        background 140ms ease,
-        transform 140ms ease;
-}
-
-.scf-setting-row input[type="checkbox"]:checked {
-    border-color: #7e8fb4;
-    background: #30384a;
-    box-shadow: 0 0 0 3px rgba(126, 143, 180, 0.16);
-}
-
-.scf-setting-row input[type="checkbox"]:checked::before {
-    background: #e1e7ff;
-    transform: translateX(16px);
-}
-
-.scf-setting-row input[type="checkbox"]:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(126, 143, 180, 0.32);
 }
 
 .scf-settings-status {

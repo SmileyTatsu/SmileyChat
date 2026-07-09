@@ -40,27 +40,13 @@
     font-size: 0.9rem;
 }
 
-.chs-field,
-.chs-toggle {
+.chs-field {
     display: grid;
     gap: 6px;
     min-width: 0;
     color: #dfe3ef;
     font-size: 0.82rem;
     font-weight: 700;
-}
-
-.chs-toggle {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-}
-
-.chs-toggle small {
-    display: block;
-    margin-top: 2px;
-    color: #9da3b4;
-    font-weight: 500;
-    line-height: 1.35;
 }
 
 .chs-field input,

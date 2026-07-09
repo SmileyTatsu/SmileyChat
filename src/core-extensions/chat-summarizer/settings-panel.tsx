@@ -335,7 +335,7 @@ function Toggle({
     return (
         <label className="chs-toggle">
             <span>
-                {label}
+                <span>{label}</span>
                 <small>{description}</small>
             </span>
             <input

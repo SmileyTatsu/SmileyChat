@@ -32,6 +32,7 @@ const corePluginIds = new Set([
     "smiley-chat-formatter",
     "smiley-lorebooks",
     "smiley-chat-summarizer",
+    "smiley-post-processing",
 ]);
 const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;
@@ -1267,12 +1268,14 @@ const corePluginCategories: Record<string, PluginCategory> = {
     "smiley-chat-formatter": "interface",
     "smiley-chat-summarizer": "memory-lore",
     "smiley-lorebooks": "memory-lore",
+    "smiley-post-processing": "input-output",
 };
 
 const corePluginNames: Record<string, string> = {
     "smiley-chat-formatter": "smiley-chat-formatter",
     "smiley-chat-summarizer": "smiley-chat-summarizer",
     "smiley-lorebooks": "smiley-lorebooks",
+    "smiley-post-processing": "smiley-post-processing",
 };
 
 async function readCorePluginState(pluginId: string) {
@@ -1295,6 +1298,7 @@ async function readCorePluginState(pluginId: string) {
 
 const corePluginDefaultEnabled: Record<string, boolean> = {
     "smiley-chat-summarizer": false,
+    "smiley-post-processing": false,
 };
 
 async function writeCorePluginEnabled(pluginId: string, enabled: boolean) {
@@ -1546,6 +1550,7 @@ async function readResponseBytes(
 }
 
 export const pluginInstallTestInternals = {
+    corePluginIds,
     extractPluginArchive,
     installPluginArtifact,
     normalizePluginRegistry,

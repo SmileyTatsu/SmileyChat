@@ -198,6 +198,7 @@ export type ChatPipelineContext = {
     character: SmileyCharacter;
     mode: ChatMode;
     persona: SmileyPersona;
+    presetCollection: PresetCollection;
     userStatus: UserStatus;
     messages: Message[];
 };
@@ -315,6 +316,7 @@ export type PluginComposerStatePatch = {
 
 export type PluginModelGenerateRequest = {
     messages: ChatGenerationMessage[];
+    modelId?: string;
     onImage?: (url: string) => void;
     presetId?: string;
     profileId?: string;

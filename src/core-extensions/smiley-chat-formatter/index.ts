@@ -1,3 +1,4 @@
+import sharedStyles from "../shared-ui.css?raw";
 import styles from "./styles.css?raw";
 
 import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
@@ -26,6 +27,7 @@ export async function activate(api: FormatterApi) {
     );
 
     api.ui.addStyles(styles);
+    api.ui.addStyles(sharedStyles);
     registerFormatterRenderer(api);
 
     api.ui.registerSettingsPanel({

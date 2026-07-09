@@ -1,5 +1,6 @@
 import { NotebookText } from "lucide-preact";
 
+import sharedStyles from "../shared-ui.css?raw";
 import styles from "./styles.css?raw";
 
 import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
@@ -16,6 +17,7 @@ export async function activate(api: SmileyPluginApi) {
     await loadSummarizerSettings(api);
 
     api.ui.addStyles(styles);
+    api.ui.addStyles(sharedStyles);
     registerSummaryInjection(api);
 
     api.ui.registerSettingsPanel({

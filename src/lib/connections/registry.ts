@@ -1,6 +1,7 @@
 import { createAdapterFromPluginProvider } from "../plugins/registry";
 
 import {
+    type ConnectionProfile,
     getActiveConnectionProfile,
     isAnthropicProfile,
     isGoogleAIProfile,
@@ -15,10 +16,15 @@ import { createNovelAIConnection } from "./novelai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
 
-export function getAdapterForSettings(settings: ConnectionSettings, profileId?: string) {
-    const profile = profileId
+export function getAdapterForSettings(
+    settings: ConnectionSettings,
+    profileId?: string,
+    options: { modelId?: string } = {},
+) {
+    const sourceProfile = profileId
         ? settings.profiles.find((candidate) => candidate.id === profileId)
         : getActiveConnectionProfile(settings);
+    const profile = applyTemporaryModelOverride(sourceProfile, options.modelId);
 
     if (!profile) {
         throw new Error(
@@ -90,4 +96,37 @@ export function getAdapterForSettings(settings: ConnectionSettings, profileId?: 
     }
 
     return pluginAdapter;
+}
+
+function applyTemporaryModelOverride(
+    profile: ConnectionProfile | undefined,
+    modelId: string | undefined,
+): ConnectionProfile | undefined {
+    const trimmedModelId = modelId?.trim();
+
+    if (!profile || !trimmedModelId) {
+        return profile;
+    }
+
+    if (
+        isOpenAICompatibleProfile(profile) ||
+        isOpenRouterProfile(profile) ||
+        isGoogleAIProfile(profile) ||
+        isAnthropicProfile(profile) ||
+        isNovelAIProfile(profile)
+    ) {
+        return {
+            ...profile,
+            config: {
+                ...profile.config,
+                model: {
+                    ...profile.config.model,
+                    source: "custom",
+                    id: trimmedModelId,
+                },
+            },
+        } as ConnectionProfile;
+    }
+
+    return profile;
 }

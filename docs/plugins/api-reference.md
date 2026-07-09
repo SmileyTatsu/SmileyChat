@@ -195,6 +195,7 @@ const quickPreset = snapshot?.presetCollection.presets.find(
 
 const result = await api.model.generate({
     profileId: backgroundProfile?.id,
+    modelId: "custom-background-model",
     presetId: quickPreset?.id,
     messages: [{ role: "user", content: "Summarize the last scene." }],
 });
@@ -234,6 +235,7 @@ Notes:
 
 - Uses the active connection profile and provider adapter by default.
 - `profileId` optionally selects another saved connection profile for this request only. Unknown profile IDs throw an error.
+- `modelId` optionally uses a custom model name for this request only on native connection providers. Leave it unset to use the selected profile's configured model. Plugin-provided connection providers receive their normal profile config.
 - `presetId` optionally selects another preset's generation settings for this request only. Unknown preset IDs fall back to the active preset.
 - Uses only the messages supplied by the plugin.
 - Uses preset generation settings, but does not compile preset prompts.
@@ -585,6 +587,7 @@ Context includes:
 - `messages`
 - `mode`
 - `persona`
+- `presetCollection`
 - `userStatus`
 
 This is the right hook for cleanup, censorship, formatting, translation, or test transformations.

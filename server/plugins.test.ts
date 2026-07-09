@@ -45,6 +45,12 @@ test("registry accepts release artifact entries", () => {
     expect(registry.plugins[0].repository).toBe("https://github.com/user/example-plugin");
 });
 
+test("server knows bundled post-processing core extension", () => {
+    expect(pluginInstallTestInternals.corePluginIds.has("smiley-post-processing")).toBe(
+        true,
+    );
+});
+
 test("registry rejects invalid category, status, id, and artifact URL", () => {
     expect(() =>
         pluginInstallTestInternals.normalizePluginRegistry({

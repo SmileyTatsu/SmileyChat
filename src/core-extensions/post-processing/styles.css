@@ -1,0 +1,588 @@
+.spp-settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.spp-note,
+.spp-status {
+    grid-column: 1 / -1;
+}
+
+.spp-note {
+    border: 1px solid rgba(82, 182, 154, 0.28);
+    border-radius: 8px;
+    background: rgba(19, 53, 47, 0.28);
+    color: #bff4de;
+    padding: 10px 12px;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.spp-settings-group {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 12px;
+}
+
+.spp-settings-group.wide {
+    grid-column: 1 / -1;
+}
+
+.spp-settings-group h5 {
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.9rem;
+}
+
+.spp-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: #dfe3ef;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.spp-field input,
+.spp-field select,
+.spp-field textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    color: #ececf1;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+}
+
+.spp-field input:focus-visible,
+.spp-field select:focus-visible,
+.spp-field textarea:focus-visible,
+.spp-button-row button:focus-visible,
+.spp-modal-actions button:focus-visible,
+.spp-pass-list article > button:focus-visible,
+.spp-pass-list article div button:focus-visible,
+.spp-pass-details article > button:focus-visible,
+.spp-pass-details summary:focus-visible {
+    outline: 2px solid #52b69a;
+    outline-offset: 2px;
+}
+
+.spp-button-row button:hover:not(:disabled),
+.spp-modal-actions button:hover:not(:disabled),
+.spp-pass-list article div button:hover:not(:disabled) {
+    border-color: #4b5364;
+    background: #2d3340;
+}
+
+.spp-field input,
+.spp-field select {
+    min-height: 36px;
+    padding: 0 10px;
+}
+
+.spp-field textarea {
+    resize: vertical;
+    padding: 10px;
+    line-height: 1.45;
+}
+
+.spp-button-row,
+.spp-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: start;
+    gap: 8px;
+}
+
+.spp-toggle-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 8px;
+}
+
+.spp-button-row button,
+.spp-modal-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-height: 34px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #242832;
+    color: #ececf1;
+    padding: 0 10px;
+}
+
+.spp-button-row button.primary,
+.spp-modal-actions button.primary {
+    border-color: rgba(82, 182, 154, 0.55);
+    background: #21483f;
+    color: #d9fff0;
+}
+
+.spp-button-row button.danger-button,
+.spp-modal-actions button.danger-button {
+    border-color: rgba(235, 87, 87, 0.42);
+    background: #3a2026;
+    color: #ffd4da;
+}
+
+.spp-status,
+.spp-muted,
+.spp-pass-list p,
+.spp-field-hint {
+    margin: 0;
+    color: #9da3b4;
+    font-size: 0.8rem;
+}
+
+.spp-note code {
+    color: #e1e7ff;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 0.78rem;
+}
+
+.spp-inline-warning {
+    border: 1px solid rgba(231, 183, 87, 0.28);
+    border-radius: 6px;
+    background: rgba(92, 68, 28, 0.2);
+    color: #f4d28f;
+    padding: 7px 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.spp-pass-list article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    padding: 8px;
+}
+
+.spp-pass-list article.active {
+    border-color: rgba(82, 182, 154, 0.65);
+    background: rgba(31, 70, 61, 0.28);
+}
+
+.spp-pass-list article > button {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #ececf1;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    padding: 0;
+    text-align: left;
+}
+
+.spp-pass-list strong,
+.spp-pass-list small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.spp-pass-list small {
+    color: #9da3b4;
+}
+
+.spp-pass-list article div {
+    display: flex;
+    gap: 4px;
+}
+
+.spp-pass-list article div button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-height: 28px;
+    border: 1px solid #303440;
+    border-radius: 6px;
+    background: #242832;
+    color: #ececf1;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    padding: 0;
+}
+
+.spp-pass-list article div button.danger-button {
+    color: #ffb4bd;
+}
+
+.spp-pass-list article div button.danger-button:hover:not(:disabled) {
+    border-color: rgba(235, 87, 87, 0.42);
+    background: #3a2026;
+    color: #ffd4da;
+}
+
+.spp-pass-editor {
+    display: grid;
+    gap: 10px;
+}
+
+.spp-pass-editor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.plugin-modal:has(.spp-modal) {
+    width: min(1040px, calc(100vw - 48px));
+    height: min(780px, calc(100dvh - 48px));
+}
+
+.plugin-modal:has(.spp-modal) .plugin-modal-body {
+    overflow: hidden;
+}
+
+.spp-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    min-height: 0;
+    overscroll-behavior: contain;
+}
+
+.spp-empty {
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    color: #aab0bf;
+}
+
+.spp-run-header,
+.spp-review-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 10px 12px;
+}
+
+.spp-run-header div,
+.spp-review-header div {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.spp-run-header span,
+.spp-review-header span {
+    color: #9da3b4;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.spp-run-header strong,
+.spp-review-header strong {
+    overflow: hidden;
+    color: #ececf1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.spp-review-header small {
+    overflow: hidden;
+    color: #9da3b4;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.spp-progress-pill {
+    flex: 0 0 auto;
+    border: 1px solid rgba(82, 182, 154, 0.34);
+    border-radius: 999px;
+    background: rgba(25, 79, 66, 0.28);
+    color: #bff4de;
+    padding: 5px 9px;
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.spp-progress-bar {
+    overflow: hidden;
+    height: 8px;
+    border-radius: 999px;
+    background: #101218;
+}
+
+.spp-progress-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #52b69a;
+    transition: width 160ms ease;
+}
+
+.spp-live-output,
+.spp-final-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    color: #dfe3ef;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.spp-live-output {
+    flex: 1 1 auto;
+}
+
+.spp-live-output textarea,
+.spp-final-editor textarea {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    resize: none;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    color: #ececf1;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    padding: 12px;
+    line-height: 1.5;
+}
+
+.spp-live-output textarea:focus-visible,
+.spp-final-editor textarea:focus-visible {
+    outline: 2px solid #52b69a;
+}
+
+.spp-review-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.spp-diff-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+}
+
+.spp-diff-panel header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex: 0 0 auto;
+    border-bottom: 1px solid #303440;
+    padding: 8px 10px;
+}
+
+.spp-diff-panel header span {
+    color: #dfe3ef;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.spp-diff-panel header small {
+    color: #9da3b4;
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.spp-diff-output {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 8px;
+    color: #ececf1;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.spp-diff-line {
+    min-height: 1.5em;
+    border-left: 2px solid transparent;
+    padding: 0 6px;
+}
+
+.spp-diff-line.removed.original,
+.spp-diff-line.changed.original {
+    border-left-color: rgba(235, 87, 87, 0.62);
+    background: rgba(235, 87, 87, 0.08);
+}
+
+.spp-diff-line.added.revised,
+.spp-diff-line.changed.revised {
+    border-left-color: rgba(82, 182, 154, 0.62);
+    background: rgba(82, 182, 154, 0.08);
+}
+
+.spp-diff-line.empty {
+    opacity: 0.55;
+}
+
+.spp-diff-token {
+    border-radius: 4px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding: 1px 3px;
+}
+
+.spp-diff-token.removed {
+    background: rgba(235, 87, 87, 0.18);
+    color: #ffd4da;
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+}
+
+.spp-diff-token.added {
+    background: rgba(82, 182, 154, 0.18);
+    color: #c8f6e3;
+}
+
+.spp-diff-empty {
+    color: #9da3b4;
+}
+
+.spp-error {
+    border: 1px solid rgba(235, 87, 87, 0.34);
+    border-radius: 8px;
+    background: rgba(72, 26, 31, 0.28);
+    color: #ffb4bd;
+    padding: 9px 10px;
+    font-size: 0.84rem;
+}
+
+.spp-pass-details {
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    color: #dfe3ef;
+    padding: 8px 10px;
+}
+
+.spp-pass-details summary {
+    cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: 800;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+}
+
+.spp-pass-details div {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    max-height: 130px;
+    overflow: auto;
+}
+
+.spp-pass-details article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid #303440;
+    border-radius: 6px;
+    background: #101218;
+    padding: 5px;
+}
+
+.spp-pass-details article.active {
+    border-color: #4b5364;
+    background: #242832;
+}
+
+.spp-pass-details article > button:first-child {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #ececf1;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    padding: 2px 3px;
+    text-align: left;
+}
+
+.spp-pass-details article > button.danger-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-height: 28px;
+    border: 1px solid #303440;
+    border-radius: 6px;
+    background: #242832;
+    color: #ffb4bd;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    padding: 0;
+}
+
+.spp-pass-details article > button:hover:not(:disabled) {
+    background: #2d3340;
+}
+
+.spp-pass-details article > button.danger-button:hover:not(:disabled) {
+    border-color: rgba(235, 87, 87, 0.42);
+    background: #3a2026;
+    color: #ffd4da;
+}
+
+.spp-pass-details small,
+.spp-pass-details span {
+    color: #9da3b4;
+}
+
+@media (max-width: 860px) {
+    .spp-settings,
+    .spp-pass-editor-grid,
+    .spp-review-grid,
+    .spp-toggle-row {
+        grid-template-columns: 1fr;
+    }
+
+    .plugin-modal:has(.spp-modal) {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+
+    .spp-modal-actions button {
+        flex: 1 1 140px;
+    }
+}

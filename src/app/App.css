@@ -566,7 +566,7 @@
 .plugin-modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    z-index: 1000;
     display: grid;
     place-items: center;
     background: rgba(6, 7, 10, 0.62);

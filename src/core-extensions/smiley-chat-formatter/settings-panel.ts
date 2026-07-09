@@ -40,7 +40,10 @@ export function renderSettingsPanel(
         key: keyof Omit<FormatterSettings, "version">,
     ) =>
         api.ui.h("label", { className: "scf-setting-row" }, [
-            api.ui.h("span", null, [label, api.ui.h("small", null, description)]),
+            api.ui.h("span", null, [
+                api.ui.h("span", null, label),
+                api.ui.h("small", null, description),
+            ]),
             api.ui.h("input", {
                 type: "checkbox",
                 checked: Boolean(getFormatterSettings()[key]),
@@ -59,51 +62,53 @@ export function renderSettingsPanel(
             null,
             "Use safe XML-style formatting tags in chat messages. Unknown tags are shown as text.",
         ),
-        checkbox(
-            "Enable formatter",
-            "Render allowed formatting tags in messages.",
-            "enabled",
-        ),
-        checkbox(
-            "Enable markdown",
-            "Parse common markdown such as **bold**, lists, and quotes.",
-            "markdown",
-        ),
-        checkbox(
-            "Enable XML-style tags",
-            'Parse tags such as <font color="red">.',
-            "xmlTags",
-        ),
-        checkbox(
-            "Enable links",
-            "Render safe http, https, and mailto markdown links.",
-            "links",
-        ),
-        checkbox(
-            "Enable images",
-            "Render safe markdown images from http, https, or local URLs.",
-            "images",
-        ),
-        checkbox(
-            "Enable code blocks",
-            "Render fenced markdown code blocks.",
-            "codeBlocks",
-        ),
-        checkbox(
-            "Scroll code blocks",
-            "Keep long fenced code lines on one line with horizontal scrolling.",
-            "codeBlockScrolling",
-        ),
-        checkbox(
-            "Enable spoilers",
-            "Render <spoiler>hidden text</spoiler> as click-to-reveal.",
-            "spoilers",
-        ),
-        checkbox(
-            "Show unknown tags",
-            "Keep unsupported tags visible instead of silently removing them.",
-            "preserveUnknownTags",
-        ),
+        api.ui.h("div", { className: "scf-settings-card" }, [
+            checkbox(
+                "Enable formatter",
+                "Render allowed formatting tags in messages.",
+                "enabled",
+            ),
+            checkbox(
+                "Enable markdown",
+                "Parse common markdown such as **bold**, lists, and quotes.",
+                "markdown",
+            ),
+            checkbox(
+                "Enable XML-style tags",
+                'Parse tags such as <font color="red">.',
+                "xmlTags",
+            ),
+            checkbox(
+                "Enable links",
+                "Render safe http, https, and mailto markdown links.",
+                "links",
+            ),
+            checkbox(
+                "Enable images",
+                "Render safe markdown images from http, https, or local URLs.",
+                "images",
+            ),
+            checkbox(
+                "Enable code blocks",
+                "Render fenced markdown code blocks.",
+                "codeBlocks",
+            ),
+            checkbox(
+                "Scroll code blocks",
+                "Keep long fenced code lines on one line with horizontal scrolling.",
+                "codeBlockScrolling",
+            ),
+            checkbox(
+                "Enable spoilers",
+                "Render <spoiler>hidden text</spoiler> as click-to-reveal.",
+                "spoilers",
+            ),
+            checkbox(
+                "Show unknown tags",
+                "Keep unsupported tags visible instead of silently removing them.",
+                "preserveUnknownTags",
+            ),
+        ]),
         api.ui.h("p", { className: "scf-settings-status", id: statusId }, ""),
     ]);
 }

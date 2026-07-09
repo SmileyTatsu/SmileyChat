@@ -651,7 +651,9 @@ export function App() {
             throw new Error("Plugin model request must include at least one message.");
         }
 
-        const connection = getAdapterForSettings(connectionSettings, request.profileId);
+        const connection = getAdapterForSettings(connectionSettings, request.profileId, {
+            modelId: request.modelId,
+        });
         const preset =
             (request.presetId
                 ? presetCollection.presets.find(
