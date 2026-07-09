@@ -15,6 +15,7 @@ export type ChatCompletionStreamChunk = {
                 };
             }>;
             reasoning?: string | null;
+            reasoning_content?: string | null;
             reasoning_details?: unknown;
         };
         finish_reason?: string | null;

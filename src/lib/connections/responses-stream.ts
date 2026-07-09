@@ -11,12 +11,19 @@ export async function consumeResponsesApiStream(
 ): Promise<ChatGenerationResult> {
     let message = "";
     let model: string | undefined;
+    let reasoning = "";
 
     await readJsonServerSentEvents<Record<string, unknown>>(
         response,
         (chunk) => {
             model = extractResponsesModel(chunk) ?? model;
+            const reasoningDelta = extractResponsesReasoningDelta(chunk);
             const delta = extractResponsesTextDelta(chunk);
+
+            if (reasoningDelta) {
+                reasoning += reasoningDelta;
+                request.onReasoningToken?.(reasoningDelta);
+            }
 
             if (delta) {
                 message += delta;
@@ -34,6 +41,7 @@ export async function consumeResponsesApiStream(
         message: message.trim(),
         provider: options.provider,
         model,
+        ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
     };
 }
 
@@ -51,6 +59,10 @@ function extractResponsesModel(chunk: Record<string, unknown>) {
 
 function extractResponsesTextDelta(chunk: Record<string, unknown>) {
     const type = typeof chunk.type === "string" ? chunk.type : "";
+
+    if (isResponsesReasoningEvent(chunk)) {
+        return "";
+    }
 
     if (
         type === "response.output_text.delta" ||
@@ -72,7 +84,43 @@ function extractResponsesTextDelta(chunk: Record<string, unknown>) {
         return chunk.text;
     }
 
+    if (isRecord(chunk.part) && typeof chunk.part.text === "string") {
+        return chunk.part.text;
+    }
+
     return "";
+}
+
+function extractResponsesReasoningDelta(chunk: Record<string, unknown>) {
+    const type = typeof chunk.type === "string" ? chunk.type : "";
+
+    if (
+        type === "response.reasoning_text.delta" ||
+        type === "response.reasoning_summary_text.delta"
+    ) {
+        return typeof chunk.delta === "string" ? chunk.delta : "";
+    }
+
+    if (
+        isRecord(chunk.part) &&
+        (chunk.part.type === "summary_text" || chunk.part.type === "reasoning_text") &&
+        typeof chunk.part.text === "string"
+    ) {
+        return chunk.part.text;
+    }
+
+    return "";
+}
+
+function isResponsesReasoningEvent(chunk: Record<string, unknown>) {
+    const type = typeof chunk.type === "string" ? chunk.type : "";
+
+    return (
+        type === "response.reasoning_text.delta" ||
+        type === "response.reasoning_summary_text.delta" ||
+        (isRecord(chunk.part) &&
+            (chunk.part.type === "summary_text" || chunk.part.type === "reasoning_text"))
+    );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

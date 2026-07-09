@@ -129,7 +129,7 @@ export function createXAIResponsesBody(
             ? { temperature: generation.temperature }
             : {}),
         ...(typeof generation?.topP === "number" ? { top_p: generation.topP } : {}),
-        ...(reasoning?.effort ? { reasoning_effort: reasoning.effort } : {}),
+        ...(reasoning?.effort ? { reasoning: { effort: reasoning.effort } } : {}),
         stream: request.stream === true,
     };
 }
@@ -149,6 +149,12 @@ export function normalizeXAIResponsesResponse(
             .join("")
             .trim() ||
         "";
+    const reasoning = response.output
+        ?.filter((item) => item.type === "reasoning")
+        .flatMap((item) => item.summary ?? [])
+        .map((item) => item.text ?? "")
+        .join("")
+        .trim();
 
     if (!message) {
         throw new Error("xAI response did not include message content.");
@@ -158,6 +164,7 @@ export function normalizeXAIResponsesResponse(
         message,
         provider: "xai",
         model: response.model,
+        ...(reasoning ? { reasoning } : {}),
         raw: response,
     };
 }

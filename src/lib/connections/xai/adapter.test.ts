@@ -135,4 +135,51 @@ describe("xAI connection adapter", () => {
             model: "grok-4.5",
         });
     });
+
+    test("streams xAI reasoning_content deltas separately from answer tokens", async () => {
+        globalThis.fetch = (async () =>
+            new Response(
+                [
+                    'data: {"model":"grok-4.5","choices":[{"delta":{"reasoning_content":"Thinking "}}]}',
+                    "",
+                    'data: {"model":"grok-4.5","choices":[{"delta":{"content":"answer"}}]}',
+                    "",
+                    "data: [DONE]",
+                    "",
+                ].join("\n"),
+                {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "text/event-stream",
+                    },
+                },
+            )) as unknown as typeof fetch;
+        const adapter = createXAIConnection({
+            baseUrl: "https://api.x.ai/v1",
+            model: { source: "default", id: "grok-4.5" },
+        });
+        let streamedMessage = "";
+        let streamedReasoning = "";
+
+        const result = await adapter.generate({
+            messages: [],
+            promptMessages: [{ role: "user", content: "Hello" }],
+            stream: true,
+            onToken: (token) => {
+                streamedMessage += token;
+            },
+            onReasoningToken: (token) => {
+                streamedReasoning += token;
+            },
+        });
+
+        expect(streamedReasoning).toBe("Thinking ");
+        expect(streamedMessage).toBe("answer");
+        expect(result).toMatchObject({
+            message: "answer",
+            reasoning: "Thinking",
+            provider: "xai",
+            model: "grok-4.5",
+        });
+    });
 });

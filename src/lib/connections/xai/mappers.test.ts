@@ -4,6 +4,7 @@ import {
     createXAIChatCompletionBody,
     createXAIResponsesBody,
     normalizeXAIChatCompletion,
+    normalizeXAIResponsesResponse,
 } from "./mappers";
 
 describe("xAI connection mappers", () => {
@@ -155,7 +156,7 @@ describe("xAI connection mappers", () => {
                 { type: "input_image", image_url: "data:image/png;base64,abc" },
             ],
         });
-        expect(body.reasoning_effort).toBe("high");
+        expect(body.reasoning).toEqual({ effort: "high" });
     });
 
     test("normalizes assistant responses", () => {
@@ -170,7 +171,7 @@ describe("xAI connection mappers", () => {
                     message: {
                         role: "assistant",
                         content: "Hello",
-                        reasoning: "Reasoned first",
+                        reasoning_content: "Reasoned first",
                     },
                     finish_reason: "stop",
                 },
@@ -184,6 +185,40 @@ describe("xAI connection mappers", () => {
             reasoning: "Reasoned first",
         });
         expect(result.raw).toBeTruthy();
+    });
+
+    test("normalizes Responses reasoning summaries separately from visible output", () => {
+        const result = normalizeXAIResponsesResponse({
+            id: "response-test",
+            model: "grok-4.5",
+            output: [
+                {
+                    type: "message",
+                    content: [
+                        {
+                            type: "output_text",
+                            text: "Visible answer.",
+                        },
+                    ],
+                },
+                {
+                    type: "reasoning",
+                    summary: [
+                        {
+                            type: "summary_text",
+                            text: "Reasoning summary.",
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(result).toMatchObject({
+            message: "Visible answer.",
+            provider: "xai",
+            model: "grok-4.5",
+            reasoning: "Reasoning summary.",
+        });
     });
 
     test("throws for empty assistant responses", () => {

@@ -34,6 +34,7 @@ type ChatCompletionResponse = {
                 };
             }>;
             reasoning?: string | null;
+            reasoning_content?: string | null;
             reasoning_details?: unknown;
         };
         error?: {
@@ -137,8 +138,12 @@ export function normalizeChatCompletionResponse(
         ...(images?.length ? { images } : {}),
         provider: options.provider,
         model: response.model,
-        ...(responseMessage?.reasoning?.trim()
-            ? { reasoning: responseMessage.reasoning.trim() }
+        ...((responseMessage?.reasoning ?? responseMessage?.reasoning_content)?.trim()
+            ? {
+                  reasoning: (
+                      responseMessage?.reasoning ?? responseMessage?.reasoning_content
+                  )?.trim(),
+              }
             : {}),
         ...(responseMessage?.reasoning_details !== undefined
             ? { reasoningDetails: responseMessage.reasoning_details }
@@ -168,7 +173,9 @@ export async function consumeChatCompletionStream(
             model = chunk.model ?? model;
 
             const token = chunk.choices?.[0]?.delta?.content;
-            const reasoningToken = chunk.choices?.[0]?.delta?.reasoning;
+            const reasoningToken =
+                chunk.choices?.[0]?.delta?.reasoning ??
+                chunk.choices?.[0]?.delta?.reasoning_content;
             const nextReasoningDetails = chunk.choices?.[0]?.delta?.reasoning_details;
             const nextImages = options.allowImages
                 ? extractImageUrls(chunk.choices?.[0]?.delta?.images)

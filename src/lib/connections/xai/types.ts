@@ -65,6 +65,7 @@ export type XAIChatCompletionResponse = {
             role: "assistant";
             content: string | null;
             reasoning?: string | null;
+            reasoning_content?: string | null;
             reasoning_details?: unknown;
         };
         finish_reason: string | null;
@@ -102,7 +103,9 @@ export type XAIResponsesRequest = {
     }>;
     max_output_tokens?: number;
     model: string;
-    reasoning_effort?: Extract<XAIReasoningConfig, { enabled: true }>["effort"];
+    reasoning?: {
+        effort?: Extract<XAIReasoningConfig, { enabled: true }>["effort"];
+    };
     stream?: boolean;
     temperature?: number;
     top_p?: number;
@@ -113,6 +116,10 @@ export type XAIResponsesResponse = {
     model?: string;
     output?: Array<{
         content?: Array<{
+            text?: string;
+            type?: string;
+        }>;
+        summary?: Array<{
             text?: string;
             type?: string;
         }>;
