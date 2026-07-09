@@ -126,7 +126,7 @@ export function XAIConnection({
             )}
             <div className="connection-card">
                 <h4>Reasoning</h4>
-                <label>
+                <label className="checkbox-field">
                     <input
                         type="checkbox"
                         checked={reasoningEnabled}
