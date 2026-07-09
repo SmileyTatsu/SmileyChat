@@ -27,6 +27,7 @@ import {
     applyConnectionSecrets,
     defaultConnectionSettings,
     extractConnectionSecrets,
+    getActiveConnectionProfile,
     normalizeConnectionSecrets,
     normalizeConnectionSettings,
     sanitizeConnectionSecrets,
@@ -44,11 +45,16 @@ import {
 import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
 import type {
     PluginAppSnapshot,
+    PluginModelContextBudgetRequest,
     PluginModelGenerateRequest,
 } from "#frontend/lib/plugins/types";
 
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
+import {
+    defaultContextTokenBudget,
+    normalizeContextTokenBudget,
+} from "#frontend/lib/presets/context-budget-constants";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type { DebugGenerationPayload } from "./hooks/use-prompt-generation";
@@ -213,6 +219,7 @@ export function App() {
     const latestCreateCharacterForWorkspaceRef = useRef(createCharacter);
     const latestStartNewChatForWorkspaceRef = useRef(startNewChat);
     const latestSelectCharacterForPluginsRef = useRef(selectCharacter);
+    const latestGetModelContextBudgetForPluginsRef = useRef(getPluginModelContextBudget);
     const latestGenerateModelForPluginsRef = useRef(generatePluginModelResponse);
     const latestPluginSnapshotRef = useRef<PluginAppSnapshot | undefined>();
     const activePresetForPlugins =
@@ -233,6 +240,7 @@ export function App() {
     latestCreateCharacterForWorkspaceRef.current = createCharacter;
     latestStartNewChatForWorkspaceRef.current = startNewChat;
     latestSelectCharacterForPluginsRef.current = selectCharacter;
+    latestGetModelContextBudgetForPluginsRef.current = getPluginModelContextBudget;
     latestGenerateModelForPluginsRef.current = generatePluginModelResponse;
 
     useEffect(() => {
@@ -283,6 +291,7 @@ export function App() {
     const { characterPresence, pluginComposerState, isLorebooksPluginEnabled } =
         useAppPluginBridge({
             chatSessionRef: latestChatSessionForPluginsRef,
+            getModelContextBudgetRef: latestGetModelContextBudgetForPluginsRef,
             generateModelResponseRef: latestGenerateModelForPluginsRef,
             loadCharacterCollection,
             loadLorebookCollection,
@@ -688,6 +697,19 @@ export function App() {
             signal: request.signal,
             stream: request.stream,
         });
+    }
+
+    function getPluginModelContextBudget(request: PluginModelContextBudgetRequest = {}) {
+        const profile = request.profileId
+            ? connectionSettings.profiles.find(
+                  (candidate) => candidate.id === request.profileId,
+              )
+            : getActiveConnectionProfile(connectionSettings);
+
+        return normalizeContextTokenBudget(
+            profile?.contextTokenBudget,
+            defaultContextTokenBudget,
+        );
     }
 
     function openPersonasSettings() {

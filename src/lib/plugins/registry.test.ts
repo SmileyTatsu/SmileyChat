@@ -7,6 +7,7 @@ import {
     getPluginConnectionProviderOwnerId,
     getPluginMacroValue,
     getPluginModalInstances,
+    setPluginModelHandlers,
     setPluginPresetHandlers,
     setPluginEnabledState,
     setPluginSnapshot,
@@ -24,6 +25,7 @@ let idCounter = 0;
 
 afterEach(() => {
     console.warn = originalWarn;
+    setPluginModelHandlers({});
 });
 
 describe("plugin registry runtime isolation", () => {
@@ -197,6 +199,29 @@ describe("plugin registry runtime isolation", () => {
         expect(api.presets.resolveMacros("Hi {{char}}")).toBe("Hi Luna");
 
         setPluginPresetHandlers({});
+    });
+
+    test("model token estimate uses the shared generation message estimator", () => {
+        const api = pluginApi(uniqueId("token-estimate"), ["model:generate"]);
+
+        const tokens = api.model.estimateTokens([
+            { role: "system", content: "Keep replies concise." },
+            { role: "user", content: "Hello there." },
+        ]);
+
+        expect(tokens).toBeGreaterThan(0);
+    });
+
+    test("model context budget delegates to app handler", () => {
+        const api = pluginApi(uniqueId("context-budget"), ["model:generate"]);
+
+        setPluginModelHandlers({
+            getContextBudget: (request) =>
+                request?.profileId === "profile-large" ? 32000 : 16000,
+        });
+
+        expect(api.model.getContextBudget()).toBe(16000);
+        expect(api.model.getContextBudget({ profileId: "profile-large" })).toBe(32000);
     });
 });
 

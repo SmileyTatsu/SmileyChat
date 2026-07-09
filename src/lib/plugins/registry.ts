@@ -3,6 +3,7 @@ import type { h } from "preact";
 import { createId } from "../common/ids";
 import type { ConnectionProfile } from "../connections/config";
 import type { ConnectionAdapter } from "../connections/types";
+import { estimateChatGenerationMessages } from "../prompt/token-estimator";
 import { requireDeclaredPluginPermission } from "./permissions";
 import type {
     ChatInputMiddleware,
@@ -666,12 +667,31 @@ export function createAdapterFromPluginProvider(
 
 function pluginModel(manifest: PluginManifest): PluginModelApi {
     return {
+        estimateTokens(messages) {
+            requireDeclaredPluginPermission(manifest, "model:generate");
+
+            if (!Array.isArray(messages)) {
+                throw new Error("Plugin token estimate requires a message array.");
+            }
+
+            return estimateChatGenerationMessages(messages);
+        },
         async generate(request) {
             requireDeclaredPluginPermission(manifest, "model:generate");
             const handler = modelHandlers.generate;
 
             if (!handler) {
                 throw new Error("Plugin model generate API is not available.");
+            }
+
+            return handler(request);
+        },
+        getContextBudget(request) {
+            requireDeclaredPluginPermission(manifest, "model:generate");
+            const handler = modelHandlers.getContextBudget;
+
+            if (!handler) {
+                throw new Error("Plugin model context budget API is not available.");
             }
 
             return handler(request);

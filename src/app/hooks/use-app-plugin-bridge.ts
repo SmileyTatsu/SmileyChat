@@ -18,6 +18,7 @@ import type {
     PluginAppDataChangedEvent,
     PluginAppSnapshot,
     PluginMacroResolveOptions,
+    PluginModelContextBudgetRequest,
     PluginModelGenerateRequest,
 } from "#frontend/lib/plugins/types";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
@@ -45,6 +46,9 @@ type MutableRef<T> = {
 };
 
 type UseAppPluginBridgeOptions = {
+    getModelContextBudgetRef: MutableRef<
+        (request?: PluginModelContextBudgetRequest) => number
+    >;
     generateModelResponseRef: MutableRef<
         (request: PluginModelGenerateRequest) => Promise<ChatGenerationResult>
     >;
@@ -59,6 +63,7 @@ type UseAppPluginBridgeOptions = {
 
 export function useAppPluginBridge({
     chatSessionRef,
+    getModelContextBudgetRef,
     generateModelResponseRef,
     loadCharacterCollection,
     loadLorebookCollection,
@@ -158,11 +163,12 @@ export function useAppPluginBridge({
 
     useEffect(() => {
         setPluginModelHandlers({
+            getContextBudget: (request) => getModelContextBudgetRef.current(request),
             generate: (request) => generateModelResponseRef.current(request),
         });
 
         return () => setPluginModelHandlers({});
-    }, [generateModelResponseRef]);
+    }, [generateModelResponseRef, getModelContextBudgetRef]);
 
     useEffect(() => {
         setPluginPresetHandlers({

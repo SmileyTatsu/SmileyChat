@@ -329,8 +329,14 @@ export type PluginModelGenerateRequest = {
     stream?: boolean;
 };
 
+export type PluginModelContextBudgetRequest = {
+    profileId?: string;
+};
+
 export type PluginModelApi = {
+    estimateTokens(messages: ChatGenerationMessage[]): number;
     generate(request: PluginModelGenerateRequest): Promise<ChatGenerationResult>;
+    getContextBudget(request?: PluginModelContextBudgetRequest): number;
 };
 
 export type PluginNetworkFetchInit = {
