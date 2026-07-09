@@ -367,14 +367,9 @@ function PassEditor({
                         }
                     />
                     <small className="spp-field-hint">
-                        Use -1 for all available messages. Use 0 for no chat history.
+                        Use -1 for all available messages, automatically trimmed to fit
+                        the selected context budget. Use 0 for no chat history.
                     </small>
-                    {pass.contextMessageLimit < 0 && (
-                        <small className="spp-inline-warning">
-                            Unlimited history can exceed the provider context on long
-                            chats.
-                        </small>
-                    )}
                 </Field>
             </div>
             {usesPreset && (

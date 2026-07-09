@@ -264,20 +264,6 @@ export function SummarizerSettingsPanel({ api, snapshot }: SettingsPanelProps) {
                         }
                     />
                 </Field>
-                <Field label="Budget behavior">
-                    <select
-                        value={settings.injectionTokenBudgetBehavior}
-                        onChange={(event) =>
-                            void update({
-                                injectionTokenBudgetBehavior: event.currentTarget
-                                    .value as "counted" | "ignore-budget",
-                            })
-                        }
-                    >
-                        <option value="counted">Counted</option>
-                        <option value="ignore-budget">Ignore budget</option>
-                    </select>
-                </Field>
                 <Field label="Injection template">
                     <textarea
                         rows={5}

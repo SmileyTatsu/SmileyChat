@@ -1,6 +1,6 @@
 import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
 
-import { buildPassMessages, type PipelineEngineContext } from "./engine";
+import { buildBudgetedPassMessages, type PipelineEngineContext } from "./engine";
 import { PostProcessingModal } from "./modal";
 import {
     activePipeline,
@@ -146,8 +146,16 @@ export async function runPipeline(
                 streamedText,
             });
 
+            const profileRequest = pass.profileId ? { profileId: pass.profileId } : {};
+            const messages = buildBudgetedPassMessages(
+                api,
+                pass,
+                currentText,
+                options.context,
+                api.model.getContextBudget(profileRequest),
+            );
             const result = await api.model.generate({
-                messages: buildPassMessages(api, pass, currentText, options.context),
+                messages,
                 ...(pass.modelId.trim() ? { modelId: pass.modelId } : {}),
                 ...(pass.presetId ? { presetId: pass.presetId } : {}),
                 ...(pass.profileId ? { profileId: pass.profileId } : {}),

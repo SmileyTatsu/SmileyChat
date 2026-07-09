@@ -32,7 +32,7 @@ export function registerSummaryInjection(api: SmileyPluginApi) {
                 depth: settings.injectionDepth,
                 order: settings.injectionOrder,
                 priority: settings.injectionPriority,
-                tokenBudgetBehavior: settings.injectionTokenBudgetBehavior,
+                tokenBudgetBehavior: "counted",
                 metadata: {
                     chatId: context.chat.id,
                 },

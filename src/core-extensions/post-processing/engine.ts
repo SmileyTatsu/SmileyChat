@@ -56,10 +56,55 @@ export function buildPassMessages(
     currentText: string,
     context: PipelineEngineContext,
 ): ChatGenerationMessage[] {
-    const contextMessages = limitContextMessages(
+    return buildPassMessagesWithContextMessages(
+        api,
+        pass,
+        currentText,
+        context,
+        limitContextMessages(context.messages, pass.contextMessageLimit),
+    );
+}
+
+export function buildBudgetedPassMessages(
+    api: SmileyPluginApi,
+    pass: PipelinePass,
+    currentText: string,
+    context: PipelineEngineContext,
+    tokenBudget: number,
+): ChatGenerationMessage[] {
+    let contextMessages = limitContextMessages(
         context.messages,
         pass.contextMessageLimit,
     );
+    let messages = buildPassMessagesWithContextMessages(
+        api,
+        pass,
+        currentText,
+        context,
+        contextMessages,
+    );
+
+    while (api.model.estimateTokens(messages) > tokenBudget && contextMessages.length) {
+        contextMessages = contextMessages.slice(1);
+        messages = buildPassMessagesWithContextMessages(
+            api,
+            pass,
+            currentText,
+            context,
+            contextMessages,
+        );
+    }
+
+    return messages;
+}
+
+function buildPassMessagesWithContextMessages(
+    api: SmileyPluginApi,
+    pass: PipelinePass,
+    currentText: string,
+    context: PipelineEngineContext,
+    contextMessages: Message[],
+): ChatGenerationMessage[] {
     const systemPrompt = api.presets.resolveMacros(pass.prompt, {
         character: context.character,
         messages: contextMessages,

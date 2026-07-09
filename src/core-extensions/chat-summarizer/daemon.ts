@@ -1,4 +1,5 @@
 import { getMessageContent } from "#frontend/lib/messages";
+import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
 import type { SmileyPluginApi, PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { Message } from "#frontend/types";
 
@@ -167,7 +168,7 @@ export async function runSummarization(
         });
 
         const eligibleMessages = eligibleMessagesForSummary(snapshot.messages, settings);
-        const messagesToSummarize = messagesForRun(
+        let messagesToSummarize = messagesForRun(
             eligibleMessages,
             previousState,
             options.mode,
@@ -186,23 +187,30 @@ export async function runSummarization(
             options.mode === "full" || !settings.includePreviousSummary
                 ? ""
                 : previousState.summaryText;
-        const userPrompt = renderTemplate(settings.userPromptTemplate, {
-            max_summary_characters: String(settings.maxSummaryCharacters),
-            messages: formatMessagesForSummary(messagesToSummarize),
-            previous_summary: previousSummary || "No previous summary.",
-            summary: previousSummary,
-        });
+        let generationMessages = buildSummaryGenerationMessages(
+            settings,
+            previousSummary,
+            messagesToSummarize,
+        );
+        const profileRequest = settings.profileId
+            ? { profileId: settings.profileId }
+            : {};
+        const tokenBudget = api.model.getContextBudget(profileRequest);
+
+        while (
+            api.model.estimateTokens(generationMessages) > tokenBudget &&
+            messagesToSummarize.length > 1
+        ) {
+            messagesToSummarize = messagesToSummarize.slice(1);
+            generationMessages = buildSummaryGenerationMessages(
+                settings,
+                previousSummary,
+                messagesToSummarize,
+            );
+        }
+
         const result = await api.model.generate({
-            messages: [
-                {
-                    role: "system",
-                    content: settings.systemInstruction,
-                },
-                {
-                    role: "user",
-                    content: userPrompt,
-                },
-            ],
+            messages: generationMessages,
             ...(settings.profileId ? { profileId: settings.profileId } : {}),
             ...(settings.presetId ? { presetId: settings.presetId } : {}),
             stream: settings.stream,
@@ -283,6 +291,30 @@ export function renderSummaryInjection(settings: SummarizerSettings, summary: st
     return renderTemplate(settings.injectionTemplate, {
         summary,
     }).trim();
+}
+
+export function buildSummaryGenerationMessages(
+    settings: SummarizerSettings,
+    previousSummary: string,
+    messagesToSummarize: Message[],
+): ChatGenerationMessage[] {
+    const userPrompt = renderTemplate(settings.userPromptTemplate, {
+        max_summary_characters: String(settings.maxSummaryCharacters),
+        messages: formatMessagesForSummary(messagesToSummarize),
+        previous_summary: previousSummary || "No previous summary.",
+        summary: previousSummary,
+    });
+
+    return [
+        {
+            role: "system",
+            content: settings.systemInstruction,
+        },
+        {
+            role: "user",
+            content: userPrompt,
+        },
+    ];
 }
 
 function messagesForRun(

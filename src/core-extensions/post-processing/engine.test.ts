@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildPassMessages } from "./engine";
+import { buildBudgetedPassMessages, buildPassMessages } from "./engine";
 import type { PipelinePass } from "./settings";
 
 const pass: PipelinePass = {
@@ -11,7 +11,7 @@ const pass: PipelinePass = {
     profileId: "",
     presetId: "",
     modelId: "",
-    contextMessageLimit: -1,
+    contextMessageLimit: 100,
     includeCharacter: true,
     includeSceneContext: true,
     stream: true,
@@ -203,6 +203,38 @@ describe("post-processing engine", () => {
             "<text_to_transform>\nOnly this.\n</text_to_transform>",
         );
     });
+
+    test("trims oldest scene context to fit the token budget", () => {
+        const messages = buildBudgetedPassMessages(
+            budgetApi(),
+            {
+                ...pass,
+                includeCharacter: false,
+                contextMessageLimit: -1,
+            },
+            "Only this.",
+            {
+                character: character(),
+                messages: [
+                    message("old-message", "Old context."),
+                    message("middle-message", "Middle context."),
+                    message("new-message", "New context."),
+                ],
+                mode: "chat",
+                personaDescription: "",
+                personaName: "Anon",
+                presetCollection: emptyPresetCollection(),
+                userStatus: "away",
+            },
+            2,
+        );
+
+        const content = messages.map((item) => String(item.content)).join("\n");
+
+        expect(content).not.toContain("Old context.");
+        expect(content).not.toContain("Middle context.");
+        expect(content).toContain("New context.");
+    });
 });
 
 function api() {
@@ -210,6 +242,28 @@ function api() {
         presets: {
             resolveMacros(text: string) {
                 return text.replace("{{char}}", "Luna").replace("{{user}}", "Anon");
+            },
+        },
+    } as never;
+}
+
+function budgetApi() {
+    return {
+        presets: {
+            resolveMacros(text: string) {
+                return text.replace("{{char}}", "Luna").replace("{{user}}", "Anon");
+            },
+        },
+        model: {
+            estimateTokens(messages: Array<{ content: string }>) {
+                const content = messages.map((item) => String(item.content)).join("\n");
+                const contextCount = [
+                    "Old context.",
+                    "Middle context.",
+                    "New context.",
+                ].filter((text) => content.includes(text)).length;
+
+                return contextCount > 1 ? 3 : 2;
             },
         },
     } as never;

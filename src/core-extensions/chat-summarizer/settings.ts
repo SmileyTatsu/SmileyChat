@@ -22,7 +22,6 @@ export type SummarizerSettings = {
     injectionDepth: number;
     injectionOrder: number;
     injectionPriority: number;
-    injectionTokenBudgetBehavior: "counted" | "ignore-budget";
     injectionTemplate: string;
     macroEnabled: boolean;
 };
@@ -79,7 +78,6 @@ export const defaultSummarizerSettings: SummarizerSettings = {
     injectionDepth: 4,
     injectionOrder: 0,
     injectionPriority: 20,
-    injectionTokenBudgetBehavior: "counted",
     injectionTemplate: defaultInjectionTemplate,
     macroEnabled: true,
 };
@@ -122,10 +120,6 @@ export function normalizeSummarizerSettings(value: unknown): SummarizerSettings 
         injectionDepth: integerValue(source.injectionDepth, 0, 100, 4),
         injectionOrder: integerValue(source.injectionOrder, -10000, 10000, 0),
         injectionPriority: integerValue(source.injectionPriority, -10000, 10000, 20),
-        injectionTokenBudgetBehavior:
-            source.injectionTokenBudgetBehavior === "ignore-budget"
-                ? "ignore-budget"
-                : "counted",
         injectionTemplate:
             stringValue(source.injectionTemplate) ||
             defaultSummarizerSettings.injectionTemplate,
