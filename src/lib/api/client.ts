@@ -470,6 +470,21 @@ export function saveChat(chat: ChatSession) {
     }>(`/api/chats/${encodeURIComponent(chat.id)}`, jsonInit("PUT", chat));
 }
 
+export async function saveChatWithKeepAlive(chat: ChatSession) {
+    const response = await localApiFetch(`/api/chats/${encodeURIComponent(chat.id)}`, {
+        body: JSON.stringify(chat),
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        method: "PUT",
+    });
+
+    if (!response.ok) {
+        throw new Error(
+            `PUT /api/chats/${encodeURIComponent(chat.id)} failed: ${response.status}${await responseErrorSuffix(response)}`,
+        );
+    }
+}
+
 export function deleteChat(chatId: string) {
     return requestJson<{
         ok: true;
