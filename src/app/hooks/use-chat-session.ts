@@ -11,7 +11,7 @@ import {
     updateActiveSwipeContent,
 } from "#frontend/lib/messages";
 import {
-    setStreamingMessageAttachments,
+    setStreamingGeneratedImageCount,
     setStreamingMessageContent,
     setStreamingMessageReasoning,
 } from "#frontend/lib/streaming-message-drafts";
@@ -32,7 +32,7 @@ import type {
 import { useChatGenerationState } from "./use-chat-generation-state";
 import {
     deleteLocalChatAttachments,
-    imageUrlsToAttachments,
+    generatedImageUrlsToLocalAttachments,
     uploadMessageAttachments,
 } from "./chat-session-attachments";
 import {
@@ -316,9 +316,9 @@ export function useChatSession({
                                   return;
                               }
                               streamedImages.push(url);
-                              setStreamingMessageAttachments(
+                              setStreamingGeneratedImageCount(
                                   streamingReply.id,
-                                  imageUrlsToAttachments(streamedImages),
+                                  streamedImages.length,
                               );
                           }
                         : undefined,
@@ -331,7 +331,8 @@ export function useChatSession({
             }
 
             if (streamingReply) {
-                const resultAttachments = imageUrlsToAttachments(
+                const resultAttachments = await saveGeneratedImageAttachments(
+                    chatId,
                     result.images?.length ? result.images : streamedImages,
                 );
                 updateMessageContent(
@@ -350,11 +351,15 @@ export function useChatSession({
                     suppressAutoResponses: options.suppressAutoResponses === true,
                 });
             } else {
+                const resultAttachments = await saveGeneratedImageAttachments(
+                    chatId,
+                    result.images ?? [],
+                );
                 const reply = withMessageReasoning(
                     createCharacterMessage(
                         generationCharacter.data.name,
                         result.message,
-                        imageUrlsToAttachments(result.images ?? []),
+                        resultAttachments,
                         generationCharacter,
                     ),
                     result.reasoning,
@@ -508,9 +513,9 @@ export function useChatSession({
                                   return;
                               }
                               streamedImages.push(url);
-                              setStreamingMessageAttachments(
+                              setStreamingGeneratedImageCount(
                                   messageId,
-                                  imageUrlsToAttachments(streamedImages),
+                                  streamedImages.length,
                               );
                           }
                         : undefined,
@@ -524,6 +529,10 @@ export function useChatSession({
 
             const targetChat = currentOrSourceChat(sourceChat);
             if (preferences.chat.streaming) {
+                const resultAttachments = await saveGeneratedImageAttachments(
+                    chatId,
+                    result.images?.length ? result.images : streamedImages,
+                );
                 updateMessageContent(
                     messageId,
                     result.message,
@@ -531,13 +540,14 @@ export function useChatSession({
                     result.reasoning,
                     result.reasoningDetails,
                 );
-                const resultAttachments = imageUrlsToAttachments(
-                    result.images?.length ? result.images : streamedImages,
-                );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
                 }
             } else {
+                const resultAttachments = await saveGeneratedImageAttachments(
+                    chatId,
+                    result.images ?? [],
+                );
                 appendSwipe(
                     messageId,
                     result.message,
@@ -546,7 +556,6 @@ export function useChatSession({
                     result.reasoningDetails,
                     targetChat,
                 );
-                const resultAttachments = imageUrlsToAttachments(result.images ?? []);
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
                 }
@@ -707,6 +716,29 @@ export function useChatSession({
 
         window.clearTimeout(autoResponseTimerRef.current);
         autoResponseTimerRef.current = undefined;
+    }
+
+    async function saveGeneratedImageAttachments(chatId: string, urls: string[]) {
+        if (urls.length === 0) {
+            return [];
+        }
+
+        try {
+            const result = await generatedImageUrlsToLocalAttachments(chatId, urls);
+
+            if (result.failedCount > 0) {
+                setChatError(
+                    `${result.failedCount} generated ${result.failedCount === 1 ? "image" : "images"} could not be saved locally.`,
+                );
+            }
+
+            return result.attachments;
+        } catch (error) {
+            setChatError(
+                `Generated image could not be saved locally: ${messageFromError(error)}`,
+            );
+            return [];
+        }
     }
 
     function cleanupEmptyAbortedGeneration(

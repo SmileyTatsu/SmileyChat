@@ -156,6 +156,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
             ) : (
                 <MessageList
                     key={activeChatId}
+                    chatId={activeChatId}
                     characterAvatarPath={characterAvatarPath}
                     characterName={characterName}
                     errorMessage={errorMessage}

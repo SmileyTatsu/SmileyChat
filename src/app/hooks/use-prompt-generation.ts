@@ -5,7 +5,10 @@ import {
     type ConnectionSettings,
     getActiveConnectionProfile,
 } from "#frontend/lib/connections/config";
-import { materializeChatGenerationMessageAttachments } from "#frontend/lib/connections/images";
+import {
+    filterLocalChatGenerationMessageAttachments,
+    materializeChatGenerationMessageAttachments,
+} from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import type {
     ChatGenerationMessage,
@@ -307,9 +310,13 @@ export function usePromptGeneration({
             sourceMode,
             sourceUserStatus,
         );
-        assertPromptMessagesWithinBudget(promptMessages, contextTokenBudget);
+        const localPromptMessages = filterLocalChatGenerationMessageAttachments(
+            promptMessages,
+            promptChat.id,
+        );
+        assertPromptMessagesWithinBudget(localPromptMessages, contextTokenBudget);
         const materializedPromptMessages =
-            await materializeChatGenerationMessageAttachments(promptMessages);
+            await materializeChatGenerationMessageAttachments(localPromptMessages);
 
         return {
             generation: activePreset?.generation,

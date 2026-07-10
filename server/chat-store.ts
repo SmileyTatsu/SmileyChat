@@ -16,7 +16,11 @@ import type {
 } from "#frontend/lib/chats/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
-import { copyChatMessageAssets, deleteChatAssetDirectory } from "./chat-assets";
+import {
+    copyChatMessageAssets,
+    deleteChatAssetDirectory,
+    sanitizeChatAttachmentUrls,
+} from "./chat-assets";
 import { chatFilePath } from "./chat-file-paths";
 import {
     discoverJsonFiles,
@@ -45,14 +49,22 @@ export async function readChatById(chatId: string) {
         return undefined;
     }
 
-    return normalizeChat({
+    const chat = normalizeChat({
         ...(await Bun.file(path).json()),
         id: chatId,
     });
+
+    return chat;
 }
 
-export async function createChat(value: unknown) {
-    const chat = normalizeChat(value);
+export async function createChat(
+    value: unknown,
+    options: { preserveAttachmentsFrom?: ChatSession } = {},
+) {
+    const normalizedChat = normalizeChat(value);
+    const chat = normalizedChat
+        ? sanitizeChatAttachmentUrls(normalizedChat, options.preserveAttachmentsFrom)
+        : undefined;
 
     if (!chat) {
         throw new BadRequestError("Invalid chat.");
@@ -104,10 +116,13 @@ export async function forkChatAtMessage(chatId: string, value: unknown) {
         forkChat.messages,
     );
 
-    return createChat({
-        ...forkChat,
-        messages: forkMessages,
-    });
+    return createChat(
+        {
+            ...forkChat,
+            messages: forkMessages,
+        },
+        { preserveAttachmentsFrom: sourceChat },
+    );
 }
 
 export function createForkedChatDraft({
@@ -151,16 +166,16 @@ export function createForkedChatDraft({
 
 export async function writeChatById(chatId: string, value: unknown) {
     const source = isRecord(value) ? value : {};
-    const chat = normalizeChat({
+    const normalizedChat = normalizeChat({
         ...source,
         id: chatId,
     });
-
-    if (!chat) {
+    if (!normalizedChat) {
         throw new BadRequestError("Invalid chat.");
     }
 
     const existingChat = await readChatById(chatId);
+    const chat = sanitizeChatAttachmentUrls(normalizedChat, existingChat);
     if (
         existingChat &&
         timestampMs(existingChat.updatedAt) > timestampMs(chat.updatedAt)
@@ -343,11 +358,14 @@ async function rebuildChatIndexFromSessions(): Promise<ChatIndex> {
     const chats = await discoverJsonFiles<ChatSession>({
         directory: chatSessionsDir,
         orphanedDirectory: chatOrphanedDir,
-        normalizeFile: (value, fileName) =>
-            normalizeChat({
+        normalizeFile: (value, fileName) => {
+            const chat = normalizeChat({
                 ...(isRecord(value) ? value : {}),
                 id: fileName.slice(0, -".json".length),
-            }),
+            });
+
+            return chat;
+        },
     });
 
     const sortedChats = sortChats(chats);

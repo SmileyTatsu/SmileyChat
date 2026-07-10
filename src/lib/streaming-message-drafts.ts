@@ -1,10 +1,10 @@
 import { signal, type Signal } from "@preact/signals";
 
-import type { ChatAttachment, Message } from "#frontend/types";
+import type { Message } from "#frontend/types";
 
 export type StreamingMessageDraft = {
-    attachments?: ChatAttachment[];
     content?: string;
+    generatedImageCount?: number;
     reasoning?: string;
     reasoningDetails?: unknown;
     status?: Message["swipes"][number]["status"];
@@ -45,11 +45,8 @@ export function setStreamingMessageReasoning(
     });
 }
 
-export function setStreamingMessageAttachments(
-    messageId: string,
-    attachments: ChatAttachment[],
-) {
-    setStreamingMessageDraft(messageId, { attachments });
+export function setStreamingGeneratedImageCount(messageId: string, count: number) {
+    setStreamingMessageDraft(messageId, { generatedImageCount: Math.max(0, count) });
 }
 
 export function getStreamingMessageDraft(messageId: string) {
@@ -82,7 +79,7 @@ export function hasStreamingMessageDraftValue(draft: StreamingMessageDraft | und
         draft &&
         ((draft.content?.length ?? 0) > 0 ||
             (draft.reasoning?.length ?? 0) > 0 ||
-            (draft.attachments?.length ?? 0) > 0 ||
+            (draft.generatedImageCount ?? 0) > 0 ||
             draft.status),
     );
 }

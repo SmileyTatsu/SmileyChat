@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { messageContentToText } from "./images";
+import {
+    filterLocalChatGenerationMessageAttachments,
+    messageContentToText,
+} from "./images";
 
 describe("messageContentToText", () => {
     test("renders file placeholders without exposing base64 content", () => {
@@ -16,5 +19,67 @@ describe("messageContentToText", () => {
                 },
             ]),
         ).toBe("Read this\n[file: notes.txt]");
+    });
+});
+
+describe("filterLocalChatGenerationMessageAttachments", () => {
+    test("keeps only local attachment URLs for the current chat", () => {
+        const [message] = filterLocalChatGenerationMessageAttachments(
+            [
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "Look" },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: "/api/chats/chat_1/attachments/image.png",
+                            },
+                        },
+                        {
+                            type: "image_url",
+                            image_url: { url: "https://example.com/image.png" },
+                        },
+                        {
+                            type: "file",
+                            file: {
+                                url: "/api/chats/chat_2/attachments/notes.txt",
+                                filename: "notes.txt",
+                            },
+                        },
+                    ],
+                },
+            ],
+            "chat_1",
+        );
+
+        expect(message?.content).toEqual([
+            { type: "text", text: "Look" },
+            {
+                type: "image_url",
+                image_url: {
+                    url: "/api/chats/chat_1/attachments/image.png",
+                },
+            },
+        ]);
+    });
+
+    test("drops a structured message when every attachment is rejected", () => {
+        expect(
+            filterLocalChatGenerationMessageAttachments(
+                [
+                    {
+                        role: "user",
+                        content: [
+                            {
+                                type: "image_url",
+                                image_url: { url: "https://example.com/image.png" },
+                            },
+                        ],
+                    },
+                ],
+                "chat_1",
+            ),
+        ).toEqual([]);
     });
 });

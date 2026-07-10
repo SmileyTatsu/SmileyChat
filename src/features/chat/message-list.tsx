@@ -27,6 +27,7 @@ type MessageListProps = {
     autoScroll: boolean;
     characterAvatarPath?: string;
     characterName: string;
+    chatId: string;
     errorMessage?: string;
     initialMessageCount: number;
     isTyping?: boolean;
@@ -56,6 +57,7 @@ export const MessageList = memo(function MessageList({
     autoScroll,
     characterAvatarPath,
     characterName,
+    chatId,
     errorMessage,
     initialMessageCount,
     isTyping,
@@ -489,6 +491,7 @@ export const MessageList = memo(function MessageList({
                             key={message.id}
                             characterAvatarPath={characterAvatarPath}
                             characterName={characterName}
+                            chatId={chatId}
                             isEditing={isEditing}
                             isLastMessage={message === messages[messages.length - 1]}
                             isMenuOpen={isMenuOpen}

@@ -3,6 +3,37 @@ import type {
     ChatGenerationMessageContentPart,
     ChatGenerationRequest,
 } from "./types";
+import {
+    isAnyLocalChatAttachmentUrl,
+    isLocalChatAttachmentUrl,
+} from "../chat-attachments";
+
+export function filterLocalChatGenerationMessageAttachments(
+    messages: ChatGenerationMessage[],
+    chatId: string,
+): ChatGenerationMessage[] {
+    return messages.flatMap((message) => {
+        if (typeof message.content === "string") {
+            return [message];
+        }
+
+        const content = message.content.filter((part) => {
+            if (part.type === "image_url") {
+                return isLocalChatAttachmentUrl(part.image_url.url, chatId);
+            }
+
+            if (part.type === "file") {
+                return part.file.url
+                    ? isLocalChatAttachmentUrl(part.file.url, chatId)
+                    : Boolean(part.file.file_data);
+            }
+
+            return true;
+        });
+
+        return content.length ? [{ ...message, content }] : [];
+    });
+}
 
 export async function materializeChatGenerationMessageAttachments(
     messages: ChatGenerationMessage[],
@@ -22,7 +53,7 @@ async function materializeMessageAttachments(
 
     const content = await Promise.all(
         message.content.map(async (part) =>
-            part.type === "image_url" && isLocalChatAttachmentUrl(part.image_url.url)
+            part.type === "image_url" && isAnyLocalChatAttachmentUrl(part.image_url.url)
                 ? {
                       type: "image_url" as const,
                       image_url: {
@@ -31,7 +62,7 @@ async function materializeMessageAttachments(
                   }
                 : part.type === "file" &&
                     part.file.url &&
-                    isLocalChatAttachmentUrl(part.file.url)
+                    isAnyLocalChatAttachmentUrl(part.file.url)
                   ? {
                         type: "file" as const,
                         file: {
@@ -130,10 +161,6 @@ export function parseDataImageUrl(url: string) {
         mimeType: match[1],
         data: match[2],
     };
-}
-
-function isLocalChatAttachmentUrl(url: string) {
-    return /^\/api\/chats\/[^/]+\/attachments\/[^/]+/.test(url);
 }
 
 export function parseDataUrl(url: string) {

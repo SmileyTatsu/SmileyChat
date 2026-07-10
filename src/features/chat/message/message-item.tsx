@@ -34,7 +34,7 @@ import {
 import type { ChatMode, Message } from "#frontend/types";
 import type { TimeFormat } from "#frontend/lib/preferences/types";
 
-import { MessageAttachments } from "./message-attachment";
+import { MessageAttachments, StreamingGeneratedImages } from "./message-attachment";
 import { MessageContent } from "./message-content";
 import { MessageHeader } from "./message-header";
 import { MessageReasoning } from "./message-reasoning";
@@ -46,6 +46,7 @@ import {
 export type MessageItemProps = {
     characterAvatarPath?: string;
     characterName: string;
+    chatId: string;
     isEditing: boolean;
     isLastMessage: boolean;
     isMenuOpen: boolean;
@@ -84,6 +85,7 @@ export type MessageItemProps = {
 export const MessageItem = memo(function MessageItem({
     characterAvatarPath,
     characterName,
+    chatId,
     isEditing,
     isLastMessage,
     isMenuOpen,
@@ -377,6 +379,7 @@ export const MessageItem = memo(function MessageItem({
                     <MessageLiveContent
                         characterAvatarPath={characterAvatarPath}
                         characterName={characterName}
+                        chatId={chatId}
                         message={message}
                         mode={mode}
                         messageFormatting={messageFormatting}
@@ -397,6 +400,7 @@ function areMessageItemPropsEqual(
     return (
         previous.characterAvatarPath === next.characterAvatarPath &&
         previous.characterName === next.characterName &&
+        previous.chatId === next.chatId &&
         previous.isEditing === next.isEditing &&
         previous.isLastMessage === next.isLastMessage &&
         previous.isMenuOpen === next.isMenuOpen &&
@@ -432,6 +436,7 @@ function areMessageItemPropsEqual(
 type MessageLiveContentProps = {
     characterAvatarPath?: string;
     characterName: string;
+    chatId: string;
     message: Message;
     mode: ChatMode;
     messageFormatting: MessageFormattingOptions;
@@ -443,6 +448,7 @@ type MessageLiveContentProps = {
 function MessageLiveContent({
     characterAvatarPath,
     characterName,
+    chatId,
     message,
     mode,
     messageFormatting,
@@ -458,7 +464,7 @@ function MessageLiveContent({
     const draftScrollVersion = [
         streamingDraft?.content?.length ?? 0,
         streamingDraft?.reasoning?.length ?? 0,
-        streamingDraft?.attachments?.length ?? 0,
+        streamingDraft?.generatedImageCount ?? 0,
     ].join(":");
 
     useLayoutEffect(() => {
@@ -472,10 +478,12 @@ function MessageLiveContent({
             <MessageReasoning reasoning={reasoning} />
             <MessageAttachments
                 attachments={attachments}
+                chatId={chatId}
                 onRemoveAttachment={(attachmentId) =>
                     onRemoveAttachment(message.id, attachmentId)
                 }
             />
+            <StreamingGeneratedImages count={streamingDraft?.generatedImageCount ?? 0} />
 
             <MessageContent
                 renderer={renderer}
@@ -514,9 +522,6 @@ function applyStreamingDraftForRender(
             index === message.activeSwipeIndex
                 ? {
                       ...swipe,
-                      ...(draft.attachments !== undefined
-                          ? { attachments: draft.attachments }
-                          : {}),
                       ...(draft.content !== undefined ? { content: draft.content } : {}),
                       ...(draft.reasoning !== undefined
                           ? { reasoning: draft.reasoning }

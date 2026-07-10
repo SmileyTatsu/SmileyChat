@@ -1263,7 +1263,8 @@
         max-width: min(360px, 100%);
     }
 
-    .message-attachment-item > a {
+    .message-attachment-item > a,
+    .message-attachment-item > .message-file-attachment {
         max-width: min(320px, 100%);
         border: 1px solid #303440;
         background: #111318;
@@ -1298,6 +1299,21 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .message-attachment-item > .invalid-attachment {
+        border-color: #5a2f34;
+        color: #ffb4bd;
+    }
+
+    .message-attachment-item > .streaming-image-placeholder {
+        color: #a8b0c4;
+        font-style: italic;
+    }
+
+    .message-attachment-item[data-legacy="true"] > img {
+        border: 1px solid #303440;
+        border-radius: 0.375rem;
     }
 
     .message-attachment-remove {

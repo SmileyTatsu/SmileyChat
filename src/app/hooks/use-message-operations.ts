@@ -397,9 +397,7 @@ function applyStreamingDraftToMessage(
         draft.reasoningDetails,
     );
 
-    return draft.attachments !== undefined
-        ? updateActiveSwipeAttachments(nextMessage, draft.attachments)
-        : nextMessage;
+    return nextMessage;
 }
 
 function finalizeStreamingMessageDraft(messageId: string) {
