@@ -113,4 +113,4 @@ If you use [Tailscale](https://tailscale.com/), SmileyChat detects it automatica
 - You don't need a domain name.
 - Only devices logged into your Tailscale account can access the app.
 - Just install Tailscale on your PC and your phone.
-- Use your PC's Tailscale IP (e.g., `http://100.x.x.x:4173`) from your phone, and it will just work! Tailscale connections bypass the `.env` password requirement because they are already securely authenticated by your Tailnet.
+- Use your PC's Tailscale IP (e.g., `http://100.x.x.x:4173`) from your phone after configuring Basic Auth or a Tailscale IP allowlist. You can set `SMILEYCHAT_BYPASS_AUTH_TAILSCALE=true` to skip both controls, but only do that when every Tailnet peer is trusted to read chats and connection secrets.

@@ -21,14 +21,14 @@ except port/host/CSRF secret.
 | ------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
 | Server binding           | What interfaces the OS can reach the server on                                    | all interfaces (`0.0.0.0`)               | `SMILEYCHAT_HOST`, `SMILEYCHAT_PORT`                                             |
 | IP allowlist             | Network-level deny-by-default                                                     | no allowlist                             | `SMILEYCHAT_IP_ALLOWLIST`, `SMILEYCHAT_IP_ALLOWLIST_ENABLED`                     |
-| Trusted-interface bypass | Skip allowlist & auth for known-safe networks                                     | Tailscale + Docker on                    | `SMILEYCHAT_BYPASS_AUTH_TAILSCALE`, `SMILEYCHAT_BYPASS_AUTH_DOCKER`              |
+| Trusted-interface bypass | Explicitly skip allowlist & auth for trusted networks                             | disabled                                 | `SMILEYCHAT_BYPASS_AUTH_TAILSCALE`, `SMILEYCHAT_BYPASS_AUTH_DOCKER`              |
 | Rate limit               | Throttle abuse / accidental floods                                                | 600 req/min/IP                           | `SMILEYCHAT_RATE_LIMIT_ENABLED`, `SMILEYCHAT_RATE_LIMIT_DEFAULT`                 |
 | Basic Auth               | Username/password gate                                                            | unset → lockdown for non-loopback        | `SMILEYCHAT_BASIC_AUTH_USER/PASS/REALM`                                          |
 | Remote lockdown          | Fail-closed when neither allowlist nor Basic Auth is set                          | enforced                                 | `SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK`, `_REMOTE`                    |
 | Trusted private nets     | Which CIDRs count as "private" for the lockdown's purposes                        | RFC 1918 + CGNAT + link-local + IPv6 ULA | `SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS`                                            |
 | CSRF                     | Origin/Referer + signed token + magic header on every write                       | on                                       | `SMILEYCHAT_TRUSTED_ORIGINS`, `SMILEYCHAT_CSRF_SECRET`                           |
 | Security headers         | CSP, X-Frame-Options, Referrer-Policy, etc. on every response                     | on                                       | _(none)_                                                                         |
-| Privileged gate          | Optional second-factor admin secret on destructive endpoints                      | not used by core today                   | `SMILEYCHAT_ADMIN_SECRET`, `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK`         |
+| Privileged gate          | Extra gate for connection-secret reads and writes                                 | loopback exempt from admin secret        | `SMILEYCHAT_ADMIN_SECRET`, `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK`         |
 | SSRF guard               | Block plugin, registry, and artifact fetches to loopback / private / reserved IPs | on                                       | `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH`, `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS` |
 
 ## What each layer actually does
@@ -41,12 +41,26 @@ itself that would be alarming, but the lockdown below catches every
 non-loopback request and refuses it unless you've opted into one of the
 auth mechanisms. So the practical effect on a fresh install is:
 
+<!--
+
 - Loopback (`127.0.0.1`) → works, no auth needed.
 - LAN / DNS-named host → access-setup page (HTML for browsers, JSON for
   API/curl) until you configure Basic Auth or the allowlist.
 - Tailscale (`100.64.0.0/10`) → auto-passes (see "Trusted-interface
   bypass" below).
 - Docker bridge (`172.16.0.0/12`) → auto-passes.
+
+-->
+
+- Loopback (`127.0.0.1`): works, no auth needed.
+- LAN / DNS-named hosts: access-setup page until you configure Basic Auth or
+  the allowlist.
+- Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`): the same
+  access-setup page until you configure Basic Auth or the allowlist.
+
+Tailscale and Docker bridge traffic follow the same default as LAN clients:
+they must satisfy Basic Auth or the IP allowlist. Their bypasses are disabled
+unless explicitly enabled in `.env`.
 
 If you want to disable the "bound to all interfaces" behaviour entirely
 (e.g. you're running a reverse proxy that's the only thing supposed to
@@ -59,9 +73,8 @@ accepts browser-issued POSTs from that origin.
 
 A comma-separated list of single IPs or CIDR ranges. When set, every
 request whose source IP isn't in the list is refused with `403`. Loopback
-(`127.0.0.0/8`, `::1`) and "trusted interfaces" (Tailscale CGNAT, Docker
-bridge, see below) are always allowed regardless of the list so you
-can't accidentally lock yourself out.
+(`127.0.0.0/8`, `::1`) is always allowed. Tailscale CGNAT and Docker bridge
+traffic also bypass the list only when explicitly enabled below.
 
 Examples:
 
@@ -78,15 +91,16 @@ can't I connect from my phone."
 ### Trusted-interface bypass (Tailscale & Docker)
 
 Tailscale assigns peer IPs from `100.64.0.0/10` (CGNAT). Docker's default
-bridge networks live in `172.16.0.0/12`. By default both ranges skip
-both the allowlist and Basic Auth. The bypass logs a one-shot warning
-the first time it fires so the operator has a paper trail.
+bridge networks live in `172.16.0.0/12`. By default neither range skips
+the allowlist or Basic Auth. Opting in grants every client in that range
+the same access as loopback, including chats and locally stored API keys.
+The bypass logs a one-shot warning the first time it fires.
 
-Turn either off with:
+Enable either bypass only on a fully trusted network:
 
 ```
-SMILEYCHAT_BYPASS_AUTH_TAILSCALE=false
-SMILEYCHAT_BYPASS_AUTH_DOCKER=false
+SMILEYCHAT_BYPASS_AUTH_TAILSCALE=true
+SMILEYCHAT_BYPASS_AUTH_DOCKER=true
 ```
 
 ### Rate limit
@@ -218,9 +232,11 @@ The gate refuses unless:
 
 Loopback callers skip step 3 by default for ergonomics; set
 `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK=true` to require the secret
-even from `127.0.0.1`. **Core SmileyChat doesn't ship any privileged
-endpoints today.** The helper is available infrastructure for plugins
-or future features (auto-update, "wipe all data," etc.).
+even from `127.0.0.1`. `GET` and `PUT /api/connections/secrets` use this
+gate: remote callers must satisfy normal access controls and send the admin
+secret. The browser-direct provider architecture means remote browser
+sessions cannot load connection keys through the normal UI; manage keys from
+loopback or use an API client that supplies the header.
 
 ### SSRF guard (`safeFetch`)
 
@@ -274,10 +290,10 @@ everything except loopback. Browse to `http://127.0.0.1:4173` as usual.
 
 ### Tailscale (multi-device, no public exposure)
 
-Do nothing. Tailscale's CGNAT range (`100.64.0.0/10`) is auto-trusted, so
-your Tailnet peers reach SmileyChat without a password. Add Basic Auth
-below if there are other people on your Tailnet who shouldn't have
-access.
+Configure Basic Auth or allowlist the specific Tailscale peers that may
+connect. You can enable `SMILEYCHAT_BYPASS_AUTH_TAILSCALE=true` for a
+single-user Tailnet, but that grants every Tailnet peer the same access as
+loopback.
 
 ### LAN access from your phone (home network)
 
@@ -313,10 +329,11 @@ Then in Caddy / nginx / Tailscale Serve, terminate TLS and proxy to
   access can read them.
 - **No audit log.** Auth failures and rate-limit rejections go to
   stdout; there's no structured event stream.
-- **No CSRF on GETs.** That's intentional (GETs don't change state) but
-  it means a same-origin `GET /api/connections/secrets` from any script
-  loaded into the SmileyChat origin reads the API keys. The CSP
-  restricts what scripts can load.
+- **No CSRF on GETs.** That's intentional (GETs don't change state). The
+  secrets endpoint has a privileged gate, but a script running in a loopback
+  SmileyChat origin can still read keys unless
+  `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK=true`; the CSP restricts what
+  scripts can load.
 
 If you find a security issue, open an issue on the SmileyChat repo or
 reach the maintainer via the address in the project's README.

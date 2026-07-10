@@ -48,6 +48,7 @@ import {
     writeLorebookById,
 } from "./lorebook-store";
 import { userDataDir } from "./paths";
+import { requirePrivilegedAccess } from "./security/privileged-gate";
 import { writePersonaAvatar } from "./persona-avatar";
 import { servePersonaAsset } from "./persona-images";
 import {
@@ -240,11 +241,21 @@ const server = Bun.serve({
         },
 
         "/api/connections/secrets": {
-            GET: api(async () => {
+            GET: api(async (request, _server, context) => {
+                const rejection = requirePrivilegedAccess(request, context.ip, {
+                    feature: "Connection secrets",
+                });
+                if (rejection) return rejection;
+
                 return json(await readConnectionSecrets());
             }),
 
-            PUT: api(async (request) => {
+            PUT: api(async (request, _server, context) => {
+                const rejection = requirePrivilegedAccess(request, context.ip, {
+                    feature: "Connection secrets",
+                });
+                if (rejection) return rejection;
+
                 const secrets = await writeConnectionSecrets(await readJsonBody(request));
                 return json({ ok: true, secrets });
             }),

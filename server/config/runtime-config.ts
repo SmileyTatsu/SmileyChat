@@ -121,18 +121,18 @@ export function isUnauthenticatedRemoteAllowed() {
     return isEnabledFlag(Bun.env.SMILEYCHAT_ALLOW_UNAUTHENTICATED_REMOTE);
 }
 
-// Default-on: Tailscale CGNAT traffic skips both the IP allowlist and
-// Basic Auth, the same way loopback does. Set the env var to false/0/no/off
-// to require auth from your Tailnet as well.
+// Tailscale CGNAT traffic skips both the IP allowlist and Basic Auth only
+// when the operator explicitly opts in. Tailnets can have more than one user,
+// so treating all peers as local is not a safe default.
 export function isTailscaleBypassEnabled() {
-    return !isDisabledFlag(Bun.env.SMILEYCHAT_BYPASS_AUTH_TAILSCALE);
+    return isEnabledFlag(Bun.env.SMILEYCHAT_BYPASS_AUTH_TAILSCALE);
 }
 
-// Default-on: Docker bridge IPs are unreachable from outside the host.
-// External traffic is NAT'd through the bridge gateway, so bypassing auth
-// for containers is generally safe.
+// Docker bridge traffic skips both the IP allowlist and Basic Auth only when
+// explicitly enabled. Containers may run untrusted code or be reachable by
+// other users on the host.
 export function isDockerBypassEnabled() {
-    return !isDisabledFlag(Bun.env.SMILEYCHAT_BYPASS_AUTH_DOCKER);
+    return isEnabledFlag(Bun.env.SMILEYCHAT_BYPASS_AUTH_DOCKER);
 }
 
 export function isRateLimitEnabled() {

@@ -125,7 +125,7 @@ When running behind a reverse proxy or under a DNS name, list the public browser
 SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
 ```
 
-Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`) traffic is auto-trusted by default. Those clients skip both the IP allowlist and Basic Auth, the same way loopback does. Toggle with `SMILEYCHAT_BYPASS_AUTH_TAILSCALE` / `_DOCKER`.
+Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`) traffic must authenticate by default. Set `SMILEYCHAT_BYPASS_AUTH_TAILSCALE=true` or `SMILEYCHAT_BYPASS_AUTH_DOCKER=true` only when every peer or container is trusted: each bypass skips both the IP allowlist and Basic Auth. Remote access to connection secrets additionally requires `SMILEYCHAT_ADMIN_SECRET` in the `X-SmileyChat-Admin-Secret` header.
 
 See [docs/reference/security.md](docs/reference/security.md) for the full security model: every layer, every env var, what it protects against, and recommended recipes for local / LAN / Tailscale / public-internet deployments.
 
