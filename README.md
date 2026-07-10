@@ -123,6 +123,8 @@ When running behind a reverse proxy or under a DNS name, list the public browser
 
 ```bash
 SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
+# Required when the proxy supplies X-Forwarded-* headers.
+SMILEYCHAT_TRUSTED_PROXIES=127.0.0.1/32,::1/128
 ```
 
 Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`) traffic must authenticate by default. Set `SMILEYCHAT_BYPASS_AUTH_TAILSCALE=true` or `SMILEYCHAT_BYPASS_AUTH_DOCKER=true` only when every peer or container is trusted: each bypass skips both the IP allowlist and Basic Auth. Remote access to connection secrets additionally requires `SMILEYCHAT_ADMIN_SECRET` in the `X-SmileyChat-Admin-Secret` header.

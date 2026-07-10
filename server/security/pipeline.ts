@@ -30,6 +30,7 @@ export interface SecurityContext {
     ip: string;
     url: URL;
     rateLimit: RateLimitResult | null;
+    trustedProxy: boolean;
 }
 
 let cachedTrustedProxies: {
@@ -75,6 +76,14 @@ function isTrustedProxyIp(ip: string): boolean {
     return trustedProxies.some((entry) => matchesCidr(bytes, entry));
 }
 
+export function isRequestFromTrustedProxy(
+    request: Request,
+    server: Bun.Server<unknown>,
+): boolean {
+    const socketIp = server.requestIP(request)?.address;
+    return Boolean(socketIp && isTrustedProxyIp(socketIp));
+}
+
 function firstForwardedForIp(request: Request): string | null {
     const forwardedFor = request.headers.get("x-forwarded-for");
     if (!forwardedFor) return null;
@@ -104,6 +113,7 @@ export function runSecurityPipeline(
 ): Response | SecurityContext {
     const url = new URL(request.url);
     const ip = resolveClientIp(request, server);
+    const trustedProxy = isRequestFromTrustedProxy(request, server);
 
     // IP allowlist runs first so blocked IPs never reach auth/rate limit.
     const allowlistResult = checkIpAllowlist(ip);
@@ -128,7 +138,7 @@ export function runSecurityPipeline(
     const authRejection = checkBasicAuth(request, url, ip);
     if (authRejection) return finalize(authRejection, url);
 
-    return { ip, url, rateLimit };
+    return { ip, url, rateLimit, trustedProxy };
 }
 
 // Apply outgoing-response decoration (security headers, optional rate

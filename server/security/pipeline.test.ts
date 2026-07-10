@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-import { resolveClientIp } from "./pipeline";
+import { isRequestFromTrustedProxy, resolveClientIp } from "./pipeline";
 
 const originalTrustedProxies = process.env.SMILEYCHAT_TRUSTED_PROXIES;
 
@@ -38,6 +38,16 @@ describe("security pipeline client IP resolution", () => {
         });
 
         expect(resolveClientIp(request, serverWithIp("10.0.0.8"))).toBe("198.51.100.25");
+        expect(isRequestFromTrustedProxy(request, serverWithIp("10.0.0.8"))).toBe(true);
+    });
+
+    test("does not mark direct clients as trusted proxies", () => {
+        process.env.SMILEYCHAT_TRUSTED_PROXIES = "10.0.0.0/8";
+        const request = new Request("http://localhost:4173/api/chats");
+
+        expect(isRequestFromTrustedProxy(request, serverWithIp("203.0.113.10"))).toBe(
+            false,
+        );
     });
 
     test("falls back to the trusted proxy IP for malformed x-forwarded-for", () => {

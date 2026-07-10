@@ -675,7 +675,7 @@ function api<Path extends string, WebSocketData = undefined>(
         if (pipeline instanceof Response) return pipeline;
 
         try {
-            await verifyCsrfRequest(request);
+            await verifyCsrfRequest(request, pipeline.trustedProxy);
             const response = await handler(routeRequest(request), server, pipeline);
             return finalize(response, pipeline.url, pipeline.rateLimit);
         } catch (error) {

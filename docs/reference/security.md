@@ -178,6 +178,10 @@ The CSRF middleware (`server/csrf.ts`) runs only on unsafe HTTP methods
 When you reverse-proxy SmileyChat under a public URL, add that URL to
 `SMILEYCHAT_TRUSTED_ORIGINS` (no path, just `https://chat.example.com`)
 or the browser-issued POSTs will start failing with `csrf_origin_untrusted`.
+If the proxy supplies `X-Forwarded-For`, `X-Forwarded-Host`, or
+`X-Forwarded-Proto`, also list the proxy socket IP or CIDR in
+`SMILEYCHAT_TRUSTED_PROXIES`. Forwarded headers are ignored for every other
+direct client, including private-network clients.
 
 ### Security headers
 

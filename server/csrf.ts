@@ -53,12 +53,12 @@ export async function createCsrfToken() {
     return Bun.CSRF.generate(await readCsrfSecret());
 }
 
-export async function verifyCsrfRequest(request: Request) {
+export async function verifyCsrfRequest(request: Request, trustedProxy = false) {
     if (!unsafeMethods.has(request.method)) {
         return;
     }
 
-    verifyRequestOrigin(request);
+    verifyRequestOrigin(request, trustedProxy);
     verifyMagicHeader(request);
 
     const token = request.headers.get(csrfTokenHeader);
@@ -77,7 +77,7 @@ function verifyMagicHeader(request: Request) {
     );
 }
 
-function verifyRequestOrigin(request: Request) {
+function verifyRequestOrigin(request: Request, trustedProxy: boolean) {
     const originHeader = request.headers.get("origin");
     const refererHeader = request.headers.get("referer");
 
@@ -91,7 +91,7 @@ function verifyRequestOrigin(request: Request) {
         );
     }
 
-    const allowedOriginsSet = getAllowedOrigins(request);
+    const allowedOriginsSet = getAllowedOrigins(request, trustedProxy);
     if (!allowedOriginsSet.has(provenanceOrigin)) {
         const sourceHeader = originHeader ? "Origin" : "Referer";
         const sourceValue = originHeader ?? refererHeader ?? provenanceOrigin;
@@ -107,20 +107,23 @@ function verifyRequestOrigin(request: Request) {
     }
 }
 
-function getAllowedOrigins(request: Request) {
+function getAllowedOrigins(request: Request, trustedProxy: boolean) {
     return new Set([
         new URL(request.url).origin,
-        ...forwardedRequestOrigins(request),
-        ...privateNetworkRequestOrigins(request),
+        ...forwardedRequestOrigins(request, trustedProxy),
+        ...privateNetworkRequestOrigins(request, trustedProxy),
         ...trustedOriginsFromEnv(),
     ]);
 }
 
-function privateNetworkRequestOrigins(request: Request) {
-    const proto = firstHeaderValue(request.headers.get("x-forwarded-proto")) ?? "http";
+function privateNetworkRequestOrigins(request: Request, trustedProxy: boolean) {
+    const proto = trustedProxy
+        ? (firstHeaderValue(request.headers.get("x-forwarded-proto")) ?? "http")
+        : "http";
     const host =
-        firstHeaderValue(request.headers.get("x-forwarded-host")) ??
-        firstHeaderValue(request.headers.get("host"));
+        (trustedProxy
+            ? firstHeaderValue(request.headers.get("x-forwarded-host"))
+            : undefined) ?? firstHeaderValue(request.headers.get("host"));
 
     if (!host) {
         return [];
@@ -143,7 +146,11 @@ function hostnameFromAuthority(authority: string) {
     }
 }
 
-function forwardedRequestOrigins(request: Request) {
+function forwardedRequestOrigins(request: Request, trustedProxy: boolean) {
+    if (!trustedProxy) {
+        return [];
+    }
+
     const proto = firstHeaderValue(request.headers.get("x-forwarded-proto"));
     const host =
         firstHeaderValue(request.headers.get("x-forwarded-host")) ??

@@ -158,6 +158,7 @@ describe("CSRF request verification", () => {
                         [csrfMagicHeader]: csrfMagicValue,
                     },
                 }),
+                true,
             ),
         ).resolves.toBeUndefined();
     });
@@ -316,8 +317,32 @@ describe("CSRF request verification", () => {
                         [csrfMagicHeader]: csrfMagicValue,
                     },
                 }),
+                true,
             ),
         ).resolves.toBeUndefined();
+    });
+
+    test("ignores forwarded origin headers from untrusted direct clients", async () => {
+        const token = await createCsrfToken();
+
+        await expect(
+            verifyCsrfRequest(
+                new Request(`http://localhost:${API_PORT}/api/chats`, {
+                    method: "PUT",
+                    headers: {
+                        Host: `localhost:${API_PORT}`,
+                        Origin: "https://chat.example.com",
+                        "x-forwarded-host": "chat.example.com",
+                        "x-forwarded-proto": "https",
+                        "x-smileychat-csrf": token,
+                        [csrfMagicHeader]: csrfMagicValue,
+                    },
+                }),
+            ),
+        ).rejects.toMatchObject({
+            code: "csrf_origin_untrusted",
+            status: 403,
+        });
     });
 });
 
