@@ -6,6 +6,7 @@ import {
     serveChatAsset,
     writeChatAssets,
 } from "./chat-assets";
+import { maxChatAttachmentsPerMessage } from "#frontend/lib/chat-attachment-limits";
 import type { ChatSession } from "#frontend/types";
 
 const testChatIds = new Set<string>();
@@ -65,6 +66,19 @@ describe("chat assets", () => {
         expect(response.headers.get("Content-Type")).toBe("image/png");
         expect(response.headers.get("Content-Disposition")).toStartWith("inline;");
         expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    });
+
+    test("rejects uploads above the per-message attachment cap", async () => {
+        const chatId = testChatId("attachment-cap");
+        const files = Array.from(
+            { length: maxChatAttachmentsPerMessage + 1 },
+            (_, index) =>
+                new File(["content"], `file-${index}.txt`, { type: "text/plain" }),
+        );
+
+        await expect(writeChatAssets(chatId, files)).rejects.toThrow(
+            `A message can include up to ${maxChatAttachmentsPerMessage} attachments.`,
+        );
     });
 
     test("keeps local and safe legacy images, strips unsafe attachment urls", () => {

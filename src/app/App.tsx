@@ -964,6 +964,7 @@ export function App() {
                 errorMessage={chatSession.chatError}
                 isLoading={isChatLoading}
                 isSending={chatSession.isSending}
+                uploadingAttachmentCount={chatSession.uploadingAttachmentCount}
                 messages={chatSession.messages}
                 mode={mode}
                 preferences={preferences}

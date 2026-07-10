@@ -5,9 +5,20 @@ import type { ChatAttachment, ChatSession, Message } from "#frontend/types";
 import { isAllowedChatAttachmentUrl } from "#frontend/lib/chat-attachments";
 
 import { BadRequestError, NotFoundError } from "./http";
-import { chatAssetsDir, maxChatAssetBytes, maxChatFileAssetBytes } from "./paths";
+import {
+    chatAssetsDir,
+    maxChatAssetBytes,
+    maxChatAttachmentsPerMessage,
+    maxChatFileAssetBytes,
+} from "./paths";
 
 export async function writeChatAssets(chatId: string, files: File[]) {
+    if (files.length > maxChatAttachmentsPerMessage) {
+        throw new BadRequestError(
+            `A message can include up to ${maxChatAttachmentsPerMessage} attachments.`,
+        );
+    }
+
     const attachments: ChatAttachment[] = [];
 
     for (const file of files) {

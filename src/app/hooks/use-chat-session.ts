@@ -80,6 +80,7 @@ export function useChatSession({
     userStatus,
 }: UseChatSessionOptions) {
     const [chatError, setChatError] = useState("");
+    const [uploadingAttachmentCount, setUploadingAttachmentCount] = useState(0);
     const latestChatRef = useRef<ChatSession | undefined>(chat);
     const autoResponseTimerRef = useRef<number | undefined>(undefined);
     const suppressEmptyGenerationUntilRef = useRef<Record<string, number>>({});
@@ -220,12 +221,15 @@ export function useChatSession({
         let attachments: ChatAttachment[] = [];
 
         try {
-            attachments = files.length
-                ? await uploadMessageAttachments(chatId, files)
-                : [];
+            if (files.length) {
+                setUploadingAttachmentCount(files.length);
+                attachments = await uploadMessageAttachments(chatId, files);
+            }
         } catch (error) {
             setChatError(`Attachment upload failed: ${messageFromError(error)}`);
             return;
+        } finally {
+            setUploadingAttachmentCount(0);
         }
 
         const userMessage =
@@ -801,16 +805,23 @@ export function useChatSession({
         const removed = attachments.filter(
             (attachment) => attachment.id === attachmentId,
         );
-        const remaining = attachments.filter(
-            (attachment) => attachment.id !== attachmentId,
-        );
-
         if (removed.length === 0) {
             return;
         }
 
-        updateMessageAttachments(messageId, remaining);
-        await deleteLocalChatAttachments(sourceChat.id, removed);
+        const result = await deleteLocalChatAttachments(sourceChat.id, removed);
+
+        if (result.deletedAttachments.length) {
+            const deletedIds = new Set(
+                result.deletedAttachments.map((attachment) => attachment.id),
+            );
+            updateMessageAttachments(
+                messageId,
+                attachments.filter((attachment) => !deletedIds.has(attachment.id)),
+            );
+        }
+
+        reportAttachmentDeleteFailures(result.failedAttachments);
     }
 
     async function removeAllMessageAttachments(messageId: string) {
@@ -832,8 +843,33 @@ export function useChatSession({
             return;
         }
 
-        updateMessageAttachments(messageId, []);
-        await deleteLocalChatAttachments(sourceChat.id, attachments);
+        const result = await deleteLocalChatAttachments(sourceChat.id, attachments);
+
+        if (result.deletedAttachments.length) {
+            const deletedIds = new Set(
+                result.deletedAttachments.map((attachment) => attachment.id),
+            );
+            updateMessageAttachments(
+                messageId,
+                attachments.filter((attachment) => !deletedIds.has(attachment.id)),
+            );
+        }
+
+        reportAttachmentDeleteFailures(result.failedAttachments);
+    }
+
+    function reportAttachmentDeleteFailures(
+        failures: Array<{ attachment: ChatAttachment; error: unknown }>,
+    ) {
+        if (failures.length === 0) {
+            return;
+        }
+
+        const firstFailure = failures[0];
+        const count = failures.length;
+        setChatError(
+            `Could not delete ${count === 1 ? (firstFailure?.attachment.name ?? "attachment") : `${count} attachments`}: ${messageFromError(firstFailure?.error)}`,
+        );
     }
 
     const activeChatId = chat?.id ?? "";
@@ -844,6 +880,7 @@ export function useChatSession({
         editMessage,
         getDebugPayload,
         isSending: activeChatId ? pendingChatIds.includes(activeChatId) : false,
+        uploadingAttachmentCount,
         injectMessage,
         messages: chat?.messages ?? [],
         nextSwipe,

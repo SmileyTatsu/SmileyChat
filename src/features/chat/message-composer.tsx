@@ -1,9 +1,20 @@
-import { FileText, Paperclip, SendHorizonal, Square, X } from "lucide-preact";
+import {
+    FileText,
+    LoaderCircle,
+    Paperclip,
+    SendHorizonal,
+    Square,
+    X,
+} from "lucide-preact";
 import { memo } from "preact/compat";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
 import { createId } from "#frontend/lib/common/ids";
+import {
+    isSafeInlineImageFile,
+    validateChatAttachmentFiles,
+} from "#frontend/lib/chat-attachment-limits";
 import {
     getPluginComposerActions,
     getPluginComposerOptions,
@@ -28,6 +39,7 @@ type MessageComposerProps = {
     disabled?: boolean;
     enterToSend: boolean;
     isGenerating?: boolean;
+    uploadingAttachmentCount?: number;
     mode: ChatMode;
     placeholder?: string;
     resetKey: string;
@@ -56,6 +68,7 @@ export const MessageComposer = memo(function MessageComposer({
     disabled,
     enterToSend,
     isGenerating,
+    uploadingAttachmentCount = 0,
     mode,
     placeholder,
     resetKey,
@@ -69,9 +82,11 @@ export const MessageComposer = memo(function MessageComposer({
     const [draft, setDraft] = useState("");
     const [registryRevision, setRegistryRevision] = useState(0);
     const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+    const [attachmentError, setAttachmentError] = useState("");
 
     const hasMessageContent = draft.trim().length > 0 || stagedFiles.length > 0;
     const canSubmit = !disabled || isGenerating;
+    const isUploadingAttachments = uploadingAttachmentCount > 0;
 
     useEffect(
         () =>
@@ -95,6 +110,7 @@ export const MessageComposer = memo(function MessageComposer({
 
     useEffect(() => {
         setDraft("");
+        setAttachmentError("");
         clearStagedFiles();
     }, [resetKey]);
 
@@ -194,12 +210,19 @@ export const MessageComposer = memo(function MessageComposer({
             return false;
         }
 
+        const validation = validateChatAttachmentFiles(files, stagedFiles.length);
+        setAttachmentError(validation.errors[0] ?? "");
+
+        if (validation.acceptedFiles.length === 0) {
+            return false;
+        }
+
         setStagedFiles((current) => [
             ...current,
-            ...files.map((file) => ({
+            ...validation.acceptedFiles.map((file) => ({
                 id: createId("staged-file"),
                 file,
-                ...(file.type.startsWith("image/")
+                ...(isSafeInlineImageFile(file)
                     ? { previewUrl: URL.createObjectURL(file) }
                     : {}),
             })),
@@ -315,6 +338,22 @@ export const MessageComposer = memo(function MessageComposer({
                 </div>
             )}
 
+            {attachmentError && (
+                <p className="composer-attachment-error" role="status" aria-live="polite">
+                    {attachmentError}
+                </p>
+            )}
+
+            {isUploadingAttachments && (
+                <div className="composer-upload-status" role="status" aria-live="polite">
+                    <LoaderCircle size={15} aria-hidden="true" />
+                    <span>
+                        Uploading {uploadingAttachmentCount} attachment
+                        {uploadingAttachmentCount === 1 ? "" : "s"}...
+                    </span>
+                </div>
+            )}
+
             <div className="chat-composer-area">
                 <button
                     type="button"
@@ -350,20 +389,30 @@ export const MessageComposer = memo(function MessageComposer({
                     className="send-button"
                     type={isGenerating ? "button" : "submit"}
                     data-active={canSubmit}
-                    data-state={isGenerating ? "generating" : "ready"}
+                    data-state={
+                        isGenerating
+                            ? "generating"
+                            : isUploadingAttachments
+                              ? "uploading"
+                              : "ready"
+                    }
                     title={
                         isGenerating
                             ? "Stop generation"
-                            : hasMessageContent
-                              ? "Send message"
-                              : "Generate response"
+                            : isUploadingAttachments
+                              ? "Uploading attachments"
+                              : hasMessageContent
+                                ? "Send message"
+                                : "Generate response"
                     }
                     aria-label={
                         isGenerating
                             ? "Stop generation"
-                            : hasMessageContent
-                              ? "Send message"
-                              : "Generate response"
+                            : isUploadingAttachments
+                              ? "Uploading attachments"
+                              : hasMessageContent
+                                ? "Send message"
+                                : "Generate response"
                     }
                     disabled={isGenerating ? false : disabled}
                     onClick={(event) => {

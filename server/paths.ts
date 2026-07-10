@@ -1,5 +1,11 @@
 import { join, resolve } from "node:path";
 
+export {
+    maxChatAssetBytes,
+    maxChatAttachmentsPerMessage,
+    maxChatFileAssetBytes,
+} from "#frontend/lib/chat-attachment-limits";
+
 export const rootDir = resolve(import.meta.dir, "..");
 export const distDir = join(rootDir, "dist");
 export const userDataDir = join(rootDir, "userData");
@@ -42,5 +48,3 @@ export const coreExtensionsDataDir = join(userDataDir, "settings", "core-extensi
 export const pluginProfilesPath = join(userDataDir, "settings", "plugin-profiles.json");
 
 export const maxAvatarBytes = 20 * 1024 * 1024;
-export const maxChatAssetBytes = 25 * 1024 * 1024;
-export const maxChatFileAssetBytes = 48 * 1024 * 1024;

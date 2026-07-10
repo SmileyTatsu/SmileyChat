@@ -51,6 +51,7 @@ type ChatWorkspaceProps = {
     errorMessage?: string;
     isLoading?: boolean;
     isSending?: boolean;
+    uploadingAttachmentCount?: number;
     messages: Message[];
     mode: ChatMode;
     preferences: AppPreferences;
@@ -90,6 +91,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     errorMessage,
     isLoading,
     isSending,
+    uploadingAttachmentCount,
     messages,
     mode,
     preferences,
@@ -189,11 +191,13 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     disabled={
                         pluginComposerState?.disabled ||
                         isSending ||
+                        Boolean(uploadingAttachmentCount) ||
                         Boolean(pendingSwipeMessageId)
                     }
                     mode={mode}
                     enterToSend={preferences.chat.enterToSend}
                     isGenerating={Boolean(isSending)}
+                    uploadingAttachmentCount={uploadingAttachmentCount}
                     placeholder={pluginComposerState?.placeholder}
                     resetKey={activeChatId}
                     onAbortGeneration={onAbortGeneration}

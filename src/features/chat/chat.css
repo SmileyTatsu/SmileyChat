@@ -1197,6 +1197,43 @@
     @apply col-span-full mx-2 flex min-w-0 gap-2 overflow-x-auto py-2;
 }
 
+.composer-attachment-error,
+.composer-upload-status {
+    display: inline-flex;
+    align-items: center;
+    grid-column: 1 / -1;
+    min-width: 0;
+    gap: 6px;
+    margin: 0 10px;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.composer-attachment-error {
+    color: #ffb4bd;
+    overflow-wrap: anywhere;
+}
+
+.composer-upload-status {
+    color: #b8c4dd;
+}
+
+.composer-upload-status svg {
+    animation: composer-upload-spin 0.9s linear infinite;
+}
+
+@keyframes composer-upload-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .composer-upload-status svg {
+        animation: none;
+    }
+}
+
 .composer-staged-image {
     flex: 0 0 auto;
 

@@ -45,17 +45,26 @@ export async function deleteLocalChatAttachments(
     chatId: string,
     attachments: ChatAttachment[],
 ) {
-    await Promise.allSettled(
-        attachments.map(async (attachment) => {
-            const fileName = localChatAttachmentFileName(attachment.url, chatId);
+    const deletedAttachments: ChatAttachment[] = [];
+    const failedAttachments: Array<{ attachment: ChatAttachment; error: unknown }> = [];
 
-            if (!fileName) {
-                return;
-            }
+    for (const attachment of attachments) {
+        const fileName = localChatAttachmentFileName(attachment.url, chatId);
 
+        if (!fileName) {
+            deletedAttachments.push(attachment);
+            continue;
+        }
+
+        try {
             await deleteChatAttachment(chatId, fileName);
-        }),
-    );
+            deletedAttachments.push(attachment);
+        } catch (error) {
+            failedAttachments.push({ attachment, error });
+        }
+    }
+
+    return { deletedAttachments, failedAttachments };
 }
 
 export async function generatedImageUrlToFile(url: string, index: number) {
