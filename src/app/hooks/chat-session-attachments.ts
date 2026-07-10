@@ -1,6 +1,6 @@
 import { deleteChatAttachment, uploadChatAttachments } from "#frontend/lib/api/client";
 import {
-    isSafeGeneratedImageFetchUrl,
+    isLegacyGeneratedImageUrl,
     localChatAttachmentFileName,
 } from "#frontend/lib/chat-attachments";
 import type { ChatAttachment } from "#frontend/types";
@@ -59,7 +59,7 @@ export async function deleteLocalChatAttachments(
 }
 
 export async function generatedImageUrlToFile(url: string, index: number) {
-    if (!isSafeGeneratedImageFetchUrl(url)) {
+    if (!isLegacyGeneratedImageUrl(url)) {
         throw new Error(`generated image ${index + 1} uses an unsupported URL scheme`);
     }
 

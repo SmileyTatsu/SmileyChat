@@ -2,7 +2,7 @@ import { copyFile, mkdir, rm } from "node:fs/promises";
 import { basename, extname, resolve } from "node:path";
 
 import type { ChatAttachment, ChatSession, Message } from "#frontend/types";
-import { isLocalChatAttachmentUrl } from "#frontend/lib/chat-attachments";
+import { isAllowedChatAttachmentUrl } from "#frontend/lib/chat-attachments";
 
 import { BadRequestError, NotFoundError } from "./http";
 import { chatAssetsDir, maxChatAssetBytes, maxChatFileAssetBytes } from "./paths";
@@ -168,28 +168,18 @@ export function rewriteMessageAttachmentUrls(
     }));
 }
 
-export function sanitizeChatAttachmentUrls(
-    chat: ChatSession,
-    existingChat?: ChatSession,
-): ChatSession {
+export function sanitizeChatAttachmentUrls(chat: ChatSession): ChatSession {
     return {
         ...chat,
         messages: chat.messages.map((message) => ({
             ...message,
-            swipes: message.swipes.map((swipe, swipeIndex) => {
+            swipes: message.swipes.map((swipe) => {
                 if (!swipe.attachments?.length) {
                     return swipe;
                 }
 
-                const attachments = swipe.attachments.filter(
-                    (attachment) =>
-                        isLocalChatAttachmentUrl(attachment.url, chat.id) ||
-                        isExistingLegacyAttachment(
-                            attachment,
-                            existingChat,
-                            message.id,
-                            swipeIndex,
-                        ),
+                const attachments = swipe.attachments.filter((attachment) =>
+                    isAllowedChatAttachmentUrl(attachment.type, attachment.url, chat.id),
                 );
                 const safeSwipe = { ...swipe };
                 delete safeSwipe.attachments;
@@ -201,26 +191,6 @@ export function sanitizeChatAttachmentUrls(
             }),
         })),
     };
-}
-
-function isExistingLegacyAttachment(
-    attachment: ChatAttachment,
-    existingChat: ChatSession | undefined,
-    messageId: string,
-    swipeIndex: number,
-) {
-    const existingAttachments = existingChat?.messages.find(
-        (message) => message.id === messageId,
-    )?.swipes[swipeIndex]?.attachments;
-
-    return Boolean(
-        existingAttachments?.some(
-            (existing) =>
-                existing.id === attachment.id &&
-                existing.type === attachment.type &&
-                existing.url === attachment.url,
-        ),
-    );
 }
 
 export async function readUploadedChatAssets(request: Request) {

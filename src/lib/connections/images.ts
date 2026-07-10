@@ -5,6 +5,7 @@ import type {
 } from "./types";
 import {
     isAnyLocalChatAttachmentUrl,
+    isLegacyGeneratedImageUrl,
     isLocalChatAttachmentUrl,
 } from "../chat-attachments";
 
@@ -19,7 +20,10 @@ export function filterLocalChatGenerationMessageAttachments(
 
         const content = message.content.filter((part) => {
             if (part.type === "image_url") {
-                return isLocalChatAttachmentUrl(part.image_url.url, chatId);
+                return (
+                    isLocalChatAttachmentUrl(part.image_url.url, chatId) ||
+                    isLegacyGeneratedImageUrl(part.image_url.url)
+                );
             }
 
             if (part.type === "file") {
@@ -52,29 +56,40 @@ async function materializeMessageAttachments(
     }
 
     const content = await Promise.all(
-        message.content.map(async (part) =>
-            part.type === "image_url" && isAnyLocalChatAttachmentUrl(part.image_url.url)
-                ? {
-                      type: "image_url" as const,
-                      image_url: {
-                          url: await attachmentUrlToDataUrl(part.image_url.url),
-                      },
-                  }
-                : part.type === "file" &&
-                    part.file.url &&
-                    isAnyLocalChatAttachmentUrl(part.file.url)
-                  ? {
-                        type: "file" as const,
-                        file: {
-                            ...part.file,
-                            file_data: await attachmentUrlToDataUrl(
-                                part.file.url,
-                                part.file.mime_type,
-                            ),
+        message.content.map(async (part) => {
+            if (part.type === "image_url") {
+                if (isAnyLocalChatAttachmentUrl(part.image_url.url)) {
+                    return {
+                        type: "image_url" as const,
+                        image_url: {
+                            url: await attachmentUrlToDataUrl(part.image_url.url),
                         },
-                    }
-                  : part,
-        ),
+                    };
+                }
+
+                // Legacy remote/data images are already provider-ready.
+                return part;
+            }
+
+            if (
+                part.type === "file" &&
+                part.file.url &&
+                isAnyLocalChatAttachmentUrl(part.file.url)
+            ) {
+                return {
+                    type: "file" as const,
+                    file: {
+                        ...part.file,
+                        file_data: await attachmentUrlToDataUrl(
+                            part.file.url,
+                            part.file.mime_type,
+                        ),
+                    },
+                };
+            }
+
+            return part;
+        }),
     );
 
     return {

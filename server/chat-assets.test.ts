@@ -54,7 +54,7 @@ describe("chat assets", () => {
     test("serves safe raster image attachments inline", async () => {
         const chatId = testChatId("png");
         const [attachment] = await writeChatAssets(chatId, [
-            new File([new Uint8Array([137, 80, 78, 71])], "avatar.png", {
+            new File([new Uint8Array([137, 80, 78, 71])], "photo.png", {
                 type: "image/png",
             }),
         ]);
@@ -67,7 +67,7 @@ describe("chat assets", () => {
         expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     });
 
-    test("strips attachment urls that are not local to the chat", () => {
+    test("keeps local and safe legacy images, strips unsafe attachment urls", () => {
         const chat = createChatWithAttachments([
             {
                 id: "local",
@@ -76,22 +76,34 @@ describe("chat assets", () => {
                 name: "image.png",
             },
             {
+                id: "legacy-https",
+                type: "image",
+                url: "https://example.com/tracker.png",
+                name: "tracker.png",
+            },
+            {
+                id: "legacy-data",
+                type: "image",
+                url: "data:image/png;base64,iVBORw0KGgo=",
+                name: "Generated image",
+            },
+            {
                 id: "other-chat",
                 type: "image",
                 url: "/api/chats/chat_other/attachments/image.png",
                 name: "other.png",
             },
             {
-                id: "external",
-                type: "image",
-                url: "https://example.com/tracker.png",
-                name: "tracker.png",
-            },
-            {
                 id: "javascript",
                 type: "file",
                 url: "javascript:alert(1)",
                 name: "payload.html",
+            },
+            {
+                id: "remote-file",
+                type: "file",
+                url: "https://example.com/document.pdf",
+                name: "document.pdf",
             },
             {
                 id: "query",
@@ -110,48 +122,47 @@ describe("chat assets", () => {
                 url: "/api/chats/chat_safe/attachments/image.png",
                 name: "image.png",
             },
-        ]);
-    });
-
-    test("preserves unchanged legacy attachment urls during an existing chat save", () => {
-        const legacyAttachment = {
-            id: "legacy-generated",
-            type: "image" as const,
-            url: "data:image/png;base64,iVBORw0KGgo=",
-            name: "Generated image",
-        };
-        const existingChat = createChatWithAttachments([legacyAttachment]);
-        const incomingChat = createChatWithAttachments([
-            legacyAttachment,
             {
-                id: "new-external",
+                id: "legacy-https",
                 type: "image",
                 url: "https://example.com/tracker.png",
                 name: "tracker.png",
             },
+            {
+                id: "legacy-data",
+                type: "image",
+                url: "data:image/png;base64,iVBORw0KGgo=",
+                name: "Generated image",
+            },
         ]);
-
-        const sanitized = sanitizeChatAttachmentUrls(incomingChat, existingChat);
-
-        expect(sanitized.messages[0].swipes[0].attachments).toEqual([legacyAttachment]);
     });
 
-    test("preserves source legacy attachments when forking into a new chat id", () => {
-        const legacyAttachment = {
-            id: "legacy-generated",
-            type: "image" as const,
-            url: "https://cdn.example.com/generated.png",
-            name: "Generated image",
-        };
-        const sourceChat = createChatWithAttachments([legacyAttachment]);
-        const forkedChat = {
-            ...createChatWithAttachments([legacyAttachment]),
-            id: "chat_fork",
-        };
+    test("strips svg data images and keeps raster data images", () => {
+        const chat = createChatWithAttachments([
+            {
+                id: "png",
+                type: "image",
+                url: "data:image/png;base64,abc",
+                name: "ok.png",
+            },
+            {
+                id: "svg",
+                type: "image",
+                url: "data:image/svg+xml,<svg></svg>",
+                name: "bad.svg",
+            },
+        ]);
 
-        const sanitized = sanitizeChatAttachmentUrls(forkedChat, sourceChat);
+        const sanitized = sanitizeChatAttachmentUrls(chat);
 
-        expect(sanitized.messages[0].swipes[0].attachments).toEqual([legacyAttachment]);
+        expect(sanitized.messages[0].swipes[0].attachments).toEqual([
+            {
+                id: "png",
+                type: "image",
+                url: "data:image/png;base64,abc",
+                name: "ok.png",
+            },
+        ]);
     });
 });
 

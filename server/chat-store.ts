@@ -54,17 +54,12 @@ export async function readChatById(chatId: string) {
         id: chatId,
     });
 
-    return chat;
+    return chat ? sanitizeChatAttachmentUrls(chat) : undefined;
 }
 
-export async function createChat(
-    value: unknown,
-    options: { preserveAttachmentsFrom?: ChatSession } = {},
-) {
+export async function createChat(value: unknown) {
     const normalizedChat = normalizeChat(value);
-    const chat = normalizedChat
-        ? sanitizeChatAttachmentUrls(normalizedChat, options.preserveAttachmentsFrom)
-        : undefined;
+    const chat = normalizedChat ? sanitizeChatAttachmentUrls(normalizedChat) : undefined;
 
     if (!chat) {
         throw new BadRequestError("Invalid chat.");
@@ -116,13 +111,10 @@ export async function forkChatAtMessage(chatId: string, value: unknown) {
         forkChat.messages,
     );
 
-    return createChat(
-        {
-            ...forkChat,
-            messages: forkMessages,
-        },
-        { preserveAttachmentsFrom: sourceChat },
-    );
+    return createChat({
+        ...forkChat,
+        messages: forkMessages,
+    });
 }
 
 export function createForkedChatDraft({
@@ -175,7 +167,7 @@ export async function writeChatById(chatId: string, value: unknown) {
     }
 
     const existingChat = await readChatById(chatId);
-    const chat = sanitizeChatAttachmentUrls(normalizedChat, existingChat);
+    const chat = sanitizeChatAttachmentUrls(normalizedChat);
     if (
         existingChat &&
         timestampMs(existingChat.updatedAt) > timestampMs(chat.updatedAt)
@@ -364,7 +356,7 @@ async function rebuildChatIndexFromSessions(): Promise<ChatIndex> {
                 id: fileName.slice(0, -".json".length),
             });
 
-            return chat;
+            return chat ? sanitizeChatAttachmentUrls(chat) : undefined;
         },
     });
 

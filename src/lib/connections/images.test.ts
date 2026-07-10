@@ -23,7 +23,7 @@ describe("messageContentToText", () => {
 });
 
 describe("filterLocalChatGenerationMessageAttachments", () => {
-    test("keeps only local attachment URLs for the current chat", () => {
+    test("keeps local and legacy image urls, strips other-chat files", () => {
         const [message] = filterLocalChatGenerationMessageAttachments(
             [
                 {
@@ -61,6 +61,10 @@ describe("filterLocalChatGenerationMessageAttachments", () => {
                     url: "/api/chats/chat_1/attachments/image.png",
                 },
             },
+            {
+                type: "image_url",
+                image_url: { url: "https://example.com/image.png" },
+            },
         ]);
     });
 
@@ -73,7 +77,14 @@ describe("filterLocalChatGenerationMessageAttachments", () => {
                         content: [
                             {
                                 type: "image_url",
-                                image_url: { url: "https://example.com/image.png" },
+                                image_url: { url: "javascript:alert(1)" },
+                            },
+                            {
+                                type: "file",
+                                file: {
+                                    url: "https://example.com/doc.pdf",
+                                    filename: "doc.pdf",
+                                },
                             },
                         ],
                     },

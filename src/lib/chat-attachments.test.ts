@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+    isAllowedChatAttachmentUrl,
     isAnyLocalChatAttachmentUrl,
     isLegacyGeneratedImageUrl,
     isLocalChatAttachmentUrl,
     isRenderableChatImageUrl,
-    isSafeGeneratedImageFetchUrl,
     localChatAttachmentFileName,
 } from "./chat-attachments";
 
@@ -41,7 +41,6 @@ describe("chat attachment URLs", () => {
         expect(isLegacyGeneratedImageUrl("data:image/png;base64,abc")).toBe(true);
         expect(isLegacyGeneratedImageUrl("data:image/svg+xml,<svg></svg>")).toBe(false);
         expect(isLegacyGeneratedImageUrl("javascript:alert(1)")).toBe(false);
-        expect(isSafeGeneratedImageFetchUrl("http://localhost:1234/img.png")).toBe(true);
         expect(isRenderableChatImageUrl("https://cdn.example.com/a.png", "chat_1")).toBe(
             true,
         );
@@ -51,5 +50,28 @@ describe("chat attachment URLs", () => {
         expect(
             isRenderableChatImageUrl("/api/chats/chat_2/attachments/a.png", "chat_1"),
         ).toBe(false);
+    });
+
+    test("allowed attachment urls differ for image vs file", () => {
+        expect(
+            isAllowedChatAttachmentUrl(
+                "image",
+                "https://cdn.example.com/a.png",
+                "chat_1",
+            ),
+        ).toBe(true);
+        expect(
+            isAllowedChatAttachmentUrl("file", "https://cdn.example.com/a.pdf", "chat_1"),
+        ).toBe(false);
+        expect(
+            isAllowedChatAttachmentUrl(
+                "file",
+                "/api/chats/chat_1/attachments/a.pdf",
+                "chat_1",
+            ),
+        ).toBe(true);
+        expect(isAllowedChatAttachmentUrl("image", "javascript:alert(1)", "chat_1")).toBe(
+            false,
+        );
     });
 });

@@ -49,6 +49,7 @@ export function isRenderableChatImageUrl(
 /**
  * Legacy model-generated images stored as remote/data URLs before local materialize.
  * Never use this for type "file" attachments.
+ * Also used as the fetch allowlist when materializing generated images.
  */
 export function isLegacyGeneratedImageUrl(url: string | undefined) {
     if (!url) {
@@ -67,21 +68,26 @@ export function isLegacyGeneratedImageUrl(url: string | undefined) {
     }
 }
 
+/** @deprecated Use isLegacyGeneratedImageUrl — same scheme rules. */
 export function isSafeGeneratedImageFetchUrl(url: string | undefined) {
-    if (!url) {
+    return isLegacyGeneratedImageUrl(url);
+}
+
+/** Attachment allowed in stored chat JSON / UI after soft sanitize. */
+export function isAllowedChatAttachmentUrl(
+    type: "image" | "file" | undefined,
+    url: string | undefined,
+    chatId: string | undefined,
+) {
+    if (!type || !url) {
         return false;
     }
 
-    if (url.startsWith("data:")) {
-        return isSafeRasterDataImageUrl(url);
+    if (isLocalChatAttachmentUrl(url, chatId)) {
+        return true;
     }
 
-    try {
-        const protocol = new URL(url).protocol;
-        return protocol === "https:" || protocol === "http:";
-    } catch {
-        return false;
-    }
+    return type === "image" && isLegacyGeneratedImageUrl(url);
 }
 
 export function localChatAttachmentFileName(url: string | undefined, chatId: string) {
