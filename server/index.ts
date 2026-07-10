@@ -125,7 +125,7 @@ const server = Bun.serve({
     routes: {
         "/api/health": {
             GET: api(async () => {
-                return json({ ok: true, userDataDir });
+                return json({ ok: true });
             }),
         },
 
