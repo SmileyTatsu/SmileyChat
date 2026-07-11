@@ -91,6 +91,17 @@ import {
 } from "./settings";
 import { serveStatic } from "./static";
 import { ensureUserData } from "./user-data";
+import {
+    callMcpTool,
+    connectMcpServer,
+    disconnectMcpServer,
+    exportMcpServers,
+    importMcpServers,
+    readMcpServers,
+    refreshMcpServer,
+    writeMcpServers,
+    closeAll as closeAllMcpServers,
+} from "./mcp";
 
 import type { SecurityContext } from "./security/pipeline";
 
@@ -114,6 +125,7 @@ const envWatcher = startEnvWatcher();
 const shutdown = (signal: string) => {
     console.log(`Received ${signal}; shutting down SmileyChat.`);
     envWatcher.stop();
+    void closeAllMcpServers();
     process.exit(0);
 };
 
@@ -140,6 +152,45 @@ const server = Bun.serve({
             GET: api(async () => {
                 return json({ plugins: await readPluginManifests() });
             }),
+        },
+
+        "/api/mcp": {
+            GET: api(async () => readMcpServers()),
+            PUT: api(async (request) => writeMcpServers(await readJsonBody(request))),
+        },
+        "/api/mcp/import": {
+            POST: api(async (request) => importMcpServers(await readJsonBody(request))),
+        },
+        "/api/mcp/export": {
+            POST: api(async (request) => {
+                const body = await readJsonBody(request);
+                return exportMcpServers(
+                    Boolean(
+                        body &&
+                        typeof body === "object" &&
+                        "includeSecrets" in body &&
+                        body.includeSecrets,
+                    ),
+                );
+            }),
+        },
+        "/api/mcp/:serverId/connect": {
+            POST: api(async (request) => connectMcpServer(request.params.serverId)),
+        },
+        "/api/mcp/:serverId/disconnect": {
+            POST: api(async (request) => disconnectMcpServer(request.params.serverId)),
+        },
+        "/api/mcp/:serverId/refresh": {
+            POST: api(async (request) => refreshMcpServer(request.params.serverId)),
+        },
+        "/api/mcp/:serverId/tools/:toolName": {
+            POST: api(async (request) =>
+                callMcpTool(
+                    request.params.serverId,
+                    request.params.toolName,
+                    await readJsonBody(request),
+                ),
+            ),
         },
 
         "/api/plugins/registry": {

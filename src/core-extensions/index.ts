@@ -3,12 +3,14 @@ import { chatSummarizerPlugin } from "./chat-summarizer";
 import { lorebooksPlugin } from "./lorebooks";
 import { postProcessingPlugin } from "./post-processing";
 import { smileyChatFormatterPlugin } from "./smiley-chat-formatter";
+import { mcpPlugin } from "./mcp";
 
 export const corePlugins = [
     smileyChatFormatterPlugin,
     lorebooksPlugin,
     chatSummarizerPlugin,
     postProcessingPlugin,
+    mcpPlugin,
 ];
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
 

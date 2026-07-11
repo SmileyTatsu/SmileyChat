@@ -370,13 +370,19 @@ export function getPluginConnectionProviders() {
     return enabledValues([...connectionProviders.values()]);
 }
 
-export function getPluginTools() {
-    return enabledValues([...pluginTools.values()]);
+export function getPluginTools(snapshot = latestSnapshot) {
+    return enabledValues([...pluginTools.values()]).filter(
+        (tool) => !snapshot || !tool.isAvailable || tool.isAvailable(snapshot),
+    );
 }
 
-export function getPluginTool(name: string) {
+export function getPluginTool(name: string, snapshot = latestSnapshot) {
     const tool = pluginTools.get(name);
-    return tool && isPluginEnabled(tool.pluginId) ? tool.value : undefined;
+    return tool &&
+        isPluginEnabled(tool.pluginId) &&
+        (!snapshot || !tool.value.isAvailable || tool.value.isAvailable(snapshot))
+        ? tool.value
+        : undefined;
 }
 
 export function setPluginAppActionHandlers(handlers: Partial<PluginAppActionHandlers>) {
@@ -694,6 +700,14 @@ export function createPluginApi(
                 if (registered) {
                     notifyRegistryChanged();
                 }
+
+                return () => {
+                    const current = pluginTools.get(name);
+                    if (current?.pluginId === manifest.id && current.value === tool) {
+                        pluginTools.delete(name);
+                        notifyRegistryChanged();
+                    }
+                };
             },
         },
         storage,

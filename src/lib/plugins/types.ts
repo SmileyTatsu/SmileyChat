@@ -267,6 +267,8 @@ export type PluginConnectionProvider = {
 export type PluginToolContext = PluginAppSnapshot;
 
 export type PluginTool = ToolDefinition & {
+    /** Return false when a registered tool is not available in the active chat. */
+    isAvailable?: (context: PluginAppSnapshot) => boolean;
     run: (
         args: Record<string, unknown>,
         context: PluginToolContext,
@@ -415,7 +417,8 @@ export type SmileyPluginApi = {
         registerProvider(provider: PluginConnectionProvider): void;
     };
     tools: {
-        registerTool(tool: PluginTool): void;
+        /** Returns a disposer so dynamic tool sources can be refreshed safely. */
+        registerTool(tool: PluginTool): () => void;
     };
     storage: PluginStorageApi;
     events: PluginEventsApi;

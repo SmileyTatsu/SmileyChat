@@ -95,7 +95,7 @@ function mergeGoogleAIStreamChunk(
 ) {
     target.modelVersion = chunk.modelVersion ?? target.modelVersion;
     target.responseId = chunk.responseId ?? target.responseId;
-    
+
     if (chunk.usageMetadata) {
         target.usageMetadata = {
             ...(target.usageMetadata ?? {}),

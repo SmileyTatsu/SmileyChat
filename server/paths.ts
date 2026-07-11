@@ -45,6 +45,8 @@ export const lorebookImportsDir = join(userDataDir, "lorebooks", "imports");
 export const lorebookOrphanedDir = join(userDataDir, "lorebooks", "orphaned");
 export const pluginsDir = join(userDataDir, "plugins");
 export const coreExtensionsDataDir = join(userDataDir, "settings", "core-extensions");
+export const mcpSettingsPath = join(coreExtensionsDataDir, "mcp.json");
+export const mcpSecretsPath = join(coreExtensionsDataDir, "mcp-secrets.json");
 export const pluginProfilesPath = join(userDataDir, "settings", "plugin-profiles.json");
 
 export const maxAvatarBytes = 20 * 1024 * 1024;

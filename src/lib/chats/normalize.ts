@@ -2,6 +2,7 @@ import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import { getMessageCreatedAt } from "#frontend/lib/messages";
+import { normalizeMcpSelection } from "#frontend/lib/mcp/config";
 
 import type {
     ChatAttachment,
@@ -540,7 +541,8 @@ function normalizeMetadata(value: unknown): ChatMetadata | undefined {
         return undefined;
     }
 
-    return { ...value };
+    const mcp = normalizeMcpSelection(value.mcp);
+    return { ...value, ...(mcp ? { mcp } : {}) };
 }
 
 function asString(value: unknown) {
