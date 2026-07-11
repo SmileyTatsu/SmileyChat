@@ -522,6 +522,7 @@ export const MessageList = memo(function MessageList({
                             canForkMessages={canForkMessages}
                             showRpCharacterImages={showRpCharacterImages}
                             showTimestamps={showTimestamps}
+                            showToolActivity={showToolActivity}
                             timeFormat={timeFormat}
                             onCancelEdit={cancelEdit}
                             onCloseMenu={closeMessageMenu}

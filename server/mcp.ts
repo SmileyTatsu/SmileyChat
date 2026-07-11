@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { execFileSync } from "node:child_process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
@@ -269,7 +270,30 @@ function validateServer(server: McpServerConfig) {
 async function close(id: string) {
     const connection = connections.get(id);
     connections.delete(id);
-    if (connection) await connection.transport.close();
+    if (!connection) return;
+
+    killTransportProcessTree(connection.transport);
+    await connection.client.close();
+}
+
+/**
+ * Kill the whole stdio child process tree. `npx.cmd` is a wrapper, so killing
+ * only the direct process can leave the underlying Node MCP server running.
+ */
+function killTransportProcessTree(transport: Connection["transport"]) {
+    if (!(transport instanceof StdioClientTransport) || !transport.pid) return;
+
+    try {
+        if (process.platform === "win32") {
+            execFileSync("taskkill", ["/F", "/T", "/PID", String(transport.pid)], {
+                stdio: "ignore",
+            });
+        } else {
+            process.kill(transport.pid, "SIGKILL");
+        }
+    } catch {
+        // Process might already be dead.
+    }
 }
 
 export async function closeAll() {

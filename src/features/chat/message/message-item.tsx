@@ -64,6 +64,7 @@ export type MessageItemProps = {
     renderer?: MessageRenderer;
     showRpCharacterImages: boolean;
     showTimestamps: boolean;
+    showToolActivity: boolean;
     timeFormat: TimeFormat;
     onCancelEdit: () => void;
     onCloseMenu: () => void;
@@ -103,6 +104,7 @@ export const MessageItem = memo(function MessageItem({
     renderer,
     showRpCharacterImages,
     showTimestamps,
+    showToolActivity,
     timeFormat,
     onCancelEdit,
     onCloseMenu,
@@ -388,6 +390,7 @@ export const MessageItem = memo(function MessageItem({
                         mode={mode}
                         messageFormatting={messageFormatting}
                         renderer={renderer}
+                        showToolActivity={showToolActivity}
                         onRemoveAttachment={onRemoveAttachment}
                         onVisibleContentChange={onVisibleContentChange}
                     />
@@ -466,6 +469,7 @@ function areMessageItemPropsEqual(
         previous.renderer === next.renderer &&
         previous.showRpCharacterImages === next.showRpCharacterImages &&
         previous.showTimestamps === next.showTimestamps &&
+        previous.showToolActivity === next.showToolActivity &&
         previous.timeFormat === next.timeFormat &&
         previous.onCancelEdit === next.onCancelEdit &&
         previous.onCloseMenu === next.onCloseMenu &&
@@ -491,6 +495,7 @@ type MessageLiveContentProps = {
     mode: ChatMode;
     messageFormatting: MessageFormattingOptions;
     renderer?: MessageRenderer;
+    showToolActivity: boolean;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onVisibleContentChange: () => void;
 };
@@ -503,6 +508,7 @@ function MessageLiveContent({
     mode,
     messageFormatting,
     renderer,
+    showToolActivity,
     onRemoveAttachment,
     onVisibleContentChange,
 }: MessageLiveContentProps) {
@@ -529,9 +535,10 @@ function MessageLiveContent({
 
     return (
         <>
-            {toolActivities?.map((activity) => (
-                <ToolActivityMessage key={activity.call.id} activity={activity} />
-            ))}
+            {showToolActivity &&
+                toolActivities?.map((activity) => (
+                    <ToolActivityMessage key={activity.call.id} activity={activity} />
+                ))}
             <MessageReasoning reasoning={reasoning} />
             <MessageAttachments
                 attachments={attachments}
