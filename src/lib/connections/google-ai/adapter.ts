@@ -95,10 +95,13 @@ function mergeGoogleAIStreamChunk(
 ) {
     target.modelVersion = chunk.modelVersion ?? target.modelVersion;
     target.responseId = chunk.responseId ?? target.responseId;
-    target.usageMetadata = {
-        ...(target.usageMetadata ?? {}),
-        ...(chunk.usageMetadata ?? {}),
-    };
+    
+    if (chunk.usageMetadata) {
+        target.usageMetadata = {
+            ...(target.usageMetadata ?? {}),
+            ...(chunk.usageMetadata ?? {}),
+        };
+    }
 
     const targetCandidate = target.candidates?.[0];
     const chunkCandidate = chunk.candidates?.[0];

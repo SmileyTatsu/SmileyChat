@@ -55,6 +55,10 @@ describe("Google AI connection adapter", () => {
             googleAI: {
                 parts: [
                     {
+                        text: "Reasoning ",
+                        thought: true,
+                    },
+                    {
                         text: "answer",
                         thoughtSignature: "signature-a",
                     },
