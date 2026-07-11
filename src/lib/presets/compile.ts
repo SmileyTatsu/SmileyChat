@@ -6,6 +6,7 @@ import { messageContentToText } from "../connections/images";
 import {
     getMessageAttachments,
     getMessageContent,
+    getActiveSwipe,
     getMessageReasoning,
     getMessageReasoningDetails,
 } from "../messages";
@@ -321,6 +322,7 @@ function toGenerationMessage(
         content: messageContentWithAttachments(message, context),
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+        // We still check message.toolCalls/toolResult for backwards compatibility with old chats
         ...(message.toolCalls?.length ? { toolCalls: message.toolCalls } : {}),
         ...(message.toolResult ? { toolResult: message.toolResult } : {}),
     };
@@ -330,6 +332,37 @@ function toAnchoredHistoryMessages(
     message: Message,
     context: CompilePresetContext,
 ): AnchoredPromptMessage[] {
+    const activeSwipe = getActiveSwipe(message);
+    const activities = activeSwipe?.toolActivities;
+
+    if (activities?.length) {
+        return [
+            {
+                message: {
+                    role: promptRoleForMessage(message),
+                    content: "",
+                    toolCalls: activities.map((a) => a.call),
+                },
+                messageId: message.id,
+                source: "history" as const,
+            },
+            ...activities.map((activity) => ({
+                message: {
+                    role: "user" as const,
+                    content: activity.result.content,
+                    toolResult: activity.result,
+                },
+                messageId: message.id,
+                source: "history" as const,
+            })),
+            {
+                message: toGenerationMessage(message, context),
+                messageId: message.id,
+                source: "history" as const,
+            },
+        ];
+    }
+
     return [
         {
             message: toGenerationMessage(message, context),
@@ -340,7 +373,11 @@ function toAnchoredHistoryMessages(
 }
 
 function isMessageIncludedInPrompt(message: Message) {
-    if (message.toolCalls?.length || message.toolResult) {
+    if (
+        message.toolCalls?.length ||
+        message.toolResult ||
+        getActiveSwipe(message)?.toolActivities?.length
+    ) {
         return true;
     }
 

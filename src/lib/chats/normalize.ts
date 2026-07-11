@@ -12,6 +12,7 @@ import type {
     MessageToolCall,
     MessageToolResult,
     MessageSwipe,
+    MessageToolActivity,
 } from "#frontend/types";
 
 import type {
@@ -329,6 +330,28 @@ function normalizeToolResult(value: unknown): MessageToolResult | undefined {
     };
 }
 
+function normalizeMessageToolActivities(value: unknown): MessageToolActivity[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .map((item) => {
+            if (!isRecord(item)) return undefined;
+            const call = normalizeToolCalls([item.call])[0];
+            const result = normalizeToolResult(item.result);
+
+            if (!call || !result) return undefined;
+
+            return {
+                call,
+                result,
+                ...(item.status === "running" ? { status: "running" as const } : {}),
+            };
+        })
+        .filter((item): item is MessageToolActivity => Boolean(item));
+}
+
 function normalizeToolActivity(value: unknown): MessageMetadata["toolActivity"] {
     if (!isRecord(value)) {
         return undefined;
@@ -379,6 +402,10 @@ function normalizeSwipe(value: unknown): MessageSwipe | undefined {
             ? { reasoningDetails: value.reasoningDetails }
             : {}),
         ...(value.status === "error" ? { status: "error" as const } : {}),
+        ...(Array.isArray(value.toolActivities) &&
+        normalizeMessageToolActivities(value.toolActivities).length
+            ? { toolActivities: normalizeMessageToolActivities(value.toolActivities) }
+            : {}),
     };
 }
 

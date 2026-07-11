@@ -75,33 +75,53 @@ export function importOpenCodeMcp(value: unknown) {
     const servers: McpServerConfig[] = [];
 
     for (const [name, item] of Object.entries(source)) {
-        if (!isRecord(item) || (item.type !== "local" && item.type !== "remote"))
-            continue;
+        if (!isRecord(item)) continue;
+
+        let type = item.type;
+        if (!type) {
+            if (typeof item.command === "string" || Array.isArray(item.command)) {
+                type = "local";
+            } else if (typeof item.url === "string") {
+                type = "remote";
+            }
+        }
+
+        if (type !== "local" && type !== "remote") continue;
 
         const id = stableMcpServerId(name);
-        const values = isRecord(item.environment)
-            ? item.environment
-            : isRecord(item.headers)
-              ? item.headers
-              : {};
+        const values = isRecord(item.env)
+            ? item.env
+            : isRecord(item.environment)
+              ? item.environment
+              : isRecord(item.headers)
+                ? item.headers
+                : {};
         const serverSecrets = Object.fromEntries(
             Object.entries(values).filter(([, value]) => typeof value === "string"),
         ) as Record<string, string>;
+
+        let command: string[] | undefined = undefined;
+        if (type === "local") {
+            if (Array.isArray(item.command)) {
+                command = item.command.filter(
+                    (part): part is string => typeof part === "string",
+                );
+            } else if (typeof item.command === "string") {
+                const args = Array.isArray(item.args)
+                    ? item.args.filter((part): part is string => typeof part === "string")
+                    : [];
+                command = [item.command, ...args];
+            }
+        }
 
         secrets.servers[id] = serverSecrets;
         servers.push({
             id,
             name: name.trim() || "MCP server",
             enabled: item.enabled !== false,
-            transport: item.type === "local" ? "stdio" : "http",
-            ...(item.type === "local" && Array.isArray(item.command)
-                ? {
-                      command: item.command.filter(
-                          (part): part is string => typeof part === "string",
-                      ),
-                  }
-                : {}),
-            ...(item.type === "remote" && typeof item.url === "string"
+            transport: type === "local" ? "stdio" : "http",
+            ...(command ? { command } : {}),
+            ...(type === "remote" && typeof item.url === "string"
                 ? { url: item.url }
                 : {}),
             secretKeys: Object.keys(serverSecrets),
@@ -117,18 +137,18 @@ export function exportOpenCodeMcp(
     includeSecrets = false,
 ) {
     return {
-        mcp: Object.fromEntries(
+        mcpServers: Object.fromEntries(
             settings.servers.map((server) => {
                 const values = includeSecrets ? (secrets?.servers[server.id] ?? {}) : {};
                 return [
                     server.name,
                     server.transport === "stdio"
                         ? {
-                              type: "local",
-                              command: server.command ?? [],
+                              command: server.command?.[0] ?? "",
+                              args: server.command?.slice(1) ?? [],
                               enabled: server.enabled,
                               ...(includeSecrets && Object.keys(values).length
-                                  ? { environment: values }
+                                  ? { env: values }
                                   : {}),
                           }
                         : {
@@ -147,7 +167,7 @@ export function exportOpenCodeMcp(
 
 /** The direct, standard MCP map persisted in `mcp.json`. */
 export function toStandardMcpMap(settings: McpSettings) {
-    return exportOpenCodeMcp(settings).mcp;
+    return exportOpenCodeMcp(settings).mcpServers;
 }
 
 function normalizeServer(value: unknown): McpServerConfig | undefined {

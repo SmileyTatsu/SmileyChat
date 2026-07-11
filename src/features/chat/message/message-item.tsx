@@ -20,6 +20,7 @@ import {
     getMessageContent,
     getMessageReasoning,
     isActiveSwipeError,
+    getActiveSwipe,
 } from "#frontend/lib/messages";
 import type { MessageFormattingOptions } from "#frontend/lib/message-formatting/quote-highlighting";
 import type {
@@ -32,7 +33,7 @@ import {
     getStreamingMessageDraftSignal,
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
-import type { ChatMode, Message } from "#frontend/types";
+import type { ChatMode, Message, MessageToolActivity } from "#frontend/types";
 import type { TimeFormat } from "#frontend/lib/preferences/types";
 
 import { MessageAttachments, StreamingGeneratedImages } from "./message-attachment";
@@ -122,11 +123,8 @@ export const MessageItem = memo(function MessageItem({
     const content = getMessageContent(message);
     const attachments = getMessageAttachments(message);
     const isFailedSwipe = isActiveSwipeError(message);
-    const toolActivity = message.metadata?.toolActivity;
-
-    if (toolActivity) {
-        return <ToolActivityMessage activity={toolActivity} mode={mode} />;
-    }
+    const activeSwipe = getActiveSwipe(message);
+    const toolActivities = activeSwipe?.toolActivities;
 
     const canPagePrevious = message.activeSwipeIndex > 0;
     const canPageForward =
@@ -399,43 +397,49 @@ export const MessageItem = memo(function MessageItem({
     );
 }, areMessageItemPropsEqual);
 
-function ToolActivityMessage({
-    activity,
-    mode,
-}: {
-    activity: NonNullable<Message["metadata"]>["toolActivity"];
-    mode: ChatMode;
-}) {
+function ToolActivityMessage({ activity }: { activity: MessageToolActivity }) {
     if (!activity) {
         return null;
     }
 
-    const isError = activity.status === "error";
-    const title = isError
-        ? `Tool failed: ${activity.name}`
-        : `Tool used: ${activity.name}`;
+    const isRunning = activity.status === "running";
+    const isError = activity.result.isError;
+    const title = isRunning
+        ? `Running tool: ${activity.call.name}`
+        : isError
+          ? `Tool failed: ${activity.call.name}`
+          : `Tool used: ${activity.call.name}`;
 
     return (
-        <article
-            className={cn("tool-activity-message", {
+        <details
+            className={cn("message-reasoning tool-activity", {
                 error: isError,
-                rp: mode === "rp",
+                running: isRunning,
             })}
+            open={isRunning}
         >
-            <div className="tool-activity-icon">
-                <Wrench size={15} />
-            </div>
-            <div className="tool-activity-body">
-                <strong>{title}</strong>
-                {(activity.argumentsText || activity.result) && (
-                    <details>
-                        <summary>Details</summary>
-                        {activity.argumentsText && <pre>{activity.argumentsText}</pre>}
-                        {activity.result && <pre>{activity.result}</pre>}
-                    </details>
-                )}
-            </div>
-        </article>
+            <summary>
+                <Wrench size={13} aria-hidden="true" />
+                {title}
+            </summary>
+            {activity.call.argumentsText && (
+                <p>
+                    <strong>Arguments:</strong>
+                    <br />
+                    {activity.call.argumentsText}
+                </p>
+            )}
+            {activity.result.content && (
+                <p>
+                    <strong>{isRunning ? "Status:" : "Result:"}</strong>
+                    <br />
+                    {isRunning && (
+                        <span className="tool-activity-spinner" aria-hidden="true" />
+                    )}
+                    {activity.result.content}
+                </p>
+            )}
+        </details>
     );
 }
 
@@ -507,10 +511,14 @@ function MessageLiveContent({
     const content = getMessageContent(renderedMessage);
     const reasoning = getMessageReasoning(renderedMessage);
     const attachments = getMessageAttachments(renderedMessage);
+    const toolActivities = getActiveSwipe(renderedMessage)?.toolActivities;
     const draftScrollVersion = [
         streamingDraft?.content?.length ?? 0,
         streamingDraft?.reasoning?.length ?? 0,
         streamingDraft?.generatedImageCount ?? 0,
+        streamingDraft?.toolActivities
+            ?.map((activity) => activity.status ?? activity.result.content)
+            .join(":") ?? "",
     ].join(":");
 
     useLayoutEffect(() => {
@@ -521,6 +529,9 @@ function MessageLiveContent({
 
     return (
         <>
+            {toolActivities?.map((activity) => (
+                <ToolActivityMessage key={activity.call.id} activity={activity} />
+            ))}
             <MessageReasoning reasoning={reasoning} />
             <MessageAttachments
                 attachments={attachments}
@@ -576,6 +587,9 @@ function applyStreamingDraftForRender(
                           ? { reasoningDetails: draft.reasoningDetails }
                           : {}),
                       ...(draft.status ? { status: draft.status } : {}),
+                      ...(draft.toolActivities
+                          ? { toolActivities: draft.toolActivities }
+                          : {}),
                   }
                 : swipe,
         ),

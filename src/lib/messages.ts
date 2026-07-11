@@ -123,62 +123,6 @@ export function createCharacterErrorMessage(author: string, content: string): Me
     return createMessage(MessageRole.Character, author, content, undefined, "error");
 }
 
-export function createToolProtocolMessages(activity: ToolActivity): Message[] {
-    return [createToolCallMessage(activity), createToolActivityMessage(activity)];
-}
-
-export function createToolCallMessage(activity: ToolActivity): Message {
-    return {
-        ...createMessage(
-            MessageRole.Character,
-            "Tools",
-            "",
-            undefined,
-            undefined,
-            undefined,
-            {
-                includeInPrompt: true,
-                promptRole: "assistant",
-                canGenerateSwipe: false,
-                toolProtocol: "assistant_tool_call",
-            },
-        ),
-        toolCalls: [activity.call],
-    };
-}
-
-export function createToolActivityMessage(activity: ToolActivity): Message {
-    const status = activity.result.isError ? "error" : "complete";
-    const content =
-        status === "error"
-            ? `${activity.call.name} failed`
-            : `${activity.call.name} completed`;
-
-    return {
-        ...createMessage(
-            MessageRole.Character,
-            "Tools",
-            content,
-            undefined,
-            undefined,
-            undefined,
-            {
-                displayRole: "system",
-                includeInPrompt: true,
-                promptRole: "user",
-                canGenerateSwipe: false,
-                toolActivity: {
-                    name: activity.call.name,
-                    status,
-                    argumentsText: activity.call.argumentsText,
-                    result: activity.result.content,
-                },
-            },
-        ),
-        toolResult: activity.result,
-    };
-}
-
 export function createCharacterGreetingMessage(
     character: SmileyCharacter,
     resolveContent: (content: string) => string = (content) => content,
@@ -221,7 +165,7 @@ function createMessageSwipe(
     };
 }
 
-function getActiveSwipe(message: Message): MessageSwipe {
+export function getActiveSwipe(message: Message): MessageSwipe {
     return message.swipes[message.activeSwipeIndex] ?? message.swipes[0];
 }
 
@@ -255,6 +199,7 @@ export function updateActiveSwipeContent(
     status?: MessageSwipe["status"],
     reasoning?: string,
     reasoningDetails?: unknown,
+    toolActivities?: MessageSwipe["toolActivities"],
 ): Message {
     if (message.swipes.length === 0) {
         const swipe = createMessageSwipe(content, status);
@@ -266,6 +211,7 @@ export function updateActiveSwipeContent(
                     ...swipe,
                     ...(reasoning ? { reasoning } : {}),
                     ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+                    ...(toolActivities?.length ? { toolActivities } : {}),
                 },
             ],
             activeSwipeIndex: 0,
@@ -282,6 +228,7 @@ export function updateActiveSwipeContent(
                       ...(reasoning !== undefined ? { reasoning } : {}),
                       ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                       ...(status ? { status } : {}),
+                      ...(toolActivities?.length ? { toolActivities } : {}),
                   }
                 : swipe,
         ),
@@ -364,6 +311,7 @@ export function appendMessageSwipe(
     status?: MessageSwipe["status"],
     reasoning?: string,
     reasoningDetails?: unknown,
+    toolActivities?: MessageSwipe["toolActivities"],
 ): Message {
     const swipe = createMessageSwipe(content, status);
     const swipes = [
@@ -372,6 +320,7 @@ export function appendMessageSwipe(
             ...swipe,
             ...(reasoning ? { reasoning } : {}),
             ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+            ...(toolActivities?.length ? { toolActivities } : {}),
         },
     ];
 

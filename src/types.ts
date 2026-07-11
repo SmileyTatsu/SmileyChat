@@ -48,6 +48,13 @@ export type MessageToolResult = {
     isError?: boolean;
 };
 
+export type MessageToolActivity = {
+    call: MessageToolCall;
+    result: MessageToolResult;
+    /** Present only while the tool call is still in flight. */
+    status?: "running";
+};
+
 export type MessageMetadata = {
     origin?: "plugin";
     pluginId?: string;
@@ -81,6 +88,7 @@ export type MessageSwipe = {
     reasoning?: string;
     reasoningDetails?: unknown;
     status?: "error";
+    toolActivities?: MessageToolActivity[];
 };
 
 export type {

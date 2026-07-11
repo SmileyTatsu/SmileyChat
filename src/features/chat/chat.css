@@ -576,6 +576,21 @@
     overflow: hidden;
 }
 
+.message-reasoning.error {
+    border-color: rgba(235, 87, 87, 0.28);
+    background: rgba(235, 87, 87, 0.08);
+    color: #ffd4da;
+}
+
+.message-reasoning.error summary {
+    color: #ffb4bd;
+}
+
+.message-reasoning.error p {
+    border-top-color: rgba(235, 87, 87, 0.22);
+    color: #ffd4da;
+}
+
 .message-reasoning summary {
     cursor: pointer;
     padding: 8px 12px;
@@ -602,6 +617,40 @@
     white-space: pre-wrap;
     word-break: break-word;
     background: rgba(18, 20, 26, 0.3);
+}
+
+.tool-activity summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tool-activity.running {
+    border-color: rgba(108, 143, 235, 0.28);
+}
+
+.tool-activity-spinner {
+    display: inline-block;
+    width: 0.72em;
+    height: 0.72em;
+    margin-right: 7px;
+    border: 2px solid rgba(176, 184, 204, 0.3);
+    border-top-color: #c9d0e2;
+    border-radius: 50%;
+    animation: tool-activity-spin 800ms linear infinite;
+    vertical-align: -0.08em;
+}
+
+@keyframes tool-activity-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tool-activity-spinner {
+        animation: none;
+    }
 }
 
 .message-actions-trigger,

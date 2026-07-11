@@ -1,6 +1,6 @@
 import { signal, type Signal } from "@preact/signals";
 
-import type { Message } from "#frontend/types";
+import type { Message, MessageToolActivity } from "#frontend/types";
 
 export type StreamingMessageDraft = {
     content?: string;
@@ -8,6 +8,7 @@ export type StreamingMessageDraft = {
     reasoning?: string;
     reasoningDetails?: unknown;
     status?: Message["swipes"][number]["status"];
+    toolActivities?: MessageToolActivity[];
 };
 
 const streamingMessageDraftSignals = new Map<
@@ -22,6 +23,7 @@ export function setStreamingMessageContent(
         reasoning?: string;
         reasoningDetails?: unknown;
         status?: Message["swipes"][number]["status"];
+        toolActivities?: MessageToolActivity[];
     } = {},
 ) {
     setStreamingMessageDraft(messageId, {
@@ -31,7 +33,15 @@ export function setStreamingMessageContent(
             ? { reasoningDetails: options.reasoningDetails }
             : {}),
         ...(options.status ? { status: options.status } : {}),
+        ...(options.toolActivities ? { toolActivities: options.toolActivities } : {}),
     });
+}
+
+export function setStreamingToolActivities(
+    messageId: string,
+    toolActivities: MessageToolActivity[],
+) {
+    setStreamingMessageDraft(messageId, { toolActivities });
 }
 
 export function setStreamingMessageReasoning(
@@ -80,6 +90,7 @@ export function hasStreamingMessageDraftValue(draft: StreamingMessageDraft | und
         ((draft.content?.length ?? 0) > 0 ||
             (draft.reasoning?.length ?? 0) > 0 ||
             (draft.generatedImageCount ?? 0) > 0 ||
+            (draft.toolActivities?.length ?? 0) > 0 ||
             draft.status),
     );
 }

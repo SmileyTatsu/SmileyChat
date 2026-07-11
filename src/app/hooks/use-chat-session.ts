@@ -7,7 +7,6 @@ import type { ToolActivity } from "#frontend/lib/connections/types";
 import {
     createCharacterErrorMessage,
     createCharacterMessage,
-    createToolProtocolMessages,
     createUserMessage,
     getMessageAttachments,
     updateActiveSwipeContent,
@@ -16,6 +15,7 @@ import {
     setStreamingGeneratedImageCount,
     setStreamingMessageContent,
     setStreamingMessageReasoning,
+    setStreamingToolActivities,
 } from "#frontend/lib/streaming-message-drafts";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
@@ -296,6 +296,12 @@ export function useChatSession({
                     sourceChat: pendingChat,
                     stream: streamGeneration,
                     trigger: options.autoTurnCount ? "auto-group" : "send",
+                    onToolActivities: streamingReply
+                        ? (activities) => {
+                              if (abortController.signal.aborted) return;
+                              setStreamingToolActivities(streamingReply.id, activities);
+                          }
+                        : undefined,
                     onToken: streamingReply
                         ? (token) => {
                               if (abortController.signal.aborted) {
@@ -351,11 +357,7 @@ export function useChatSession({
                     undefined,
                     result.reasoning,
                     result.reasoningDetails,
-                );
-                insertToolProtocolMessagesBefore(
-                    streamingReply.id,
                     result.toolActivities,
-                    currentOrSourceChat(pendingChat),
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(streamingReply.id, resultAttachments);
@@ -370,8 +372,7 @@ export function useChatSession({
                     chatId,
                     result.images ?? [],
                 );
-                const toolProtocolMessages =
-                    result.toolActivities?.flatMap(createToolProtocolMessages) ?? [];
+
                 const reply = withMessageReasoning(
                     createCharacterMessage(
                         generationCharacter.data.name,
@@ -383,8 +384,13 @@ export function useChatSession({
                     result.reasoningDetails,
                 );
 
+                // Set the tool activities directly onto the reply's initial swipe
+                if (reply.swipes.length > 0 && result.toolActivities?.length) {
+                    reply.swipes[0].toolActivities = result.toolActivities;
+                }
+
                 updateChatMessages(
-                    [...pendingChat.messages, ...toolProtocolMessages, reply],
+                    [...pendingChat.messages, reply],
                     currentOrSourceChat(pendingChat),
                 );
                 scheduleAutomaticGroupResponse({
@@ -512,6 +518,12 @@ export function useChatSession({
                     stream: streamGeneration,
                     targetMessageId: messageId,
                     trigger: "swipe",
+                    onToolActivities: streamGeneration
+                        ? (activities) => {
+                              if (abortController.signal.aborted) return;
+                              setStreamingToolActivities(messageId, activities);
+                          }
+                        : undefined,
                     onToken: streamGeneration
                         ? (token) => {
                               if (abortController.signal.aborted) {
@@ -562,11 +574,7 @@ export function useChatSession({
                     undefined,
                     result.reasoning,
                     result.reasoningDetails,
-                );
-                insertToolProtocolMessagesBefore(
-                    messageId,
                     result.toolActivities,
-                    currentOrSourceChat(targetChat),
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
@@ -583,11 +591,7 @@ export function useChatSession({
                     result.reasoning,
                     result.reasoningDetails,
                     targetChat,
-                );
-                insertToolProtocolMessagesBefore(
-                    messageId,
                     result.toolActivities,
-                    currentOrSourceChat(targetChat),
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
@@ -740,25 +744,6 @@ export function useChatSession({
                 autoTurnCount: autoTurnCount + 1,
             });
         }, delayMs);
-    }
-
-    function insertToolProtocolMessagesBefore(
-        messageId: string,
-        activities: ToolActivity[] | undefined,
-        sourceChat: ChatSession,
-    ) {
-        if (!activities?.length) {
-            return;
-        }
-
-        const protocolMessages = activities.flatMap(createToolProtocolMessages);
-
-        updateChatMessages(
-            sourceChat.messages.flatMap((message) =>
-                message.id === messageId ? [...protocolMessages, message] : [message],
-            ),
-            sourceChat,
-        );
     }
 
     function clearAutomaticResponseTimer() {

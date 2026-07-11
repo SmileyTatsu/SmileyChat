@@ -120,6 +120,57 @@ describe("compilePresetMessages", () => {
             },
         ]);
     });
+
+    test("expands active-swipe tool activities into tool protocol messages", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const messages = [
+            {
+                ...message("m1", "character", "It is sunny."),
+                swipes: [
+                    {
+                        id: "m1-swipe",
+                        content: "It is sunny.",
+                        createdAt: "2026-01-01T00:00:00.000Z",
+                        toolActivities: [
+                            {
+                                call: {
+                                    id: "call-1",
+                                    name: "get_weather",
+                                    argumentsText: '{"city":"Paris"}',
+                                },
+                                result: {
+                                    toolCallId: "call-1",
+                                    name: "get_weather",
+                                    content: "Sunny, 20°C",
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        const compiled = compilePresetMessages(preset, context({ messages }));
+
+        expect(compiled).toEqual([
+            expect.objectContaining({
+                role: "assistant",
+                content: "",
+                toolCalls: [expect.objectContaining({ id: "call-1" })],
+            }),
+            expect.objectContaining({
+                role: "user",
+                content: "Sunny, 20°C",
+                toolResult: expect.objectContaining({ toolCallId: "call-1" }),
+            }),
+            expect.objectContaining({
+                role: "assistant",
+                content: "It is sunny.",
+            }),
+        ]);
+    });
 });
 
 function context(overrides: { messages?: Message[] } = {}) {

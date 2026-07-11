@@ -158,13 +158,19 @@ const server = Bun.serve({
             PUT: api(async (request) => writeMcpServers(await readJsonBody(request))),
         },
         "/api/mcp/:serverId/connect": {
-            POST: api(async (request) => connectMcpServer(request.params.serverId)),
+            POST: api(async (request, routeServer) => {
+                routeServer.timeout(request, 120);
+                return connectMcpServer(request.params.serverId);
+            }),
         },
         "/api/mcp/:serverId/disconnect": {
             POST: api(async (request) => disconnectMcpServer(request.params.serverId)),
         },
         "/api/mcp/:serverId/refresh": {
-            POST: api(async (request) => refreshMcpServer(request.params.serverId)),
+            POST: api(async (request, routeServer) => {
+                routeServer.timeout(request, 120);
+                return refreshMcpServer(request.params.serverId);
+            }),
         },
         "/api/mcp/:serverId/tools/:toolName": {
             POST: api(async (request) =>

@@ -51,6 +51,7 @@ import type {
     ChatMode,
     ChatSession,
     Message,
+    MessageToolActivity,
     SmileyCharacter,
     SmileyPersona,
     UserStatus,
@@ -180,6 +181,7 @@ export function usePromptGeneration({
             promptCharacter?: SmileyCharacter;
             onReasoningToken?: (token: string) => void;
             onToken?: (token: string) => void;
+            onToolActivities?: (activities: MessageToolActivity[]) => void;
             signal?: AbortSignal;
             sourceChat?: ChatSession;
             stream?: boolean;
@@ -210,6 +212,7 @@ export function usePromptGeneration({
         const { result, activities, promptMessages } = await runToolLoop(
             connection,
             request,
+            options.onToolActivities,
         );
 
         const message = await applyOutputMiddlewares(
@@ -229,6 +232,7 @@ export function usePromptGeneration({
     async function runToolLoop(
         connection: ReturnType<typeof getAdapterForSettings>,
         request: ChatGenerationRequest,
+        onToolActivities?: (activities: MessageToolActivity[]) => void,
     ) {
         let promptMessages = request.promptMessages ?? [];
         let result = await connection.generate({
@@ -248,9 +252,21 @@ export function usePromptGeneration({
             const toolResults: ToolResult[] = [];
 
             for (const call of result.toolCalls) {
+                const pendingActivity: MessageToolActivity = {
+                    call,
+                    result: {
+                        toolCallId: call.id,
+                        name: call.name,
+                        content: "Running…",
+                    },
+                    status: "running",
+                };
+                onToolActivities?.([...activities, pendingActivity]);
+
                 const toolResult = await runPluginTool(call);
                 toolResults.push(toolResult);
                 activities.push({ call, result: toolResult });
+                onToolActivities?.([...activities]);
             }
 
             promptMessages = [
@@ -273,11 +289,7 @@ export function usePromptGeneration({
 
             result = await connection.generate({
                 ...request,
-                onImage: undefined,
-                onReasoningToken: undefined,
-                onToken: undefined,
                 promptMessages,
-                stream: false,
             });
         }
 
