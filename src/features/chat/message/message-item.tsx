@@ -15,6 +15,7 @@ import { memo } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { cn } from "#frontend/lib/common/style";
+import { getPluginTool } from "#frontend/lib/plugins/registry";
 import {
     getMessageAttachments,
     getMessageContent,
@@ -407,11 +408,15 @@ function ToolActivityMessage({ activity }: { activity: MessageToolActivity }) {
 
     const isRunning = activity.status === "running";
     const isError = activity.result.isError;
+    const toolName =
+        activity.call.displayName ||
+        getPluginTool(activity.call.name)?.displayName ||
+        activity.call.name;
     const title = isRunning
-        ? `Running tool: ${activity.call.name}`
+        ? `Running tool: ${toolName}`
         : isError
-          ? `Tool failed: ${activity.call.name}`
-          : `Tool used: ${activity.call.name}`;
+          ? `Tool failed: ${toolName}`
+          : `Tool used: ${toolName}`;
 
     return (
         <details

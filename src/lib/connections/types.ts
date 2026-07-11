@@ -18,6 +18,7 @@ export type ChatGenerationMessageContentPart =
 
 export type ToolDefinition = {
     name: string;
+    displayName?: string;
     description: string;
     parameters: Record<string, unknown>;
 };
@@ -25,6 +26,7 @@ export type ToolDefinition = {
 export type ToolCall = {
     id: string;
     name: string;
+    displayName?: string;
     argumentsText: string;
     arguments?: Record<string, unknown>;
     /** Provider-specific content that must be replayed verbatim on the next turn. */

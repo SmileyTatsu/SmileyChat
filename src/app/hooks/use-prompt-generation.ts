@@ -252,6 +252,11 @@ export function usePromptGeneration({
             const toolResults: ToolResult[] = [];
 
             for (const call of result.toolCalls) {
+                const toolDef = getPluginTool(call.name);
+                if (toolDef?.displayName) {
+                    call.displayName = toolDef.displayName;
+                }
+
                 const pendingActivity: MessageToolActivity = {
                     call,
                     result: {

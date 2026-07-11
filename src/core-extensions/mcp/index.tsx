@@ -71,9 +71,25 @@ function clearTools() {
     for (const dispose of disposers.splice(0)) dispose();
 }
 
+function formatMcpToolName(serverName: string, toolName: string, title?: string) {
+    if (title) {
+        return `${serverName} (${title})`;
+    }
+
+    let cleanName = toolName;
+    const prefix = `${serverName}_`;
+    if (cleanName.startsWith(prefix)) {
+        cleanName = cleanName.slice(prefix.length);
+    }
+
+    cleanName = cleanName.replace(/_/g, " ");
+    return `${serverName} (${cleanName})`;
+}
+
 function toPluginTool(tool: McpTool): PluginTool {
     return {
         name: tool.providerName,
+        displayName: formatMcpToolName(tool.serverName, tool.name, tool.title),
         description: `MCP · ${tool.serverName} · ${tool.description ?? tool.name}`,
         parameters: tool.inputSchema,
         isAvailable: (snapshot) =>

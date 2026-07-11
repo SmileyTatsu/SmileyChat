@@ -36,6 +36,7 @@ export type Message = {
 export type MessageToolCall = {
     id: string;
     name: string;
+    displayName?: string;
     argumentsText: string;
     arguments?: Record<string, unknown>;
     providerState?: unknown;
