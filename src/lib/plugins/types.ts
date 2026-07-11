@@ -2,6 +2,7 @@ import type { ComponentChildren, VNode } from "preact";
 
 import type {
     ChatMode,
+    ChatMetadata,
     ChatSession,
     Message,
     SmileyCharacter,
@@ -132,6 +133,18 @@ export type PluginSidebarPanel = {
     label: string;
     side: "left" | "right";
     render: (props: PluginSidebarPanelProps) => ComponentChildren;
+};
+
+export type PluginChatDetailsSectionProps = {
+    pluginId: string;
+    storage: PluginStorageApi;
+    snapshot: PluginAppSnapshot;
+    updateChatMetadata: (patch: Partial<ChatMetadata>) => void;
+};
+
+export type PluginChatDetailsSection = {
+    id: string;
+    render: (props: PluginChatDetailsSectionProps) => ComponentChildren;
 };
 
 export type MessageRenderContext = {
@@ -391,6 +404,7 @@ export type SmileyPluginApi = {
         h: typeof import("preact").h;
         registerSettingsPanel(panel: PluginSettingsPanel): void;
         registerSidebarPanel(panel: PluginSidebarPanel): void;
+        registerChatDetailsSection(section: PluginChatDetailsSection): void;
         registerMessageRenderer(renderer: MessageRenderer): void;
         registerMessageAction(action: PluginMessageAction): void;
         registerComposerAction(action: PluginComposerAction): void;

@@ -11,6 +11,7 @@ import type {
     ChatOutputMiddlewareRegistration,
     LoadedPlugin,
     MessageRenderer,
+    PluginChatDetailsSection,
     PluginActionsApi,
     PluginAppSnapshot,
     PluginCharacterPresence,
@@ -58,6 +59,7 @@ type StoredOutputMiddleware = ChatOutputMiddlewareRegistration;
 const loadedPlugins: LoadedPlugin[] = [];
 const settingsPanels: Array<Owned<PluginSettingsPanel>> = [];
 const sidebarPanels: Array<Owned<PluginSidebarPanel>> = [];
+const chatDetailsSections: Array<Owned<PluginChatDetailsSection>> = [];
 const messageRenderers: Array<Owned<MessageRenderer>> = [];
 const messageActions: Array<Owned<PluginMessageAction>> = [];
 const composerActions: Array<Owned<PluginComposerAction>> = [];
@@ -206,6 +208,7 @@ export function deactivatePlugin(pluginId: string) {
 
     removeOwnedItems(settingsPanels, pluginId);
     removeOwnedItems(sidebarPanels, pluginId);
+    removeOwnedItems(chatDetailsSections, pluginId);
     removeOwnedItems(messageRenderers, pluginId);
     removeOwnedItems(messageActions, pluginId);
     removeOwnedItems(composerActions, pluginId);
@@ -268,6 +271,10 @@ export function getPluginSettingsPanels() {
 
 export function getPluginSidebarPanels(side?: PluginSidebarPanel["side"]) {
     return enabledValues(sidebarPanels).filter((panel) => !side || panel.side === side);
+}
+
+export function getPluginChatDetailsSections() {
+    return enabledValues(chatDetailsSections);
 }
 
 export function getMessageRenderers() {
@@ -492,6 +499,18 @@ export function createPluginApi(
                     value: {
                         ...panel,
                         id: panelId,
+                    },
+                });
+                notifyRegistryChanged();
+            },
+            registerChatDetailsSection(section) {
+                requireDeclaredPluginPermission(manifest, "ui:sidebar");
+                const sectionId = pluginScopedId(manifest.id, section.id);
+                upsertOwnedItem(chatDetailsSections, manifest.id, sectionId, {
+                    pluginId: manifest.id,
+                    value: {
+                        ...section,
+                        id: sectionId,
                     },
                 });
                 notifyRegistryChanged();

@@ -1000,6 +1000,7 @@ export function App() {
                     chat={activeChat}
                     isOpenSignal={characterOpenSignal}
                     lorebookCollection={lorebookCollection}
+                    pluginSnapshot={pluginSnapshot}
                     onChange={handleGroupPanelChange}
                     onChangeAvatar={handleGroupPanelChangeAvatar}
                     onForceReply={handleGroupPanelForceReply}

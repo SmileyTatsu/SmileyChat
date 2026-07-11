@@ -5,7 +5,7 @@ import { mcpManifest } from "./manifest";
 import { exportOpenCodeMcp } from "#frontend/lib/mcp/config";
 import type { McpServerRecord, McpSettings, McpTool } from "#frontend/lib/mcp/types";
 import type {
-    PluginAppSnapshot,
+    PluginChatDetailsSectionProps,
     PluginTool,
     SmileyPluginApi,
 } from "#frontend/lib/plugins/types";
@@ -27,19 +27,11 @@ export async function activate(api: SmileyPluginApi) {
         label: "MCP Servers",
         render: () => <McpSettings api={api} />,
     });
-    api.ui.registerHeaderAction({
-        id: "servers",
-        label: "Choose MCP servers",
-        renderIcon: () => <Plug size={17} />,
-        run: () => {
-            api.ui.openModal({
-                id: "picker",
-                title: "MCP servers for this chat",
-                render: ({ close, snapshot }) => (
-                    <McpPicker api={api} close={close} snapshot={snapshot} />
-                ),
-            });
-        },
+    api.ui.registerChatDetailsSection({
+        id: "picker",
+        render: ({ snapshot, updateChatMetadata }) => (
+            <McpPicker snapshot={snapshot} updateChatMetadata={updateChatMetadata} />
+        ),
     });
 
     return () => {
@@ -308,65 +300,72 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
 }
 
 function McpPicker({
-    api,
-    close,
     snapshot,
+    updateChatMetadata,
 }: {
-    api: SmileyPluginApi;
-    close: () => void;
-    snapshot: PluginAppSnapshot | undefined;
+    snapshot: PluginChatDetailsSectionProps["snapshot"];
+    updateChatMetadata: PluginChatDetailsSectionProps["updateChatMetadata"];
 }) {
     const selected = new Set(snapshot?.activeChat?.metadata?.mcp?.serverIds ?? []);
     const [ids, setIds] = useState(selected);
+
+    // Keep local selection state in sync if chat changes externally
+    useEffect(() => {
+        setIds(new Set(snapshot?.activeChat?.metadata?.mcp?.serverIds ?? []));
+    }, [snapshot?.activeChat?.metadata?.mcp?.serverIds]);
+
     const chat = snapshot?.activeChat;
     if (!chat) return <p>No active chat.</p>;
 
-    const apply = async () => {
-        const nextChat = {
-            ...chat,
-            metadata: { ...chat.metadata, mcp: { serverIds: [...ids] } },
-        };
-        await fetch(`/api/chats/${encodeURIComponent(nextChat.id)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(nextChat),
+    const toggleServer = (serverId: string) => {
+        const next = new Set(ids);
+        if (next.has(serverId)) {
+            next.delete(serverId);
+        } else {
+            next.add(serverId);
+        }
+        setIds(next);
+        updateChatMetadata({
+            mcp: { serverIds: [...next] },
         });
-        close();
-        window.location.reload();
     };
 
     return (
         <div className="mcp-picker">
-            {latest?.servers.map((server) => (
-                <label className="mcp-check" key={server.id}>
-                    <input
-                        type="checkbox"
-                        checked={ids.has(server.id)}
-                        disabled={!server.enabled || !server.connected}
-                        onChange={() =>
-                            setIds((current) => {
-                                const next = new Set(current);
-                                next.has(server.id)
-                                    ? next.delete(server.id)
-                                    : next.add(server.id);
-                                return next;
-                            })
-                        }
-                    />
-                    <span>
-                        <span>{server.name}</span>
-                        <small>
-                            {server.connected
-                                ? `${server.tools.length} available tools`
-                                : "Not connected"}
-                        </small>
-                    </span>
-                </label>
-            ))}
-            <div className="mcp-modal-actions">
-                <button type="button" className="primary" onClick={() => void apply()}>
-                    Use selected servers
-                </button>
+            <div className="mcp-picker-header">
+                <h3>
+                    <Plug size={16} aria-hidden="true" />
+                    MCP Servers
+                </h3>
+                <p>Provide additional tools to the AI for this chat.</p>
+            </div>
+            <div className="mcp-picker-list">
+                {latest === undefined ? (
+                    <p className="spp-muted" role="status">
+                        Loading MCP servers…
+                    </p>
+                ) : latest.servers.length === 0 ? (
+                    <p className="spp-muted">No servers configured.</p>
+                ) : (
+                    latest?.servers.map((server) => (
+                        <label className="mcp-check" key={server.id}>
+                            <input
+                                type="checkbox"
+                                checked={ids.has(server.id)}
+                                disabled={!server.enabled || !server.connected}
+                                onChange={() => toggleServer(server.id)}
+                            />
+                            <span>
+                                <span>{server.name}</span>
+                                <small>
+                                    {server.connected
+                                        ? `${server.tools.length} available tools`
+                                        : "Not connected"}
+                                </small>
+                            </span>
+                        </label>
+                    ))
+                )}
             </div>
         </div>
     );

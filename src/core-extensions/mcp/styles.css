@@ -141,3 +141,43 @@
     flex-direction: column;
     gap: 12px;
 }
+
+.mcp-picker-header {
+    margin-bottom: 4px;
+}
+
+.mcp-picker-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.mcp-picker-header p {
+    margin: 4px 0 0;
+    color: #9da3b4;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.mcp-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    overflow: hidden;
+}
+
+.mcp-picker-list .mcp-check {
+    padding: 10px 12px;
+    border-bottom: 1px solid #303440;
+}
+
+.mcp-picker-list .mcp-check:last-child {
+    border-bottom: none;
+}

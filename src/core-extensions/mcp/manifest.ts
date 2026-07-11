@@ -10,8 +10,7 @@ export const mcpManifest: PluginManifest = {
     permissions: [
         "state:read",
         "ui:settings",
-        "ui:header",
-        "ui:modals",
+        "ui:sidebar",
         "ui:styles",
         "tools:register",
     ],

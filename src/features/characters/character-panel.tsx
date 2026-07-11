@@ -31,6 +31,7 @@ type CharacterPanelProps = {
     character: SmileyCharacter;
     isOpen: boolean;
     lorebookCollection: LorebookCollection;
+    pluginSnapshot: PluginAppSnapshot | undefined;
     onBeforeAvatarUpload?: () => void | Promise<void>;
     onChange: (character: SmileyCharacter) => void;
     onSavedCharacter?: (
@@ -39,7 +40,6 @@ type CharacterPanelProps = {
     ) => void;
     onShowDebugPayload: () => void;
     onUpdateChatMetadata: (metadata: ChatMetadata) => void;
-    pluginSnapshot: PluginAppSnapshot;
 };
 
 export function CharacterPanel({
@@ -47,12 +47,12 @@ export function CharacterPanel({
     character,
     isOpen,
     lorebookCollection,
+    pluginSnapshot,
     onBeforeAvatarUpload,
     onChange,
     onSavedCharacter,
     onShowDebugPayload,
     onUpdateChatMetadata,
-    pluginSnapshot,
 }: CharacterPanelProps) {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const alternateGreetingKeysRef = useRef<{
@@ -355,10 +355,12 @@ export function CharacterPanel({
                                         </button>
                                     </div>
 
-                                    <PluginSidebarPanels
-                                        side="right"
-                                        snapshot={pluginSnapshot}
-                                    />
+                                    {pluginSnapshot && (
+                                        <PluginSidebarPanels
+                                            side="right"
+                                            snapshot={pluginSnapshot}
+                                        />
+                                    )}
                                 </div>
                             </section>
 
@@ -372,6 +374,7 @@ export function CharacterPanel({
                                 <ChatDetailsPanel
                                     chatMetadata={chatMetadata}
                                     lorebookCollection={lorebookCollection}
+                                    pluginSnapshot={pluginSnapshot}
                                     onShowDebugPayload={onShowDebugPayload}
                                     onUpdateChatMetadata={onUpdateChatMetadata}
                                 />

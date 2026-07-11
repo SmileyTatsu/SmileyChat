@@ -29,6 +29,7 @@ import {
 } from "./chat-details-panel";
 import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
 import { GroupAvatar } from "../chat/group-avatar";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 
 type GroupPanelProps = {
     characters: CharacterSummary[];
@@ -36,6 +37,7 @@ type GroupPanelProps = {
     chat: ChatSession;
     isOpen: boolean;
     lorebookCollection: LorebookCollection;
+    pluginSnapshot: PluginAppSnapshot | undefined;
     onChange: (chat: ChatSession) => void;
     onChangeAvatar: (chatId: string, file: File) => void;
     onForceReply: (characterId: string) => void;
@@ -49,6 +51,7 @@ export function GroupPanel({
     chat,
     isOpen,
     lorebookCollection,
+    pluginSnapshot,
     onChange,
     onChangeAvatar,
     onForceReply,
@@ -657,6 +660,7 @@ export function GroupPanel({
                             <ChatDetailsPanel
                                 chatMetadata={chatMetadata}
                                 lorebookCollection={lorebookCollection}
+                                pluginSnapshot={pluginSnapshot}
                                 onShowDebugPayload={onShowDebugPayload}
                                 onUpdateChatMetadata={onUpdateChatMetadata}
                             />

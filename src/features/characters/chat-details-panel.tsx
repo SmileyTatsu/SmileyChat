@@ -3,10 +3,19 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { ChatAuthorNote, ChatMetadata } from "#frontend/types";
+import { getPluginChatDetailsSections } from "#frontend/lib/plugins/registry";
+import { createPluginStorage } from "#frontend/lib/plugins/runtime";
+import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+
+import {
+    PluginRenderSurface,
+    pluginIdFromScopedId,
+} from "../plugins/plugin-error-boundary";
 
 type ChatDetailsPanelProps = {
     chatMetadata?: ChatMetadata;
     lorebookCollection: LorebookCollection;
+    pluginSnapshot: PluginAppSnapshot | undefined;
     onShowDebugPayload: () => void;
     onUpdateChatMetadata: (metadata: ChatMetadata) => void;
 };
@@ -50,6 +59,7 @@ export function hasChatLorebooks(chatMetadata: ChatMetadata | undefined) {
 export function ChatDetailsPanel({
     chatMetadata,
     lorebookCollection,
+    pluginSnapshot,
     onShowDebugPayload,
     onUpdateChatMetadata,
 }: ChatDetailsPanelProps) {
@@ -197,6 +207,8 @@ export function ChatDetailsPanel({
             lorebookIds: selectedLorebookIds.filter((id) => id !== lorebookId),
         });
     }
+
+    const chatDetailsSections = getPluginChatDetailsSections();
 
     return (
         <div className="chat-details-panel">
@@ -389,6 +401,39 @@ export function ChatDetailsPanel({
                     </>
                 )}
             </section>
+
+            {chatDetailsSections.length > 0 &&
+                pluginSnapshot &&
+                chatDetailsSections.map((section) => {
+                    const pluginId = pluginIdFromScopedId(section.id);
+
+                    return (
+                        <section
+                            className="plugin-chat-details-section author-note-card"
+                            key={section.id}
+                            id={section.id}
+                        >
+                            <PluginRenderSurface
+                                pluginId={pluginId}
+                                resetKey={section.id}
+                                surface="Chat details"
+                                render={() =>
+                                    section.render({
+                                        pluginId,
+                                        snapshot: pluginSnapshot,
+                                        storage: createPluginStorage(pluginId),
+                                        updateChatMetadata: (patch) => {
+                                            onUpdateChatMetadata({
+                                                ...(chatMetadata ?? {}),
+                                                ...patch,
+                                            });
+                                        },
+                                    })
+                                }
+                            />
+                        </section>
+                    );
+                })}
 
             <section className="prompt-debug-card" aria-labelledby="prompt-debug-title">
                 <div className="prompt-debug-card-header">
