@@ -33,6 +33,11 @@ export function createOpenRouterConnection(
         label: "OpenRouter",
         buildPayload(request) {
             if (hasFileContent(request.promptMessages ?? [])) {
+                if (request.tools?.length) {
+                    throw new Error(
+                        "OpenRouter tool calling is not supported together with non-image file attachments yet.",
+                    );
+                }
                 return createOpenRouterResponsesBody(request, config);
             }
 
@@ -40,6 +45,11 @@ export function createOpenRouterConnection(
         },
         async generate(request) {
             if (hasFileContent(request.promptMessages ?? [])) {
+                if (request.tools?.length) {
+                    throw new Error(
+                        "OpenRouter tool calling is not supported together with non-image file attachments yet.",
+                    );
+                }
                 return generateOpenRouterResponses(request, config);
             }
 

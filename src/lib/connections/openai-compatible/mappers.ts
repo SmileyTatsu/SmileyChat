@@ -1,5 +1,6 @@
 import { stopSequencesForGeneration } from "../generation-settings";
 import {
+    chatCompletionTools,
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
 } from "../chat-completions";
@@ -58,6 +59,9 @@ export function createChatCompletionBody(
             : {}),
         ...(reasoning?.wireFormat === "chat-reasoning-object"
             ? { reasoning: { effort: reasoning.effort } }
+            : {}),
+        ...(chatCompletionTools(request.tools)
+            ? { tools: chatCompletionTools(request.tools) }
             : {}),
         stream: request.stream === true,
     };

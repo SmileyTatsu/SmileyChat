@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import type { ConnectionSettings } from "#frontend/lib/connections/config";
+import type { ToolActivity } from "#frontend/lib/connections/types";
 import {
     createCharacterErrorMessage,
     createCharacterMessage,
+    createToolProtocolMessages,
     createUserMessage,
     getMessageAttachments,
     updateActiveSwipeContent,
@@ -250,7 +252,11 @@ export function useChatSession({
         if (userMessage) {
             updateChatMessages(nextMessages, sourceChat);
         }
-        const streamingReply = preferences.chat.streaming
+        const streamGeneration = shouldStreamGeneration(
+            preferences.chat.streaming,
+            connectionSettings,
+        );
+        const streamingReply = streamGeneration
             ? createCharacterMessage(
                   generationCharacter.data.name,
                   "",
@@ -288,7 +294,7 @@ export function useChatSession({
                         sourceChat,
                     }),
                     sourceChat: pendingChat,
-                    stream: preferences.chat.streaming,
+                    stream: streamGeneration,
                     trigger: options.autoTurnCount ? "auto-group" : "send",
                     onToken: streamingReply
                         ? (token) => {
@@ -346,6 +352,11 @@ export function useChatSession({
                     result.reasoning,
                     result.reasoningDetails,
                 );
+                insertToolProtocolMessagesBefore(
+                    streamingReply.id,
+                    result.toolActivities,
+                    currentOrSourceChat(pendingChat),
+                );
                 if (resultAttachments.length) {
                     updateMessageAttachments(streamingReply.id, resultAttachments);
                 }
@@ -359,6 +370,8 @@ export function useChatSession({
                     chatId,
                     result.images ?? [],
                 );
+                const toolProtocolMessages =
+                    result.toolActivities?.flatMap(createToolProtocolMessages) ?? [];
                 const reply = withMessageReasoning(
                     createCharacterMessage(
                         generationCharacter.data.name,
@@ -371,7 +384,7 @@ export function useChatSession({
                 );
 
                 updateChatMessages(
-                    [...pendingChat.messages, reply],
+                    [...pendingChat.messages, ...toolProtocolMessages, reply],
                     currentOrSourceChat(pendingChat),
                 );
                 scheduleAutomaticGroupResponse({
@@ -391,7 +404,8 @@ export function useChatSession({
             const lastMessage = targetChat.messages[targetChat.messages.length - 1];
 
             if (
-                preferences.chat.streaming &&
+                streamingReply &&
+                lastMessage?.id === streamingReply.id &&
                 lastMessage?.role === "character" &&
                 lastMessage.author === generationCharacter.data.name
             ) {
@@ -464,16 +478,21 @@ export function useChatSession({
             });
 
         setChatError("");
+        const streamGeneration = shouldStreamGeneration(
+            preferences.chat.streaming,
+            connectionSettings,
+        );
+
         beginChatPending(chatId, messageId);
         const abortController = beginGenerationController(chatId, {
-            swipeMessageId: preferences.chat.streaming ? messageId : undefined,
+            swipeMessageId: streamGeneration ? messageId : undefined,
         });
         let streamedContent = "";
         let streamedReasoning = "";
         const streamedImages: string[] = [];
 
         try {
-            if (preferences.chat.streaming) {
+            if (streamGeneration) {
                 appendEmptySwipe(messageId, sourceChat);
             }
 
@@ -490,10 +509,10 @@ export function useChatSession({
                         sourceChat,
                     }),
                     sourceChat,
-                    stream: preferences.chat.streaming,
+                    stream: streamGeneration,
                     targetMessageId: messageId,
                     trigger: "swipe",
-                    onToken: preferences.chat.streaming
+                    onToken: streamGeneration
                         ? (token) => {
                               if (abortController.signal.aborted) {
                                   return;
@@ -502,7 +521,7 @@ export function useChatSession({
                               setStreamingMessageContent(messageId, streamedContent);
                           }
                         : undefined,
-                    onReasoningToken: preferences.chat.streaming
+                    onReasoningToken: streamGeneration
                         ? (token) => {
                               if (abortController.signal.aborted) {
                                   return;
@@ -511,7 +530,7 @@ export function useChatSession({
                               setStreamingMessageReasoning(messageId, streamedReasoning);
                           }
                         : undefined,
-                    onImage: preferences.chat.streaming
+                    onImage: streamGeneration
                         ? (url) => {
                               if (abortController.signal.aborted) {
                                   return;
@@ -532,7 +551,7 @@ export function useChatSession({
             }
 
             const targetChat = currentOrSourceChat(sourceChat);
-            if (preferences.chat.streaming) {
+            if (streamGeneration) {
                 const resultAttachments = await saveGeneratedImageAttachments(
                     chatId,
                     result.images?.length ? result.images : streamedImages,
@@ -543,6 +562,11 @@ export function useChatSession({
                     undefined,
                     result.reasoning,
                     result.reasoningDetails,
+                );
+                insertToolProtocolMessagesBefore(
+                    messageId,
+                    result.toolActivities,
+                    currentOrSourceChat(targetChat),
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
@@ -560,6 +584,11 @@ export function useChatSession({
                     result.reasoningDetails,
                     targetChat,
                 );
+                insertToolProtocolMessagesBefore(
+                    messageId,
+                    result.toolActivities,
+                    currentOrSourceChat(targetChat),
+                );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
                 }
@@ -571,7 +600,7 @@ export function useChatSession({
             }
 
             const targetChat = currentOrSourceChat(sourceChat);
-            if (preferences.chat.streaming) {
+            if (streamGeneration) {
                 updateMessageContent(messageId, generationErrorMessage(error), "error");
             } else {
                 appendSwipe(
@@ -711,6 +740,25 @@ export function useChatSession({
                 autoTurnCount: autoTurnCount + 1,
             });
         }, delayMs);
+    }
+
+    function insertToolProtocolMessagesBefore(
+        messageId: string,
+        activities: ToolActivity[] | undefined,
+        sourceChat: ChatSession,
+    ) {
+        if (!activities?.length) {
+            return;
+        }
+
+        const protocolMessages = activities.flatMap(createToolProtocolMessages);
+
+        updateChatMessages(
+            sourceChat.messages.flatMap((message) =>
+                message.id === messageId ? [...protocolMessages, message] : [message],
+            ),
+            sourceChat,
+        );
     }
 
     function clearAutomaticResponseTimer() {
@@ -945,4 +993,11 @@ function latestChatValue(
     }
 
     return next.updatedAt >= current.updatedAt ? next : current;
+}
+
+function shouldStreamGeneration(
+    enabled: boolean,
+    _connectionSettings: ConnectionSettings,
+) {
+    return enabled;
 }

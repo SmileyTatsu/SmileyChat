@@ -7,6 +7,7 @@ import {
     type SmileyCharacter,
     type SmileyPersona,
 } from "../types";
+import type { ToolActivity } from "./connections/types";
 
 import { createId } from "./common/ids";
 
@@ -120,6 +121,62 @@ export function createInjectedMessage(
 
 export function createCharacterErrorMessage(author: string, content: string): Message {
     return createMessage(MessageRole.Character, author, content, undefined, "error");
+}
+
+export function createToolProtocolMessages(activity: ToolActivity): Message[] {
+    return [createToolCallMessage(activity), createToolActivityMessage(activity)];
+}
+
+export function createToolCallMessage(activity: ToolActivity): Message {
+    return {
+        ...createMessage(
+            MessageRole.Character,
+            "Tools",
+            "",
+            undefined,
+            undefined,
+            undefined,
+            {
+                includeInPrompt: true,
+                promptRole: "assistant",
+                canGenerateSwipe: false,
+                toolProtocol: "assistant_tool_call",
+            },
+        ),
+        toolCalls: [activity.call],
+    };
+}
+
+export function createToolActivityMessage(activity: ToolActivity): Message {
+    const status = activity.result.isError ? "error" : "complete";
+    const content =
+        status === "error"
+            ? `${activity.call.name} failed`
+            : `${activity.call.name} completed`;
+
+    return {
+        ...createMessage(
+            MessageRole.Character,
+            "Tools",
+            content,
+            undefined,
+            undefined,
+            undefined,
+            {
+                displayRole: "system",
+                includeInPrompt: true,
+                promptRole: "user",
+                canGenerateSwipe: false,
+                toolActivity: {
+                    name: activity.call.name,
+                    status,
+                    argumentsText: activity.call.argumentsText,
+                    result: activity.result.content,
+                },
+            },
+        ),
+        toolResult: activity.result,
+    };
 }
 
 export function createCharacterGreetingMessage(

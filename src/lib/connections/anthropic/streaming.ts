@@ -20,6 +20,7 @@ export async function readAnthropicStream(
     let message = "";
     let reasoning = "";
     const content: AnthropicContentBlock[] = [];
+    const toolInputJson = new Map<number, string>();
     const output: AnthropicCreateMessageResponse = {
         content,
     };
@@ -73,6 +74,15 @@ export async function readAnthropicStream(
                     current.signature = delta.signature;
                 }
 
+                if (delta?.type === "input_json_delta" && delta.partial_json) {
+                    const current = ensureToolUseBlock(content, event.index);
+                    const nextJson =
+                        (toolInputJson.get(event.index) ?? "") + delta.partial_json;
+                    toolInputJson.set(event.index, nextJson);
+                    current.input = parsePartialToolInput(nextJson);
+                    return;
+                }
+
                 return;
             }
 
@@ -119,4 +129,32 @@ function ensureThinkingBlock(content: AnthropicContentBlock[], index: number) {
     const next: AnthropicThinkingBlock = { type: "thinking", thinking: "" };
     content[index] = next;
     return next;
+}
+
+function ensureToolUseBlock(content: AnthropicContentBlock[], index: number) {
+    const current = content[index];
+
+    if (current?.type === "tool_use") {
+        return current;
+    }
+
+    const next: AnthropicContentBlock = {
+        type: "tool_use",
+        id: `tool-call-${index + 1}`,
+        name: "",
+        input: {},
+    };
+    content[index] = next;
+    return next;
+}
+
+function parsePartialToolInput(value: string) {
+    try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed
+            : {};
+    } catch {
+        return {};
+    }
 }

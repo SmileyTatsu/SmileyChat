@@ -1,6 +1,7 @@
 import { MessageRole } from "#frontend/types";
 
 import {
+    chatCompletionTools,
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
 } from "../chat-completions";
@@ -54,6 +55,9 @@ export function createXAIChatCompletionBody(
             ? { stop: stopSequencesForGeneration(generation) }
             : {}),
         ...(reasoning?.effort ? { reasoning_effort: reasoning.effort } : {}),
+        ...(chatCompletionTools(request.tools)
+            ? { tools: chatCompletionTools(request.tools) }
+            : {}),
         stream: request.stream === true,
     };
 }

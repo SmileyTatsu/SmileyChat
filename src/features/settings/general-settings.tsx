@@ -245,6 +245,13 @@ export function GeneralSettings({
                     label="Stream responses"
                     onChange={(streaming) => updateChat({ streaming })}
                 />
+
+                <ToggleRow
+                    checked={preferences.chat.showToolActivity}
+                    description="Show display-only entries when plugins run model-requested tools."
+                    label="Show tool activity"
+                    onChange={(showToolActivity) => updateChat({ showToolActivity })}
+                />
             </section>
 
             <section className="settings-card">

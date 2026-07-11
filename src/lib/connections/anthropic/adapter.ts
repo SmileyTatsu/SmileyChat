@@ -1,11 +1,7 @@
 import { filePartToBlob, hasFileContent, mapFileContentParts } from "../images";
 import { safeResponseText, trimTrailingSlash } from "../http";
 import type { ChatGenerationRequest, ConnectionAdapter } from "../types";
-import {
-    createAnthropicMessageBody,
-    createAnthropicReasoningDetails,
-    normalizeAnthropicResponse,
-} from "./mappers";
+import { createAnthropicMessageBody, normalizeAnthropicResponse } from "./mappers";
 import { readAnthropicStream } from "./streaming";
 import type { AnthropicCreateMessageResponse, AnthropicRuntimeConfig } from "./types";
 
@@ -63,26 +59,7 @@ export function createAnthropicConnection(
                         request.signal,
                     );
 
-                    if (!stream.message.trim()) {
-                        throw new Error(
-                            "Anthropic stream did not include message content.",
-                        );
-                    }
-
-                    const reasoningDetails = createAnthropicReasoningDetails(
-                        stream.response,
-                        stream.message.trim(),
-                    );
-
-                    return {
-                        message: stream.message.trim(),
-                        provider: "anthropic",
-                        model: stream.response.model,
-                        ...(stream.reasoning.trim()
-                            ? { reasoning: stream.reasoning.trim() }
-                            : {}),
-                        ...(reasoningDetails ? { reasoningDetails } : {}),
-                    };
+                    return normalizeAnthropicResponse(stream.response);
                 }
 
                 const data = (await response.json()) as AnthropicCreateMessageResponse;

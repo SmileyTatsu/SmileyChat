@@ -17,6 +17,15 @@ export type ChatCompletionStreamChunk = {
             reasoning?: string | null;
             reasoning_content?: string | null;
             reasoning_details?: unknown;
+            tool_calls?: Array<{
+                index?: number;
+                id?: string;
+                type?: "function";
+                function?: {
+                    name?: string;
+                    arguments?: string;
+                };
+            }>;
         };
         finish_reason?: string | null;
     }>;

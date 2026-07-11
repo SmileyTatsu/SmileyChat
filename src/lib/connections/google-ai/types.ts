@@ -34,6 +34,16 @@ export type GoogleAIPart = {
         fileUri: string;
         mimeType: string;
     };
+    functionCall?: {
+        id?: string;
+        name: string;
+        args?: Record<string, unknown>;
+    };
+    functionResponse?: {
+        id?: string;
+        name: string;
+        response: Record<string, unknown>;
+    };
     inlineData?: {
         mimeType: string;
         data: string;
@@ -74,6 +84,13 @@ export type GoogleAIGenerateContentRequest = {
     contents: GoogleAIContent[];
     systemInstruction?: GoogleAISystemInstruction;
     safetySettings?: GoogleAISafetySetting[];
+    tools?: Array<{
+        functionDeclarations: Array<{
+            name: string;
+            description: string;
+            parameters: Record<string, unknown>;
+        }>;
+    }>;
     generationConfig?: {
         frequencyPenalty?: number;
         maxOutputTokens?: number;

@@ -4,6 +4,7 @@ import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
     ChatGenerationResult,
+    ToolCall,
 } from "../types";
 import { ChatGenerationMessageRole } from "../types";
 import type {
@@ -21,6 +22,7 @@ import {
     stopSequencesForGeneration,
 } from "../generation-settings";
 import { splitLeadingSystemMessages } from "../chat-completions";
+import { parseToolArguments } from "../chat-completions";
 
 export function createAnthropicMessageBody(
     request: ChatGenerationRequest,
@@ -62,6 +64,15 @@ export function createAnthropicMessageBody(
             : {}),
         ...(!isOpus47OrLater ? sampling : {}),
         ...(thinking ? { thinking } : {}),
+        ...(request.tools?.length
+            ? {
+                  tools: request.tools.map((tool) => ({
+                      name: tool.name,
+                      description: tool.description,
+                      input_schema: tool.parameters,
+                  })),
+              }
+            : {}),
     };
 }
 
@@ -71,17 +82,15 @@ export function normalizeAnthropicResponse(
     const message = extractAnthropicText(response).trim();
     const reasoning = extractAnthropicThinking(response).trim();
     const reasoningDetails = createAnthropicReasoningDetails(response, message);
+    const toolCalls = extractAnthropicToolCalls(response);
 
-    if (!message) {
-        const hasToolUse = response.content?.some((block) => block.type === "tool_use");
+    if (!message && toolCalls.length === 0) {
         const reason = response.stop_reason;
 
         throw new Error(
-            hasToolUse
-                ? "Anthropic response requested tool use, which SmileyChat does not support yet."
-                : reason
-                  ? `Anthropic response did not include message content: ${reason}`
-                  : "Anthropic response did not include message content.",
+            reason
+                ? `Anthropic response did not include message content: ${reason}`
+                : "Anthropic response did not include message content.",
         );
     }
 
@@ -91,6 +100,7 @@ export function normalizeAnthropicResponse(
         model: response.model,
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails ? { reasoningDetails } : {}),
+        ...(toolCalls.length ? { toolCalls } : {}),
         raw: response,
     };
 }
@@ -209,6 +219,58 @@ function cleanAnthropicSamplingConfig(
 }
 
 function toAnthropicMessage(message: ChatGenerationMessage): AnthropicMessage {
+    if (message.toolResult) {
+        return {
+            role: "user",
+            content: [
+                {
+                    type: "tool_result",
+                    tool_use_id: message.toolResult.toolCallId,
+                    content: message.toolResult.content,
+                    ...(message.toolResult.isError ? { is_error: true } : {}),
+                },
+            ],
+        };
+    }
+
+    if (message.toolCalls?.length) {
+        const contentBlocks =
+            typeof message.content === "string"
+                ? message.content.trim()
+                    ? [{ type: "text" as const, text: message.content }]
+                    : []
+                : generationMessageContentToAnthropicBlocks(message.content);
+
+        return {
+            role: "assistant",
+            content: [
+                ...contentBlocks,
+                ...message.toolCalls.map((toolCall) => {
+                    const providerState =
+                        toolCall.providerState &&
+                        typeof toolCall.providerState === "object" &&
+                        !Array.isArray(toolCall.providerState)
+                            ? (toolCall.providerState as AnthropicContentBlock)
+                            : undefined;
+
+                    if (providerState?.type === "tool_use") {
+                        return providerState;
+                    }
+
+                    return {
+                        type: "tool_use" as const,
+                        id: toolCall.id,
+                        name: toolCall.name,
+                        input:
+                            toolCall.arguments ??
+                            parseToolArguments(toolCall.argumentsText) ??
+                            {},
+                    };
+                }),
+            ],
+        };
+    }
+
     return {
         role: message.role === ChatGenerationMessageRole.Assistant ? "assistant" : "user",
         content: generationMessageContentToAnthropicContent(message.content),
@@ -222,6 +284,12 @@ function generationMessageContentToAnthropicContent(
         return content;
     }
 
+    return generationMessageContentToAnthropicBlocks(content);
+}
+
+function generationMessageContentToAnthropicBlocks(
+    content: Exclude<ChatGenerationMessage["content"], string>,
+): AnthropicContentBlock[] {
     const imageBlocks: AnthropicContentBlock[] = [];
     const textBlocks: AnthropicContentBlock[] = [];
 
@@ -344,7 +412,9 @@ function hasVisibleContent(content: AnthropicMessage["content"]) {
         (block) =>
             (block.type === "text" && block.text.trim()) ||
             block.type === "image" ||
-            block.type === "document",
+            block.type === "document" ||
+            block.type === "tool_use" ||
+            block.type === "tool_result",
     );
 }
 
@@ -357,4 +427,33 @@ function blocksToText(blocks: AnthropicContentBlock[]) {
         .filter(isTextOnlyBlock)
         .map((block) => block.text)
         .join("");
+}
+
+function extractAnthropicToolCalls(response: AnthropicCreateMessageResponse): ToolCall[] {
+    const toolCalls: ToolCall[] = [];
+
+    for (const block of response.content ?? []) {
+        if (block.type !== "tool_use") {
+            continue;
+        }
+
+        const name = block.name?.trim();
+
+        if (!name) {
+            continue;
+        }
+
+        const argumentsText = JSON.stringify(block.input ?? {});
+        const args = parseToolArguments(block.input as Record<string, unknown>);
+
+        toolCalls.push({
+            id: block.id || `tool-call-${toolCalls.length + 1}`,
+            name,
+            argumentsText,
+            ...(args ? { arguments: args } : {}),
+            providerState: block,
+        });
+    }
+
+    return toolCalls;
 }

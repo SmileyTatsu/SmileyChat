@@ -27,6 +27,11 @@ export function createXAIConnection(config: XAIRuntimeConfig): ConnectionAdapter
         label: "xAI",
         buildPayload(request) {
             if (hasFileContent(request.promptMessages ?? [])) {
+                if (request.tools?.length) {
+                    throw new Error(
+                        "xAI tool calling is not supported together with non-image file attachments yet.",
+                    );
+                }
                 return createXAIResponsesBody(request, config);
             }
 
@@ -34,6 +39,11 @@ export function createXAIConnection(config: XAIRuntimeConfig): ConnectionAdapter
         },
         async generate(request) {
             if (hasFileContent(request.promptMessages ?? [])) {
+                if (request.tools?.length) {
+                    throw new Error(
+                        "xAI tool calling is not supported together with non-image file attachments yet.",
+                    );
+                }
                 return generateXAIResponses(request, config);
             }
 

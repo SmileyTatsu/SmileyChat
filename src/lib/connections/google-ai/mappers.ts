@@ -2,6 +2,7 @@ import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
     ChatGenerationResult,
+    ToolCall,
 } from "../types";
 import { ChatGenerationMessageRole } from "../types";
 import { messageContentToText, parseDataImageUrl } from "../images";
@@ -9,6 +10,7 @@ import { legacyMessages } from "../legacy-messages";
 import { defaultOutputTokenLimit } from "../output-tokens";
 import { stopSequencesForGeneration } from "../generation-settings";
 import { splitLeadingSystemMessages } from "../chat-completions";
+import { parseToolArguments } from "../chat-completions";
 import type {
     GoogleAIContent,
     GoogleAIGenerateContentRequest,
@@ -77,6 +79,19 @@ export function createGoogleAIGenerateBody(
             : {}),
         contents,
         generationConfig,
+        ...(request.tools?.length
+            ? {
+                  tools: [
+                      {
+                          functionDeclarations: request.tools.map((tool) => ({
+                              name: tool.name,
+                              description: tool.description,
+                              parameters: tool.parameters,
+                          })),
+                      },
+                  ],
+              }
+            : {}),
         safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
             { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -106,8 +121,9 @@ export function normalizeGoogleAIResponse(
     const images = extractGoogleAIImages(response);
     const reasoning = extractGoogleAIThoughtText(response).trim();
     const reasoningDetails = createGoogleAIReasoningDetails(response, message);
+    const toolCalls = extractGoogleAIToolCalls(response);
 
-    if (!message && images.length === 0) {
+    if (!message && images.length === 0 && toolCalls.length === 0) {
         const reason = candidate?.finishMessage || candidate?.finishReason;
         throw new Error(
             reason
@@ -123,6 +139,7 @@ export function normalizeGoogleAIResponse(
         model: response.modelVersion,
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails ? { reasoningDetails } : {}),
+        ...(toolCalls.length ? { toolCalls } : {}),
         raw: response,
     };
 }
@@ -208,6 +225,61 @@ export function cleanThinkingConfig(thinking: GoogleAIThinkingConfig | undefined
 }
 
 function toGoogleAIContent(message: ChatGenerationMessage): GoogleAIContent {
+    if (message.toolResult) {
+        return {
+            role: "user",
+            parts: [
+                {
+                    functionResponse: {
+                        id: message.toolResult.toolCallId,
+                        name: message.toolResult.name,
+                        response: {
+                            result: message.toolResult.content,
+                            ...(message.toolResult.isError ? { error: true } : {}),
+                        },
+                    },
+                },
+            ],
+        };
+    }
+
+    if (message.toolCalls?.length) {
+        return {
+            role: "model",
+            parts: [
+                ...(typeof message.content === "string" && message.content.trim()
+                    ? [{ text: message.content }]
+                    : typeof message.content === "string"
+                      ? []
+                      : generationMessageContentToGoogleAIParts(message.content)),
+                ...message.toolCalls.map((toolCall) => {
+                    const providerState =
+                        toolCall.providerState &&
+                        typeof toolCall.providerState === "object" &&
+                        !Array.isArray(toolCall.providerState) &&
+                        isGoogleAIPart(toolCall.providerState)
+                            ? toolCall.providerState
+                            : undefined;
+
+                    if (providerState?.functionCall) {
+                        return providerState;
+                    }
+
+                    return {
+                        functionCall: {
+                            id: toolCall.id,
+                            name: toolCall.name,
+                            args:
+                                toolCall.arguments ??
+                                parseToolArguments(toolCall.argumentsText) ??
+                                {},
+                        },
+                    };
+                }),
+            ],
+        };
+    }
+
     const replayParts = replayGoogleAIParts(message);
 
     if (replayParts) {
@@ -362,7 +434,13 @@ function mergeGoogleAIParts(left: GoogleAIPart[], right: GoogleAIPart[]) {
 }
 
 function hasVisiblePart(part: GoogleAIPart) {
-    return Boolean(part.text?.trim() || part.inlineData || part.fileData);
+    return Boolean(
+        part.text?.trim() ||
+        part.inlineData ||
+        part.fileData ||
+        part.functionCall ||
+        part.functionResponse,
+    );
 }
 
 function isTextOnlyPart(part: GoogleAIPart) {
@@ -391,6 +469,8 @@ function isGoogleAIPart(value: unknown): value is GoogleAIPart {
         typeof value.text === "string" ||
         isGoogleAIInlineData(value.inlineData) ||
         isGoogleAIFileData(value.fileData) ||
+        isGoogleAIFunctionCall(value.functionCall) ||
+        isGoogleAIFunctionResponse(value.functionResponse) ||
         typeof value.thought === "boolean" ||
         typeof value.thoughtSignature === "string" ||
         typeof value.thought_signature === "string"
@@ -411,6 +491,39 @@ function isGoogleAIInlineData(value: unknown) {
         typeof value.mimeType === "string" &&
         typeof value.data === "string"
     );
+}
+
+function isGoogleAIFunctionCall(value: unknown) {
+    return isRecord(value) && typeof value.name === "string";
+}
+
+function isGoogleAIFunctionResponse(value: unknown) {
+    return isRecord(value) && typeof value.name === "string" && isRecord(value.response);
+}
+
+function extractGoogleAIToolCalls(response: GoogleAIGenerateContentResponse): ToolCall[] {
+    const toolCalls: ToolCall[] = [];
+
+    for (const part of response.candidates?.[0]?.content?.parts ?? []) {
+        const call = part.functionCall;
+        const name = call?.name?.trim();
+
+        if (!call || !name) {
+            continue;
+        }
+
+        const args = call.args ?? {};
+
+        toolCalls.push({
+            id: call.id || `tool-call-${toolCalls.length + 1}`,
+            name,
+            argumentsText: JSON.stringify(args),
+            arguments: args,
+            providerState: part,
+        });
+    }
+
+    return toolCalls;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

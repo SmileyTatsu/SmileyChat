@@ -70,11 +70,9 @@ export function compilePresetMessagesWithMetadata(
                 },
                 source: "preset",
             },
-            ...context.messages.filter(isMessageIncludedInPrompt).map((message) => ({
-                message: toGenerationMessage(message, context),
-                messageId: message.id,
-                source: "history" as const,
-            })),
+            ...context.messages
+                .filter(isMessageIncludedInPrompt)
+                .flatMap((message) => toAnchoredHistoryMessages(message, context)),
         ];
     }
 
@@ -264,11 +262,7 @@ function injectConversationMessages(
             }
         }
 
-        output.push({
-            message: toGenerationMessage(promptMessages[index], context),
-            messageId: promptMessages[index].id,
-            source: "history",
-        });
+        output.push(...toAnchoredHistoryMessages(promptMessages[index], context));
 
         for (const injectedPrompt of injectedPrompts) {
             if (
@@ -327,10 +321,29 @@ function toGenerationMessage(
         content: messageContentWithAttachments(message, context),
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+        ...(message.toolCalls?.length ? { toolCalls: message.toolCalls } : {}),
+        ...(message.toolResult ? { toolResult: message.toolResult } : {}),
     };
 }
 
+function toAnchoredHistoryMessages(
+    message: Message,
+    context: CompilePresetContext,
+): AnchoredPromptMessage[] {
+    return [
+        {
+            message: toGenerationMessage(message, context),
+            messageId: message.id,
+            source: "history" as const,
+        },
+    ];
+}
+
 function isMessageIncludedInPrompt(message: Message) {
+    if (message.toolCalls?.length || message.toolResult) {
+        return true;
+    }
+
     return (
         message.metadata?.includeInPrompt !== false &&
         message.metadata?.promptRole !== "none"
@@ -338,6 +351,14 @@ function isMessageIncludedInPrompt(message: Message) {
 }
 
 function promptRoleForMessage(message: Message): ChatGenerationMessage["role"] {
+    if (message.toolCalls?.length) {
+        return "assistant";
+    }
+
+    if (message.toolResult) {
+        return "user";
+    }
+
     const metadataRole = message.metadata?.promptRole;
 
     if (
@@ -352,6 +373,10 @@ function promptRoleForMessage(message: Message): ChatGenerationMessage["role"] {
 }
 
 function messageContentForPrompt(message: Message, context: CompilePresetContext) {
+    if (message.toolCalls?.length || message.toolResult) {
+        return getMessageContent(message);
+    }
+
     return resolvePresetMacros(getMessageContent(message), context);
 }
 
@@ -397,6 +422,10 @@ function messageContentWithAttachments(
 
 function messageTextForGeneration(message: Message, context: CompilePresetContext) {
     const content = messageContentForPrompt(message, context);
+
+    if (message.toolCalls?.length || message.toolResult) {
+        return content;
+    }
 
     if (
         message.role !== "character" ||

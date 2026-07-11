@@ -2,11 +2,7 @@ import { filePartToBlob, mapFileContentParts } from "../images";
 import { safeResponseText, trimTrailingSlash } from "../http";
 import type { ChatGenerationRequest, ConnectionAdapter } from "../types";
 
-import {
-    createGoogleAIGenerateBody,
-    createGoogleAIReasoningDetails,
-    normalizeGoogleAIResponse,
-} from "./mappers";
+import { createGoogleAIGenerateBody, normalizeGoogleAIResponse } from "./mappers";
 import { readGoogleAIStream } from "./streaming";
 import type { GoogleAIGenerateContentResponse, GoogleAIRuntimeConfig } from "./types";
 
@@ -53,20 +49,21 @@ export function createGoogleAIConnection(
                 }
 
                 if (request.stream) {
-                    let message = "";
-                    let reasoning = "";
-                    let model: string | undefined;
-                    const images: string[] = [];
-                    let lastChunk: GoogleAIGenerateContentResponse | undefined;
+                    const streamResponse: GoogleAIGenerateContentResponse = {
+                        candidates: [
+                            {
+                                content: {
+                                    role: "model",
+                                    parts: [],
+                                },
+                            },
+                        ],
+                    };
 
                     await readGoogleAIStream(
                         response,
                         (tokens, chunk) => {
-                            message += tokens.message;
-                            reasoning += tokens.reasoning;
-                            images.push(...tokens.images);
-                            model = chunk.modelVersion ?? model;
-                            lastChunk = chunk;
+                            mergeGoogleAIStreamChunk(streamResponse, chunk);
                             if (tokens.reasoning) {
                                 request.onReasoningToken?.(tokens.reasoning);
                             }
@@ -80,24 +77,7 @@ export function createGoogleAIConnection(
                         request.signal,
                     );
 
-                    if (!message.trim() && images.length === 0) {
-                        throw new Error(
-                            "Google AI stream did not include message content.",
-                        );
-                    }
-
-                    const reasoningDetails = lastChunk
-                        ? createGoogleAIReasoningDetails(lastChunk, message.trim())
-                        : undefined;
-
-                    return {
-                        message: message.trim(),
-                        ...(images.length ? { images } : {}),
-                        provider: "google-ai",
-                        model,
-                        ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
-                        ...(reasoningDetails ? { reasoningDetails } : {}),
-                    };
+                    return normalizeGoogleAIResponse(streamResponse);
                 }
 
                 const data = (await response.json()) as GoogleAIGenerateContentResponse;
@@ -107,6 +87,35 @@ export function createGoogleAIConnection(
             }
         },
     };
+}
+
+function mergeGoogleAIStreamChunk(
+    target: GoogleAIGenerateContentResponse,
+    chunk: GoogleAIGenerateContentResponse,
+) {
+    target.modelVersion = chunk.modelVersion ?? target.modelVersion;
+    target.responseId = chunk.responseId ?? target.responseId;
+    target.usageMetadata = {
+        ...(target.usageMetadata ?? {}),
+        ...(chunk.usageMetadata ?? {}),
+    };
+
+    const targetCandidate = target.candidates?.[0];
+    const chunkCandidate = chunk.candidates?.[0];
+
+    if (!targetCandidate || !chunkCandidate) {
+        return;
+    }
+
+    targetCandidate.finishReason =
+        chunkCandidate.finishReason ?? targetCandidate.finishReason;
+    targetCandidate.finishMessage =
+        chunkCandidate.finishMessage ?? targetCandidate.finishMessage;
+
+    if (chunkCandidate.content?.parts?.length) {
+        targetCandidate.content ??= { role: "model", parts: [] };
+        targetCandidate.content.parts.push(...chunkCandidate.content.parts);
+    }
 }
 
 async function uploadGoogleAIFiles(

@@ -8,6 +8,7 @@ import {
     MoreHorizontal,
     Trash2,
     User,
+    Wrench,
     X,
 } from "lucide-preact";
 import { memo } from "preact/compat";
@@ -121,6 +122,11 @@ export const MessageItem = memo(function MessageItem({
     const content = getMessageContent(message);
     const attachments = getMessageAttachments(message);
     const isFailedSwipe = isActiveSwipeError(message);
+    const toolActivity = message.metadata?.toolActivity;
+
+    if (toolActivity) {
+        return <ToolActivityMessage activity={toolActivity} mode={mode} />;
+    }
 
     const canPagePrevious = message.activeSwipeIndex > 0;
     const canPageForward =
@@ -392,6 +398,46 @@ export const MessageItem = memo(function MessageItem({
         </article>
     );
 }, areMessageItemPropsEqual);
+
+function ToolActivityMessage({
+    activity,
+    mode,
+}: {
+    activity: NonNullable<Message["metadata"]>["toolActivity"];
+    mode: ChatMode;
+}) {
+    if (!activity) {
+        return null;
+    }
+
+    const isError = activity.status === "error";
+    const title = isError
+        ? `Tool failed: ${activity.name}`
+        : `Tool used: ${activity.name}`;
+
+    return (
+        <article
+            className={cn("tool-activity-message", {
+                error: isError,
+                rp: mode === "rp",
+            })}
+        >
+            <div className="tool-activity-icon">
+                <Wrench size={15} />
+            </div>
+            <div className="tool-activity-body">
+                <strong>{title}</strong>
+                {(activity.argumentsText || activity.result) && (
+                    <details>
+                        <summary>Details</summary>
+                        {activity.argumentsText && <pre>{activity.argumentsText}</pre>}
+                        {activity.result && <pre>{activity.result}</pre>}
+                    </details>
+                )}
+            </div>
+        </article>
+    );
+}
 
 function areMessageItemPropsEqual(
     previous: Readonly<MessageItemProps>,

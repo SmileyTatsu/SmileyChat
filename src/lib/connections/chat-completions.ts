@@ -13,14 +13,36 @@ import type {
     ChatGenerationMessageContentPart,
     ChatGenerationRequest,
     ChatGenerationResult,
+    ToolCall,
+    ToolDefinition,
 } from "./types";
 import { ChatGenerationMessageRole } from "./types";
 
 type ChatCompletionMessage<TRole extends string> = {
-    role: TRole;
+    role: TRole | "tool";
     content: string | ChatGenerationMessageContentPart[];
     reasoning?: string;
     reasoning_details?: unknown;
+    tool_call_id?: string;
+    tool_calls?: ChatCompletionToolCall[];
+};
+
+export type ChatCompletionTool = {
+    type: "function";
+    function: {
+        name: string;
+        description: string;
+        parameters: Record<string, unknown>;
+    };
+};
+
+type ChatCompletionToolCall = {
+    id: string;
+    type: "function";
+    function: {
+        name: string;
+        arguments: string;
+    };
 };
 
 type ChatCompletionResponse = {
@@ -36,6 +58,7 @@ type ChatCompletionResponse = {
             reasoning?: string | null;
             reasoning_content?: string | null;
             reasoning_details?: unknown;
+            tool_calls?: ChatCompletionToolCall[];
         };
         error?: {
             message?: string;
@@ -125,11 +148,12 @@ export function normalizeChatCompletionResponse(
 
     const responseMessage = firstChoice?.message;
     const message = responseMessage?.content?.trim();
+    const toolCalls = normalizeChatCompletionToolCalls(responseMessage?.tool_calls);
     const images = options.allowImages
         ? extractImageUrls(responseMessage?.images)
         : undefined;
 
-    if (!message && !images?.length) {
+    if (!message && !images?.length && !toolCalls.length) {
         throw new Error(options.emptyMessage);
     }
 
@@ -148,8 +172,26 @@ export function normalizeChatCompletionResponse(
         ...(responseMessage?.reasoning_details !== undefined
             ? { reasoningDetails: responseMessage.reasoning_details }
             : {}),
+        ...(toolCalls.length ? { toolCalls } : {}),
         raw: response,
     };
+}
+
+export function chatCompletionTools(
+    tools: ToolDefinition[] | undefined,
+): ChatCompletionTool[] | undefined {
+    if (!tools?.length) {
+        return undefined;
+    }
+
+    return tools.map((tool) => ({
+        type: "function",
+        function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+        },
+    }));
 }
 
 export async function consumeChatCompletionStream(
@@ -162,6 +204,14 @@ export async function consumeChatCompletionStream(
     let reasoning = "";
     let reasoningDetails: unknown;
     const images: string[] = [];
+    const streamedToolCalls = new Map<
+        number,
+        {
+            id?: string;
+            name: string;
+            argumentsText: string;
+        }
+    >();
 
     await readChatCompletionStream(
         response,
@@ -180,6 +230,7 @@ export async function consumeChatCompletionStream(
             const nextImages = options.allowImages
                 ? extractImageUrls(chunk.choices?.[0]?.delta?.images)
                 : undefined;
+            const nextToolCalls = chunk.choices?.[0]?.delta?.tool_calls;
 
             if (reasoningToken) {
                 reasoning += reasoningToken;
@@ -204,11 +255,30 @@ export async function consumeChatCompletionStream(
                     request.onImage?.(url);
                 }
             }
+
+            if (nextToolCalls?.length) {
+                for (const toolCall of nextToolCalls) {
+                    const index = toolCall.index ?? streamedToolCalls.size;
+                    const current = streamedToolCalls.get(index) ?? {
+                        id: undefined,
+                        name: "",
+                        argumentsText: "",
+                    };
+
+                    streamedToolCalls.set(index, {
+                        id: toolCall.id ?? current.id,
+                        name: `${current.name}${toolCall.function?.name ?? ""}`,
+                        argumentsText: `${current.argumentsText}${toolCall.function?.arguments ?? ""}`,
+                    });
+                }
+            }
         },
         request.signal,
     );
 
-    if (!message.trim() && images.length === 0) {
+    const toolCalls = normalizeStreamedToolCalls(streamedToolCalls);
+
+    if (!message.trim() && images.length === 0 && toolCalls.length === 0) {
         throw new Error(options.emptyMessage);
     }
 
@@ -219,6 +289,7 @@ export async function consumeChatCompletionStream(
         model,
         ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
+        ...(toolCalls.length ? { toolCalls } : {}),
     };
 }
 
@@ -249,9 +320,20 @@ function toPromptMessage<TRole extends string>(
         mapRole: (role: ChatGenerationMessage["role"]) => TRole;
     },
 ): ChatCompletionMessage<TRole> {
+    if (message.toolResult) {
+        return {
+            role: "tool",
+            tool_call_id: message.toolResult.toolCallId,
+            content: message.toolResult.content,
+        };
+    }
+
     return {
         role: options.mapRole(message.role),
         content: message.content,
+        ...(message.toolCalls?.length
+            ? { tool_calls: message.toolCalls.map(toChatCompletionToolCall) }
+            : {}),
         ...(options.includeReasoningHistory && message.reasoning
             ? { reasoning: message.reasoning }
             : {}),
@@ -352,4 +434,94 @@ function extractImageUrls(
     return images
         ?.map((image) => image.image_url?.url)
         .filter((url): url is string => typeof url === "string" && Boolean(url));
+}
+
+function normalizeChatCompletionToolCalls(
+    toolCalls: ChatCompletionToolCall[] | undefined,
+): ToolCall[] {
+    return (toolCalls ?? [])
+        .map((toolCall, index) => {
+            const name = toolCall.function?.name?.trim();
+
+            if (!name) {
+                return undefined;
+            }
+
+            const argumentsText = toolCall.function?.arguments ?? "{}";
+            const parsedArguments = parseToolArguments(argumentsText);
+
+            return {
+                id: toolCall.id || `tool-call-${index + 1}`,
+                name,
+                argumentsText,
+                ...(parsedArguments ? { arguments: parsedArguments } : {}),
+            };
+        })
+        .filter((toolCall): toolCall is ToolCall => toolCall !== undefined);
+}
+
+function toChatCompletionToolCall(toolCall: ToolCall): ChatCompletionToolCall {
+    return {
+        id: toolCall.id,
+        type: "function",
+        function: {
+            name: toolCall.name,
+            arguments: toolCall.argumentsText,
+        },
+    };
+}
+
+function normalizeStreamedToolCalls(
+    streamedToolCalls: Map<
+        number,
+        {
+            id?: string;
+            name: string;
+            argumentsText: string;
+        }
+    >,
+): ToolCall[] {
+    return [...streamedToolCalls.entries()]
+        .sort(([left], [right]) => left - right)
+        .map(([, toolCall], index) => {
+            const name = toolCall.name.trim();
+
+            if (!name) {
+                return undefined;
+            }
+
+            const argumentsText = toolCall.argumentsText || "{}";
+            const parsedArguments = parseToolArguments(argumentsText);
+
+            return {
+                id: toolCall.id || `tool-call-${index + 1}`,
+                name,
+                argumentsText,
+                ...(parsedArguments ? { arguments: parsedArguments } : {}),
+            };
+        })
+        .filter((toolCall): toolCall is ToolCall => toolCall !== undefined);
+}
+
+export function parseToolArguments(
+    value: string | Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+    if (isPlainRecord(value)) {
+        return value;
+    }
+
+    if (typeof value !== "string") {
+        return undefined;
+    }
+
+    try {
+        const parsed = JSON.parse(value);
+        return isPlainRecord(parsed) ? parsed : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

@@ -14,6 +14,7 @@ import type {
     ChatGenerationMessage,
     ChatGenerationResult,
     ConnectionAdapter,
+    ToolDefinition,
 } from "../connections/types";
 import type { LorebookCollection } from "../lorebooks/types";
 import type { MessageFormattingOptions } from "../message-formatting/quote-highlighting";
@@ -263,6 +264,15 @@ export type PluginConnectionProvider = {
     testConnection?: (profile: ConnectionProfile) => Promise<string>;
 };
 
+export type PluginToolContext = PluginAppSnapshot;
+
+export type PluginTool = ToolDefinition & {
+    run: (
+        args: Record<string, unknown>,
+        context: PluginToolContext,
+    ) => string | Promise<string>;
+};
+
 export type PluginStorageApi = {
     getJson<T>(key: string, fallback: T): Promise<T>;
     setJson<T>(key: string, value: T): Promise<void>;
@@ -403,6 +413,9 @@ export type SmileyPluginApi = {
     };
     connections: {
         registerProvider(provider: PluginConnectionProvider): void;
+    };
+    tools: {
+        registerTool(tool: PluginTool): void;
     };
     storage: PluginStorageApi;
     events: PluginEventsApi;

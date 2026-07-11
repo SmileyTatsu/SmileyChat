@@ -7,6 +7,7 @@ import {
     stopSequencesForGeneration,
 } from "../generation-settings";
 import {
+    chatCompletionTools,
     createChatCompletionMessages,
     normalizeChatCompletionResponse,
 } from "../chat-completions";
@@ -69,6 +70,9 @@ export function createOpenRouterChatCompletionBody(
             : {}),
         ...(provider ? { provider } : {}),
         ...(reasoning ? { reasoning } : {}),
+        ...(chatCompletionTools(request.tools)
+            ? { tools: chatCompletionTools(request.tools) }
+            : {}),
     };
 }
 

@@ -41,7 +41,5 @@ function emitGoogleAITokens(
     const message = extractGoogleAIText(chunk);
     const reasoning = extractGoogleAIThoughtText(chunk);
 
-    if (message || reasoning || images.length) {
-        onChunk({ images, message, reasoning }, chunk);
-    }
+    onChunk({ images, message, reasoning }, chunk);
 }

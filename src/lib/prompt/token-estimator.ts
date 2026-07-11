@@ -39,12 +39,18 @@ export function estimateMessage(message: Message) {
         estimateText(message.author) +
         estimateText(getMessageContent(message)) +
         estimateText(getMessageReasoning(message)) +
+        estimateMessageToolTokens(message) +
         getMessageAttachments(message).length * 1024
     );
 }
 
 export function estimateGenerationMessage(message: ChatGenerationMessage) {
-    return 4 + estimateText(message.role) + estimateContentTokens(message.content);
+    return (
+        4 +
+        estimateText(message.role) +
+        estimateContentTokens(message.content) +
+        estimateGenerationToolTokens(message)
+    );
 }
 
 export function estimatePromptInjection(injection: PromptInjection) {
@@ -101,4 +107,40 @@ function estimateFilePartTokens(file: {
     }
 
     return 1024 + metadataTokens;
+}
+
+function estimateMessageToolTokens(message: Message) {
+    return (
+        (message.toolCalls ?? []).reduce(
+            (total, call) =>
+                total +
+                estimateText(call.id) +
+                estimateText(call.name) +
+                estimateText(call.argumentsText),
+            0,
+        ) +
+        (message.toolResult
+            ? estimateText(message.toolResult.toolCallId) +
+              estimateText(message.toolResult.name) +
+              estimateText(message.toolResult.content)
+            : 0)
+    );
+}
+
+function estimateGenerationToolTokens(message: ChatGenerationMessage) {
+    return (
+        (message.toolCalls ?? []).reduce(
+            (total, call) =>
+                total +
+                estimateText(call.id) +
+                estimateText(call.name) +
+                estimateText(call.argumentsText),
+            0,
+        ) +
+        (message.toolResult
+            ? estimateText(message.toolResult.toolCallId) +
+              estimateText(message.toolResult.name) +
+              estimateText(message.toolResult.content)
+            : 0)
+    );
 }

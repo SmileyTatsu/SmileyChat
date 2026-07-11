@@ -160,7 +160,7 @@ function trimAssembledPromptForEstimatedContext({
             break;
         }
 
-        output.splice(index, 1);
+        removeHistoryPromptAt(output, index);
         tokenEstimate = estimateAnchoredPromptMessages(output);
     }
 
@@ -239,6 +239,60 @@ function firstRemovableInjectionIndex(messages: AnchoredPromptMessage[]) {
 
                 return (a.message.injectionOrder ?? 0) - (b.message.injectionOrder ?? 0);
             })[0]?.index ?? -1
+    );
+}
+
+function removeHistoryPromptAt(messages: AnchoredPromptMessage[], index: number) {
+    const item = messages[index];
+
+    if (!item?.message.toolCalls?.length && !item?.message.toolResult) {
+        messages.splice(index, 1);
+        return;
+    }
+
+    let start = index;
+    let deleteCount = 1;
+
+    while (
+        start > 0 &&
+        isAdjacentToolProtocolPair(messages[start - 1], messages[start])
+    ) {
+        start -= 1;
+        deleteCount += 1;
+    }
+
+    while (
+        start + deleteCount < messages.length &&
+        isAdjacentToolProtocolPair(
+            messages[start + deleteCount - 1],
+            messages[start + deleteCount],
+        )
+    ) {
+        deleteCount += 1;
+    }
+
+    messages.splice(start, deleteCount);
+}
+
+function isAdjacentToolProtocolPair(
+    left: AnchoredPromptMessage | undefined,
+    right: AnchoredPromptMessage | undefined,
+) {
+    if (!left || !right) {
+        return false;
+    }
+
+    const leftCallIds = new Set(
+        (left.message.toolCalls ?? []).map((toolCall) => toolCall.id),
+    );
+    const rightCallIds = new Set(
+        (right.message.toolCalls ?? []).map((toolCall) => toolCall.id),
+    );
+
+    return Boolean(
+        (right.message.toolResult &&
+            leftCallIds.has(right.message.toolResult.toolCallId)) ||
+        (left.message.toolResult && rightCallIds.has(left.message.toolResult.toolCallId)),
     );
 }
 

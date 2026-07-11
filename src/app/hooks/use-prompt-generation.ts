@@ -9,11 +9,17 @@ import {
     filterLocalChatGenerationMessageAttachments,
     materializeChatGenerationMessageAttachments,
 } from "#frontend/lib/connections/images";
+import { parseToolArguments } from "#frontend/lib/connections/chat-completions";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
+    ToolActivity,
+    ToolCall,
+    ToolResult,
 } from "#frontend/lib/connections/types";
+import { ChatGenerationMessageRole } from "#frontend/lib/connections/types";
+import { messageFromError } from "#frontend/lib/common/errors";
 import { isActiveSwipeError } from "#frontend/lib/messages";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
@@ -21,6 +27,9 @@ import type { Lorebook, LorebookCollection } from "#frontend/lib/lorebooks/types
 import {
     getInputMiddlewares,
     getOutputMiddlewares,
+    getPluginSnapshot,
+    getPluginTool,
+    getPluginTools,
     getPromptContextMiddlewares,
     getPromptInjectors,
     getPromptMiddlewares,
@@ -186,13 +195,27 @@ export function usePromptGeneration({
             sourceUserStatus,
             options,
         );
+        const registeredTools = getPluginTools();
+        const tools = registeredTools.map(({ name, description, parameters }) => ({
+            name,
+            description,
+            parameters,
+        }));
+
+        if (tools.length) {
+            request.tools = tools;
+        }
+
         const generationMessages = request.messages;
-        const result = await connection.generate(request);
+        const { result, activities, promptMessages } = await runToolLoop(
+            connection,
+            request,
+        );
 
         const message = await applyOutputMiddlewares(
             result.message,
             generationMessages,
-            request.promptMessages ?? [],
+            promptMessages,
             sourceCharacter,
             sourceMode,
             sourceUserStatus,
@@ -200,7 +223,131 @@ export function usePromptGeneration({
             options,
         );
 
-        return { ...result, message };
+        return { ...result, message, toolActivities: activities };
+    }
+
+    async function runToolLoop(
+        connection: ReturnType<typeof getAdapterForSettings>,
+        request: ChatGenerationRequest,
+    ) {
+        let promptMessages = request.promptMessages ?? [];
+        let result = await connection.generate({
+            ...request,
+            promptMessages,
+        });
+        const activities: ToolActivity[] = [];
+        const maxIterations = 8;
+
+        for (let iteration = 0; result.toolCalls?.length; iteration += 1) {
+            if (iteration >= maxIterations) {
+                throw new Error(
+                    `Tool calling stopped after ${maxIterations} model iterations.`,
+                );
+            }
+
+            const toolResults: ToolResult[] = [];
+
+            for (const call of result.toolCalls) {
+                const toolResult = await runPluginTool(call);
+                toolResults.push(toolResult);
+                activities.push({ call, result: toolResult });
+            }
+
+            promptMessages = [
+                ...promptMessages,
+                {
+                    role: ChatGenerationMessageRole.Assistant,
+                    content: result.message,
+                    reasoning: result.reasoning,
+                    reasoningDetails: result.reasoningDetails,
+                    toolCalls: result.toolCalls,
+                },
+                ...toolResults.map(
+                    (toolResult): ChatGenerationMessage => ({
+                        role: ChatGenerationMessageRole.User,
+                        content: toolResult.content,
+                        toolResult,
+                    }),
+                ),
+            ];
+
+            result = await connection.generate({
+                ...request,
+                onImage: undefined,
+                onReasoningToken: undefined,
+                onToken: undefined,
+                promptMessages,
+                stream: false,
+            });
+        }
+
+        return { result, activities, promptMessages };
+    }
+
+    async function runPluginTool(call: ToolCall): Promise<ToolResult> {
+        const tool = getPluginTool(call.name);
+
+        console.info(
+            "[SmileyChat tool call]",
+            call.name,
+            call.arguments ?? call.argumentsText,
+        );
+
+        if (!tool) {
+            const content = `Tool error: Tool "${call.name}" is not registered or enabled.`;
+            console.error("[SmileyChat tool error]", call.name, content);
+            return {
+                toolCallId: call.id,
+                name: call.name,
+                content,
+                isError: true,
+            };
+        }
+
+        const args = call.arguments ?? parseToolArguments(call.argumentsText);
+
+        if (!args) {
+            const content = `Tool error: Tool "${call.name}" arguments were not a JSON object.`;
+            console.error("[SmileyChat tool error]", call.name, content);
+            return {
+                toolCallId: call.id,
+                name: call.name,
+                content,
+                isError: true,
+            };
+        }
+
+        const snapshot = getPluginSnapshot();
+
+        if (!snapshot) {
+            const content = `Tool error: App state snapshot is not available for "${call.name}".`;
+            console.error("[SmileyChat tool error]", call.name, content);
+            return {
+                toolCallId: call.id,
+                name: call.name,
+                content,
+                isError: true,
+            };
+        }
+
+        try {
+            const content = await tool.run(args, snapshot);
+
+            return {
+                toolCallId: call.id,
+                name: call.name,
+                content: typeof content === "string" ? content : String(content),
+            };
+        } catch (error) {
+            const content = `Tool error: ${messageFromError(error)}`;
+            console.error("[SmileyChat tool error]", call.name, error);
+            return {
+                toolCallId: call.id,
+                name: call.name,
+                content,
+                isError: true,
+            };
+        }
     }
 
     async function getDebugPayload(
@@ -225,6 +372,16 @@ export function usePromptGeneration({
             sourceUserStatus,
             options,
         );
+        const tools = getPluginTools().map(({ name, description, parameters }) => ({
+            name,
+            description,
+            parameters,
+        }));
+
+        if (tools.length) {
+            request.tools = tools;
+        }
+
         const payload = await connection.buildPayload(request);
 
         return { request, payload };

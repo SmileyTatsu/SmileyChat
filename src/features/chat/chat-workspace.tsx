@@ -171,6 +171,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     resetKey={activeChatId}
                     showRpCharacterImages={preferences.appearance.showRpCharacterImages}
                     showTimestamps={preferences.appearance.showTimestamps}
+                    showToolActivity={preferences.chat.showToolActivity}
                     timeFormat={preferences.appearance.timeFormat}
                     messageFormatting={messageFormatting}
                     canForkMessages={canForkMessages}

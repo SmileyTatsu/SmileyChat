@@ -1,4 +1,5 @@
 import type { ChatGenerationMessage } from "../types";
+import type { ToolDefinition } from "../types";
 
 export type AnthropicConnectionConfig = {
     baseUrl: string;
@@ -76,6 +77,12 @@ export type AnthropicContentBlock =
           id?: string;
           name?: string;
           input?: unknown;
+      }
+    | {
+          type: "tool_result";
+          tool_use_id: string;
+          content: string;
+          is_error?: boolean;
       };
 
 export type AnthropicThinkingBlock = {
@@ -115,6 +122,11 @@ export type AnthropicCreateMessageRequest = {
           };
     top_k?: number;
     top_p?: number;
+    tools?: Array<{
+        name: string;
+        description: string;
+        input_schema: ToolDefinition["parameters"];
+    }>;
 };
 
 export type AnthropicCreateMessageResponse = {

@@ -8,6 +8,8 @@ import type {
     ChatMode,
     Message,
     MessageMetadata,
+    MessageToolCall,
+    MessageToolResult,
     MessageSwipe,
 } from "#frontend/types";
 
@@ -194,6 +196,8 @@ function normalizeMessage(value: unknown): Message | undefined {
     const authorAvatarPath = asString(value.authorAvatarPath);
     const authorPersonaId = asString(value.authorPersonaId);
     const metadata = normalizeMessageMetadata(value.metadata);
+    const toolCalls = normalizeToolCalls(value.toolCalls);
+    const toolResult = normalizeToolResult(value.toolResult);
 
     if (!role || !author) {
         return undefined;
@@ -227,6 +231,8 @@ function normalizeMessage(value: unknown): Message | undefined {
         ...(authorAvatarPath ? { authorAvatarPath } : {}),
         ...(authorPersonaId ? { authorPersonaId } : {}),
         ...(metadata ? { metadata } : {}),
+        ...(toolCalls.length ? { toolCalls } : {}),
+        ...(toolResult ? { toolResult } : {}),
         role,
         createdAt,
         activeSwipeIndex,
@@ -260,9 +266,93 @@ function normalizeMessageMetadata(value: unknown): MessageMetadata | undefined {
         ...(typeof value.canGenerateSwipe === "boolean"
             ? { canGenerateSwipe: value.canGenerateSwipe }
             : {}),
+        ...(value.toolProtocol === "assistant_tool_call"
+            ? { toolProtocol: "assistant_tool_call" as const }
+            : {}),
+        ...(normalizeToolActivity(value.toolActivity)
+            ? { toolActivity: normalizeToolActivity(value.toolActivity) }
+            : {}),
     };
 
     return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
+function normalizeToolCalls(value: unknown): MessageToolCall[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .map((item) => {
+            if (!isRecord(item)) {
+                return undefined;
+            }
+
+            const id = asString(item.id);
+            const name = asString(item.name).trim();
+            const argumentsText = asString(item.argumentsText);
+            const args = isRecord(item.arguments) ? item.arguments : undefined;
+
+            if (!id || !name) {
+                return undefined;
+            }
+
+            return {
+                id,
+                name,
+                argumentsText: argumentsText || "{}",
+                ...(args ? { arguments: args } : {}),
+                ...("providerState" in item ? { providerState: item.providerState } : {}),
+            };
+        })
+        .filter((item): item is MessageToolCall => Boolean(item));
+}
+
+function normalizeToolResult(value: unknown): MessageToolResult | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const toolCallId = asString(value.toolCallId);
+    const name = asString(value.name).trim();
+
+    if (!toolCallId || !name) {
+        return undefined;
+    }
+
+    return {
+        toolCallId,
+        name,
+        content: asString(value.content),
+        ...(typeof value.isError === "boolean" ? { isError: value.isError } : {}),
+    };
+}
+
+function normalizeToolActivity(value: unknown): MessageMetadata["toolActivity"] {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const name = asString(value.name).trim();
+    const status =
+        value.status === "running" ||
+        value.status === "complete" ||
+        value.status === "error"
+            ? value.status
+            : undefined;
+
+    if (!name || !status) {
+        return undefined;
+    }
+
+    return {
+        name,
+        status,
+        ...(asString(value.argumentsText)
+            ? { argumentsText: asString(value.argumentsText) }
+            : {}),
+        ...(asString(value.result) ? { result: asString(value.result) } : {}),
+    };
 }
 
 function normalizeSwipe(value: unknown): MessageSwipe | undefined {

@@ -35,6 +35,12 @@ export function createNovelAIConnection(config: NovelAIRuntimeConfig): Connectio
             return createNovelAIBody(request, config);
         },
         async generate(request) {
+            if (request.tools?.length) {
+                console.warn(
+                    "NovelAI does not support native tool calling. Registered tools were ignored for this request.",
+                );
+            }
+
             const preparedRequest = hasFileContent(request.promptMessages ?? [])
                 ? await inlineNovelAITextFiles(request)
                 : request;

@@ -41,6 +41,7 @@ type MessageListProps = {
     pendingSwipeMessageId?: string;
     resetKey: string;
     showRpCharacterImages: boolean;
+    showToolActivity: boolean;
 
     onDeleteMessage: (messageId: string) => void;
     onDeleteMessageSwipe: (messageId: string) => void;
@@ -67,6 +68,7 @@ export const MessageList = memo(function MessageList({
     pendingSwipeMessageId,
     resetKey,
     showRpCharacterImages,
+    showToolActivity,
     showTimestamps,
     timeFormat,
     messageFormatting,
@@ -125,17 +127,28 @@ export const MessageList = memo(function MessageList({
         [registryRevision],
     );
 
-    const lastMessage = messages[messages.length - 1];
+    const displayMessages = useMemo(
+        () =>
+            messages.filter((message) => {
+                if (message.metadata?.toolProtocol === "assistant_tool_call") {
+                    return false;
+                }
+
+                return showToolActivity || !message.metadata?.toolActivity;
+            }),
+        [messages, showToolActivity],
+    );
+    const lastMessage = displayMessages[displayMessages.length - 1];
     const isStreamActive = Boolean(isTyping || pendingSwipeMessageId);
     const keyboardSwipeTarget = useMemo(
-        () => findKeyboardSwipeTarget(messages),
-        [messages],
+        () => findKeyboardSwipeTarget(displayMessages),
+        [displayMessages],
     );
     const lastActiveSwipe = lastMessage
         ? (lastMessage.swipes[lastMessage.activeSwipeIndex] ?? lastMessage.swipes[0])
         : undefined;
     const scrollVersion = [
-        messages.length,
+        displayMessages.length,
         lastMessage?.id ?? "",
         lastMessage?.activeSwipeIndex ?? "",
         lastActiveSwipe?.id ?? "",
@@ -378,8 +391,8 @@ export const MessageList = memo(function MessageList({
         setAttachmentRemovalCandidate(undefined);
     }
 
-    const visibleMessages = messages.slice(-visibleCount);
-    const hasEarlierMessages = visibleCount < messages.length;
+    const visibleMessages = displayMessages.slice(-visibleCount);
+    const hasEarlierMessages = visibleCount < displayMessages.length;
 
     useEffect(() => {
         needsInitialBottomScrollRef.current = true;
@@ -412,7 +425,7 @@ export const MessageList = memo(function MessageList({
         observer.observe(topSentinel);
 
         return () => observer.disconnect();
-    }, [hasEarlierMessages, messages.length, visibleCount]);
+    }, [hasEarlierMessages, displayMessages.length, visibleCount]);
 
     useLayoutEffect(() => {
         const list = listRef.current;
@@ -435,7 +448,7 @@ export const MessageList = memo(function MessageList({
             shouldAutoScrollRef.current = true;
             setShowJumpToBottom(false);
         }
-    }, [visibleCount, messages.length]);
+    }, [visibleCount, displayMessages.length]);
 
     useLayoutEffect(() => {
         const list = listRef.current;
@@ -493,7 +506,9 @@ export const MessageList = memo(function MessageList({
                             characterName={characterName}
                             chatId={chatId}
                             isEditing={isEditing}
-                            isLastMessage={message === messages[messages.length - 1]}
+                            isLastMessage={
+                                message === displayMessages[displayMessages.length - 1]
+                            }
                             isMenuOpen={isMenuOpen}
                             isPendingSwipe={pendingSwipeMessageId === message.id}
                             menuPlacement={isMenuOpen ? messageMenuPlacement : "below"}
@@ -662,7 +677,7 @@ export const MessageList = memo(function MessageList({
         }
 
         setVisibleCount((current) =>
-            Math.min(messages.length, current + LOAD_EARLIER_BATCH_SIZE),
+            Math.min(displayMessages.length, current + LOAD_EARLIER_BATCH_SIZE),
         );
     }
 

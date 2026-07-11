@@ -1,3 +1,4 @@
+import type { ChatCompletionTool } from "../chat-completions";
 import type { ChatGenerationMessageContentPart } from "../types";
 
 export type OpenAICompatibleConnectionConfig = {
@@ -31,10 +32,19 @@ export type OpenAICompatibleReasoningConfig = {
 };
 
 export type OpenAICompatibleChatMessage = {
-    role: "developer" | "system" | "user" | "assistant";
+    role: "developer" | "system" | "user" | "assistant" | "tool";
     content: string | ChatGenerationMessageContentPart[];
     reasoning?: string;
     reasoning_details?: unknown;
+    tool_call_id?: string;
+    tool_calls?: Array<{
+        id: string;
+        type: "function";
+        function: {
+            name: string;
+            arguments: string;
+        };
+    }>;
 };
 
 export type OpenAICompatibleChatCompletionRequest = {
@@ -51,6 +61,7 @@ export type OpenAICompatibleChatCompletionRequest = {
     stop?: string[];
     stream?: boolean;
     temperature?: number;
+    tools?: ChatCompletionTool[];
     top_p?: number;
 };
 
@@ -66,6 +77,14 @@ export type OpenAICompatibleChatCompletionResponse = {
             content: string | null;
             reasoning?: string | null;
             reasoning_details?: unknown;
+            tool_calls?: Array<{
+                id: string;
+                type: "function";
+                function: {
+                    name: string;
+                    arguments: string;
+                };
+            }>;
         };
         finish_reason: string | null;
     }>;

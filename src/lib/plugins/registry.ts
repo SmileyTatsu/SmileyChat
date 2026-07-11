@@ -36,6 +36,7 @@ import type {
     PluginPromptContextMiddleware,
     PluginPromptInjector,
     SmileyPluginApi,
+    PluginTool,
 } from "./types";
 
 type Listener = () => void;
@@ -70,6 +71,7 @@ const outputMiddlewares: Array<Owned<StoredOutputMiddleware>> = [];
 const modalInstances: Array<Owned<PluginModalInstance>> = [];
 const macroResolvers = new Map<string, Owned<PluginMacroResolver>>();
 const connectionProviders = new Map<string, Owned<PluginConnectionProvider>>();
+const pluginTools = new Map<string, Owned<PluginTool>>();
 const enabledPlugins = new Map<string, boolean>();
 const listeners = new Set<Listener>();
 const snapshotListeners = new Set<OwnedSnapshotListener>();
@@ -222,6 +224,7 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedItems(modalInstances, pluginId);
     removeOwnedMapValues(macroResolvers, pluginId);
     removeOwnedMapValues(connectionProviders, pluginId);
+    removeOwnedMapValues(pluginTools, pluginId);
     characterPresenceOverrides.delete(pluginId);
     composerStateOverrides.delete(pluginId);
 
@@ -365,6 +368,15 @@ export function getPluginConnectionProviderOwnerId(providerId: string) {
 
 export function getPluginConnectionProviders() {
     return enabledValues([...connectionProviders.values()]);
+}
+
+export function getPluginTools() {
+    return enabledValues([...pluginTools.values()]);
+}
+
+export function getPluginTool(name: string) {
+    const tool = pluginTools.get(name);
+    return tool && isPluginEnabled(tool.pluginId) ? tool.value : undefined;
 }
 
 export function setPluginAppActionHandlers(handlers: Partial<PluginAppActionHandlers>) {
@@ -647,6 +659,38 @@ export function createPluginApi(
                         value: provider,
                     },
                 );
+                if (registered) {
+                    notifyRegistryChanged();
+                }
+            },
+        },
+        tools: {
+            registerTool(tool) {
+                requireDeclaredPluginPermission(manifest, "tools:register");
+                const name = tool.name.trim();
+
+                if (!name) {
+                    throw new Error("Plugin tools need a non-empty name.");
+                }
+
+                if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) {
+                    throw new Error(
+                        `Plugin tool "${name}" must use only letters, numbers, underscores, or hyphens.`,
+                    );
+                }
+
+                if (!tool.description.trim()) {
+                    throw new Error(`Plugin tool "${name}" needs a description.`);
+                }
+
+                const registered = registerOwnedMapValue(pluginTools, name, {
+                    pluginId: manifest.id,
+                    value: {
+                        ...tool,
+                        name,
+                    },
+                });
+
                 if (registered) {
                     notifyRegistryChanged();
                 }

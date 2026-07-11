@@ -1,3 +1,4 @@
+import type { ChatCompletionTool } from "../chat-completions";
 import type { ChatGenerationMessageContentPart } from "../types";
 
 export type OpenRouterConnectionConfig = {
@@ -36,10 +37,19 @@ export type OpenRouterReasoningConfig = {
 };
 
 export type OpenRouterChatMessage = {
-    role: "system" | "user" | "assistant";
+    role: "system" | "user" | "assistant" | "tool";
     content: string | ChatGenerationMessageContentPart[];
     reasoning?: string;
     reasoning_details?: unknown;
+    tool_call_id?: string;
+    tool_calls?: Array<{
+        id: string;
+        type: "function";
+        function: {
+            name: string;
+            arguments: string;
+        };
+    }>;
 };
 
 export type OpenRouterImage = {
@@ -64,6 +74,7 @@ export type OpenRouterChatCompletionRequest = {
     stop?: string[];
     stream: boolean;
     temperature?: number;
+    tools?: ChatCompletionTool[];
     top_a?: number;
     top_k?: number;
     top_p?: number;
@@ -82,6 +93,14 @@ export type OpenRouterChatCompletionResponse = {
             images?: OpenRouterImage[];
             reasoning?: string | null;
             reasoning_details?: unknown;
+            tool_calls?: Array<{
+                id: string;
+                type: "function";
+                function: {
+                    name: string;
+                    arguments: string;
+                };
+            }>;
         };
         finish_reason: string | null;
         native_finish_reason?: string | null;

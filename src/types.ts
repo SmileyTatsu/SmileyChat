@@ -26,9 +26,26 @@ export type Message = {
     authorPersonaId?: string;
     metadata?: MessageMetadata;
     role: MessageRole;
+    toolCalls?: MessageToolCall[];
+    toolResult?: MessageToolResult;
     createdAt: string;
     activeSwipeIndex: number;
     swipes: MessageSwipe[];
+};
+
+export type MessageToolCall = {
+    id: string;
+    name: string;
+    argumentsText: string;
+    arguments?: Record<string, unknown>;
+    providerState?: unknown;
+};
+
+export type MessageToolResult = {
+    toolCallId: string;
+    name: string;
+    content: string;
+    isError?: boolean;
 };
 
 export type MessageMetadata = {
@@ -38,6 +55,13 @@ export type MessageMetadata = {
     includeInPrompt?: boolean;
     promptRole?: "assistant" | "user" | "system" | "none";
     canGenerateSwipe?: boolean;
+    toolProtocol?: "assistant_tool_call";
+    toolActivity?: {
+        name: string;
+        status: "running" | "complete" | "error";
+        argumentsText?: string;
+        result?: string;
+    };
 };
 
 export type ChatAttachment = {
