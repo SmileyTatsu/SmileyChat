@@ -5,7 +5,8 @@
  */
 
 .chs-note,
-.spp-note {
+.spp-note,
+.mcp-note {
     border-color: #303440;
     background: #171a22;
     color: #c8cedd;
@@ -13,6 +14,7 @@
 
 .chs-settings-group,
 .spp-settings-group,
+.mcp-settings-group,
 .lbm-form section,
 .spp-pass-details,
 .chs-summary-meta div,
@@ -28,6 +30,9 @@
 .spp-field input,
 .spp-field select,
 .spp-field textarea,
+.mcp-field input,
+.mcp-field select,
+.mcp-field textarea,
 .lbm-field input,
 .lbm-field select,
 .lbm-field textarea,
@@ -49,6 +54,9 @@
 .spp-field input:focus-visible,
 .spp-field select:focus-visible,
 .spp-field textarea:focus-visible,
+.mcp-field input:focus-visible,
+.mcp-field select:focus-visible,
+.mcp-field textarea:focus-visible,
 .lbm-field input:focus-visible,
 .lbm-field select:focus-visible,
 .lbm-field textarea:focus-visible,
@@ -63,7 +71,8 @@
 .chs-toggle,
 .spp-toggle,
 .scf-setting-row,
-.lbm-check {
+.lbm-check,
+.mcp-check {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -84,14 +93,16 @@
 .chs-toggle:last-child,
 .spp-toggle:last-child,
 .scf-setting-row:last-child,
-.lbm-check:last-child {
+.lbm-check:last-child,
+.mcp-check:last-child {
     border-bottom: none;
 }
 
 .chs-toggle:hover,
 .spp-toggle:hover,
 .scf-setting-row:hover,
-.lbm-check:hover {
+.lbm-check:hover,
+.mcp-check:hover {
     border-color: #1e212b;
     background: #191b21;
 }
@@ -99,21 +110,24 @@
 .chs-toggle:focus-within,
 .spp-toggle:focus-within,
 .scf-setting-row:focus-within,
-.lbm-check:focus-within {
+.lbm-check:focus-within,
+.mcp-check:focus-within {
     border-color: #1e212b;
 }
 
 .chs-toggle > input[type="checkbox"],
 .spp-toggle > input[type="checkbox"],
 .scf-setting-row > input[type="checkbox"],
-.lbm-check > input[type="checkbox"] {
+.lbm-check > input[type="checkbox"],
+.mcp-check > input[type="checkbox"] {
     order: 1;
 }
 
 .chs-toggle input[type="checkbox"],
 .spp-toggle input[type="checkbox"],
 .scf-setting-row input[type="checkbox"],
-.lbm-check input[type="checkbox"] {
+.lbm-check input[type="checkbox"],
+.mcp-check input[type="checkbox"] {
     appearance: none;
     display: flex;
     align-items: center;
@@ -134,7 +148,8 @@
 .chs-toggle input[type="checkbox"]::before,
 .spp-toggle input[type="checkbox"]::before,
 .scf-setting-row input[type="checkbox"]::before,
-.lbm-check input[type="checkbox"]::before {
+.lbm-check input[type="checkbox"]::before,
+.mcp-check input[type="checkbox"]::before {
     content: "";
     width: 16px;
     height: 16px;
@@ -150,7 +165,8 @@
 .chs-toggle input[type="checkbox"]:checked,
 .spp-toggle input[type="checkbox"]:checked,
 .scf-setting-row input[type="checkbox"]:checked,
-.lbm-check input[type="checkbox"]:checked {
+.lbm-check input[type="checkbox"]:checked,
+.mcp-check input[type="checkbox"]:checked {
     border-color: #7e8fb4;
     background: #30384a;
     box-shadow: 0 0 0 3px rgba(126, 143, 180, 0.16);
@@ -159,7 +175,8 @@
 .chs-toggle input[type="checkbox"]:checked::before,
 .spp-toggle input[type="checkbox"]:checked::before,
 .scf-setting-row input[type="checkbox"]:checked::before,
-.lbm-check input[type="checkbox"]:checked::before {
+.lbm-check input[type="checkbox"]:checked::before,
+.mcp-check input[type="checkbox"]:checked::before {
     background: #e1e7ff;
     transform: translateX(16px);
 }
@@ -167,7 +184,8 @@
 .chs-toggle input[type="checkbox"]:focus-visible,
 .spp-toggle input[type="checkbox"]:focus-visible,
 .scf-setting-row input[type="checkbox"]:focus-visible,
-.lbm-check input[type="checkbox"]:focus-visible {
+.lbm-check input[type="checkbox"]:focus-visible,
+.mcp-check input[type="checkbox"]:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(126, 143, 180, 0.32);
 }
@@ -175,7 +193,8 @@
 .chs-toggle > span,
 .spp-toggle > span,
 .scf-setting-row > span,
-.lbm-check > span {
+.lbm-check > span,
+.mcp-check > span {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -185,13 +204,15 @@
 .chs-toggle > span > span:first-child,
 .spp-toggle > span > span:first-child,
 .scf-setting-row > span > span:first-child,
-.lbm-check > span > span:first-child {
+.lbm-check > span > span:first-child,
+.mcp-check > span > span:first-child {
     font-weight: 700;
 }
 
 .chs-toggle small,
 .spp-toggle small,
-.scf-setting-row small {
+.scf-setting-row small,
+.mcp-check small {
     color: #9da3b4;
     font-weight: 400;
     font-size: 0.8rem;
@@ -202,6 +223,8 @@
 .chs-modal-actions button,
 .spp-button-row button,
 .spp-modal-actions button,
+.mcp-button-row button,
+.mcp-modal-actions button,
 .lbm-add-button,
 .lbm-entry-editor-header > button,
 .lbm-editor-toolbar button {
@@ -214,6 +237,8 @@
 .chs-modal-actions button:hover:not(:disabled),
 .spp-button-row button:hover:not(:disabled),
 .spp-modal-actions button:hover:not(:disabled),
+.mcp-button-row button:hover:not(:disabled),
+.mcp-modal-actions button:hover:not(:disabled),
 .lbm-add-button:hover:not(:disabled),
 .lbm-entry-editor-header > button:hover:not(:disabled),
 .lbm-editor-toolbar button:hover:not(:disabled) {
@@ -223,6 +248,8 @@
 
 .spp-button-row button.primary,
 .spp-modal-actions button.primary,
+.mcp-button-row button.primary,
+.mcp-modal-actions button.primary,
 .lbm-editor-toolbar button.primary {
     border-color: #58657d;
     background: #30384a;
@@ -230,6 +257,8 @@
 }
 
 .spp-pass-list article.active,
+.mcp-server-row.active,
+.mcp-server-row:hover,
 .lbm-entry-row.active,
 .lbm-entry-row:hover,
 .lbm-nav-item:hover,
@@ -252,11 +281,17 @@
 }
 
 .spp-toggle:focus-within,
+.mcp-check:focus-within,
 .spp-field input:focus-visible,
 .spp-field select:focus-visible,
 .spp-field textarea:focus-visible,
+.mcp-field input:focus-visible,
+.mcp-field select:focus-visible,
+.mcp-field textarea:focus-visible,
 .spp-button-row button:focus-visible,
 .spp-modal-actions button:focus-visible,
+.mcp-button-row button:focus-visible,
+.mcp-modal-actions button:focus-visible,
 .spp-pass-list article > button:focus-visible,
 .spp-pass-list article div button:focus-visible,
 .spp-pass-details article > button:focus-visible,

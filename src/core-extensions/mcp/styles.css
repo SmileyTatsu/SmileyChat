@@ -1,37 +1,143 @@
-.mcp-settings textarea {
-    width: 100%;
-    min-height: 180px;
-    background: #12161d;
-    color: #dfe7ef;
-    border: 1px solid #334050;
-    border-radius: 8px;
-    padding: 10px;
-    font-family: ui-monospace, monospace;
-}
-.mcp-toolbar {
-    display: flex;
-    gap: 8px;
-    margin: 10px 0;
-}
-.mcp-server-row,
-.mcp-picker label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border-top: 1px solid #27303b;
-}
-.mcp-server-row span {
-    margin-right: auto;
-    color: #aab5c1;
-}
-.mcp-picker label span {
+.mcp-settings {
     display: grid;
-    gap: 2px;
+    grid-template-columns: 1fr;
+    gap: 12px;
 }
-.mcp-picker small {
-    color: #aab5c1;
+
+.mcp-note,
+.chat-error {
+    grid-column: 1 / -1;
 }
-.mcp-picker button {
-    margin-top: 16px;
+
+.mcp-settings-group {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 12px;
+}
+
+.mcp-settings-group h5 {
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.9rem;
+}
+
+.mcp-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: #dfe3ef;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.mcp-field input,
+.mcp-field select,
+.mcp-field textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #101218;
+    color: #ececf1;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+}
+
+.mcp-field input,
+.mcp-field select {
+    min-height: 36px;
+    padding: 0 10px;
+}
+
+.mcp-field textarea {
+    resize: vertical;
+    padding: 10px;
+    line-height: 1.45;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    min-height: 180px;
+    tab-size: 2;
+}
+
+.mcp-button-row,
+.mcp-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: start;
+    gap: 8px;
+}
+
+.mcp-button-row button,
+.mcp-modal-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-height: 34px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #242832;
+    color: #ececf1;
+    padding: 0 10px;
+}
+
+.mcp-server-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 7px 8px;
+}
+
+.mcp-server-row > span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.mcp-server-row strong,
+.mcp-server-row small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mcp-server-row small {
+    color: #9da3b4;
+    font-size: 0.75rem;
+}
+
+.mcp-server-row div {
+    display: flex;
+    gap: 4px;
+}
+
+.mcp-server-row div button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    border: 1px solid #303440;
+    border-radius: 6px;
+    background: #242832;
+    color: #ececf1;
+    padding: 0 8px;
+}
+
+.mcp-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }

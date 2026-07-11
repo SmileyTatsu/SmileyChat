@@ -1,6 +1,8 @@
 import { Plug, RefreshCw } from "lucide-preact";
 import { useEffect, useState } from "preact/hooks";
+import { localApiFetch } from "#frontend/lib/api/client";
 import { mcpManifest } from "./manifest";
+import { exportOpenCodeMcp } from "#frontend/lib/mcp/config";
 import type { McpServerRecord, McpSettings, McpTool } from "#frontend/lib/mcp/types";
 import type {
     PluginAppSnapshot,
@@ -39,16 +41,18 @@ export async function activate(api: SmileyPluginApi) {
             });
         },
     });
-    const unsubscribe = api.state.subscribe(() => void refreshTools(api));
+
     return () => {
-        unsubscribe();
         clearTools();
     };
 }
 
 async function request<T>(url: string, init?: RequestInit) {
-    const response = await fetch(url, {
-        headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    const response = await localApiFetch(url, {
+        headers: {
+            "Content-Type": "application/json",
+            ...(init?.headers ?? {}),
+        },
         ...init,
     });
     if (!response.ok)
@@ -98,12 +102,33 @@ function toPluginTool(tool: McpTool): PluginTool {
 function McpSettings({ api }: { api: SmileyPluginApi }) {
     const [state, setState] = useState(latest);
     const [error, setError] = useState("");
-    const [draft, setDraft] = useState('{\n  "servers": []\n}');
+    const [processing, setProcessing] = useState(false);
+
+    // Compute the standard format JSON dynamically
+    const draftContent = state?.settings
+        ? JSON.stringify(exportOpenCodeMcp(state.settings, undefined, false), null, 2)
+        : '{\n  "mcpServers": {}\n}';
+    const [draft, setDraft] = useState(draftContent);
+
+    // Sync draft if state updates externally
+    useEffect(() => {
+        if (state?.settings) {
+            setDraft(
+                JSON.stringify(
+                    exportOpenCodeMcp(state.settings, undefined, false),
+                    null,
+                    2,
+                ),
+            );
+        }
+    }, [state?.settings]);
+
     useEffect(() => {
         setState(latest);
     }, []);
 
     const reload = async () => {
+        setProcessing(true);
         try {
             await refresh(api);
             setState(latest);
@@ -112,10 +137,13 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
             setError(
                 cause instanceof Error ? cause.message : "Could not load MCP servers.",
             );
+        } finally {
+            setProcessing(false);
         }
     };
 
     const save = async () => {
+        setProcessing(true);
         try {
             const next = JSON.parse(draft);
             await request("/api/mcp", { method: "PUT", body: JSON.stringify(next) });
@@ -124,83 +152,156 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
             setError(
                 cause instanceof Error ? cause.message : "Invalid MCP configuration.",
             );
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const connectServer = async (id: string) => {
+        setProcessing(true);
+        try {
+            await request(`/api/mcp/${encodeURIComponent(id)}/connect`, {
+                method: "POST",
+            });
+            await reload();
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : "Connection failed.");
+            setProcessing(false);
+        }
+    };
+
+    const disconnectServer = async (id: string) => {
+        setProcessing(true);
+        try {
+            await request(`/api/mcp/${encodeURIComponent(id)}/disconnect`, {
+                method: "POST",
+            });
+            await reload();
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : "Disconnect failed.");
+            setProcessing(false);
+        }
+    };
+
+    const refreshServer = async (id: string) => {
+        setProcessing(true);
+        try {
+            await request(`/api/mcp/${encodeURIComponent(id)}/refresh`, {
+                method: "POST",
+            });
+            await reload();
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : "Refresh failed.");
+            setProcessing(false);
         }
     };
 
     return (
         <section className="mcp-settings">
-            <p>
+            <div className="mcp-note">
                 Local stdio commands and remote Streamable HTTP tools. Header and
                 environment values are stored separately as secrets.
-            </p>
-            <div className="mcp-toolbar">
-                <button type="button" onClick={() => void reload()}>
-                    <RefreshCw size={15} /> Refresh
-                </button>
-                <button
-                    type="button"
-                    onClick={() =>
-                        void request("/api/mcp/export", {
-                            method: "POST",
-                            body: JSON.stringify({ includeSecrets: false }),
-                        }).then((value) => setDraft(JSON.stringify(value, null, 2)))
-                    }
-                >
-                    Export OpenCode
-                </button>
             </div>
-            <textarea
-                value={draft}
-                onInput={(event) =>
-                    setDraft((event.currentTarget as HTMLTextAreaElement).value)
-                }
-                aria-label="MCP configuration JSON"
-            />
-            <div className="mcp-toolbar">
-                <button
-                    type="button"
-                    onClick={() =>
-                        void request("/api/mcp/import", { method: "POST", body: draft })
-                            .then(reload)
-                            .catch((cause) => setError(cause.message))
-                    }
-                >
-                    Import OpenCode
-                </button>
-                <button type="button" onClick={() => void save()}>
-                    Save configuration
-                </button>
-            </div>
-            {state?.servers.map((server) => (
-                <div className="mcp-server-row" key={server.id}>
-                    <strong>{server.name}</strong>
-                    <span>
-                        {server.connected
-                            ? `${server.tools.length} tools`
-                            : (server.error ?? "Disconnected")}
-                    </span>
+
+            <section className="mcp-settings-group">
+                <h5>Configuration</h5>
+                <label className="mcp-field">
+                    <span>MCP configuration JSON</span>
+                    <textarea
+                        value={draft}
+                        onInput={(event) =>
+                            setDraft((event.currentTarget as HTMLTextAreaElement).value)
+                        }
+                        onKeyDown={indentJsonOnEnter}
+                        aria-label="MCP configuration JSON"
+                        autoComplete="off"
+                        spellcheck={false}
+                        disabled={processing}
+                    />
+                </label>
+                <div className="mcp-button-row">
                     <button
                         type="button"
-                        onClick={() =>
-                            void request(`/api/mcp/${server.id}/connect`, {
-                                method: "POST",
-                            }).then(reload)
-                        }
+                        onClick={() => void reload()}
+                        disabled={processing}
                     >
-                        Connect
+                        <RefreshCw size={15} /> Refresh
                     </button>
                     <button
                         type="button"
-                        onClick={() =>
-                            void request(`/api/mcp/${server.id}/refresh`, {
-                                method: "POST",
-                            }).then(reload)
-                        }
+                        className="primary"
+                        onClick={() => void save()}
+                        disabled={processing}
                     >
-                        Refresh tools
+                        Save configuration
                     </button>
                 </div>
-            ))}
+            </section>
+
+            <section className="mcp-settings-group">
+                <h5>Servers</h5>
+                {state?.servers.length === 0 && (
+                    <p className="spp-muted">No servers configured.</p>
+                )}
+                {state?.servers.map((server) => {
+                    const statusColor = server.connected
+                        ? "#52b69a"
+                        : server.error
+                          ? "#eb5757"
+                          : "#9da3b4";
+
+                    return (
+                        <article className="mcp-server-row" key={server.id}>
+                            <span>
+                                <strong>
+                                    <span
+                                        style={{
+                                            color: statusColor,
+                                            marginRight: "6px",
+                                            fontSize: "1.2em",
+                                        }}
+                                    >
+                                        &bull;
+                                    </span>
+                                    {server.name}
+                                </strong>
+                                <small>
+                                    {server.connected
+                                        ? `${server.tools.length} tools`
+                                        : (server.error ?? "Disconnected")}
+                                </small>
+                            </span>
+                            <div>
+                                {server.connected ? (
+                                    <button
+                                        type="button"
+                                        disabled={processing}
+                                        onClick={() => void disconnectServer(server.id)}
+                                    >
+                                        Disconnect
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled={processing || !server.enabled}
+                                        onClick={() => void connectServer(server.id)}
+                                    >
+                                        Connect
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    disabled={processing || !server.enabled}
+                                    onClick={() => void refreshServer(server.id)}
+                                >
+                                    Refresh
+                                </button>
+                            </div>
+                        </article>
+                    );
+                })}
+            </section>
+
             {error && <p className="chat-error">{error}</p>}
         </section>
     );
@@ -237,7 +338,7 @@ function McpPicker({
     return (
         <div className="mcp-picker">
             {latest?.servers.map((server) => (
-                <label key={server.id}>
+                <label className="mcp-check" key={server.id}>
                     <input
                         type="checkbox"
                         checked={ids.has(server.id)}
@@ -253,7 +354,7 @@ function McpPicker({
                         }
                     />
                     <span>
-                        <strong>{server.name}</strong>
+                        <span>{server.name}</span>
                         <small>
                             {server.connected
                                 ? `${server.tools.length} available tools`
@@ -262,11 +363,30 @@ function McpPicker({
                     </span>
                 </label>
             ))}
-            <button type="button" onClick={() => void apply()}>
-                Use selected servers
-            </button>
+            <div className="mcp-modal-actions">
+                <button type="button" className="primary" onClick={() => void apply()}>
+                    Use selected servers
+                </button>
+            </div>
         </div>
     );
 }
 
 export const mcpPlugin = { manifest: mcpManifest, module: { activate } };
+
+function indentJsonOnEnter(event: KeyboardEvent) {
+    if (event.key !== "Enter") return;
+
+    const input = event.currentTarget as HTMLTextAreaElement;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const before = input.value.slice(0, start);
+    const after = input.value.slice(end);
+    const currentLine = before.slice(before.lastIndexOf("\n") + 1);
+    const baseIndent = currentLine.match(/^\s*/)?.[0] ?? "";
+    const nextIndent = /[\[{][ \t]*$/.test(currentLine) ? `${baseIndent}  ` : baseIndent;
+
+    event.preventDefault();
+    input.setRangeText(`\n${nextIndent}`, start, end, "end");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+}

@@ -93,14 +93,13 @@ import { serveStatic } from "./static";
 import { ensureUserData } from "./user-data";
 import {
     callMcpTool,
+    closeAll,
     connectMcpServer,
     disconnectMcpServer,
-    exportMcpServers,
-    importMcpServers,
+    autoConnectMcpServers,
     readMcpServers,
     refreshMcpServer,
     writeMcpServers,
-    closeAll as closeAllMcpServers,
 } from "./mcp";
 
 import type { SecurityContext } from "./security/pipeline";
@@ -125,7 +124,7 @@ const envWatcher = startEnvWatcher();
 const shutdown = (signal: string) => {
     console.log(`Received ${signal}; shutting down SmileyChat.`);
     envWatcher.stop();
-    void closeAllMcpServers();
+    void closeAll();
     process.exit(0);
 };
 
@@ -157,22 +156,6 @@ const server = Bun.serve({
         "/api/mcp": {
             GET: api(async () => readMcpServers()),
             PUT: api(async (request) => writeMcpServers(await readJsonBody(request))),
-        },
-        "/api/mcp/import": {
-            POST: api(async (request) => importMcpServers(await readJsonBody(request))),
-        },
-        "/api/mcp/export": {
-            POST: api(async (request) => {
-                const body = await readJsonBody(request);
-                return exportMcpServers(
-                    Boolean(
-                        body &&
-                        typeof body === "object" &&
-                        "includeSecrets" in body &&
-                        body.includeSecrets,
-                    ),
-                );
-            }),
         },
         "/api/mcp/:serverId/connect": {
             POST: api(async (request) => connectMcpServer(request.params.serverId)),
@@ -717,6 +700,8 @@ if (hostname === "0.0.0.0" || hostname === "::") {
             `SMILEYCHAT_IP_ALLOWLIST in .env (changes hot-reload, no restart).`,
     );
 }
+
+void autoConnectMcpServers();
 
 function api<Path extends string, WebSocketData = undefined>(
     handler: ApiHandler<Path, WebSocketData>,

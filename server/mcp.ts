@@ -2,7 +2,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { json } from "./http";
 import { mcpSecretsPath, mcpSettingsPath } from "./paths";
 import {
@@ -11,6 +13,7 @@ import {
     importOpenCodeMcp,
     normalizeMcpSecrets,
     normalizeMcpSettings,
+    toStandardMcpMap,
 } from "#frontend/lib/mcp/config";
 import type {
     McpSecrets,
@@ -22,7 +25,7 @@ import type {
 
 type Connection = {
     client: Client;
-    transport: StdioClientTransport | StreamableHTTPClientTransport;
+    transport: StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport;
     tools: McpTool[];
     error?: string;
 };
@@ -48,7 +51,7 @@ async function readSecrets(): Promise<McpSecrets> {
 async function writeData(settings: McpSettings, secrets: McpSecrets) {
     await mkdir(dirname(mcpSettingsPath), { recursive: true });
     await Promise.all([
-        writeFile(mcpSettingsPath, JSON.stringify(settings, null, 2)),
+        writeFile(mcpSettingsPath, JSON.stringify(toStandardMcpMap(settings), null, 2)),
         writeFile(mcpSecretsPath, JSON.stringify(secrets, null, 2)),
     ]);
 }
@@ -59,34 +62,20 @@ export async function readMcpServers() {
 }
 
 export async function writeMcpServers(body: unknown) {
+    const imported = importOpenCodeMcp(body);
     const settings = normalizeMcpSettings(body);
     const current = await readSecrets();
     const supplied =
         body && typeof body === "object" && "secrets" in body
             ? normalizeMcpSecrets((body as { secrets: unknown }).secrets)
-            : current;
+            : imported.settings.servers.length
+              ? imported.secrets
+              : current;
 
     await closeAll();
     await writeData(settings, supplied);
 
     return json({ settings, servers: await records(settings) });
-}
-
-export async function importMcpServers(body: unknown) {
-    const imported = importOpenCodeMcp(body);
-
-    await closeAll();
-    await writeData(imported.settings, imported.secrets);
-
-    return json({
-        settings: imported.settings,
-        servers: await records(imported.settings),
-    });
-}
-
-export async function exportMcpServers(includeSecrets = false) {
-    const settings = await readSettings();
-    return json(exportOpenCodeMcp(settings, await readSecrets(), includeSecrets));
 }
 
 export async function connectMcpServer(id: string) {
@@ -97,6 +86,22 @@ export async function connectMcpServer(id: string) {
     await connect(server, (await readSecrets()).servers[id] ?? {});
 
     return json({ server: (await records(settings)).find((item) => item.id === id) });
+}
+
+export async function autoConnectMcpServers() {
+    try {
+        const settings = await readSettings();
+        const secrets = await readSecrets();
+        const enabledServers = settings.servers.filter((server) => server.enabled);
+
+        for (const server of enabledServers) {
+            connect(server, secrets.servers[server.id] ?? {}).catch((error) => {
+                console.error(`[mcp] Failed to auto-connect to ${server.name}:`, error);
+            });
+        }
+    } catch (error) {
+        console.error("[mcp] Failed to auto-connect MCP servers on startup.", error);
+    }
 }
 
 export async function disconnectMcpServer(id: string) {
@@ -168,9 +173,7 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
                   env: { ...env, ...secrets },
                   stderr: "pipe",
               })
-            : new StreamableHTTPClientTransport(new URL(server.url!), {
-                  requestInit: { headers: secrets },
-              });
+            : createRemoteTransport(server.url!, secrets);
 
     const client = new Client(
         { name: "SmileyChat", version: "0.0.4" },
@@ -183,7 +186,7 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
     try {
         await client.connect(transport);
         client.setNotificationHandler(
-            { method: "notifications/tools/list_changed" } as never,
+            ToolListChangedNotificationSchema,
             () => void discover(server, connection),
         );
         await discover(server, connection);
@@ -193,6 +196,27 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
         await close(server.id);
         throw error;
     }
+}
+
+function createRemoteTransport(urlValue: string, secrets: Record<string, string>) {
+    const url = new URL(urlValue);
+
+    if (url.pathname.endsWith("/sse")) {
+        return new SSEClientTransport(url, {
+            eventSourceInit: {
+                fetch: (input, init) =>
+                    fetch(input, {
+                        ...init,
+                        headers: { ...init.headers, ...secrets },
+                    }),
+            },
+            requestInit: { headers: secrets },
+        });
+    }
+
+    return new StreamableHTTPClientTransport(url, {
+        requestInit: { headers: secrets },
+    });
 }
 
 async function discover(server: McpServerConfig, connection: Connection) {

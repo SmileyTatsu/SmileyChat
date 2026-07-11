@@ -12,6 +12,10 @@ export const defaultMcpSettings = (): McpSettings => ({
 export function normalizeMcpSettings(value: unknown): McpSettings {
     if (!isRecord(value)) return defaultMcpSettings();
 
+    if (!Array.isArray(value.servers)) {
+        return importOpenCodeMcp(value).settings;
+    }
+
     const servers = Array.isArray(value.servers)
         ? value.servers
               .map(normalizeServer)
@@ -60,7 +64,13 @@ export function normalizeMcpSelection(value: unknown) {
 
 export function importOpenCodeMcp(value: unknown) {
     const source =
-        isRecord(value) && isRecord(value.mcp) ? value.mcp : isRecord(value) ? value : {};
+        isRecord(value) && isRecord(value.mcpServers)
+            ? value.mcpServers
+            : isRecord(value) && isRecord(value.mcp)
+              ? value.mcp
+              : isRecord(value)
+                ? value
+                : {};
     const secrets: McpSecrets = { version: 1, servers: {} };
     const servers: McpServerConfig[] = [];
 
@@ -68,7 +78,7 @@ export function importOpenCodeMcp(value: unknown) {
         if (!isRecord(item) || (item.type !== "local" && item.type !== "remote"))
             continue;
 
-        const id = createId("mcp");
+        const id = stableMcpServerId(name);
         const values = isRecord(item.environment)
             ? item.environment
             : isRecord(item.headers)
@@ -135,6 +145,11 @@ export function exportOpenCodeMcp(
     };
 }
 
+/** The direct, standard MCP map persisted in `mcp.json`. */
+export function toStandardMcpMap(settings: McpSettings) {
+    return exportOpenCodeMcp(settings).mcp;
+}
+
 function normalizeServer(value: unknown): McpServerConfig | undefined {
     if (!isRecord(value)) return undefined;
 
@@ -187,4 +202,19 @@ function uniqueStrings(value: unknown) {
                 : [],
         ),
     );
+}
+
+/**
+ * Standard MCP maps use their object key as the server identity. Derive the
+ * internal route/tool ID from that key so reads never invalidate UI state.
+ */
+function stableMcpServerId(name: string) {
+    let hash = 2166136261;
+
+    for (const character of name.trim().toLowerCase()) {
+        hash ^= character.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+
+    return `mcp-${(hash >>> 0).toString(36)}`;
 }
