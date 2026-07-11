@@ -15,5 +15,8 @@ export default defineConfig(function ({ mode }) {
             port: Number(FRONTEND_PORT),
             proxy: { "/api": `http://127.0.0.1:${BACKEND_PORT}` },
         },
+        build: {
+            chunkSizeWarningLimit: 1000,
+        }
     };
 });
