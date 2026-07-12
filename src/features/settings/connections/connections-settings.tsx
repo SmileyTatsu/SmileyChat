@@ -1,7 +1,11 @@
 import { Copy, Plus, Trash2 } from "lucide-preact";
 import { useEffect, useState } from "preact/hooks";
 
-import { saveConnectionSecrets, saveConnectionSettings } from "#frontend/lib/api/client";
+import {
+    loadConnectionModels,
+    saveConnectionSecrets,
+    saveConnectionSettings,
+} from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import {
     createConnectionProfile,
@@ -31,6 +35,7 @@ import {
 import { listGoogleAIModels } from "#frontend/lib/connections/google-ai/models";
 import type { GoogleAIModel } from "#frontend/lib/connections/google-ai/types";
 import { trimTrailingSlash } from "#frontend/lib/connections/http";
+import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
 import {
     createNovelAIConnection,
     createNovelAICompletionUrl,
@@ -81,13 +86,17 @@ const cachedAnthropicModelsByProfileId: Record<string, AnthropicModel[]> = {};
 const cachedXAIModelsByProfileId: Record<string, XAIModel[]> = {};
 
 type ConnectionsSettingsProps = {
+    canManageSecrets: boolean;
     loadError?: string;
+    securityNotice?: string;
     settings: ConnectionSettings;
     onSettingsChange: (settings: ConnectionSettings) => void;
 };
 
 export function ConnectionsSettings({
+    canManageSecrets,
     loadError,
+    securityNotice,
     settings,
     onSettingsChange,
 }: ConnectionsSettingsProps) {
@@ -155,10 +164,26 @@ export function ConnectionsSettings({
         try {
             const safeSettings = sanitizeConnectionSettings(nextSettings);
             const secrets = extractConnectionSecrets(nextSettings);
-            await saveConnectionSettings(safeSettings);
-            await saveConnectionSecrets(secrets);
+            const hasEnteredSecret = Object.values(secrets.profiles).some((profile) =>
+                Boolean(profile.apiKey?.trim()),
+            );
 
-            setStatusMessage("Connection profiles saved.");
+            if (!canManageSecrets && hasEnteredSecret) {
+                throw new Error(
+                    "Provider keys can only be added or changed on the computer running SmileyChat.",
+                );
+            }
+
+            await saveConnectionSettings(safeSettings);
+            if (canManageSecrets) {
+                await saveConnectionSecrets(secrets);
+            }
+
+            setStatusMessage(
+                canManageSecrets
+                    ? "Connection profiles saved."
+                    : "Connection profile saved. Provider keys can only be changed on the computer running SmileyChat.",
+            );
             setRequestState("success");
         } catch (error) {
             setStatusMessage(messageFromError(error, "Unexpected connection error."));
@@ -168,6 +193,14 @@ export function ConnectionsSettings({
 
     async function clearApiKey() {
         if (!activeProfile) {
+            return;
+        }
+
+        if (!canManageSecrets) {
+            setStatusMessage(
+                "Provider keys can only be removed on the computer running SmileyChat.",
+            );
+            setRequestState("error");
             return;
         }
 
@@ -193,6 +226,32 @@ export function ConnectionsSettings({
 
     async function testConnection() {
         if (!activeProfile) {
+            return;
+        }
+
+        if (!canManageSecrets) {
+            setRequestState("loading");
+            setStatusMessage("Testing through the SmileyChat server…");
+
+            try {
+                const result = await createServerGenerationConnection(
+                    activeProfile.id,
+                ).generate({
+                    messages: [],
+                    promptMessages: [
+                        {
+                            role: "user",
+                            content: "Reply briefly to confirm the connection works.",
+                        },
+                    ],
+                });
+                setStatusMessage(`Connection test succeeded: ${result.message}`);
+                setRequestState("success");
+            } catch (error) {
+                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setRequestState("error");
+            }
+
             return;
         }
 
@@ -410,9 +469,8 @@ export function ConnectionsSettings({
             );
 
             try {
-                const nextModels = await listOpenRouterModels({
-                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                });
+                const nextModels = (await loadConnectionModels(activeProfile.id))
+                    .models as OpenRouterModel[];
 
                 cachedOpenRouterModelsByProfileId[activeProfile.id] = nextModels;
                 setOpenRouterModelsByProfileId((current) => ({
@@ -451,10 +509,8 @@ export function ConnectionsSettings({
             );
 
             try {
-                const nextModels = await listGoogleAIModels({
-                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    baseUrl: activeProfile.config.baseUrl,
-                });
+                const nextModels = (await loadConnectionModels(activeProfile.id))
+                    .models as GoogleAIModel[];
 
                 cachedGoogleAIModelsByProfileId[activeProfile.id] = nextModels;
                 setGoogleAIModelsByProfileId((current) => ({
@@ -500,10 +556,8 @@ export function ConnectionsSettings({
             );
 
             try {
-                const nextModels = await listAnthropicModels({
-                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    baseUrl: activeProfile.config.baseUrl,
-                });
+                const nextModels = (await loadConnectionModels(activeProfile.id))
+                    .models as AnthropicModel[];
 
                 cachedAnthropicModelsByProfileId[activeProfile.id] = nextModels;
                 setAnthropicModelsByProfileId((current) => ({
@@ -545,10 +599,8 @@ export function ConnectionsSettings({
             );
 
             try {
-                const nextModels = await listXAIModels({
-                    apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    baseUrl: activeProfile.config.baseUrl,
-                });
+                const nextModels = (await loadConnectionModels(activeProfile.id))
+                    .models as XAIModel[];
 
                 cachedXAIModelsByProfileId[activeProfile.id] = nextModels;
                 setXAIModelsByProfileId((current) => ({
@@ -593,10 +645,8 @@ export function ConnectionsSettings({
         );
 
         try {
-            const nextModels = await listOpenAICompatibleModels({
-                apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                baseUrl: activeProfile.config.baseUrl,
-            });
+            const nextModels = (await loadConnectionModels(activeProfile.id))
+                .models as OpenAICompatibleModel[];
 
             cachedModelsByProfileId[activeProfile.id] = nextModels;
             setModelsByProfileId((current) => ({
@@ -824,6 +874,12 @@ export function ConnectionsSettings({
     return (
         <section className="tool-window">
             <h2>Connections</h2>
+
+            {securityNotice && (
+                <p className="connection-status info" role="status">
+                    {securityNotice}
+                </p>
+            )}
 
             <div className="connection-profile-toolbar">
                 <label>

@@ -196,6 +196,12 @@
     background: rgba(83, 98, 124, 0.16);
 }
 
+.connection-status.info {
+    border-color: rgba(108, 148, 208, 0.5);
+    background: rgba(81, 119, 174, 0.14);
+    color: #c8daf8;
+}
+
 .connection-status.success {
     border-color: rgba(72, 199, 116, 0.42);
     background: rgba(72, 199, 116, 0.1);

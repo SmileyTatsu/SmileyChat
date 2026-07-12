@@ -14,7 +14,10 @@ SmileyChat currently includes these provider adapters:
 - **Anthropic**: Direct browser calls to the Claude Messages API.
 - **NovelAI**: Direct browser calls to NovelAI's OpenAI-compatible completions endpoint.
 
-Provider calls are made directly from the frontend to the configured provider URL. SmileyChat intentionally does not proxy normal provider model listing or generation calls through the local Bun API.
+Chat generation and model discovery are sent through the local Bun server using
+a saved connection profile. This lets remote devices use the PC's configured
+providers without receiving provider API keys. The server accepts only a saved
+profile ID; it is not a general-purpose provider proxy.
 
 ## OpenAI-compatible APIs
 

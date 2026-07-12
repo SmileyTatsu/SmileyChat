@@ -37,6 +37,7 @@ import { startEnvWatcher } from "./config/env-watcher";
 import { getHost, getPort } from "./config/runtime-config";
 import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 import { HttpError, json, readJsonBody } from "./http";
+import { generateWithSavedConnection, listSavedConnectionModels } from "./generation";
 import {
     createLorebook,
     deleteLorebookById,
@@ -324,6 +325,23 @@ const createServer = () =>
                         await readJsonBody(request),
                     );
                     return json({ ok: true, secrets });
+                }),
+            },
+
+            "/api/connections/:profileId/models": {
+                GET: api(async (request) => {
+                    return json({
+                        models: await listSavedConnectionModels(request.params.profileId),
+                    });
+                }),
+            },
+
+            "/api/generate": {
+                POST: api(async (request) => {
+                    return generateWithSavedConnection(
+                        await readJsonBody(request),
+                        request.signal,
+                    );
                 }),
             },
 

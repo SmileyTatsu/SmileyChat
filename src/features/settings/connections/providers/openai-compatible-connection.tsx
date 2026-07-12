@@ -15,6 +15,7 @@ import {
 type OpenAICompatibleConnectionProps = {
     config: OpenAICompatibleConnectionConfig;
     disabled?: boolean;
+    modelLoadingDisabled?: boolean;
     models: OpenAICompatibleModel[];
     onChange: (config: OpenAICompatibleConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -25,6 +26,7 @@ type OpenAICompatibleConnectionProps = {
 export function OpenAICompatibleConnection({
     config,
     disabled,
+    modelLoadingDisabled,
     models,
     onChange,
     onClearApiKey,
@@ -84,6 +86,7 @@ export function OpenAICompatibleConnection({
                 apiModels={models}
                 defaultModelCategories={defaultModelCategories}
                 disabled={disabled}
+                modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
                 onChange={(model) => updateConfig({ model })}
                 onLoadModels={onLoadModels}

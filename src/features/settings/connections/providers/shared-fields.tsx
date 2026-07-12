@@ -38,6 +38,7 @@ type CatalogModelFieldProps<TModel> = {
     apiModels: TModel[];
     defaultModelCategories: DefaultModelCategory[];
     disabled?: boolean;
+    modelLoadingDisabled?: boolean;
     model: CatalogModelSelection;
     onChange: (model: CatalogModelSelection) => void;
     onLoadModels: () => void;
@@ -102,6 +103,7 @@ export function CatalogModelField<TModel>({
     apiModels,
     defaultModelCategories,
     disabled,
+    modelLoadingDisabled,
     model,
     onChange,
     onLoadModels,
@@ -189,7 +191,16 @@ export function CatalogModelField<TModel>({
                         <option value="custom:">Custom model...</option>
                     </select>
                 </label>
-                <button type="button" disabled={disabled} onClick={onLoadModels}>
+                <button
+                    type="button"
+                    disabled={disabled || modelLoadingDisabled}
+                    onClick={onLoadModels}
+                    title={
+                        modelLoadingDisabled
+                            ? "Load models on the computer running SmileyChat."
+                            : undefined
+                    }
+                >
                     Load
                 </button>
             </div>

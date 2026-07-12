@@ -11,6 +11,7 @@ import {
 } from "#frontend/lib/connections/images";
 import { parseToolArguments } from "#frontend/lib/connections/chat-completions";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
+import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
@@ -189,7 +190,9 @@ export function usePromptGeneration({
             trigger?: PromptGenerationTrigger;
         } = {},
     ) {
-        const connection = getAdapterForSettings(sourceConnectionSettings);
+        const connection = createServerGenerationConnection(
+            getActiveConnectionProfile(sourceConnectionSettings)?.id,
+        );
         const request = await buildGenerationRequest(
             sourceMessages,
             sourceCharacter,

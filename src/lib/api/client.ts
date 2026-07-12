@@ -269,6 +269,12 @@ export function saveConnectionSecrets(secrets: ConnectionSecrets) {
     );
 }
 
+export function loadConnectionModels(profileId: string) {
+    return requestJson<{ models: unknown[] }>(
+        `/api/connections/${encodeURIComponent(profileId)}/models`,
+    );
+}
+
 export function loadPresetCollection() {
     return requestJson<PresetCollection>("/api/presets");
 }

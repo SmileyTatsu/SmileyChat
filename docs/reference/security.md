@@ -238,9 +238,9 @@ Loopback callers skip step 3 by default for ergonomics; set
 `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK=true` to require the secret
 even from `127.0.0.1`. `GET` and `PUT /api/connections/secrets` use this
 gate: remote callers must satisfy normal access controls and send the admin
-secret. The browser-direct provider architecture means remote browser
-sessions cannot load connection keys through the normal UI; manage keys from
-loopback or use an API client that supplies the header.
+secret. Normal remote chat does not need that header: `/api/generate` resolves
+the saved profile and its key only on the Bun server, then streams the result
+back without returning the key.
 
 ### SSRF guard (`safeFetch`)
 

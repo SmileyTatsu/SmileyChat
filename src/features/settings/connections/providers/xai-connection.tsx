@@ -15,6 +15,7 @@ import {
 type XAIConnectionProps = {
     config: XAIConnectionConfig;
     disabled?: boolean;
+    modelLoadingDisabled?: boolean;
     models: XAIModel[];
     onChange: (config: XAIConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -25,6 +26,7 @@ type XAIConnectionProps = {
 export function XAIConnection({
     config,
     disabled,
+    modelLoadingDisabled,
     models,
     onChange,
     onClearApiKey,
@@ -79,6 +81,7 @@ export function XAIConnection({
                 apiModels={models}
                 defaultModelCategories={defaultModelCategories}
                 disabled={disabled}
+                modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
                 onChange={(model) => updateConfig({ model })}
                 onLoadModels={onLoadModels}

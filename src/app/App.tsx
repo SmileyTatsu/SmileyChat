@@ -36,6 +36,7 @@ import {
 } from "#frontend/lib/connections/config";
 import { materializeChatGenerationMessageAttachments } from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
+import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
 import {
     defaultAppPreferences,
     normalizeAppPreferences,
@@ -124,6 +125,8 @@ export function App() {
     });
     const [preferences, setPreferences] = useState<AppPreferences>(defaultAppPreferences);
     const [connectionLoadError, setConnectionLoadError] = useState("");
+    const [connectionSecurityNotice, setConnectionSecurityNotice] = useState("");
+    const [connectionSecretsAccessible, setConnectionSecretsAccessible] = useState(false);
     const [lorebookLoadError, setLorebookLoadError] = useState("");
     const [presetLoadError, setPresetLoadError] = useState("");
     const [preferencesLoadError, setPreferencesLoadError] = useState("");
@@ -140,6 +143,7 @@ export function App() {
         defaultConnectionSettings,
     );
     const connectionSettingsLoadedRef = useRef(false);
+    const connectionSecretsAccessibleRef = useRef(false);
     const backgroundLoadsStartedRef = useRef(false);
     const queuedConnectionSettingsSaveRef = useRef<ConnectionSettings | undefined>();
     const connectionSettingsSaveInFlightRef = useRef(false);
@@ -444,16 +448,31 @@ export function App() {
 
     async function loadConnectionSettings() {
         try {
-            const [settingsResponse, secretsResponse] = await Promise.all([
-                loadConnectionSettingsRequest(),
-                loadConnectionSecrets(),
-            ]);
+            // Connection profiles are safe to use remotely. Keys are not: a
+            // remote browser now generates through the local Bun server, so a
+            // denied secrets read must not hide the saved profiles.
+            const settingsResponse = await loadConnectionSettingsRequest();
             const settings = normalizeConnectionSettings(settingsResponse);
-            const secrets = normalizeConnectionSecrets(secretsResponse);
-            setConnectionSettings(applyConnectionSecrets(settings, secrets));
-            setConnectionLoadError("");
+            try {
+                const secrets = normalizeConnectionSecrets(await loadConnectionSecrets());
+                connectionSecretsAccessibleRef.current = true;
+                setConnectionSecretsAccessible(true);
+                setConnectionSettings(applyConnectionSecrets(settings, secrets));
+                setConnectionLoadError("");
+                setConnectionSecurityNotice("");
+            } catch {
+                connectionSecretsAccessibleRef.current = false;
+                setConnectionSecretsAccessible(false);
+                setConnectionSettings(settings);
+                setConnectionSecurityNotice(
+                    "Provider keys stay on this computer for remote sessions. Existing profiles can still generate securely through SmileyChat.",
+                );
+            }
             setConnectionSettingsLoaded(true);
         } catch (error) {
+            connectionSecretsAccessibleRef.current = false;
+            setConnectionSecretsAccessible(false);
+            setConnectionSecurityNotice("");
             setConnectionLoadError(messageFromError(error));
             setConnectionSettingsLoaded(false);
         }
@@ -526,13 +545,13 @@ export function App() {
 
     async function persistConnectionSettings(settings: ConnectionSettings) {
         try {
-            await Promise.all([
-                saveConnectionSettings(sanitizeConnectionSettings(settings)),
-                saveConnectionSecrets(
+            await saveConnectionSettings(sanitizeConnectionSettings(settings));
+            if (connectionSecretsAccessibleRef.current) {
+                await saveConnectionSecrets(
                     sanitizeConnectionSecrets(extractConnectionSecrets(settings)),
-                ),
-            ]);
-            setConnectionLoadError("");
+                );
+                setConnectionLoadError("");
+            }
         } catch (error) {
             setConnectionLoadError(messageFromError(error));
         }
@@ -550,14 +569,19 @@ export function App() {
         }).catch((error) => {
             console.warn("Could not persist connection settings before unload:", error);
         });
-        void localApiFetch("/api/connections/secrets", {
-            body: JSON.stringify(secrets),
-            headers: { "Content-Type": "application/json" },
-            keepalive: true,
-            method: "PUT",
-        }).catch((error) => {
-            console.warn("Could not persist connection secrets before unload:", error);
-        });
+        if (connectionSecretsAccessibleRef.current) {
+            void localApiFetch("/api/connections/secrets", {
+                body: JSON.stringify(secrets),
+                headers: { "Content-Type": "application/json" },
+                keepalive: true,
+                method: "PUT",
+            }).catch((error) => {
+                console.warn(
+                    "Could not persist connection secrets before unload:",
+                    error,
+                );
+            });
+        }
     }
 
     async function loadPresetCollection() {
@@ -674,9 +698,7 @@ export function App() {
             throw new Error("Plugin model request must include at least one message.");
         }
 
-        const connection = getAdapterForSettings(connectionSettings, request.profileId, {
-            modelId: request.modelId,
-        });
+        const connection = createServerGenerationConnection(request.profileId);
         const preset =
             (request.presetId
                 ? presetCollection.presets.find(
@@ -1032,6 +1054,8 @@ export function App() {
             <OptionsModalHost
                 character={character}
                 connectionLoadError={connectionLoadError}
+                connectionSecurityNotice={connectionSecurityNotice}
+                connectionSecretsAccessible={connectionSecretsAccessible}
                 connectionSettings={connectionSettings}
                 messages={chatSession.messages}
                 mode={mode}

@@ -15,6 +15,7 @@ import {
 type AnthropicConnectionProps = {
     config: AnthropicConnectionConfig;
     disabled?: boolean;
+    modelLoadingDisabled?: boolean;
     models: AnthropicModel[];
     onChange: (config: AnthropicConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -27,6 +28,7 @@ type ThinkingMode = AnthropicThinkingConfig["mode"];
 export function AnthropicConnection({
     config,
     disabled,
+    modelLoadingDisabled,
     models,
     onChange,
     onClearApiKey,
@@ -110,6 +112,7 @@ export function AnthropicConnection({
                 apiModels={models}
                 defaultModelCategories={defaultModelCategories}
                 disabled={disabled}
+                modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
                 onChange={(model) => updateConfig({ model })}
                 onLoadModels={onLoadModels}

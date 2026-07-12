@@ -43,6 +43,8 @@ import { PresetSettings } from "./preset-settings";
 
 type OptionsModalProps = {
     connectionLoadError?: string;
+    connectionSecurityNotice?: string;
+    connectionSecretsAccessible: boolean;
     connectionSettings: ConnectionSettings;
     character: SmileyCharacter;
     messages: Message[];
@@ -91,6 +93,8 @@ const settingsNavCollapsedStorageKey = "smileychat.optionsModal.navCollapsed";
 
 export function OptionsModal({
     connectionLoadError,
+    connectionSecurityNotice,
+    connectionSecretsAccessible,
     connectionSettings,
     character,
     lorebookCollection,
@@ -313,6 +317,8 @@ export function OptionsModal({
                         {activeCategory === "connections" && (
                             <ConnectionsSettings
                                 loadError={connectionLoadError}
+                                securityNotice={connectionSecurityNotice}
+                                canManageSecrets={connectionSecretsAccessible}
                                 settings={connectionSettings}
                                 onSettingsChange={onConnectionSettingsChange}
                             />

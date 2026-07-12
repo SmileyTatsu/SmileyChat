@@ -15,6 +15,7 @@ import {
 type GoogleAIConnectionProps = {
     config: GoogleAIConnectionConfig;
     disabled?: boolean;
+    modelLoadingDisabled?: boolean;
     models: GoogleAIModel[];
     onChange: (config: GoogleAIConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -25,6 +26,7 @@ type GoogleAIConnectionProps = {
 export function GoogleAIConnection({
     config,
     disabled,
+    modelLoadingDisabled,
     models,
     onChange,
     onClearApiKey,
@@ -62,6 +64,7 @@ export function GoogleAIConnection({
                 apiModels={models}
                 defaultModelCategories={defaultModelCategories}
                 disabled={disabled}
+                modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
                 onChange={(model) => updateConfig({ model })}
                 onLoadModels={onLoadModels}

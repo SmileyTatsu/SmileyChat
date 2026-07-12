@@ -17,6 +17,7 @@ import { ApiKeyField, ConnectionActions } from "./shared-fields";
 type OpenRouterConnectionProps = {
     config: OpenRouterConnectionConfig;
     disabled?: boolean;
+    modelLoadingDisabled?: boolean;
     models: OpenRouterModel[];
     onChange: (config: OpenRouterConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -29,6 +30,7 @@ type ReasoningStrategy = "none" | "effort" | "max-tokens";
 export function OpenRouterConnection({
     config,
     disabled,
+    modelLoadingDisabled,
     models,
     onChange,
     onClearApiKey,
@@ -173,7 +175,16 @@ export function OpenRouterConnection({
                         ))}
                     </select>
                 </label>
-                <button type="button" disabled={disabled} onClick={onLoadModels}>
+                <button
+                    type="button"
+                    disabled={disabled || modelLoadingDisabled}
+                    onClick={onLoadModels}
+                    title={
+                        modelLoadingDisabled
+                            ? "Load models on the computer running SmileyChat."
+                            : undefined
+                    }
+                >
                     Load
                 </button>
             </div>
