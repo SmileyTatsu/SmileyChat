@@ -8,6 +8,7 @@ import { requireDeclaredPluginPermission } from "./permissions";
 import type {
     ChatInputMiddleware,
     MessageUpdateMiddleware,
+    MessageDisplayMiddleware,
     ChatOutputMiddleware,
     ChatOutputMiddlewareRegistration,
     LoadedPlugin,
@@ -64,6 +65,7 @@ const sidebarPanels: Array<Owned<PluginSidebarPanel>> = [];
 const chatDetailsSections: Array<Owned<PluginChatDetailsSection>> = [];
 const characterDetailsSections: Array<Owned<PluginCharacterDetailsSection>> = [];
 const messageRenderers: Array<Owned<MessageRenderer>> = [];
+const messageDisplayMiddlewares: Array<Owned<MessageDisplayMiddleware>> = [];
 const messageActions: Array<Owned<PluginMessageAction>> = [];
 const composerActions: Array<Owned<PluginComposerAction>> = [];
 const composerOptions: Array<Owned<PluginComposerOption>> = [];
@@ -215,6 +217,7 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedItems(chatDetailsSections, pluginId);
     removeOwnedItems(characterDetailsSections, pluginId);
     removeOwnedItems(messageRenderers, pluginId);
+    removeOwnedItems(messageDisplayMiddlewares, pluginId);
     removeOwnedItems(messageActions, pluginId);
     removeOwnedItems(composerActions, pluginId);
     removeOwnedItems(composerOptions, pluginId);
@@ -291,6 +294,10 @@ export function getMessageRenderers() {
     return enabledValues(messageRenderers).sort(
         (left, right) => (right.priority ?? 0) - (left.priority ?? 0),
     );
+}
+
+export function getMessageDisplayMiddlewares() {
+    return enabledValues(messageDisplayMiddlewares);
 }
 
 export function getPluginMessageActions() {
@@ -549,6 +556,13 @@ export function createPluginApi(
                     },
                 });
                 notifyRegistryChanged();
+            },
+            registerMessageDisplayMiddleware(middleware) {
+                requireDeclaredPluginPermission(manifest, "chat:display");
+                messageDisplayMiddlewares.push({
+                    pluginId: manifest.id,
+                    value: middleware,
+                });
             },
             registerMessageAction(action) {
                 requireDeclaredPluginPermission(manifest, "ui:message-actions");

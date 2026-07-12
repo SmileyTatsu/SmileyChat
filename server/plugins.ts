@@ -34,6 +34,7 @@ const corePluginIds = new Set([
     "smiley-chat-summarizer",
     "smiley-post-processing",
     "smiley-mcp",
+    "smiley-regex-replacer",
 ]);
 const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;

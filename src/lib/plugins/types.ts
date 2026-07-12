@@ -281,6 +281,12 @@ export type ChatOutputMiddlewareRegistration = {
     run: ChatOutputMiddleware;
 };
 
+/** Transforms text for rendering only; it never changes the saved message. */
+export type MessageDisplayMiddleware = (
+    content: string,
+    context: MessageRenderContext,
+) => string;
+
 /** Identifies the core operation that changed an existing message. */
 export type MessageUpdateKind = "edit" | "swipe" | "update";
 
@@ -455,6 +461,7 @@ export type SmileyPluginApi = {
         registerChatDetailsSection(section: PluginChatDetailsSection): void;
         registerCharacterDetailsSection(section: PluginCharacterDetailsSection): void;
         registerMessageRenderer(renderer: MessageRenderer): void;
+        registerMessageDisplayMiddleware(middleware: MessageDisplayMiddleware): void;
         registerMessageAction(action: PluginMessageAction): void;
         registerComposerAction(action: PluginComposerAction): void;
         registerComposerOption(option: PluginComposerOption): void;

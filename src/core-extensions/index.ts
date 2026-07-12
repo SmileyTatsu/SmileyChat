@@ -2,6 +2,7 @@ import type { PluginManifest } from "../lib/plugins/types";
 import { chatSummarizerPlugin } from "./chat-summarizer";
 import { lorebooksPlugin } from "./lorebooks";
 import { postProcessingPlugin } from "./post-processing";
+import { regexReplacerPlugin } from "./regex-replacer";
 import { smileyChatFormatterPlugin } from "./smiley-chat-formatter";
 import { mcpPlugin } from "./mcp";
 
@@ -10,6 +11,7 @@ export const corePlugins = [
     lorebooksPlugin,
     chatSummarizerPlugin,
     postProcessingPlugin,
+    regexReplacerPlugin,
     mcpPlugin,
 ];
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
