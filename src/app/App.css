@@ -1302,7 +1302,7 @@ textarea:disabled {
     }
 
     .prompt-order-panel {
-        max-height: 320px;
+        max-height: 420px;
         border-right: 0;
         border-bottom: 1px solid #303440;
     }
@@ -1311,15 +1311,24 @@ textarea:disabled {
         overflow: visible;
     }
 
+    .personas-settings,
+    .lorebooks-settings,
+    .presets-settings,
+    .plugins-settings {
+        height: auto;
+    }
+
+    .preset-editor,
     .personas-editor,
     .lorebook-editor {
         height: auto;
+        flex: none;
         overflow: visible;
     }
 
     .personas-list,
     .lorebook-list {
-        max-height: 300px;
+        max-height: 420px;
         border-right: 0;
         border-bottom: 1px solid #303440;
     }
