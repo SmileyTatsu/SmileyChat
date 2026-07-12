@@ -203,6 +203,7 @@ export async function consumeChatCompletionStream(
     let model: string | undefined;
     let reasoning = "";
     let reasoningDetails: unknown;
+    let finishReason: string | undefined;
     const images: string[] = [];
     const streamedToolCalls = new Map<
         number,
@@ -221,6 +222,7 @@ export async function consumeChatCompletionStream(
             }
 
             model = chunk.model ?? model;
+            finishReason = chunk.choices?.[0]?.finish_reason ?? finishReason;
 
             const token = chunk.choices?.[0]?.delta?.content;
             const reasoningToken =
@@ -279,7 +281,9 @@ export async function consumeChatCompletionStream(
     const toolCalls = normalizeStreamedToolCalls(streamedToolCalls);
 
     if (!message.trim() && images.length === 0 && toolCalls.length === 0) {
-        throw new Error(options.emptyMessage);
+        throw new Error(
+            emptyStreamMessage(options.emptyMessage, finishReason, reasoning),
+        );
     }
 
     return {
@@ -291,6 +295,34 @@ export async function consumeChatCompletionStream(
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
         ...(toolCalls.length ? { toolCalls } : {}),
     };
+}
+
+// Explain an empty streamed completion using the provider's finish_reason and
+// whether any reasoning tokens arrived. This distinguishes a truncated budget
+// ("length" with reasoning-only output) from a genuinely dropped stream.
+function emptyStreamMessage(
+    base: string,
+    finishReason: string | undefined,
+    reasoning: string,
+): string {
+    const details: string[] = [];
+
+    if (finishReason) {
+        details.push(`finish_reason=${finishReason}`);
+    }
+
+    if (reasoning.trim()) {
+        details.push("reasoning tokens were received but no message content");
+        if (finishReason === "length") {
+            details.push(
+                "the reasoning likely consumed the entire output token budget — raise max tokens or lower reasoning effort",
+            );
+        }
+    } else if (!finishReason) {
+        details.push("the provider stream ended early without any content");
+    }
+
+    return details.length ? `${base} (${details.join("; ")})` : base;
 }
 
 export function mergeReasoningDetails(current: unknown, next: unknown) {

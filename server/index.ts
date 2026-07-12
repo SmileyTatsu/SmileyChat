@@ -337,7 +337,15 @@ const createServer = () =>
             },
 
             "/api/generate": {
-                POST: api(async (request) => {
+                POST: api(async (request, routeServer) => {
+                    // Generation can take far longer than Bun's 10s default
+                    // idle timeout, especially during time-to-first-token for
+                    // large prompts or reasoning models. Without this, Bun
+                    // closes the socket before the first SSE byte and the
+                    // client sees a 200 with an empty body. 255s is Bun's max;
+                    // the SSE heartbeat in generation.ts keeps the timer reset
+                    // during longer streams.
+                    routeServer.timeout(request, 255);
                     return generateWithSavedConnection(
                         await readJsonBody(request),
                         request.signal,

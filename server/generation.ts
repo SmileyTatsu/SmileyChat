@@ -46,6 +46,21 @@ type GenerationPayload = {
 
 const encoder = new TextEncoder();
 
+// Interval between SSE heartbeat comments while a generation is pending. Every
+// enqueued byte resets Bun's socket idle timer, so this keeps long streams and
+// slow time-to-first-token windows alive well within the route timeout.
+const HEARTBEAT_INTERVAL_MS = 5_000;
+
+function logGeneration(message: string, detail?: Record<string, unknown>) {
+    const suffix = detail
+        ? " " +
+          Object.entries(detail)
+              .map(([key, value]) => `${key}=${value}`)
+              .join(" ")
+        : "";
+    console.log(`[generate] ${message}${suffix}`);
+}
+
 export async function generateWithSavedConnection(
     value: unknown,
     signal: AbortSignal,
@@ -58,6 +73,15 @@ export async function generateWithSavedConnection(
     const privateSettings = applyConnectionSecrets(settings, secrets);
     const profile = resolveProfile(privateSettings, payload.profileId);
     const adapter = createBuiltInAdapter(profile);
+    const startedAt = Date.now();
+
+    logGeneration("start", {
+        provider: profile.provider,
+        profileId: profile.id,
+        stream: payload.stream === true,
+        promptMessages: payload.promptMessages.length,
+        tools: payload.tools?.length ?? 0,
+    });
 
     // A completed provider request does not need an SSE transport. Returning
     // JSON avoids a terminal-frame close race for non-streaming generation.
@@ -71,8 +95,18 @@ export async function generateWithSavedConnection(
                 stream: false,
                 tools: payload.tools,
             });
+            logGeneration("done", {
+                mode: "json",
+                ms: Date.now() - startedAt,
+                chars: result.message.length,
+            });
             return json({ result: publicGenerationResult(result) });
         } catch (error) {
+            logGeneration("error", {
+                mode: "json",
+                ms: Date.now() - startedAt,
+                message: error instanceof Error ? error.message : String(error),
+            });
             return json(
                 {
                     error: error instanceof Error ? error.message : "Generation failed.",
@@ -89,6 +123,21 @@ export async function generateWithSavedConnection(
     const body = new ReadableStream<Uint8Array>({
         async start(controller) {
             let cancelled = false;
+            let firstTokenAt = 0;
+            let heartbeat: ReturnType<typeof setInterval> | undefined;
+
+            // SSE comment lines (starting with ":") are ignored by the client
+            // parser. Writing them keeps the socket active so Bun's idle
+            // timeout never fires mid-generation.
+            const sendComment = (text: string) => {
+                if (cancelled) return;
+                try {
+                    controller.enqueue(encoder.encode(`: ${text}\n\n`));
+                } catch {
+                    cancelled = true;
+                    generationController.abort();
+                }
+            };
             const send = (event: string, data: unknown) => {
                 if (cancelled) return;
 
@@ -101,28 +150,60 @@ export async function generateWithSavedConnection(
                 } catch {
                     cancelled = true;
                     generationController.abort();
+                    logGeneration("enqueue-failed", { ms: Date.now() - startedAt });
                 }
             };
+            const noteFirstToken = () => {
+                if (firstTokenAt) return;
+                firstTokenAt = Date.now();
+                logGeneration("first-token", { ms: firstTokenAt - startedAt });
+            };
+
+            // Flush an immediate byte so the socket is active before the
+            // provider's first token arrives, then keep it warm on an interval.
+            sendComment("open");
+            heartbeat = setInterval(() => sendComment("ping"), HEARTBEAT_INTERVAL_MS);
 
             try {
                 const result = await adapter.generate({
                     generation: payload.generation,
                     messages: [],
-                    onImage: (url) => send("image", { url }),
-                    onReasoningToken: (token) => send("reasoning", { token }),
-                    onToken: (token) => send("token", { token }),
+                    onImage: (url) => {
+                        noteFirstToken();
+                        send("image", { url });
+                    },
+                    onReasoningToken: (token) => {
+                        noteFirstToken();
+                        send("reasoning", { token });
+                    },
+                    onToken: (token) => {
+                        noteFirstToken();
+                        send("token", { token });
+                    },
                     promptMessages: payload.promptMessages,
                     signal: generationController.signal,
                     stream: payload.stream === true,
                     tools: payload.tools,
                 });
                 send("done", publicGenerationResult(result));
+                logGeneration("done", {
+                    mode: "sse",
+                    ms: Date.now() - startedAt,
+                    ttftMs: firstTokenAt ? firstTokenAt - startedAt : "n/a",
+                    chars: result.message.length,
+                });
             } catch (error) {
                 send("error", {
                     message:
                         error instanceof Error ? error.message : "Generation failed.",
                 });
+                logGeneration("error", {
+                    mode: "sse",
+                    ms: Date.now() - startedAt,
+                    message: error instanceof Error ? error.message : String(error),
+                });
             } finally {
+                if (heartbeat) clearInterval(heartbeat);
                 signal.removeEventListener("abort", abortGeneration);
                 // Yield to the event loop so Bun flushes enqueued chunks to the socket
                 await Bun.sleep(0);
@@ -133,6 +214,7 @@ export async function generateWithSavedConnection(
             // Stop the provider fetch when the client closes its SSE reader;
             // this prevents a paid response from draining after a phone user
             // presses Stop or disconnects.
+            logGeneration("client-cancel", { ms: Date.now() - startedAt });
             generationController.abort();
         },
     });

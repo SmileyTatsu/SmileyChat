@@ -38,6 +38,27 @@ test("uses received tokens when a stream ends without a terminal event", async (
     });
 });
 
+test("ignores SSE comment/heartbeat lines before real events", async () => {
+    const tokens: string[] = [];
+    const result = await readServerGenerationStream(
+        new Response(
+            ': open\n\n: ping\n\nevent: token\ndata: {"token":"Hi"}\n\n: ping\n\nevent: done\ndata: {"message":"Hi","provider":"openai-compatible"}\n\n',
+        ),
+        { messages: [], onToken: (token) => tokens.push(token) },
+    );
+
+    expect(tokens).toEqual(["Hi"]);
+    expect(result).toMatchObject({ message: "Hi", provider: "openai-compatible" });
+});
+
+test("treats a comment-only stream as empty", async () => {
+    await expect(
+        readServerGenerationStream(new Response(": open\n\n: ping\n\n"), {
+            messages: [],
+        }),
+    ).rejects.toThrow("no SSE events received");
+});
+
 test("reports an empty SSE response clearly", async () => {
     await expect(
         readServerGenerationStream(new Response(""), { messages: [] }),
