@@ -633,7 +633,9 @@ export function CharacterPanel({
                                         className="character-details-appearance-section"
                                         aria-labelledby="character-appearance-title"
                                     >
-                                        <h3 id="character-appearance-title">Appearance</h3>
+                                        <h3 id="character-appearance-title">
+                                            Appearance
+                                        </h3>
                                         <div className="character-dialogue-color-control">
                                             <label className="character-dialogue-color-label">
                                                 Dialogue highlight color
@@ -648,7 +650,8 @@ export function CharacterPanel({
                                                             updateCharacterData(
                                                                 setCharacterDialogueColor(
                                                                     character.data,
-                                                                    event.currentTarget.value,
+                                                                    event.currentTarget
+                                                                        .value,
                                                                 ),
                                                             )
                                                         }
@@ -661,8 +664,12 @@ export function CharacterPanel({
                                                         value={colorInputText}
                                                         placeholder="#f2c78f"
                                                         onInput={(event) => {
-                                                            let value = event.currentTarget.value.trim();
-                                                            if (value.length > 0 && !value.startsWith("#")) {
+                                                            let value =
+                                                                event.currentTarget.value.trim();
+                                                            if (
+                                                                value.length > 0 &&
+                                                                !value.startsWith("#")
+                                                            ) {
                                                                 value = "#" + value;
                                                             }
                                                             setColorInputText(value);
@@ -681,8 +688,8 @@ export function CharacterPanel({
                                                     className="field-hint"
                                                     id="dialogue-highlight-color-hint"
                                                 >
-                                                    Used for quoted dialogue when Chat Formatter
-                                                    highlighting is enabled.
+                                                    Used for quoted dialogue when Chat
+                                                    Formatter highlighting is enabled.
                                                 </p>
                                                 <button
                                                     className="secondary-button"

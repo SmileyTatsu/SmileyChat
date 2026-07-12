@@ -508,9 +508,13 @@ export const MessageList = memo(function MessageList({
                             key={message.id}
                             characterAvatarPath={characterAvatarPath}
                             characterDialogueColor={
-                                message.authorCharacterId && message.authorCharacterId in characterDialogueColors
-                                    ? characterDialogueColors[message.authorCharacterId] ?? undefined
-                                    : message.metadata?.authorDialogueColorSnapshot ?? defaultCharacterDialogueColor
+                                message.authorCharacterId &&
+                                message.authorCharacterId in characterDialogueColors
+                                    ? (characterDialogueColors[
+                                          message.authorCharacterId
+                                      ] ?? undefined)
+                                    : (message.metadata?.authorDialogueColorSnapshot ??
+                                      defaultCharacterDialogueColor)
                             }
                             characterName={characterName}
                             chatId={chatId}

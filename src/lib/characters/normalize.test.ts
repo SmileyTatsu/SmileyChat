@@ -32,9 +32,9 @@ describe("character dialogue colors", () => {
             undefined,
         );
 
-        expect(getCharacterDialogueColor({ ...defaultCharacter, data: dataWithColor })).toBe(
-            undefined,
-        );
+        expect(
+            getCharacterDialogueColor({ ...defaultCharacter, data: dataWithColor }),
+        ).toBe(undefined);
         expect(dataWithColor.extensions.smileychat).toEqual({
             tagline: "A quiet traveler",
         });

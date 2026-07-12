@@ -388,7 +388,9 @@ export const MessageItem = memo(function MessageItem({
                     <MessageLiveContent
                         characterAvatarPath={characterAvatarPath}
                         characterDialogueColor={
-                            message.role === "character" ? characterDialogueColor : undefined
+                            message.role === "character"
+                                ? characterDialogueColor
+                                : undefined
                         }
                         characterName={characterName}
                         chatId={chatId}

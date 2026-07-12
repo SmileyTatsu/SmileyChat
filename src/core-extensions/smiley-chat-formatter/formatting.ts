@@ -23,7 +23,10 @@ export function renderFormatted(
         );
     }
 
-    return paragraphize(api, renderInlineContent(api, content, formatting, dialogueColor));
+    return paragraphize(
+        api,
+        renderInlineContent(api, content, formatting, dialogueColor),
+    );
 }
 
 export function renderPlain(

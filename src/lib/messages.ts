@@ -36,7 +36,9 @@ export function createCharacterMessage(
     attachments?: ChatAttachment[],
     character?: Pick<SmileyCharacter, "id" | "avatar" | "data">,
 ): Message {
-    const dialogueColor = character ? getCharacterDialogueColor(character as SmileyCharacter) : undefined;
+    const dialogueColor = character
+        ? getCharacterDialogueColor(character as SmileyCharacter)
+        : undefined;
     return createMessage(
         MessageRole.Character,
         author,
@@ -47,7 +49,7 @@ export function createCharacterMessage(
         },
         undefined,
         attachments,
-        dialogueColor ? { authorDialogueColorSnapshot: dialogueColor } : undefined
+        dialogueColor ? { authorDialogueColorSnapshot: dialogueColor } : undefined,
     );
 }
 
@@ -153,7 +155,9 @@ export function createCharacterGreetingMessage(
         author: character.data.name,
         authorCharacterId: character.id,
         ...(character.avatar?.path ? { authorAvatarPath: character.avatar.path } : {}),
-        ...(dialogueColor ? { metadata: { authorDialogueColorSnapshot: dialogueColor } } : {}),
+        ...(dialogueColor
+            ? { metadata: { authorDialogueColorSnapshot: dialogueColor } }
+            : {}),
         role: MessageRole.Character,
         createdAt,
         activeSwipeIndex: 0,
