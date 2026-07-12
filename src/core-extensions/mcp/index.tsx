@@ -96,10 +96,14 @@ function toPluginTool(tool: McpTool): PluginTool {
             Boolean(
                 snapshot.activeChat?.metadata?.mcp?.serverIds.includes(tool.serverId),
             ),
-        run: async (args) => {
+        run: async (args, context) => {
             const result = await request<{ content: string; isError?: boolean }>(
                 `/api/mcp/${encodeURIComponent(tool.serverId)}/tools/${encodeURIComponent(tool.name)}`,
-                { method: "POST", body: JSON.stringify(args) },
+                {
+                    method: "POST",
+                    body: JSON.stringify(args),
+                    signal: context.signal,
+                },
             );
             if (result.isError) throw new Error(result.content);
             return result.content;

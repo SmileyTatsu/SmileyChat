@@ -277,7 +277,10 @@ export type PluginConnectionProvider = {
     testConnection?: (profile: ConnectionProfile) => Promise<string>;
 };
 
-export type PluginToolContext = PluginAppSnapshot;
+export type PluginToolContext = PluginAppSnapshot & {
+    /** Signals that the generation invoking this tool has been cancelled. */
+    signal?: AbortSignal;
+};
 
 export type PluginTool = ToolDefinition & {
     /** Return false when a registered tool is not available in the active chat. */

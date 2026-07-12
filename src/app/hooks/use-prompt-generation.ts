@@ -268,7 +268,7 @@ export function usePromptGeneration({
                 };
                 onToolActivities?.([...activities, pendingActivity]);
 
-                const toolResult = await runPluginTool(call);
+                const toolResult = await runPluginTool(call, request.signal);
                 toolResults.push(toolResult);
                 activities.push({ call, result: toolResult });
                 onToolActivities?.([...activities]);
@@ -301,7 +301,10 @@ export function usePromptGeneration({
         return { result, activities, promptMessages };
     }
 
-    async function runPluginTool(call: ToolCall): Promise<ToolResult> {
+    async function runPluginTool(
+        call: ToolCall,
+        signal?: AbortSignal,
+    ): Promise<ToolResult> {
         const tool = getPluginTool(call.name);
 
         console.info(
@@ -348,7 +351,10 @@ export function usePromptGeneration({
         }
 
         try {
-            const content = await tool.run(args, snapshot);
+            const content = await raceWithAbort(
+                () => tool.run(args, { ...snapshot, signal }),
+                signal,
+            );
 
             return {
                 toolCallId: call.id,
@@ -356,6 +362,10 @@ export function usePromptGeneration({
                 content: typeof content === "string" ? content : String(content),
             };
         } catch (error) {
+            if (isAbortError(error)) {
+                throw error;
+            }
+
             const content = `Tool error: ${messageFromError(error)}`;
             console.error("[SmileyChat tool error]", call.name, error);
             return {
@@ -365,6 +375,40 @@ export function usePromptGeneration({
                 isError: true,
             };
         }
+    }
+
+    function raceWithAbort<T>(
+        run: () => T | Promise<T>,
+        signal?: AbortSignal,
+    ): Promise<T> {
+        if (!signal) return Promise.resolve().then(run);
+        if (signal.aborted) return Promise.reject(createAbortError());
+
+        return new Promise<T>((resolve, reject) => {
+            const onAbort = () => reject(createAbortError());
+            signal.addEventListener("abort", onAbort, { once: true });
+
+            Promise.resolve()
+                .then(() => {
+                    if (signal.aborted) throw createAbortError();
+                    return run();
+                })
+                .then(resolve, reject)
+                .finally(() => {
+                    signal.removeEventListener("abort", onAbort);
+                });
+        });
+    }
+
+    function createAbortError() {
+        return new DOMException("The operation was aborted.", "AbortError");
+    }
+
+    function isAbortError(error: unknown) {
+        return (
+            (error instanceof DOMException && error.name === "AbortError") ||
+            (error instanceof Error && error.name === "AbortError")
+        );
     }
 
     async function getDebugPayload(
