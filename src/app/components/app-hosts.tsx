@@ -205,7 +205,9 @@ function AnimatedBackdrop({
 
     return (
         <div
-            className={`${className}${isVisible ? "open" : ""}`}
+            // Not even going to research a rule for this one. It needs the empty space before the "open" class.
+            // prettier-ignore
+            className={`${className}${isVisible ? " open" : ""}`}
             role="presentation"
             onPointerDown={onClick}
             onClick={onClick}
