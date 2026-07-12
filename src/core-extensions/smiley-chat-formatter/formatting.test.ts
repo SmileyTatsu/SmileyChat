@@ -37,6 +37,25 @@ describe("smiley chat formatter", () => {
         expect(textFromNode(quote)).toBe('"Try now"');
         expect(findNodeByType([quote], "em")).toBeTruthy();
     });
+
+    test("uses the resolved character color for quoted dialogue", () => {
+        setFormatterSettings(defaultFormatterSettings);
+
+        const nodes = renderFormatted(
+            api,
+            '"A custom color stays limited to dialogue."',
+            {
+                highlightQuotes: true,
+                italicizeMessages: true,
+            },
+            "#28a5d5",
+        );
+        const quote = findNodeByClass(nodes, "message-quoted-text");
+
+        expect((quote?.props as { style?: unknown } | undefined)?.style).toEqual({
+            color: "#28a5d5",
+        });
+    });
 });
 
 function findNodeByClass(nodes: FormatterNode[], className: string): VNode | undefined {

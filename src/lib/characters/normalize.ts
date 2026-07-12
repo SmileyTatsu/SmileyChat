@@ -151,6 +151,19 @@ export function normalizeTavernCardData(
         };
     }
 
+    if (isRecord(extensions.smileychat) && "dialogueColor" in extensions.smileychat) {
+        const smileychat = { ...extensions.smileychat };
+        const dialogueColor = normalizeDialogueColor(smileychat.dialogueColor);
+
+        if (dialogueColor) {
+            smileychat.dialogueColor = dialogueColor;
+        } else {
+            delete smileychat.dialogueColor;
+        }
+
+        extensions.smileychat = smileychat;
+    }
+
     if (Object.keys(unknownDataFields).length > 0) {
         const smileychat = isRecord(extensions.smileychat) ? extensions.smileychat : {};
         extensions.smileychat = {
@@ -207,6 +220,33 @@ export function getEditableCharacterTagline(character: SmileyCharacter) {
     }
 
     return character.data.description.trim().split(/\r?\n/)[0]?.slice(0, 90) ?? "";
+}
+
+export function getCharacterDialogueColor(character: SmileyCharacter) {
+    const smileychat = getSmileychatExtension(character.data.extensions);
+    return normalizeDialogueColor(smileychat.dialogueColor);
+}
+
+export function setCharacterDialogueColor(
+    data: TavernCardDataV2,
+    dialogueColor: string | undefined,
+): TavernCardDataV2 {
+    const smileychat = { ...getSmileychatExtension(data.extensions) };
+    const normalizedColor = normalizeDialogueColor(dialogueColor);
+
+    if (normalizedColor) {
+        smileychat.dialogueColor = normalizedColor;
+    } else {
+        delete smileychat.dialogueColor;
+    }
+
+    return {
+        ...data,
+        extensions: {
+            ...data.extensions,
+            smileychat,
+        },
+    };
 }
 
 export function characterToSummary(character: SmileyCharacter): CharacterSummary {
@@ -386,6 +426,11 @@ function collectUnknownDataFields(source: Record<string, unknown>) {
 
 function getSmileychatExtension(extensions: Record<string, unknown>) {
     return isRecord(extensions.smileychat) ? extensions.smileychat : {};
+}
+
+function normalizeDialogueColor(value: unknown) {
+    const color = asString(value).trim();
+    return /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : undefined;
 }
 
 function asStringArray(value: unknown, repairText = false) {

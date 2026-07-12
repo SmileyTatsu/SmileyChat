@@ -48,6 +48,7 @@ import {
 
 export type MessageItemProps = {
     characterAvatarPath?: string;
+    characterDialogueColor?: string;
     characterName: string;
     chatId: string;
     isEditing: boolean;
@@ -88,6 +89,7 @@ export type MessageItemProps = {
 
 export const MessageItem = memo(function MessageItem({
     characterAvatarPath,
+    characterDialogueColor,
     characterName,
     chatId,
     isEditing,
@@ -385,6 +387,9 @@ export const MessageItem = memo(function MessageItem({
                 {!isEditing && (
                     <MessageLiveContent
                         characterAvatarPath={characterAvatarPath}
+                        characterDialogueColor={
+                            message.role === "character" ? characterDialogueColor : undefined
+                        }
                         characterName={characterName}
                         chatId={chatId}
                         message={message}
@@ -457,6 +462,7 @@ function areMessageItemPropsEqual(
 ) {
     return (
         previous.characterAvatarPath === next.characterAvatarPath &&
+        previous.characterDialogueColor === next.characterDialogueColor &&
         previous.characterName === next.characterName &&
         previous.chatId === next.chatId &&
         previous.isEditing === next.isEditing &&
@@ -494,6 +500,7 @@ function areMessageItemPropsEqual(
 
 type MessageLiveContentProps = {
     characterAvatarPath?: string;
+    characterDialogueColor?: string;
     characterName: string;
     chatId: string;
     message: Message;
@@ -507,6 +514,7 @@ type MessageLiveContentProps = {
 
 function MessageLiveContent({
     characterAvatarPath,
+    characterDialogueColor,
     characterName,
     chatId,
     message,
@@ -557,6 +565,7 @@ function MessageLiveContent({
             <MessageContent
                 renderer={renderer}
                 characterAvatarPath={characterAvatarPath}
+                characterDialogueColor={characterDialogueColor}
                 characterName={characterName}
                 content={content}
                 message={renderedMessage}

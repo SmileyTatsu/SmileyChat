@@ -178,6 +178,8 @@ export type MessageRenderContext = {
     messageFormatting?: MessageFormattingOptions;
     characterName: string;
     characterAvatarPath?: string;
+    /** The message author's resolved character dialogue color, when configured. */
+    characterDialogueColor?: string;
 };
 
 export type MessageRenderer = {

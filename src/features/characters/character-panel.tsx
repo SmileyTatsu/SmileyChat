@@ -1,11 +1,13 @@
 import { ImagePlus, ListPlus, SlidersHorizontal, X } from "lucide-preact";
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 import { uploadCharacterAvatar } from "#frontend/lib/api/client";
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import {
+    getCharacterDialogueColor,
     getCharacterTagline,
     getEditableCharacterTagline,
+    setCharacterDialogueColor,
     setCharacterTagline,
 } from "#frontend/lib/characters/normalize";
 import { createId } from "#frontend/lib/common/ids";
@@ -67,6 +69,12 @@ export function CharacterPanel({
     const [avatarError, setAvatarError] = useState("");
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const contextIdBase = `character-context-${character.id}`;
+    const dialogueColor = getCharacterDialogueColor(character);
+    const [colorInputText, setColorInputText] = useState(dialogueColor ?? "");
+
+    useEffect(() => {
+        setColorInputText(dialogueColor ?? "");
+    }, [dialogueColor]);
 
     function updateCharacterData(nextData: TavernCardDataV2) {
         onChange({ ...character, data: nextData });
@@ -621,6 +629,76 @@ export function CharacterPanel({
                                             . Editing lore entries will be added later.
                                         </p>
                                     )}
+                                    <section
+                                        className="character-details-appearance-section"
+                                        aria-labelledby="character-appearance-title"
+                                    >
+                                        <h3 id="character-appearance-title">Appearance</h3>
+                                        <div className="character-dialogue-color-control">
+                                            <label className="character-dialogue-color-label">
+                                                Dialogue highlight color
+                                                <div className="character-dialogue-color-inputs">
+                                                    <input
+                                                        type="color"
+                                                        name="dialogue-highlight-color"
+                                                        autoComplete="off"
+                                                        aria-describedby="dialogue-highlight-color-hint"
+                                                        value={dialogueColor ?? "#f2c78f"}
+                                                        onInput={(event) =>
+                                                            updateCharacterData(
+                                                                setCharacterDialogueColor(
+                                                                    character.data,
+                                                                    event.currentTarget.value,
+                                                                ),
+                                                            )
+                                                        }
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        name="dialogue-highlight-color-text"
+                                                        autoComplete="off"
+                                                        aria-label="Hex color"
+                                                        value={colorInputText}
+                                                        placeholder="#f2c78f"
+                                                        onInput={(event) => {
+                                                            const value = event.currentTarget.value;
+                                                            setColorInputText(value);
+                                                            updateCharacterData(
+                                                                setCharacterDialogueColor(
+                                                                    character.data,
+                                                                    value,
+                                                                ),
+                                                            );
+                                                        }}
+                                                    />
+                                                </div>
+                                            </label>
+                                            <div>
+                                                <p
+                                                    className="field-hint"
+                                                    id="dialogue-highlight-color-hint"
+                                                >
+                                                    Used for quoted dialogue when Chat Formatter
+                                                    highlighting is enabled.
+                                                </p>
+                                                <button
+                                                    className="secondary-button"
+                                                    type="button"
+                                                    disabled={!dialogueColor}
+                                                    onClick={() =>
+                                                        updateCharacterData(
+                                                            setCharacterDialogueColor(
+                                                                character.data,
+                                                                undefined,
+                                                            ),
+                                                        )
+                                                    }
+                                                >
+                                                    Use default highlight color
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </section>
                                     {pluginSnapshot && (
                                         <PluginCharacterDetailsSections
                                             character={character}

@@ -15,33 +15,39 @@ export function renderFormatted(
     api: FormatterApi,
     content: string,
     formatting: MessageFormattingOptions,
+    dialogueColor?: string,
 ) {
     if (getFormatterSettings().markdown) {
         return renderMarkdownBlocks(api, content, (inlineContent) =>
-            renderInlineContent(api, inlineContent, formatting),
+            renderInlineContent(api, inlineContent, formatting, dialogueColor),
         );
     }
 
-    return paragraphize(api, renderInlineContent(api, content, formatting));
+    return paragraphize(api, renderInlineContent(api, content, formatting, dialogueColor));
 }
 
 export function renderPlain(
     api: FormatterApi,
     content: string,
     formatting: MessageFormattingOptions,
+    dialogueColor?: string,
 ) {
-    return paragraphize(api, highlightPlainTextNodes(api, [content], formatting));
+    return paragraphize(
+        api,
+        highlightPlainTextNodes(api, [content], formatting, dialogueColor),
+    );
 }
 
 function renderInlineContent(
     api: FormatterApi,
     content: string,
     formatting: MessageFormattingOptions,
+    dialogueColor?: string,
 ): FormatterNode[] {
     const settings = getFormatterSettings();
     const markdownNodes = settings.markdown
         ? parseInlineMarkdown(api, content, (inlineContent) =>
-              renderInlineContent(api, inlineContent, formatting),
+              renderInlineContent(api, inlineContent, formatting, dialogueColor),
           )
         : [content];
 
@@ -49,22 +55,27 @@ function renderInlineContent(
         ? parseXmlNodeList(api, markdownNodes)
         : markdownNodes;
 
-    return highlightPlainTextNodes(api, parsedNodes, formatting);
+    return highlightPlainTextNodes(api, parsedNodes, formatting, dialogueColor);
 }
 
 function highlightPlainTextNodes(
     api: FormatterApi,
     nodes: FormatterNode[],
     formatting: MessageFormattingOptions,
+    dialogueColor?: string,
 ): FormatterNode[] {
     if (!formatting.highlightQuotes) {
         return nodes;
     }
 
-    return highlightQuotedInlineNodes(api, nodes);
+    return highlightQuotedInlineNodes(api, nodes, dialogueColor);
 }
 
-function highlightQuotedInlineNodes(api: FormatterApi, nodes: FormatterNode[]) {
+function highlightQuotedInlineNodes(
+    api: FormatterApi,
+    nodes: FormatterNode[],
+    dialogueColor?: string,
+) {
     const plainText = nodes.map(textFromNode).join("");
     const quoteRanges = findQuotedTextRanges(plainText);
 
@@ -85,7 +96,10 @@ function highlightQuotedInlineNodes(api: FormatterApi, nodes: FormatterNode[]) {
         output.push(
             api.ui.h(
                 "span",
-                { className: "message-quoted-text" },
+                {
+                    className: "message-quoted-text",
+                    ...(dialogueColor ? { style: { color: dialogueColor } } : {}),
+                },
                 quotedChildren as ComponentChild[],
             ),
         );

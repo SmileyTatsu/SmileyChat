@@ -14,6 +14,7 @@ import {
 
 type MessageContentProps = {
     characterAvatarPath?: string;
+    characterDialogueColor?: string;
     characterName: string;
     content: string;
     message: Message;
@@ -33,6 +34,7 @@ export function MessageContent(props: MessageContentProps) {
                 render={() =>
                     props.renderer?.render({
                         characterAvatarPath: props.characterAvatarPath,
+                        characterDialogueColor: props.characterDialogueColor,
                         characterName: props.characterName,
                         content: props.content,
                         message: props.message,

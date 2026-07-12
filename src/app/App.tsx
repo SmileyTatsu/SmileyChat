@@ -941,6 +941,7 @@ export function App() {
 
             <ChatWorkspace
                 activeChatId={activeChat?.id ?? ""}
+                character={hasCharacters ? character : undefined}
                 characterAvatarPath={
                     hasCharacters && !activeChatIsGroup
                         ? (character.avatar?.path ??
@@ -960,6 +961,7 @@ export function App() {
                         ? activeChat.group.avatar.path
                         : undefined
                 }
+                groupCharacters={activeChatIsGroup ? groupCharacters : undefined}
                 groupMembers={activeChatIsGroup ? activeChat?.members : undefined}
                 errorMessage={chatSession.chatError}
                 isLoading={isChatLoading}

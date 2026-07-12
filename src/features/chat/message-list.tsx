@@ -26,8 +26,10 @@ import { MessageItem } from "./message/message-item";
 type MessageListProps = {
     autoScroll: boolean;
     characterAvatarPath?: string;
+    characterDialogueColors: Readonly<Record<string, string | null>>;
     characterName: string;
     chatId: string;
+    defaultCharacterDialogueColor?: string;
     errorMessage?: string;
     initialMessageCount: number;
     isTyping?: boolean;
@@ -57,8 +59,10 @@ type MessageListProps = {
 export const MessageList = memo(function MessageList({
     autoScroll,
     characterAvatarPath,
+    characterDialogueColors,
     characterName,
     chatId,
+    defaultCharacterDialogueColor,
     errorMessage,
     initialMessageCount,
     isTyping,
@@ -503,6 +507,11 @@ export const MessageList = memo(function MessageList({
                         <MessageItem
                             key={message.id}
                             characterAvatarPath={characterAvatarPath}
+                            characterDialogueColor={
+                                message.authorCharacterId && message.authorCharacterId in characterDialogueColors
+                                    ? characterDialogueColors[message.authorCharacterId] ?? undefined
+                                    : message.metadata?.authorDialogueColorSnapshot ?? defaultCharacterDialogueColor
+                            }
                             characterName={characterName}
                             chatId={chatId}
                             isEditing={isEditing}

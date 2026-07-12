@@ -895,6 +895,58 @@
     padding-top: 16px;
 }
 
+.character-details-appearance-section {
+    display: grid;
+    gap: 12px;
+    border-top: 1px solid #292c35;
+    padding-top: 16px;
+}
+
+.character-details-appearance-section > h3 {
+    margin: 0;
+    color: #d7dbea;
+    font-size: 0.88rem;
+}
+
+.character-dialogue-color-control {
+    display: grid;
+    gap: 8px;
+}
+
+.character-dialogue-color-control > div {
+    display: grid;
+    justify-items: start;
+    gap: 8px;
+}
+
+.character-dialogue-color-label {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+}
+
+.character-dialogue-color-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.character-dialogue-color-inputs input[type="color"] {
+    flex: 0 0 42px;
+    height: 38px;
+    padding: 2px;
+    cursor: pointer;
+    border: 1px solid #303440;
+    border-radius: 6px;
+    background: #191b21;
+}
+
+.character-dialogue-color-inputs input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .character-details-plugin-sections > h3,
 .character-details-plugin-section > h4 {
     margin: 0;

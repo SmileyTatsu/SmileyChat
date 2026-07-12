@@ -10,6 +10,7 @@ import {
 import type { ToolActivity } from "./connections/types";
 
 import { createId } from "./common/ids";
+import { getCharacterDialogueColor } from "./characters/normalize";
 
 export function createUserMessage(
     content: string,
@@ -33,8 +34,9 @@ export function createCharacterMessage(
     author: string,
     content: string,
     attachments?: ChatAttachment[],
-    character?: Pick<SmileyCharacter, "id" | "avatar">,
+    character?: Pick<SmileyCharacter, "id" | "avatar" | "data">,
 ): Message {
+    const dialogueColor = character ? getCharacterDialogueColor(character as SmileyCharacter) : undefined;
     return createMessage(
         MessageRole.Character,
         author,
@@ -45,6 +47,7 @@ export function createCharacterMessage(
         },
         undefined,
         attachments,
+        dialogueColor ? { authorDialogueColorSnapshot: dialogueColor } : undefined
     );
 }
 
@@ -101,6 +104,8 @@ export function createInjectedMessage(
         );
     }
 
+    const dialogueColor = getCharacterDialogueColor(options.activeCharacter);
+
     return createMessage(
         MessageRole.Character,
         options.authorName?.trim() || options.activeCharacter.data.name,
@@ -115,6 +120,7 @@ export function createInjectedMessage(
             includeInPrompt: options.includeInPrompt ?? true,
             promptRole: options.promptRole ?? "assistant",
             canGenerateSwipe: false,
+            ...(dialogueColor ? { authorDialogueColorSnapshot: dialogueColor } : {}),
         }),
     );
 }
@@ -140,12 +146,14 @@ export function createCharacterGreetingMessage(
             createdAt,
         }),
     );
+    const dialogueColor = getCharacterDialogueColor(character);
 
     return {
         id: createId("character-greeting"),
         author: character.data.name,
         authorCharacterId: character.id,
         ...(character.avatar?.path ? { authorAvatarPath: character.avatar.path } : {}),
+        ...(dialogueColor ? { metadata: { authorDialogueColorSnapshot: dialogueColor } } : {}),
         role: MessageRole.Character,
         createdAt,
         activeSwipeIndex: 0,

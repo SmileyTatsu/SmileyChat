@@ -70,6 +70,7 @@ export type MessageMetadata = {
         argumentsText?: string;
         result?: string;
     };
+    authorDialogueColorSnapshot?: string;
 };
 
 export type ChatAttachment = {

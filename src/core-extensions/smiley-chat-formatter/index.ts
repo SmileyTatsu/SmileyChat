@@ -41,7 +41,7 @@ function registerFormatterRenderer(api: FormatterApi) {
     api.ui.registerMessageRenderer({
         id: "xml-style-tags",
         priority: 20,
-        render: ({ content, messageFormatting, mode }) => {
+        render: ({ content, characterDialogueColor, messageFormatting, mode }) => {
             const formatting =
                 messageFormatting ??
                 messageFormattingForMode(defaultAppPreferences, mode);
@@ -52,8 +52,8 @@ function registerFormatterRenderer(api: FormatterApi) {
                     className: `scf-message ${mode === "rp" ? "scf-message-rp" : "scf-message-chat"}`,
                 },
                 getFormatterSettings().enabled
-                    ? renderFormatted(api, content, formatting)
-                    : renderPlain(api, content, formatting),
+                    ? renderFormatted(api, content, formatting, characterDialogueColor)
+                    : renderPlain(api, content, formatting, characterDialogueColor),
             );
         },
     });

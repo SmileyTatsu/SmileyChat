@@ -1,12 +1,19 @@
 import { memo } from "preact/compat";
+import { useMemo } from "preact/hooks";
 
+import { getCharacterDialogueColor } from "#frontend/lib/characters/normalize";
 import type {
     PluginAppSnapshot,
     PluginComposerStatePatch,
 } from "#frontend/lib/plugins/types";
 import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
-import type { ChatGroupMember, ChatMode, Message } from "#frontend/types";
+import type {
+    ChatGroupMember,
+    ChatMode,
+    Message,
+    SmileyCharacter,
+} from "#frontend/types";
 
 import { ChatHeader } from "./chat-header";
 import { MessageComposer } from "./message-composer";
@@ -43,10 +50,12 @@ const LOADING_MESSAGE_SKELETONS: readonly LoadingMessageSkeleton[] = [
 
 type ChatWorkspaceProps = {
     activeChatId: string;
+    character?: SmileyCharacter;
     characterAvatarPath?: string;
     characterName: string;
     chatTitle: string;
     groupAvatarPath?: string;
+    groupCharacters?: SmileyCharacter[];
     groupMembers?: ChatGroupMember[];
     errorMessage?: string;
     isLoading?: boolean;
@@ -83,10 +92,12 @@ type ChatWorkspaceProps = {
 
 export const ChatWorkspace = memo(function ChatWorkspace({
     activeChatId,
+    character,
     characterAvatarPath,
     characterName,
     chatTitle,
     groupAvatarPath,
+    groupCharacters,
     groupMembers,
     errorMessage,
     isLoading,
@@ -116,6 +127,22 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     pluginSnapshot,
 }: ChatWorkspaceProps) {
     const messageFormatting = messageFormattingForMode(preferences, mode);
+    const characterDialogueColors = useMemo(() => {
+        const colors: Record<string, string | null> = {};
+
+        for (const item of groupCharacters ?? []) {
+            colors[item.id] = getCharacterDialogueColor(item) ?? null;
+        }
+
+        if (character) {
+            colors[character.id] = getCharacterDialogueColor(character) ?? null;
+        }
+
+        return colors;
+    }, [character, groupCharacters]);
+    const defaultCharacterDialogueColor = character
+        ? getCharacterDialogueColor(character)
+        : undefined;
     const workspaceClassName = [
         "chat-workspace",
         mode,
@@ -160,7 +187,9 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     key={activeChatId}
                     chatId={activeChatId}
                     characterAvatarPath={characterAvatarPath}
+                    characterDialogueColors={characterDialogueColors}
                     characterName={characterName}
+                    defaultCharacterDialogueColor={defaultCharacterDialogueColor}
                     errorMessage={errorMessage}
                     isTyping={isSending}
                     messages={messages}
