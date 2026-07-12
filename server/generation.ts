@@ -75,8 +75,7 @@ export async function generateWithSavedConnection(
         } catch (error) {
             return json(
                 {
-                    error:
-                        error instanceof Error ? error.message : "Generation failed.",
+                    error: error instanceof Error ? error.message : "Generation failed.",
                 },
                 502,
             );
@@ -95,7 +94,9 @@ export async function generateWithSavedConnection(
 
                 try {
                     controller.enqueue(
-                        encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+                        encoder.encode(
+                            `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
+                        ),
                     );
                 } catch {
                     cancelled = true;
@@ -146,7 +147,9 @@ export async function generateWithSavedConnection(
     });
 }
 
-export function publicGenerationResult(result: ChatGenerationResult): ChatGenerationResult {
+export function publicGenerationResult(
+    result: ChatGenerationResult,
+): ChatGenerationResult {
     const { raw: _raw, ...publicResult } = result;
     return publicResult;
 }

@@ -1,9 +1,6 @@
 import { expect, test } from "bun:test";
 
-import {
-    readServerGenerationResult,
-    readServerGenerationStream,
-} from "./server-adapter";
+import { readServerGenerationResult, readServerGenerationStream } from "./server-adapter";
 
 test("reads CRLF-framed server generation events", async () => {
     const tokens: string[] = [];

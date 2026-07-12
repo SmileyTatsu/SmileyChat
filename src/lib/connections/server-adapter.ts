@@ -132,7 +132,9 @@ export async function readServerGenerationResult(
                 ? (payload as { error?: unknown }).error
                 : undefined;
         throw new Error(
-            typeof error === "string" ? error : "Server generation returned an invalid result.",
+            typeof error === "string"
+                ? error
+                : "Server generation returned an invalid result.",
         );
     }
 
@@ -144,12 +146,12 @@ function isChatGenerationResult(
 ): value is { result: ChatGenerationResult } {
     return Boolean(
         value &&
-            typeof value === "object" &&
-            "result" in value &&
-            (value as { result?: unknown }).result &&
-            typeof (value as { result?: unknown }).result === "object" &&
-            typeof ((value as { result: ChatGenerationResult }).result.message) === "string" &&
-            typeof ((value as { result: ChatGenerationResult }).result.provider) === "string",
+        typeof value === "object" &&
+        "result" in value &&
+        (value as { result?: unknown }).result &&
+        typeof (value as { result?: unknown }).result === "object" &&
+        typeof (value as { result: ChatGenerationResult }).result.message === "string" &&
+        typeof (value as { result: ChatGenerationResult }).result.provider === "string",
     );
 }
 
