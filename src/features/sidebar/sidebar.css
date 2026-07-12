@@ -52,11 +52,25 @@
     border-right: 1px solid rgba(255, 255, 255, 0.04);
     background: #0e0f12;
     padding: 14px 0;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .character-rail.drag-active {
     background:
         linear-gradient(180deg, rgba(126, 160, 255, 0.14), transparent 34%), #0e0f12;
+}
+
+@keyframes reorder-jiggle {
+    0% {
+        transform: rotate(-2deg);
+    }
+    50% {
+        transform: rotate(2deg);
+    }
+    100% {
+        transform: rotate(-2deg);
+    }
 }
 
 .character-rail-brand,
@@ -94,6 +108,15 @@
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.character-rail-group {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    width: 100%;
 }
 
 .character-rail-roster::-webkit-scrollbar {
@@ -113,6 +136,41 @@
         border-radius 0.18s ease,
         background 0.18s ease,
         transform 0.18s ease;
+}
+
+.character-rail-avatar.reordering {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.character-rail-avatar-visual {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    border-radius: inherit;
+}
+
+.character-rail-avatar.reordering:not(.dragging) .character-rail-avatar-visual {
+    animation: reorder-jiggle 0.4s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .character-rail-avatar.reordering .character-rail-avatar-visual {
+        animation: none;
+    }
+}
+
+.character-rail-avatar.reordering.dragging {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+}
+
+.character-rail-avatar.reordering:active {
+    cursor: grabbing;
 }
 
 .character-rail-avatar::before {
@@ -149,7 +207,7 @@
     opacity: 0.72;
 }
 
-.character-rail-avatar img {
+.character-rail-avatar-visual img {
     width: 100%;
     height: 100%;
     aspect-ratio: 1 / 1;
@@ -194,6 +252,7 @@
         color 0.18s ease;
 }
 
+.character-rail-action.active,
 .character-rail-action:hover {
     border-radius: 30%;
     background: #e1e7ff;

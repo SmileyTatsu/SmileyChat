@@ -1,5 +1,6 @@
 import {
     AlertTriangle,
+    ArrowUpDown,
     Download,
     FileInput,
     ImageOff,
@@ -39,6 +40,7 @@ import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
 import { ChatList } from "./components/chat-list";
 import { GroupChatCreator } from "./components/group-chat-creator";
 import { useCharacterCardDrop } from "./hooks/use-character-card-drop";
+import { useSortableList } from "./hooks/use-sortable-list";
 import { formatChatCount, formatChatMeta, normalizeFilterText } from "./sidebar-helpers";
 
 type SidebarProps = {
@@ -76,6 +78,7 @@ type SidebarProps = {
     onDeleteCharacter: (characterId: string, options?: { deleteChats?: boolean }) => void;
     onExportCharacter: (characterId: string, format: "json" | "png") => void;
     onRemoveCharacterAvatar: (characterId: string) => void;
+    onReorderCharacters: (characters: CharacterSummary[]) => void;
     onRenameChat: (chatId: string, title: string) => void;
     onSelectChat: (chatId: string) => void;
     onSelectCharacter: (characterId: string) => void;
@@ -97,19 +100,24 @@ type CharacterRailProps = {
     onImportFiles: (files: File[]) => void;
     onOpenSettings: () => void;
     onOpenCharacterMenu: (event: MouseEvent, character: CharacterSummary) => void;
+    onReorderCharacters: (characters: CharacterSummary[]) => void;
     onSelectCharacter: (characterId: string) => void;
 };
 
 function CharacterRailAvatar({
     character,
+    index,
     isActive,
     isPending,
+    isReordering,
     onSelectCharacter,
     onOpenCharacterMenu,
 }: {
     character: CharacterSummary;
+    index: number;
     isActive: boolean;
     isPending: boolean;
+    isReordering: boolean;
     onSelectCharacter: (id: string) => void;
     onOpenCharacterMenu: (event: MouseEvent, character: CharacterSummary) => void;
 }) {
@@ -117,25 +125,36 @@ function CharacterRailAvatar({
         <button
             className={`character-rail-avatar ${isActive ? "active" : ""} ${
                 isPending ? "pending" : ""
-            }`}
+            } ${isReordering ? "reordering" : ""}`}
             type="button"
             title={character.name}
+            data-sortable-index={index}
             aria-label={character.name}
             aria-current={isActive ? "true" : undefined}
             aria-busy={isPending ? "true" : undefined}
-            onClick={() => onSelectCharacter(character.id)}
-            onContextMenu={(event) => onOpenCharacterMenu(event, character)}
+            onClick={() => {
+                if (!isReordering) onSelectCharacter(character.id);
+            }}
+            onContextMenu={(event) => {
+                if (!isReordering) {
+                    onOpenCharacterMenu(event, character);
+                } else {
+                    event.preventDefault();
+                }
+            }}
         >
-            {character.avatar ? (
-                <img src={character.avatar.path} alt="" />
-            ) : (
-                <span>{character.name.trim().charAt(0) || "?"}</span>
-            )}
-            {character.isFavorite && (
-                <div className="character-rail-avatar-favorite-badge">
-                    <Star size={10} fill="currentColor" />
-                </div>
-            )}
+            <span className="character-rail-avatar-visual" aria-hidden="true">
+                {character.avatar ? (
+                    <img src={character.avatar.path} alt="" />
+                ) : (
+                    <span>{character.name.trim().charAt(0) || "?"}</span>
+                )}
+                {character.isFavorite && (
+                    <span className="character-rail-avatar-favorite-badge">
+                        <Star size={10} fill="currentColor" />
+                    </span>
+                )}
+            </span>
         </button>
     );
 }
@@ -154,11 +173,35 @@ function CharacterRail({
     onImportFiles,
     onOpenSettings,
     onOpenCharacterMenu,
+    onReorderCharacters,
     onSelectCharacter,
 }: CharacterRailProps) {
+    const [isReordering, setIsReordering] = useState(false);
     const activeRowCharacterId = pendingCharacterId || activeCharacterId;
     const favorites = characters.filter((c) => c.isFavorite);
     const regular = characters.filter((c) => !c.isFavorite);
+
+    const { containerRef: favoritesContainerRef } = useSortableList({
+        disabled: !isReordering,
+        onReorder: (oldIndex, newIndex) => {
+            if (oldIndex === newIndex) return;
+            const nextFavorites = [...favorites];
+            const [moved] = nextFavorites.splice(oldIndex, 1);
+            nextFavorites.splice(newIndex, 0, moved);
+            onReorderCharacters([...nextFavorites, ...regular]);
+        },
+    });
+
+    const { containerRef: regularContainerRef } = useSortableList({
+        disabled: !isReordering,
+        onReorder: (oldIndex, newIndex) => {
+            if (oldIndex === newIndex) return;
+            const nextRegular = [...regular];
+            const [moved] = nextRegular.splice(oldIndex, 1);
+            nextRegular.splice(newIndex, 0, moved);
+            onReorderCharacters([...favorites, ...nextRegular]);
+        },
+    });
 
     return (
         <div
@@ -175,31 +218,39 @@ function CharacterRail({
             <div className="character-rail-divider" />
             <div className="character-rail-roster" role="list">
                 {favorites.length > 0 && (
-                    <>
-                        {favorites.map((character) => (
+                    <div className="character-rail-group" ref={favoritesContainerRef}>
+                        {favorites.map((character, index) => (
                             <CharacterRailAvatar
                                 key={character.id}
                                 character={character}
+                                index={index}
                                 isActive={character.id === activeRowCharacterId}
                                 isPending={character.id === pendingCharacterId}
+                                isReordering={isReordering}
                                 onSelectCharacter={onSelectCharacter}
                                 onOpenCharacterMenu={onOpenCharacterMenu}
                             />
                         ))}
-                        {regular.length > 0 && <div className="character-rail-divider" />}
-                    </>
+                    </div>
+                )}
+                {favorites.length > 0 && regular.length > 0 && (
+                    <div className="character-rail-divider" />
                 )}
                 {regular.length > 0 ? (
-                    regular.map((character) => (
-                        <CharacterRailAvatar
-                            key={character.id}
-                            character={character}
-                            isActive={character.id === activeRowCharacterId}
-                            isPending={character.id === pendingCharacterId}
-                            onSelectCharacter={onSelectCharacter}
-                            onOpenCharacterMenu={onOpenCharacterMenu}
-                        />
-                    ))
+                    <div className="character-rail-group" ref={regularContainerRef}>
+                        {regular.map((character, index) => (
+                            <CharacterRailAvatar
+                                key={character.id}
+                                character={character}
+                                index={index}
+                                isActive={character.id === activeRowCharacterId}
+                                isPending={character.id === pendingCharacterId}
+                                isReordering={isReordering}
+                                onSelectCharacter={onSelectCharacter}
+                                onOpenCharacterMenu={onOpenCharacterMenu}
+                            />
+                        ))}
+                    </div>
                 ) : favorites.length === 0 ? (
                     <div className="character-rail-empty" title="No characters yet">
                         ?
@@ -207,6 +258,15 @@ function CharacterRail({
                 ) : null}
             </div>
             <div className="character-rail-actions">
+                <button
+                    className={`character-rail-action ${isReordering ? "active" : ""}`}
+                    type="button"
+                    title={isReordering ? "Done reordering" : "Reorder characters"}
+                    aria-label="Reorder characters"
+                    onClick={() => setIsReordering(!isReordering)}
+                >
+                    <ArrowUpDown size={19} />
+                </button>
                 <button
                     className="character-rail-action"
                     type="button"
@@ -289,6 +349,7 @@ export function Sidebar({
     onDeleteCharacter,
     onExportCharacter,
     onRemoveCharacterAvatar,
+    onReorderCharacters,
     onRenameChat,
     onSelectChat,
     onSelectCharacter,
@@ -552,6 +613,7 @@ export function Sidebar({
                     onImportFiles={importFiles}
                     onOpenSettings={onOpenSettings}
                     onOpenCharacterMenu={openCharacterMenu}
+                    onReorderCharacters={onReorderCharacters}
                     onSelectCharacter={(characterId) => {
                         onSelectCharacter(characterId);
                         onOpenChange(true);
@@ -577,6 +639,7 @@ export function Sidebar({
                 onImportFiles={importFiles}
                 onOpenSettings={onOpenSettings}
                 onOpenCharacterMenu={openCharacterMenu}
+                onReorderCharacters={onReorderCharacters}
                 onSelectCharacter={onSelectCharacter}
             />
 

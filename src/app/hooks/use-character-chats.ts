@@ -264,6 +264,7 @@ export function useCharacterChats({
         prepareCharacterAvatarUpload,
         queueChatSave: chatLibrary.queueChatSave,
         removeCharacterAvatar,
+        reorderCharacters: characterLibrary.reorderCharacters,
         renameChat: chatLibrary.renameChat,
         selectCharacter,
         selectChat: chatLibrary.selectChat,

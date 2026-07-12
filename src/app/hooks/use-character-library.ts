@@ -18,6 +18,7 @@ import {
 import { normalizeChatSummaryCollection } from "#frontend/lib/chats/normalize";
 import { messageFromError } from "#frontend/lib/common/errors";
 import type {
+    CharacterSummary,
     CharacterSummaryCollection,
     ChatSummaryCollection,
     SmileyCharacter,
@@ -401,6 +402,19 @@ export function useCharacterLibrary() {
         setCharacterLoadError("");
     }
 
+    async function reorderCharacters(newCharacters: CharacterSummary[]) {
+        const nextSummaries: CharacterSummaryCollection = {
+            ...latestCharacterSummariesRef.current,
+            characters: newCharacters,
+        };
+        setCharacterSummaries(nextSummaries);
+        try {
+            await saveCharacterIndex(nextSummaries);
+        } catch (error) {
+            setCharacterLoadError(messageFromError(error));
+        }
+    }
+
     return {
         applySavedCharacter,
         character,
@@ -417,6 +431,7 @@ export function useCharacterLibrary() {
         loadCharacterCollectionStrict,
         prepareCharacterAvatarUpload,
         removeCharacterAvatar,
+        reorderCharacters,
         saveActiveCharacterSelection,
         selectCharacter,
         setCharacter,

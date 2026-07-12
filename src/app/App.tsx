@@ -193,6 +193,7 @@ export function App() {
         prepareCharacterAvatarUpload,
         queueChatSave,
         removeCharacterAvatar,
+        reorderCharacters,
         renameChat,
         selectCharacter,
         selectChat,
@@ -949,6 +950,7 @@ export function App() {
                 onDeleteCharacter={handleSidebarDeleteCharacter}
                 onExportCharacter={handleSidebarExportCharacter}
                 onRemoveCharacterAvatar={handleSidebarRemoveCharacterAvatar}
+                onReorderCharacters={reorderCharacters}
                 onDeleteChat={handleSidebarDeleteChat}
                 onChangeGroupAvatar={handleSidebarChangeGroupAvatar}
                 onRenameChat={handleSidebarRenameChat}
