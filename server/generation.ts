@@ -87,17 +87,17 @@ export async function generateWithSavedConnection(
                     tools: payload.tools,
                 });
                 send("done", result);
-                // Streams should flush enqueued chunks before close. Yielding
-                // once also avoids a Bun edge case seen through some remote
-                // clients where an immediately closed terminal SSE frame is
-                // not observed by the peer.
-                await Bun.sleep(0);
             } catch (error) {
                 send("error", {
                     message:
                         error instanceof Error ? error.message : "Generation failed.",
                 });
             } finally {
+                // Streams should flush either terminal frame before close.
+                // Bun can otherwise drop the final chunk for remote clients,
+                // which would hide a provider error behind the client's
+                // generic "ended without a result" fallback.
+                await Bun.sleep(0);
                 signal.removeEventListener("abort", abortGeneration);
                 controller.close();
             }
