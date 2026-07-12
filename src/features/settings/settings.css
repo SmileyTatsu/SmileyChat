@@ -314,8 +314,7 @@
 .plugin-detail-pane > .plugin-card {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
+    min-height: min-content;
     box-sizing: border-box;
 }
 
