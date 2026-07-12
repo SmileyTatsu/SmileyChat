@@ -13,7 +13,15 @@ export default defineConfig(function ({ mode }) {
         plugins: [tailwindcss(), preact()],
         server: {
             port: Number(FRONTEND_PORT),
-            proxy: { "/api": `http://127.0.0.1:${BACKEND_PORT}` },
+            proxy: {
+                "/api": {
+                    target: `http://127.0.0.1:${BACKEND_PORT}`,
+                    changeOrigin: true,
+                    // Let the backend control streamed response lifetime.
+                    timeout: 0,
+                    proxyTimeout: 0,
+                },
+            },
         },
         build: {
             chunkSizeWarningLimit: 1000,

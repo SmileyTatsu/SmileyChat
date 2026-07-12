@@ -35,6 +35,10 @@ export function createServerGenerationConnection(profileId?: string): Connection
                 );
             }
 
+            if (request.stream !== true) {
+                return readServerGenerationResult(response);
+            }
+
             return readServerGenerationStream(response, request);
         },
     };
@@ -47,6 +51,27 @@ export async function readServerGenerationStream(
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let receivedEvents = 0;
+    let message = "";
+    let reasoning = "";
+    const images: string[] = [];
+    const consumeEvent = (event: ServerEvent) => {
+        receivedEvents += 1;
+        if (event.type === "token") {
+            message += event.data.token;
+            request.onToken?.(event.data.token);
+        }
+        if (event.type === "reasoning") {
+            reasoning += event.data.token;
+            request.onReasoningToken?.(event.data.token);
+        }
+        if (event.type === "image") {
+            images.push(event.data.url);
+            request.onImage?.(event.data.url);
+        }
+        if (event.type === "error") throw new Error(event.data.message);
+        if (event.type === "done") return event.data;
+    };
 
     while (true) {
         const { done, value } = await reader.read();
@@ -60,24 +85,72 @@ export async function readServerGenerationStream(
             match = eventBoundary.exec(buffer);
 
             if (!event) continue;
-            if (event.type === "token") request.onToken?.(event.data.token);
-            if (event.type === "reasoning") request.onReasoningToken?.(event.data.token);
-            if (event.type === "image") request.onImage?.(event.data.url);
-            if (event.type === "error") throw new Error(event.data.message);
-            if (event.type === "done") return event.data;
+            const result = consumeEvent(event);
+            if (result) return result;
         }
 
         if (done) {
             // Be tolerant of intermediaries that pass through the terminal
             // SSE event but omit its final blank-line delimiter.
             const event = parseServerEvent(buffer);
-            if (event?.type === "error") throw new Error(event.data.message);
-            if (event?.type === "done") return event.data;
+            if (event) {
+                const result = consumeEvent(event);
+                if (result) return result;
+            }
             break;
         }
     }
 
-    throw new Error("Server generation ended without a result.");
+    if (message || reasoning || images.length) {
+        return {
+            message,
+            ...(images.length ? { images } : {}),
+            provider: "smileychat-server",
+            ...(reasoning ? { reasoning } : {}),
+        };
+    }
+
+    throw new Error(
+        `Server generation ended without a result (${receivedEvents ? `${receivedEvents} SSE event(s) received` : "no SSE events received"}).`,
+    );
+}
+
+export async function readServerGenerationResult(
+    response: Response,
+): Promise<ChatGenerationResult> {
+    let payload: unknown;
+
+    try {
+        payload = await response.json();
+    } catch {
+        throw new Error("Server generation returned invalid JSON.");
+    }
+
+    if (!isChatGenerationResult(payload)) {
+        const error =
+            payload && typeof payload === "object" && "error" in payload
+                ? (payload as { error?: unknown }).error
+                : undefined;
+        throw new Error(
+            typeof error === "string" ? error : "Server generation returned an invalid result.",
+        );
+    }
+
+    return payload.result;
+}
+
+function isChatGenerationResult(
+    value: unknown,
+): value is { result: ChatGenerationResult } {
+    return Boolean(
+        value &&
+            typeof value === "object" &&
+            "result" in value &&
+            (value as { result?: unknown }).result &&
+            typeof (value as { result?: unknown }).result === "object" &&
+            typeof ((value as { result: ChatGenerationResult }).result.message) === "string" &&
+            typeof ((value as { result: ChatGenerationResult }).result.provider) === "string",
+    );
 }
 
 type ServerEvent =

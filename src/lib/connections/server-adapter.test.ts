@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
 
-import { readServerGenerationStream } from "./server-adapter";
+import {
+    readServerGenerationResult,
+    readServerGenerationStream,
+} from "./server-adapter";
 
 test("reads CRLF-framed server generation events", async () => {
     const tokens: string[] = [];
@@ -22,4 +25,46 @@ test("reads a terminal event without a trailing blank line", async () => {
     );
 
     expect(result).toMatchObject({ message: "Complete", provider: "anthropic" });
+});
+
+test("uses received tokens when a stream ends without a terminal event", async () => {
+    const tokens: string[] = [];
+    const result = await readServerGenerationStream(
+        new Response('event: token\ndata: {"token":"Partial"}'),
+        { messages: [], onToken: (token) => tokens.push(token) },
+    );
+
+    expect(tokens).toEqual(["Partial"]);
+    expect(result).toMatchObject({
+        message: "Partial",
+        provider: "smileychat-server",
+    });
+});
+
+test("reports an empty SSE response clearly", async () => {
+    await expect(
+        readServerGenerationStream(new Response(""), { messages: [] }),
+    ).rejects.toThrow("no SSE events received");
+});
+
+test("reads a completed non-stream generation JSON response", async () => {
+    const result = await readServerGenerationResult(
+        Response.json({
+            result: {
+                message: "Complete",
+                provider: "openai-compatible",
+            },
+        }),
+    );
+
+    expect(result).toMatchObject({
+        message: "Complete",
+        provider: "openai-compatible",
+    });
+});
+
+test("surfaces a non-stream generation error response", async () => {
+    await expect(
+        readServerGenerationResult(Response.json({ error: "Provider unavailable" })),
+    ).rejects.toThrow("Provider unavailable");
 });

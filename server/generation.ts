@@ -33,7 +33,7 @@ import type {
     ToolDefinition,
 } from "#frontend/lib/connections/types";
 
-import { BadRequestError, HttpError } from "./http";
+import { BadRequestError, HttpError, json } from "./http";
 import { readConnectionSecrets, readConnectionSettings } from "./settings";
 
 type GenerationPayload = {
@@ -59,19 +59,48 @@ export async function generateWithSavedConnection(
     const profile = resolveProfile(privateSettings, payload.profileId);
     const adapter = createBuiltInAdapter(profile);
 
-    // The response remains an SSE stream even when streaming is disabled. It
-    // gives the client one uniform, abortable transport without ever exposing
-    // the provider response or credentials directly to the browser.
+    // A completed provider request does not need an SSE transport. Returning
+    // JSON avoids a terminal-frame close race for non-streaming generation.
+    if (!payload.stream) {
+        try {
+            const result = await adapter.generate({
+                generation: payload.generation,
+                messages: [],
+                promptMessages: payload.promptMessages,
+                signal,
+                stream: false,
+                tools: payload.tools,
+            });
+            return json({ result: publicGenerationResult(result) });
+        } catch (error) {
+            return json(
+                {
+                    error:
+                        error instanceof Error ? error.message : "Generation failed.",
+                },
+                502,
+            );
+        }
+    }
+
     const generationController = new AbortController();
     const abortGeneration = () => generationController.abort();
     signal.addEventListener("abort", abortGeneration, { once: true });
 
     const body = new ReadableStream<Uint8Array>({
         async start(controller) {
+            let cancelled = false;
             const send = (event: string, data: unknown) => {
-                controller.enqueue(
-                    encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-                );
+                if (cancelled) return;
+
+                try {
+                    controller.enqueue(
+                        encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+                    );
+                } catch {
+                    cancelled = true;
+                    generationController.abort();
+                }
             };
 
             try {
@@ -86,20 +115,17 @@ export async function generateWithSavedConnection(
                     stream: payload.stream === true,
                     tools: payload.tools,
                 });
-                send("done", result);
+                send("done", publicGenerationResult(result));
             } catch (error) {
                 send("error", {
                     message:
                         error instanceof Error ? error.message : "Generation failed.",
                 });
             } finally {
-                // Streams should flush either terminal frame before close.
-                // Bun can otherwise drop the final chunk for remote clients,
-                // which would hide a provider error behind the client's
-                // generic "ended without a result" fallback.
-                await Bun.sleep(0);
                 signal.removeEventListener("abort", abortGeneration);
-                controller.close();
+                // Yield to the event loop so Bun flushes enqueued chunks to the socket
+                await Bun.sleep(0);
+                if (!cancelled) controller.close();
             }
         },
         cancel() {
@@ -118,6 +144,11 @@ export async function generateWithSavedConnection(
             "X-Accel-Buffering": "no",
         },
     });
+}
+
+export function publicGenerationResult(result: ChatGenerationResult): ChatGenerationResult {
+    const { raw: _raw, ...publicResult } = result;
+    return publicResult;
 }
 
 export async function listSavedConnectionModels(profileId: string): Promise<unknown[]> {
