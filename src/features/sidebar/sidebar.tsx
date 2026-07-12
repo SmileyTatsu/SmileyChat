@@ -491,10 +491,10 @@ export function Sidebar({
         [contextualChats, hasChatFilter, normalizedChatFilter],
     );
 
-    return (
-        <>
+    if (!isOpen) {
+        return (
             <aside
-                className={`sidebar-container ${isOpen ? "open" : "collapsed"}`}
+                className="sidebar-container collapsed"
                 aria-label="Chats and characters"
             >
                 <CharacterRail
@@ -511,206 +511,222 @@ export function Sidebar({
                     onImportFiles={importFiles}
                     onOpenSettings={onOpenSettings}
                     onOpenCharacterMenu={openCharacterMenu}
-                    onSelectCharacter={onSelectCharacter}
+                    onSelectCharacter={(characterId) => {
+                        onSelectCharacter(characterId);
+                        onOpenChange(true);
+                    }}
+                />
+            </aside>
+        );
+    }
+
+    return (
+        <aside className="sidebar-container open" aria-label="Chats and characters">
+            <CharacterRail
+                activeCharacterId={activeCharacterId}
+                characters={characters}
+                importInputRef={importInputRef}
+                isCharacterDropActive={isCharacterDropActive}
+                pendingCharacterId={pendingCharacterId}
+                onCharacterDragEnter={handleCharacterDragEnter}
+                onCharacterDragLeave={handleCharacterDragLeave}
+                onCharacterDragOver={handleCharacterDragOver}
+                onCharacterDrop={handleCharacterDrop}
+                onCreateCharacter={onCreateCharacter}
+                onImportFiles={importFiles}
+                onOpenSettings={onOpenSettings}
+                onOpenCharacterMenu={openCharacterMenu}
+                onSelectCharacter={onSelectCharacter}
+            />
+
+            <div className="left-rail open">
+                <div className="chat-rail-header">
+                    <div className="chat-rail-title-block">
+                        <span>Chats with</span>
+                        <strong>
+                            {activeCharacter?.name ?? "No character selected"}
+                        </strong>
+                    </div>
+                    <button
+                        className="rail-icon-button sidebar-mobile-close-btn"
+                        type="button"
+                        title="Close sidebar"
+                        aria-label="Close sidebar"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        <X size={15} />
+                    </button>
+                </div>
+
+                <div className="chat-rail-actions">
+                    <button
+                        className="new-chat-button"
+                        type="button"
+                        title="Start a new chat with the active character"
+                        disabled={!hasCharacters}
+                        onClick={onNewChat}
+                    >
+                        <MessageSquare size={16} />
+                        New chat
+                    </button>
+                    <button
+                        className="new-chat-button secondary"
+                        type="button"
+                        title="Start a group chat"
+                        disabled={!hasCharacters}
+                        onClick={openGroupCreate}
+                    >
+                        <Users size={16} />
+                        New group
+                    </button>
+                </div>
+
+                <input
+                    ref={chatImportInputRef}
+                    hidden
+                    type="file"
+                    accept=".jsonl,.json,application/json"
+                    onChange={(event) => {
+                        const input = event.currentTarget as HTMLInputElement;
+                        const file = input.files?.[0];
+
+                        if (file) {
+                            onImportChatFile(file);
+                        }
+
+                        input.value = "";
+                    }}
+                />
+                <input
+                    ref={groupAvatarInputRef}
+                    hidden
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                        const input = event.currentTarget as HTMLInputElement;
+                        const file = input.files?.[0];
+
+                        if (file && groupAvatarTarget) {
+                            onChangeGroupAvatar(groupAvatarTarget.id, file);
+                        }
+
+                        setGroupAvatarTarget(undefined);
+                        input.value = "";
+                    }}
                 />
 
-                {isOpen && (
-                    <div className="left-rail open">
-                        <div className="chat-rail-header">
-                            <div className="chat-rail-title-block">
-                                <span>Chats with</span>
-                                <strong>
-                                    {activeCharacter?.name ?? "No character selected"}
-                                </strong>
-                            </div>
-                            <button
-                                className="rail-icon-button sidebar-mobile-close-btn"
-                                type="button"
-                                title="Close sidebar"
-                                aria-label="Close sidebar"
-                                onClick={() => onOpenChange(false)}
-                            >
-                                <X size={15} />
-                            </button>
-                        </div>
-
-                        <div className="chat-rail-actions">
-                            <button
-                                className="new-chat-button"
-                                type="button"
-                                title="Start a new chat with the active character"
-                                disabled={!hasCharacters}
-                                onClick={onNewChat}
-                            >
-                                <MessageSquare size={16} />
-                                New chat
-                            </button>
-                            <button
-                                className="new-chat-button secondary"
-                                type="button"
-                                title="Start a group chat"
-                                disabled={!hasCharacters}
-                                onClick={openGroupCreate}
-                            >
-                                <Users size={16} />
-                                New group
-                            </button>
-                        </div>
-
-                        <input
-                            ref={chatImportInputRef}
-                            hidden
-                            type="file"
-                            accept=".jsonl,.json,application/json"
-                            onChange={(event) => {
-                                const input = event.currentTarget as HTMLInputElement;
-                                const file = input.files?.[0];
-
-                                if (file) {
-                                    onImportChatFile(file);
-                                }
-
-                                input.value = "";
-                            }}
-                        />
-                        <input
-                            ref={groupAvatarInputRef}
-                            hidden
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            onChange={(event) => {
-                                const input = event.currentTarget as HTMLInputElement;
-                                const file = input.files?.[0];
-
-                                if (file && groupAvatarTarget) {
-                                    onChangeGroupAvatar(groupAvatarTarget.id, file);
-                                }
-
-                                setGroupAvatarTarget(undefined);
-                                input.value = "";
-                            }}
-                        />
-
-                        {groupCreateOpen && (
-                            <GroupChatCreator
-                                characters={characters}
-                                groupDefaultTitle={groupDefaultTitle}
-                                groupGreetingMode={groupGreetingMode}
-                                groupTitleDraft={groupTitleDraft}
-                                selectedGroupCharacterIds={selectedGroupCharacterIds}
-                                selectedGroupMembers={selectedGroupMembers}
-                                onClose={closeGroupCreate}
-                                onGroupGreetingModeChange={setGroupGreetingMode}
-                                onGroupTitleDraftChange={setGroupTitleDraft}
-                                onSubmit={submitGroupCreate}
-                                onToggleGroupCharacter={toggleGroupCharacter}
-                            />
-                        )}
-
-                        {!groupCreateOpen && (
-                            <>
-                                <div className="sidebar-filter-bar">
-                                    <Search size={15} aria-hidden="true" />
-                                    <input
-                                        type="search"
-                                        value={chatFilter}
-                                        placeholder="Search chats"
-                                        aria-label="Search chats"
-                                        onInput={(event) =>
-                                            setChatFilter(
-                                                (event.currentTarget as HTMLInputElement)
-                                                    .value,
-                                            )
-                                        }
-                                    />
-                                    {chatFilter && (
-                                        <button
-                                            type="button"
-                                            title="Clear search"
-                                            aria-label="Clear chat search"
-                                            onClick={() => setChatFilter("")}
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    )}
-                                </div>
-
-                                <section className="rail-section chat-section">
-                                    <div className="rail-title with-action">
-                                        <span>
-                                            Chat history
-                                            {hasChatFilter && (
-                                                <small>
-                                                    {filteredContextualChats.length}
-                                                </small>
-                                            )}
-                                        </span>
-                                        <span className="rail-actions">
-                                            <button
-                                                className="rail-icon-button"
-                                                type="button"
-                                                title={
-                                                    hasCharacters
-                                                        ? "Import SillyTavern chat (.jsonl) for the active character"
-                                                        : "Select a character before importing a chat"
-                                                }
-                                                disabled={!hasCharacters}
-                                                onClick={() =>
-                                                    chatImportInputRef.current?.click()
-                                                }
-                                            >
-                                                <FileInput size={14} />
-                                            </button>
-                                        </span>
-                                    </div>
-                                    <ChatList
-                                        activeChatId={activeChatId}
-                                        directChats={contextualChats}
-                                        filteredDirectChats={filteredContextualChats}
-                                        hasCharacters={hasCharacters}
-                                        hasSidebarFilter={hasChatFilter}
-                                        onOpenChatMenu={openChatMenu}
-                                        onSelectChat={onSelectChat}
-                                    />
-                                    {chatImportStatus && (
-                                        <p
-                                            className={`rail-status${
-                                                chatImportStatusFading ? "fading" : ""
-                                            }`}
-                                        >
-                                            {chatImportStatus}
-                                        </p>
-                                    )}
-                                    {chatLoadError && (
-                                        <p className="rail-error">{chatLoadError}</p>
-                                    )}
-                                </section>
-
-                                {characterImportStatus && (
-                                    <p className="rail-status">{characterImportStatus}</p>
-                                )}
-                                {characterLoadError && (
-                                    <p className="rail-error">{characterLoadError}</p>
-                                )}
-
-                                <PluginSidebarPanels
-                                    side="left"
-                                    snapshot={pluginSnapshot}
-                                />
-                            </>
-                        )}
-
-                        <PersonaBar
-                            persona={persona}
-                            personas={personas}
-                            status={userStatus}
-                            onOpenPersonasSettings={onOpenPersonasSettings}
-                            onPersonaSelect={onSelectPersona}
-                            onStatusChange={onStatusChange}
-                        />
-                    </div>
+                {groupCreateOpen && (
+                    <GroupChatCreator
+                        characters={characters}
+                        groupDefaultTitle={groupDefaultTitle}
+                        groupGreetingMode={groupGreetingMode}
+                        groupTitleDraft={groupTitleDraft}
+                        selectedGroupCharacterIds={selectedGroupCharacterIds}
+                        selectedGroupMembers={selectedGroupMembers}
+                        onClose={closeGroupCreate}
+                        onGroupGreetingModeChange={setGroupGreetingMode}
+                        onGroupTitleDraftChange={setGroupTitleDraft}
+                        onSubmit={submitGroupCreate}
+                        onToggleGroupCharacter={toggleGroupCharacter}
+                    />
                 )}
-            </aside>
+
+                {!groupCreateOpen && (
+                    <>
+                        <div className="sidebar-filter-bar">
+                            <Search size={15} aria-hidden="true" />
+                            <input
+                                type="search"
+                                value={chatFilter}
+                                placeholder="Search chats"
+                                aria-label="Search chats"
+                                onInput={(event) =>
+                                    setChatFilter(
+                                        (event.currentTarget as HTMLInputElement).value,
+                                    )
+                                }
+                            />
+                            {chatFilter && (
+                                <button
+                                    type="button"
+                                    title="Clear search"
+                                    aria-label="Clear chat search"
+                                    onClick={() => setChatFilter("")}
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        <section className="rail-section chat-section">
+                            <div className="rail-title with-action">
+                                <span>
+                                    Chat history
+                                    {hasChatFilter && (
+                                        <small>{filteredContextualChats.length}</small>
+                                    )}
+                                </span>
+                                <span className="rail-actions">
+                                    <button
+                                        className="rail-icon-button"
+                                        type="button"
+                                        title={
+                                            hasCharacters
+                                                ? "Import SillyTavern chat (.jsonl) for the active character"
+                                                : "Select a character before importing a chat"
+                                        }
+                                        disabled={!hasCharacters}
+                                        onClick={() =>
+                                            chatImportInputRef.current?.click()
+                                        }
+                                    >
+                                        <FileInput size={14} />
+                                    </button>
+                                </span>
+                            </div>
+                            <ChatList
+                                activeChatId={activeChatId}
+                                directChats={contextualChats}
+                                filteredDirectChats={filteredContextualChats}
+                                hasCharacters={hasCharacters}
+                                hasSidebarFilter={hasChatFilter}
+                                onOpenChatMenu={openChatMenu}
+                                onSelectChat={onSelectChat}
+                            />
+                            {chatImportStatus && (
+                                <p
+                                    className={`rail-status${
+                                        chatImportStatusFading ? "fading" : ""
+                                    }`}
+                                >
+                                    {chatImportStatus}
+                                </p>
+                            )}
+                            {chatLoadError && (
+                                <p className="rail-error">{chatLoadError}</p>
+                            )}
+                        </section>
+
+                        {characterImportStatus && (
+                            <p className="rail-status">{characterImportStatus}</p>
+                        )}
+                        {characterLoadError && (
+                            <p className="rail-error">{characterLoadError}</p>
+                        )}
+
+                        <PluginSidebarPanels side="left" snapshot={pluginSnapshot} />
+                    </>
+                )}
+
+                <PersonaBar
+                    persona={persona}
+                    personas={personas}
+                    status={userStatus}
+                    onOpenPersonasSettings={onOpenPersonasSettings}
+                    onPersonaSelect={onSelectPersona}
+                    onStatusChange={onStatusChange}
+                />
+            </div>
 
             {contextMenu && (
                 <div
@@ -1049,6 +1065,6 @@ export function Sidebar({
                     </section>
                 </div>
             )}
-        </>
+        </aside>
     );
 }

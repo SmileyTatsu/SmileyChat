@@ -440,6 +440,7 @@
     background: rgba(0, 0, 0, 0.6);
     opacity: 0;
     pointer-events: none;
+    cursor: pointer;
     transition: opacity 0.2s ease;
 }
 
@@ -1073,6 +1074,7 @@ textarea:disabled {
         transform: translateX(0);
         visibility: visible;
         pointer-events: auto;
+        overflow: visible;
         transition:
             transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
             box-shadow 0.2s ease,

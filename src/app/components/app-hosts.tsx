@@ -207,6 +207,7 @@ function AnimatedBackdrop({
         <div
             className={`${className}${isVisible ? "open" : ""}`}
             role="presentation"
+            onPointerDown={onClick}
             onClick={onClick}
         />
     );
