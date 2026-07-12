@@ -33,7 +33,14 @@ export function PresetPreview({
                     </article>
                 ))}
             </div>
-            <label>
+            <label
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    flex: 1,
+                    minHeight: 0,
+                }}
+            >
                 Flat context preview
                 <textarea
                     className="context-preview"

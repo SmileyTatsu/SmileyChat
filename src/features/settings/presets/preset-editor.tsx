@@ -276,7 +276,14 @@ export function PresetEditor({
                                 Enabled
                             </label>
                         </div>
-                        <label>
+                        <label
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                flex: 1,
+                                minHeight: 0,
+                            }}
+                        >
                             Content
                             <textarea
                                 className="preset-prompt-content"

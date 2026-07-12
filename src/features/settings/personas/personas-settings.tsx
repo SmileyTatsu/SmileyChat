@@ -189,7 +189,14 @@ export function PersonasSettings({
                         />
                     </label>
 
-                    <label>
+                    <label
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            flex: 1,
+                            minHeight: 0,
+                        }}
+                    >
                         Description
                         <textarea
                             className="persona-description-input"
@@ -210,7 +217,7 @@ export function PersonasSettings({
                         {"{{user_status}}"}.
                     </div>
 
-                    <div className="button-row">
+                    <div className="button-row" style={{ marginTop: "auto" }}>
                         <button
                             type="button"
                             disabled={!persona.avatar}
