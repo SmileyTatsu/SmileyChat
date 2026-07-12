@@ -87,6 +87,11 @@ export async function generateWithSavedConnection(
                     tools: payload.tools,
                 });
                 send("done", result);
+                // Streams should flush enqueued chunks before close. Yielding
+                // once also avoids a Bun edge case seen through some remote
+                // clients where an immediately closed terminal SSE frame is
+                // not observed by the peer.
+                await Bun.sleep(0);
             } catch (error) {
                 send("error", {
                     message:
