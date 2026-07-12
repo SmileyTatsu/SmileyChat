@@ -15,7 +15,7 @@ type LineOperation = {
 };
 
 const MAX_LINE_PRODUCT = 4_000_000;
-const MAX_TOKEN_PRODUCT = 80_000;
+const MAX_TOKEN_PRODUCT = 4_000_000;
 
 export function diffSideBySide(original: string, revised: string): SideBySideDiffRow[] {
     if (original === revised) {
