@@ -39,6 +39,7 @@ type CharacterPanelProps = {
     pluginSnapshot: PluginAppSnapshot | undefined;
     onBeforeAvatarUpload?: () => void | Promise<void>;
     onChange: (character: SmileyCharacter) => void;
+    onClose: () => void;
     onSavedCharacter?: (
         character: SmileyCharacter,
         summaries?: CharacterSummaryCollection,
@@ -55,6 +56,7 @@ export function CharacterPanel({
     pluginSnapshot,
     onBeforeAvatarUpload,
     onChange,
+    onClose,
     onSavedCharacter,
     onShowDebugPayload,
     onUpdateChatMetadata,
@@ -209,6 +211,15 @@ export function CharacterPanel({
                     <div className="panel-content">
                         <header className="side-panel-header">
                             <h2>Context</h2>
+                            <button
+                                className="icon-button character-mobile-close-btn"
+                                type="button"
+                                title="Close character panel"
+                                aria-label="Close character panel"
+                                onClick={onClose}
+                            >
+                                <X size={15} />
+                            </button>
                         </header>
 
                         <ContextTabs

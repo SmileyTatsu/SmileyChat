@@ -782,9 +782,6 @@ export function App() {
     });
     const handleSidebarSelectCharacter = useEventCallback((characterId: string) => {
         void selectCharacter(characterId);
-        if (isMobileLayout) {
-            setActiveSidebarOpen(false);
-        }
     });
     const handleSidebarSelectPersona = useEventCallback((personaId: string) => {
         void selectPersona(personaId);
@@ -1005,6 +1002,10 @@ export function App() {
                     pluginSnapshot={pluginSnapshot}
                     onChange={handleGroupPanelChange}
                     onChangeAvatar={handleGroupPanelChangeAvatar}
+                    onClose={() => {
+                        mobileCharacterOpen.value = false;
+                        desktopCharacterOpen.value = false;
+                    }}
                     onForceReply={handleGroupPanelForceReply}
                     onShowDebugPayload={handleShowDebugPayload}
                     onUpdateChatMetadata={handlePanelUpdateChatMetadata}
@@ -1018,6 +1019,10 @@ export function App() {
                     pluginSnapshot={pluginSnapshot}
                     onChange={handleCharacterPanelChange}
                     onBeforeAvatarUpload={handleCharacterPanelBeforeAvatarUpload}
+                    onClose={() => {
+                        mobileCharacterOpen.value = false;
+                        desktopCharacterOpen.value = false;
+                    }}
                     onSavedCharacter={handleCharacterPanelSavedCharacter}
                     onShowDebugPayload={handleShowDebugPayload}
                     onUpdateChatMetadata={handlePanelUpdateChatMetadata}

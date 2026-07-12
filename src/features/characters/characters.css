@@ -43,6 +43,10 @@
     font-size: 1rem;
 }
 
+.character-mobile-close-btn {
+    display: none;
+}
+
 .context-tabs {
     position: sticky;
     top: 0;
@@ -248,7 +252,7 @@
     overflow-y: auto;
     border-top: 1px solid #292c35;
     padding-top: 16px;
-    padding-right: 4px;
+    padding-right: 14px;
     scrollbar-gutter: stable;
 }
 
@@ -258,7 +262,7 @@
     gap: 12px;
     min-height: 0;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: 14px;
     scrollbar-gutter: stable;
 }
 
@@ -839,7 +843,7 @@
 .character-dialog-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 30;
+    z-index: 100;
     display: grid;
     place-items: center;
     background: rgba(6, 7, 10, 0.62);
@@ -1015,3 +1019,12 @@
 .chat-details-panel::-webkit-scrollbar-thumb:hover {
     background: #4b5263;
 }
+
+@media (max-width: 1120px) {
+    .character-mobile-close-btn {
+        display: inline-flex;
+        width: 32px;
+        height: 32px;
+    }
+}
+

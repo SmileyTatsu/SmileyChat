@@ -750,12 +750,12 @@
 .context-menu-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 45;
+    z-index: 140;
 }
 
 .character-context-menu {
     position: fixed;
-    z-index: 46;
+    z-index: 141;
     display: grid;
     min-width: 156px;
     border: 1px solid #303440;
@@ -815,7 +815,7 @@
 .message-confirm-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 40;
+    z-index: 150;
     display: grid;
     place-items: center;
     background: rgba(6, 7, 10, 0.62);
@@ -826,6 +826,7 @@
     display: grid;
     gap: 13px;
     width: min(460px, calc(100vw - 48px));
+    box-sizing: border-box;
     border: 1px solid #303440;
     border-radius: 10px;
     background: #17191f;

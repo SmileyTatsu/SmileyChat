@@ -491,10 +491,10 @@ export function Sidebar({
         [contextualChats, hasChatFilter, normalizedChatFilter],
     );
 
-    if (!isOpen) {
-        return (
+    return (
+        <>
             <aside
-                className="sidebar-container collapsed"
+                className={`sidebar-container ${isOpen ? "open" : "collapsed"}`}
                 aria-label="Chats and characters"
             >
                 <CharacterRail
@@ -511,43 +511,28 @@ export function Sidebar({
                     onImportFiles={importFiles}
                     onOpenSettings={onOpenSettings}
                     onOpenCharacterMenu={openCharacterMenu}
-                    onSelectCharacter={(characterId) => {
-                        onSelectCharacter(characterId);
-                        onOpenChange(true);
-                    }}
+                    onSelectCharacter={onSelectCharacter}
                 />
-            </aside>
-        );
-    }
 
-    return (
-        <aside className="sidebar-container open" aria-label="Chats and characters">
-            <CharacterRail
-                activeCharacterId={activeCharacterId}
-                characters={characters}
-                importInputRef={importInputRef}
-                isCharacterDropActive={isCharacterDropActive}
-                pendingCharacterId={pendingCharacterId}
-                onCharacterDragEnter={handleCharacterDragEnter}
-                onCharacterDragLeave={handleCharacterDragLeave}
-                onCharacterDragOver={handleCharacterDragOver}
-                onCharacterDrop={handleCharacterDrop}
-                onCreateCharacter={onCreateCharacter}
-                onImportFiles={importFiles}
-                onOpenSettings={onOpenSettings}
-                onOpenCharacterMenu={openCharacterMenu}
-                onSelectCharacter={onSelectCharacter}
-            />
-
-            <div className="left-rail open">
-                <div className="chat-rail-header">
-                    <div className="chat-rail-title-block">
-                        <span>Chats with</span>
-                        <strong>
-                            {activeCharacter?.name ?? "No character selected"}
-                        </strong>
-                    </div>
-                </div>
+                {isOpen && (
+                    <div className="left-rail open">
+                        <div className="chat-rail-header">
+                            <div className="chat-rail-title-block">
+                                <span>Chats with</span>
+                                <strong>
+                                    {activeCharacter?.name ?? "No character selected"}
+                                </strong>
+                            </div>
+                            <button
+                                className="rail-icon-button sidebar-mobile-close-btn"
+                                type="button"
+                                title="Close sidebar"
+                                aria-label="Close sidebar"
+                                onClick={() => onOpenChange(false)}
+                            >
+                                <X size={15} />
+                            </button>
+                        </div>
 
                 <div className="chat-rail-actions">
                     <button
@@ -709,15 +694,17 @@ export function Sidebar({
                     </>
                 )}
 
-                <PersonaBar
-                    persona={persona}
-                    personas={personas}
-                    status={userStatus}
-                    onOpenPersonasSettings={onOpenPersonasSettings}
-                    onPersonaSelect={onSelectPersona}
-                    onStatusChange={onStatusChange}
-                />
-            </div>
+                    <PersonaBar
+                        persona={persona}
+                        personas={personas}
+                        status={userStatus}
+                        onOpenPersonasSettings={onOpenPersonasSettings}
+                        onPersonaSelect={onSelectPersona}
+                        onStatusChange={onStatusChange}
+                    />
+                </div>
+            )}
+            </aside>
 
             {contextMenu && (
                 <div
@@ -1056,6 +1043,6 @@ export function Sidebar({
                     </section>
                 </div>
             )}
-        </aside>
+        </>
     );
 }

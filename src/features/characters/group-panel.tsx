@@ -7,6 +7,7 @@ import {
     Trash2,
     Volume2,
     VolumeX,
+    X,
 } from "lucide-preact";
 import { useMemo, useRef, useState } from "preact/hooks";
 
@@ -40,6 +41,7 @@ type GroupPanelProps = {
     pluginSnapshot: PluginAppSnapshot | undefined;
     onChange: (chat: ChatSession) => void;
     onChangeAvatar: (chatId: string, file: File) => void;
+    onClose: () => void;
     onForceReply: (characterId: string) => void;
     onShowDebugPayload: () => void;
     onUpdateChatMetadata: (metadata: ChatMetadata) => void;
@@ -54,6 +56,7 @@ export function GroupPanel({
     pluginSnapshot,
     onChange,
     onChangeAvatar,
+    onClose,
     onForceReply,
     onShowDebugPayload,
     onUpdateChatMetadata,
@@ -181,6 +184,15 @@ export function GroupPanel({
                 <div className="panel-content">
                     <header className="side-panel-header">
                         <h2>Context</h2>
+                        <button
+                            className="icon-button character-mobile-close-btn"
+                            type="button"
+                            title="Close group panel"
+                            aria-label="Close group panel"
+                            onClick={onClose}
+                        >
+                            <X size={15} />
+                        </button>
                     </header>
 
                     <ContextTabs

@@ -205,7 +205,7 @@ function AnimatedBackdrop({
 
     return (
         <div
-            className={`${className}${isVisible ? "open" : ""}`}
+            className={`${className}${isVisible ? " open" : ""}`}
             role="presentation"
             onClick={onClick}
         />

@@ -196,6 +196,7 @@
 .chat-rail-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     min-height: 48px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.045);
     margin: -4px -2px 0;
@@ -221,6 +222,10 @@
     font-size: 1rem;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.sidebar-mobile-close-btn {
+    display: none;
 }
 
 .chat-rail-actions {
@@ -1014,3 +1019,10 @@
 .rename-chat-dialog input:focus {
     border-color: #7e8fb4;
 }
+
+@media (max-width: 1120px) {
+    .sidebar-mobile-close-btn {
+        display: inline-flex;
+    }
+}
+
