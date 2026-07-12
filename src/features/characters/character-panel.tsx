@@ -24,7 +24,10 @@ import {
     isAuthorNoteActive,
 } from "./chat-details-panel";
 import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
-import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
+import {
+    PluginCharacterDetailsSections,
+    PluginSidebarPanels,
+} from "../plugins/plugin-surfaces";
 
 type CharacterPanelProps = {
     chatMetadata?: ChatMetadata;
@@ -617,6 +620,13 @@ export function CharacterPanel({
                                                 : "entries"}
                                             . Editing lore entries will be added later.
                                         </p>
+                                    )}
+                                    {pluginSnapshot && (
+                                        <PluginCharacterDetailsSections
+                                            character={character}
+                                            snapshot={pluginSnapshot}
+                                            onChange={onChange}
+                                        />
                                     )}
                                 </>
                             )}

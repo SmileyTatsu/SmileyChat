@@ -3,12 +3,14 @@ import { useEffect, useRef } from "preact/hooks";
 
 import {
     closePluginModal,
+    getPluginCharacterDetailsSections,
     getPluginModalInstances,
     getPluginSidebarPanels,
 } from "#frontend/lib/plugins/registry";
 import { createPluginStorage } from "#frontend/lib/plugins/runtime";
 import type {
     PluginAppSnapshot,
+    PluginCharacterExtension,
     PluginModalInstance,
     PluginSidebarPanel,
 } from "#frontend/lib/plugins/types";
@@ -22,6 +24,12 @@ type PluginSidebarPanelsProps = {
 
 type PluginModalHostProps = {
     snapshot: PluginAppSnapshot;
+};
+
+type PluginCharacterDetailsSectionsProps = {
+    character: PluginAppSnapshot["character"];
+    snapshot: PluginAppSnapshot;
+    onChange: (character: PluginAppSnapshot["character"]) => void;
 };
 
 export function PluginSidebarPanels({ side, snapshot }: PluginSidebarPanelsProps) {
@@ -57,6 +65,86 @@ export function PluginSidebarPanels({ side, snapshot }: PluginSidebarPanelsProps
                 );
             })}
         </div>
+    );
+}
+
+export function PluginCharacterDetailsSections({
+    character,
+    snapshot,
+    onChange,
+}: PluginCharacterDetailsSectionsProps) {
+    const sections = getPluginCharacterDetailsSections();
+
+    if (!sections.length) {
+        return null;
+    }
+
+    function updateExtension(pluginId: string, extension: PluginCharacterExtension) {
+        const safeExtension = cloneJsonRecord(extension);
+
+        if (!safeExtension) {
+            throw new Error("Character extension data must be a JSON object.");
+        }
+
+        onChange({
+            ...character,
+            data: {
+                ...character.data,
+                extensions: {
+                    ...character.data.extensions,
+                    [pluginId]: safeExtension,
+                },
+            },
+        });
+    }
+
+    function clearExtension(pluginId: string) {
+        const extensions = { ...character.data.extensions };
+        delete extensions[pluginId];
+
+        onChange({
+            ...character,
+            data: { ...character.data, extensions },
+        });
+    }
+
+    return (
+        <section
+            className="character-details-plugin-sections"
+            aria-labelledby="plugins-title"
+        >
+            <h3 id="plugins-title">Plugins</h3>
+            {sections.map((section) => {
+                const pluginId = pluginIdFromScopedId(section.id);
+                const extension = asRecord(character.data.extensions[pluginId]);
+
+                return (
+                    <section
+                        className="character-details-plugin-section"
+                        key={section.id}
+                    >
+                        <h4>{section.label}</h4>
+                        <PluginRenderSurface
+                            pluginId={pluginId}
+                            resetKey={`${section.id}:${character.id}`}
+                            surface={section.label}
+                            render={() =>
+                                section.render({
+                                    pluginId,
+                                    snapshot,
+                                    character,
+                                    extension,
+                                    storage: createPluginStorage(pluginId),
+                                    updateExtension: (nextExtension) =>
+                                        updateExtension(pluginId, nextExtension),
+                                    clearExtension: () => clearExtension(pluginId),
+                                })
+                            }
+                        />
+                    </section>
+                );
+            })}
+        </section>
     );
 }
 
@@ -133,4 +221,29 @@ function PluginModalFrame({
             </section>
         </div>
     );
+}
+
+function asRecord(value: unknown): PluginCharacterExtension {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? { ...(value as Record<string, unknown>) }
+        : {};
+}
+
+function cloneJsonRecord(
+    value: PluginCharacterExtension,
+): PluginCharacterExtension | undefined {
+    try {
+        const serialized = JSON.stringify(value);
+
+        if (!serialized) {
+            return undefined;
+        }
+
+        const parsed: unknown = JSON.parse(serialized);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? (parsed as PluginCharacterExtension)
+            : undefined;
+    } catch {
+        return undefined;
+    }
 }

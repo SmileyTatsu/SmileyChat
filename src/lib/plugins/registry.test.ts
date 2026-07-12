@@ -4,6 +4,7 @@ import {
     closePluginModal,
     createPluginApi,
     getOutputMiddlewares,
+    getPluginCharacterDetailsSections,
     getPluginConnectionProviderOwnerId,
     getPluginMacroValue,
     getPluginModalInstances,
@@ -187,6 +188,42 @@ describe("plugin registry runtime isolation", () => {
         closePluginModal(modal?.id ?? "");
 
         expect(closeCount).toBe(1);
+    });
+
+    test("character detail sections require their dedicated permission and hide when disabled", () => {
+        const pluginId = uniqueId("character-details");
+        const api = pluginApi(pluginId, ["ui:character-details"]);
+
+        api.ui.registerCharacterDetailsSection({
+            id: "appearance",
+            label: "Appearance",
+            render: () => null,
+        });
+
+        expect(getPluginCharacterDetailsSections()).toContainEqual(
+            expect.objectContaining({
+                id: `${pluginId}:appearance`,
+                label: "Appearance",
+            }),
+        );
+
+        setPluginEnabledState(pluginId, false);
+
+        expect(getPluginCharacterDetailsSections()).not.toContainEqual(
+            expect.objectContaining({ id: `${pluginId}:appearance` }),
+        );
+    });
+
+    test("character detail sections reject plugins without permission", () => {
+        const api = pluginApi(uniqueId("character-details-denied"), []);
+
+        expect(() =>
+            api.ui.registerCharacterDetailsSection({
+                id: "appearance",
+                label: "Appearance",
+                render: () => null,
+            }),
+        ).toThrow('needs "ui:character-details" permission');
     });
 
     test("preset macro resolution delegates to app handler", () => {

@@ -888,6 +888,34 @@
     resize: vertical;
 }
 
+.character-details-plugin-sections {
+    display: grid;
+    gap: 12px;
+    border-top: 1px solid #292c35;
+    padding-top: 16px;
+}
+
+.character-details-plugin-sections > h3,
+.character-details-plugin-section > h4 {
+    margin: 0;
+}
+
+.character-details-plugin-sections > h3 {
+    color: #d7dbea;
+    font-size: 0.88rem;
+}
+
+.character-details-plugin-section {
+    display: grid;
+    gap: 8px;
+}
+
+.character-details-plugin-section > h4 {
+    color: #b9bfd0;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
 .numbered-greeting-field {
     display: grid;
     gap: 8px;

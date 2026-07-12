@@ -147,6 +147,30 @@ export type PluginChatDetailsSection = {
     render: (props: PluginChatDetailsSectionProps) => ComponentChildren;
 };
 
+/** JSON-compatible values persisted in a plugin-owned character-card namespace. */
+export type PluginCharacterExtension = Record<string, unknown>;
+
+export type PluginCharacterDetailsSectionProps = {
+    pluginId: string;
+    storage: PluginStorageApi;
+    snapshot: PluginAppSnapshot;
+    character: SmileyCharacter;
+    extension: PluginCharacterExtension;
+    /**
+     * Replaces this plugin's `character.data.extensions[pluginId]` value.
+     * The core validates that the value can be stored as JSON before saving.
+     */
+    updateExtension: (extension: PluginCharacterExtension) => void;
+    /** Removes this plugin's character-card namespace without affecting other plugins. */
+    clearExtension: () => void;
+};
+
+export type PluginCharacterDetailsSection = {
+    id: string;
+    label: string;
+    render: (props: PluginCharacterDetailsSectionProps) => ComponentChildren;
+};
+
 export type MessageRenderContext = {
     content: string;
     message: Message;
@@ -408,6 +432,7 @@ export type SmileyPluginApi = {
         registerSettingsPanel(panel: PluginSettingsPanel): void;
         registerSidebarPanel(panel: PluginSidebarPanel): void;
         registerChatDetailsSection(section: PluginChatDetailsSection): void;
+        registerCharacterDetailsSection(section: PluginCharacterDetailsSection): void;
         registerMessageRenderer(renderer: MessageRenderer): void;
         registerMessageAction(action: PluginMessageAction): void;
         registerComposerAction(action: PluginComposerAction): void;
