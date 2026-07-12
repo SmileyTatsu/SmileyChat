@@ -945,6 +945,8 @@
 .character-dialogue-color-inputs input[type="text"] {
     flex: 1 1 auto;
     min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    letter-spacing: 0.03em;
 }
 
 .character-details-plugin-sections > h3,

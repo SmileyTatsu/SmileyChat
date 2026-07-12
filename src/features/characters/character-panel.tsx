@@ -661,7 +661,10 @@ export function CharacterPanel({
                                                         value={colorInputText}
                                                         placeholder="#f2c78f"
                                                         onInput={(event) => {
-                                                            const value = event.currentTarget.value;
+                                                            let value = event.currentTarget.value.trim();
+                                                            if (value.length > 0 && !value.startsWith("#")) {
+                                                                value = "#" + value;
+                                                            }
                                                             setColorInputText(value);
                                                             updateCharacterData(
                                                                 setCharacterDialogueColor(
