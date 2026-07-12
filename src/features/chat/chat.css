@@ -525,26 +525,26 @@
 
 .message-header {
     grid-area: header;
-    @apply flex items-center gap-2;
+    @apply flex min-w-0 items-center gap-2;
 
     .character-title {
         @apply font-bold;
     }
 
     .message-meta {
-        @apply flex items-center gap-2;
+        @apply flex min-w-0 items-center gap-2;
 
         .character-title {
-            @apply text-xl font-bold;
+            @apply truncate text-xl font-bold;
         }
 
         time {
-            @apply text-xs;
+            @apply shrink-0 text-xs whitespace-nowrap;
         }
     }
 
     .message-overlay-actions {
-        @apply pointer-events-none ml-auto flex items-center gap-1 opacity-0 transition-opacity;
+        @apply pointer-events-none ml-auto flex shrink-0 items-center gap-1 opacity-0 transition-opacity;
     }
 }
 
