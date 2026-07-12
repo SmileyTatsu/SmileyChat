@@ -12,6 +12,8 @@ import {
     hasStreamingMessageDraftValue,
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
+import { getMessageUpdateMiddlewares } from "#frontend/lib/plugins/registry";
+import type { MessageUpdateKind } from "#frontend/lib/plugins/types";
 import type {
     ChatAttachment,
     ChatSession,
@@ -43,14 +45,22 @@ export function useMessageOperations({
     persona,
     resolveChatMacros,
 }: UseMessageOperationsOptions) {
-    function updateChatMessages(messages: Message[], sourceChat = latestChatRef.current) {
+    function updateChatMessages(
+        messages: Message[],
+        sourceChat = latestChatRef.current,
+        messageUpdateKind?: MessageUpdateKind,
+    ) {
         if (!sourceChat) {
             return;
         }
 
+        const nextMessages = messageUpdateKind
+            ? applyMessageUpdateMiddlewares(messages, sourceChat, messageUpdateKind)
+            : messages;
+
         const nextChat = {
             ...sourceChat,
-            messages,
+            messages: nextMessages,
             updatedAt: new Date().toISOString(),
         };
 
@@ -141,6 +151,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "edit",
         );
     }
 
@@ -161,6 +172,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "swipe",
         );
     }
 
@@ -186,6 +198,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "swipe",
         );
         return true;
     }
@@ -196,6 +209,7 @@ export function useMessageOperations({
                 message.id === messageId ? appendMessageSwipe(message, "") : message,
             ),
             sourceChat,
+            "swipe",
         );
     }
 
@@ -226,6 +240,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "swipe",
         );
     }
 
@@ -257,6 +272,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "update",
         );
         finalizeStreamingMessageDraft(messageId);
     }
@@ -279,6 +295,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "update",
         );
         finalizeStreamingMessageDraft(messageId);
     }
@@ -297,6 +314,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "update",
         );
         finalizeStreamingMessageDraft(messageId);
     }
@@ -338,6 +356,7 @@ export function useMessageOperations({
                 };
             }),
             sourceChat,
+            "update",
         );
         clearStreamingMessageDraft(messageId);
     }
@@ -361,6 +380,7 @@ export function useMessageOperations({
                     : message,
             ),
             sourceChat,
+            "update",
         );
         finalizeStreamingMessageDraft(messageId);
         return true;
@@ -383,6 +403,56 @@ export function useMessageOperations({
         updateMessageContent,
         updateMessageReasoning,
     };
+}
+
+function applyMessageUpdateMiddlewares(
+    messages: Message[],
+    sourceChat: ChatSession,
+    kind: MessageUpdateKind,
+) {
+    const middlewares = getMessageUpdateMiddlewares();
+
+    if (middlewares.length === 0) {
+        return messages;
+    }
+
+    const previousMessages = new Map(
+        sourceChat.messages.map((message) => [message.id, message]),
+    );
+
+    return messages.map((message) => {
+        const previousMessage = previousMessages.get(message.id);
+
+        if (!previousMessage || previousMessage === message) {
+            return message;
+        }
+
+        let nextMessage = message;
+
+        for (const middleware of middlewares) {
+            try {
+                const replacement = middleware(nextMessage, {
+                    chat: sourceChat,
+                    previousMessage,
+                    kind,
+                });
+
+                if (replacement !== undefined) {
+                    if (replacement.id !== message.id) {
+                        console.warn(
+                            "Plugin message update middleware cannot change a message ID.",
+                        );
+                        continue;
+                    }
+                    nextMessage = replacement;
+                }
+            } catch (error) {
+                console.warn("Plugin message update middleware failed:", error);
+            }
+        }
+
+        return nextMessage;
+    });
 }
 
 function applyStreamingDraftToMessage(

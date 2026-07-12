@@ -7,6 +7,7 @@ import { estimateChatGenerationMessages } from "../prompt/token-estimator";
 import { requireDeclaredPluginPermission } from "./permissions";
 import type {
     ChatInputMiddleware,
+    MessageUpdateMiddleware,
     ChatOutputMiddleware,
     ChatOutputMiddlewareRegistration,
     LoadedPlugin,
@@ -72,6 +73,7 @@ const promptContextMiddlewares: Array<Owned<PluginPromptContextMiddleware>> = []
 const promptInjectors: Array<Owned<PluginPromptInjector>> = [];
 const promptMiddlewares: Array<Owned<PromptMiddleware>> = [];
 const outputMiddlewares: Array<Owned<StoredOutputMiddleware>> = [];
+const messageUpdateMiddlewares: Array<Owned<MessageUpdateMiddleware>> = [];
 const modalInstances: Array<Owned<PluginModalInstance>> = [];
 const macroResolvers = new Map<string, Owned<PluginMacroResolver>>();
 const connectionProviders = new Map<string, Owned<PluginConnectionProvider>>();
@@ -222,6 +224,7 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedItems(promptInjectors, pluginId);
     removeOwnedItems(promptMiddlewares, pluginId);
     removeOwnedItems(outputMiddlewares, pluginId);
+    removeOwnedItems(messageUpdateMiddlewares, pluginId);
     for (const item of modalInstances) {
         if (item.pluginId === pluginId && item.value.onClose) {
             callPluginCallback(pluginId, "modal close handler", item.value.onClose);
@@ -346,6 +349,10 @@ export function getOutputMiddlewares() {
     return enabledValues(outputMiddlewares)
         .sort((left, right) => (right.priority ?? 0) - (left.priority ?? 0))
         .map((middleware) => middleware.run);
+}
+
+export function getMessageUpdateMiddlewares() {
+    return enabledValues(messageUpdateMiddlewares);
 }
 
 export function getPluginMacroValue(
@@ -667,6 +674,13 @@ export function createPluginApi(
                         ...middleware,
                         id: middlewareId,
                     },
+                });
+            },
+            registerMessageUpdateMiddleware(middleware) {
+                requireDeclaredPluginPermission(manifest, "chat:message-update");
+                messageUpdateMiddlewares.push({
+                    pluginId: manifest.id,
+                    value: middleware,
                 });
             },
         },

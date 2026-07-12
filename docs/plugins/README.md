@@ -23,7 +23,7 @@ Current plugin surfaces:
 - Model token estimation and context-budget lookup for plugin-managed trimming.
 - Guarded outbound network fetch through the local server.
 - Sidebar panels, header actions, and app-hosted modals.
-- Chat input, prompt, and output middleware.
+- Chat input, prompt, output, and message-update middleware.
 - Runtime character presence and direct message injection.
 - Custom preset macros.
 - Connection provider registration.

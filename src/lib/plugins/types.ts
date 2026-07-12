@@ -281,6 +281,25 @@ export type ChatOutputMiddlewareRegistration = {
     run: ChatOutputMiddleware;
 };
 
+/** Identifies the core operation that changed an existing message. */
+export type MessageUpdateKind = "edit" | "swipe" | "update";
+
+export type MessageUpdateMiddlewareContext = {
+    chat: ChatSession;
+    /** The message before this change. Treat this value as read-only. */
+    previousMessage: Message;
+    kind: MessageUpdateKind;
+};
+
+/**
+ * Runs synchronously whenever an existing message changes. Return a replacement
+ * message to continue the pipeline, or `undefined` to keep the received message.
+ */
+export type MessageUpdateMiddleware = (
+    message: Message,
+    context: MessageUpdateMiddlewareContext,
+) => Message | undefined;
+
 export type PluginMacroResolver = (
     context: MacroContext,
     key: string,
@@ -452,6 +471,7 @@ export type SmileyPluginApi = {
         registerOutputMiddleware(
             middleware: ChatOutputMiddleware | ChatOutputMiddlewareRegistration,
         ): void;
+        registerMessageUpdateMiddleware(middleware: MessageUpdateMiddleware): void;
     };
     presets: {
         registerMacro(name: string, resolver: PluginMacroResolver): void;

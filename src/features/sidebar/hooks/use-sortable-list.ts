@@ -69,10 +69,10 @@ export function useSortableList({
             if (initialRects.length > 0) {
                 const firstRect = initialRects[0];
                 const lastRect = initialRects[initialRects.length - 1];
-                
+
                 const minDeltaY = firstRect.top - draggedRect.top;
                 const maxDeltaY = lastRect.bottom - draggedRect.bottom;
-                
+
                 if (deltaY < minDeltaY) deltaY = minDeltaY;
                 if (deltaY > maxDeltaY) deltaY = maxDeltaY;
             }

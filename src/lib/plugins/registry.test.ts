@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import {
     closePluginModal,
     createPluginApi,
+    getMessageUpdateMiddlewares,
     getOutputMiddlewares,
     getPluginCharacterDetailsSections,
     getPluginConnectionProviderOwnerId,
@@ -17,6 +18,7 @@ import {
 import type {
     PluginAppSnapshot,
     PluginManifest,
+    MessageUpdateMiddleware,
     PluginNetworkApi,
     PluginStorageApi,
 } from "./types";
@@ -166,6 +168,18 @@ describe("plugin registry runtime isolation", () => {
         }
 
         expect(order).toEqual(["high", "low"]);
+    });
+
+    test("message update middleware is enabled only while its plugin is enabled", () => {
+        const pluginId = uniqueId("message-update");
+        const api = pluginApi(pluginId, ["chat:message-update"]);
+        const middleware: MessageUpdateMiddleware = (message) => message;
+
+        api.chat.registerMessageUpdateMiddleware(middleware);
+        expect(getMessageUpdateMiddlewares()).toContain(middleware);
+
+        setPluginEnabledState(pluginId, false);
+        expect(getMessageUpdateMiddlewares()).not.toContain(middleware);
     });
 
     test("modal onClose runs when a plugin modal is closed", () => {

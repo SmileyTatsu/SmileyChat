@@ -67,6 +67,7 @@ Recommended labels:
 - `chat:input`
 - `chat:prompt`
 - `chat:output`
+- `chat:message-update`
 - `presets:macros`
 - `connections:providers`
 - `events`

@@ -46,6 +46,7 @@ These permissions are currently checked:
 | `api.chat.registerPromptInjector`                                              | `chat:prompt-inject`    |
 | `api.chat.registerPromptMiddleware`                                            | `chat:prompt`           |
 | `api.chat.registerOutputMiddleware`                                            | `chat:output`           |
+| `api.chat.registerMessageUpdateMiddleware`                                     | `chat:message-update`   |
 | `api.presets.registerMacro`, `api.presets.resolveMacros`                       | `presets:macros`        |
 | `api.connections.registerProvider`                                             | `connections:providers` |
 | `api.events.on`, `api.events.emit`                                             | `events`                |
@@ -659,6 +660,32 @@ Context includes:
 This is the right hook for cleanup, censorship, formatting, translation, or test transformations.
 
 Requires `chat:output`.
+
+## `api.chat.registerMessageUpdateMiddleware`
+
+Runs synchronously whenever an existing message changes through the core message
+operations: editing its content, selecting or creating a swipe, or updating its
+content, reasoning, status, or attachments. It does not run for newly created or
+deleted messages. Return a replacement message to modify the saved update, or
+`undefined` to leave it unchanged.
+
+```js
+api.chat.registerMessageUpdateMiddleware((message, context) => {
+    if (context.kind !== "edit") return;
+
+    return {
+        ...message,
+        metadata: { ...message.metadata, editedByPlugin: true },
+    };
+});
+```
+
+Context includes the containing `chat`, the read-only `previousMessage`, and `kind`
+(`"edit"`, `"swipe"`, or `"update"`). The message ID must remain unchanged. This
+hook is synchronous so streaming and swipe navigation stay responsive; errors are
+logged and do not interrupt the message update.
+
+Requires `chat:message-update`.
 
 ## `api.presets.registerMacro` and `api.presets.resolveMacros`
 

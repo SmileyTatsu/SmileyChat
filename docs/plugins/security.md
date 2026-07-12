@@ -10,7 +10,7 @@ Plugins can:
 
 - Read current app snapshots exposed by the plugin API.
 - Register UI hooks.
-- Modify chat input, compiled prompt messages, and AI output through middleware.
+- Modify chat input, compiled prompt messages, AI output, and saved message updates through middleware.
 - Request generations from configured models with custom temporary histories.
 - Register connection providers.
 - Store plugin-owned JSON data.
