@@ -18,6 +18,7 @@ type State = { settings: McpSettings; servers: McpServerRecord[] };
 let latest: State | undefined;
 
 let disposers: Array<() => void> = [];
+let connectionRefreshTimer: number | undefined;
 
 export async function activate(api: SmileyPluginApi) {
     await refresh(api);
@@ -35,6 +36,10 @@ export async function activate(api: SmileyPluginApi) {
     });
 
     return () => {
+        if (connectionRefreshTimer !== undefined) {
+            window.clearTimeout(connectionRefreshTimer);
+            connectionRefreshTimer = undefined;
+        }
         clearTools();
     };
 }
@@ -58,6 +63,20 @@ async function request<T>(url: string, init?: RequestInit) {
 async function refresh(api: SmileyPluginApi) {
     latest = await request<State>("/api/mcp");
     await refreshTools(api);
+    scheduleConnectionRefresh(api);
+}
+
+function scheduleConnectionRefresh(api: SmileyPluginApi) {
+    if (connectionRefreshTimer !== undefined) {
+        window.clearTimeout(connectionRefreshTimer);
+        connectionRefreshTimer = undefined;
+    }
+    if (!latest?.servers.some((server) => server.connecting)) return;
+
+    connectionRefreshTimer = window.setTimeout(() => {
+        connectionRefreshTimer = undefined;
+        void refresh(api).catch(() => undefined);
+    }, 1_000);
 }
 
 async function refreshTools(api: SmileyPluginApi) {
@@ -138,6 +157,18 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
     useEffect(() => {
         setState(latest);
     }, []);
+
+    useEffect(() => {
+        if (!state?.servers.some((server) => server.connecting)) return;
+
+        const timer = window.setTimeout(() => {
+            void refresh(api)
+                .then(() => setState(latest))
+                .catch(() => undefined);
+        }, 1_000);
+
+        return () => window.clearTimeout(timer);
+    }, [api, state]);
 
     const reload = async () => {
         setProcessing(true);
@@ -256,11 +287,13 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
                     <p className="spp-muted">No servers configured.</p>
                 )}
                 {state?.servers.map((server) => {
-                    const statusColor = server.connected
-                        ? "#52b69a"
-                        : server.error
-                          ? "#eb5757"
-                          : "#9da3b4";
+                    const statusColor = server.connecting
+                        ? "#e9b44c"
+                        : server.connected
+                          ? "#52b69a"
+                          : server.error
+                            ? "#eb5757"
+                            : "#9da3b4";
 
                     return (
                         <article className="mcp-server-row" key={server.id}>
@@ -278,13 +311,15 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
                                     {server.name}
                                 </strong>
                                 <small>
-                                    {server.connected
-                                        ? `${server.tools.length} tools`
-                                        : (server.error ?? "Disconnected")}
+                                    {server.connecting
+                                        ? "Connecting and discovering tools…"
+                                        : server.connected
+                                          ? `${server.tools.length} tools`
+                                          : (server.error ?? "Disconnected")}
                                 </small>
                             </span>
                             <div>
-                                {server.connected ? (
+                                {server.connected || server.connecting ? (
                                     <button
                                         type="button"
                                         disabled={processing}
@@ -303,7 +338,9 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
                                 )}
                                 <button
                                     type="button"
-                                    disabled={processing || !server.enabled}
+                                    disabled={
+                                        processing || !server.enabled || server.connecting
+                                    }
                                     onClick={() => void refreshServer(server.id)}
                                 >
                                     Refresh
@@ -378,9 +415,11 @@ function McpPicker({
                             <span>
                                 <span>{server.name}</span>
                                 <small>
-                                    {server.connected
-                                        ? `${server.tools.length} available tools`
-                                        : "Not connected"}
+                                    {server.connecting
+                                        ? "Connecting and discovering tools…"
+                                        : server.connected
+                                          ? `${server.tools.length} available tools`
+                                          : "Not connected"}
                                 </small>
                             </span>
                         </label>

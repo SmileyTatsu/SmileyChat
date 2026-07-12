@@ -35,6 +35,8 @@ export type McpTool = {
 export type McpServerStatus = {
     id: string;
     connected: boolean;
+    /** The transport is starting or its tool list is still being discovered. */
+    connecting: boolean;
     error?: string;
     tools: McpTool[];
 };

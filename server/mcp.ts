@@ -28,6 +28,7 @@ type Connection = {
     client: Client;
     transport: StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport;
     tools: McpTool[];
+    connecting: boolean;
     error?: string;
 };
 
@@ -148,7 +149,10 @@ async function records(settings: McpSettings): Promise<McpServerRecord[]> {
         const connection = connections.get(server.id);
         return {
             ...server,
-            connected: Boolean(connection),
+            // A connection is usable only after its initial tool discovery. Stdio
+            // servers launched with npx can take a while to install and start.
+            connected: Boolean(connection && !connection.connecting),
+            connecting: connection?.connecting ?? false,
             ...(connection?.error ? { error: connection.error } : {}),
             tools: connection?.tools ?? [],
         };
@@ -181,7 +185,7 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
         { capabilities: {} },
     );
 
-    const connection: Connection = { client, transport, tools: [] };
+    const connection: Connection = { client, transport, tools: [], connecting: true };
     connections.set(server.id, connection);
 
     try {
@@ -191,6 +195,7 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
             () => void discover(server, connection),
         );
         await discover(server, connection);
+        connection.connecting = false;
         return connection;
     } catch (error) {
         connection.error = error instanceof Error ? error.message : "Connection failed";
