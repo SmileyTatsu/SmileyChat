@@ -216,16 +216,18 @@ function tokenizeText(text: string): string[] {
 function buildTokenDiff(originalTokens: string[], revisedTokens: string[]): DiffPiece[] {
     const rows = originalTokens.length + 1;
     const columns = revisedTokens.length + 1;
-    const table = Array.from({ length: rows }, () => new Uint32Array(columns));
+    const table = new Uint32Array(rows * columns);
 
     for (let row = originalTokens.length - 1; row >= 0; row -= 1) {
+        const rowOffset = row * columns;
+        const nextRowOffset = (row + 1) * columns;
         for (let column = revisedTokens.length - 1; column >= 0; column -= 1) {
             if (originalTokens[row] === revisedTokens[column]) {
-                table[row][column] = table[row + 1][column + 1] + 1;
+                table[rowOffset + column] = table[nextRowOffset + column + 1] + 1;
             } else {
-                table[row][column] = Math.max(
-                    table[row + 1][column],
-                    table[row][column + 1],
+                table[rowOffset + column] = Math.max(
+                    table[nextRowOffset + column],
+                    table[rowOffset + column + 1],
                 );
             }
         }
@@ -236,11 +238,14 @@ function buildTokenDiff(originalTokens: string[], revisedTokens: string[]): Diff
     let column = 0;
 
     while (row < originalTokens.length && column < revisedTokens.length) {
+        const rowOffset = row * columns;
+        const nextRowOffset = (row + 1) * columns;
+
         if (originalTokens[row] === revisedTokens[column]) {
             pieces.push({ type: "equal", text: originalTokens[row] });
             row += 1;
             column += 1;
-        } else if (table[row + 1][column] >= table[row][column + 1]) {
+        } else if (table[nextRowOffset + column] >= table[rowOffset + column + 1]) {
             pieces.push({ type: "removed", text: originalTokens[row] });
             row += 1;
         } else {
