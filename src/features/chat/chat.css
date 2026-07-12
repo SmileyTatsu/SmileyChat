@@ -926,6 +926,18 @@
     opacity: 0.42;
 }
 
+@media (max-width: 768px) {
+    .swipe-controls button {
+        width: 28px;
+        height: 28px;
+    }
+
+    .swipe-controls span {
+        min-width: 24px;
+        font-size: 0.68rem;
+    }
+}
+
 .swipe-loading-dot {
     flex: 0 0 auto;
     width: 7px;
