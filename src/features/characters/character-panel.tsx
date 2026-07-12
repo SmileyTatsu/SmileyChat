@@ -1,4 +1,4 @@
-import { ImagePlus, ListPlus, SlidersHorizontal, X } from "lucide-preact";
+import { ImagePlus, ListPlus, SlidersHorizontal, Star, X } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import { uploadCharacterAvatar } from "#frontend/lib/api/client";
@@ -201,6 +201,16 @@ export function CharacterPanel({
 
     const alternateGreetingKeys = syncAlternateGreetingKeys();
 
+    function toggleFavorite() {
+        onChange({
+            ...character,
+            metadata: {
+                ...character.metadata,
+                isFavorite: !character.metadata?.isFavorite,
+            },
+        });
+    }
+
     return (
         <>
             <aside
@@ -272,7 +282,37 @@ export function CharacterPanel({
                                         </span>
                                     </button>
                                     <div>
-                                        <h3>{character.data.name}</h3>
+                                        <div className="profile-name-row">
+                                            <h3>{character.data.name}</h3>
+                                            <button
+                                                className={`icon-button favorite-btn ${
+                                                    character.metadata?.isFavorite
+                                                        ? "is-favorite"
+                                                        : ""
+                                                }`}
+                                                type="button"
+                                                title={
+                                                    character.metadata?.isFavorite
+                                                        ? "Remove from favorites"
+                                                        : "Add to favorites"
+                                                }
+                                                aria-label={
+                                                    character.metadata?.isFavorite
+                                                        ? "Remove from favorites"
+                                                        : "Add to favorites"
+                                                }
+                                                onClick={toggleFavorite}
+                                            >
+                                                <Star
+                                                    size={16}
+                                                    fill={
+                                                        character.metadata?.isFavorite
+                                                            ? "currentColor"
+                                                            : "none"
+                                                    }
+                                                />
+                                            </button>
+                                        </div>
                                         {getCharacterTagline(character) && (
                                             <p>{getCharacterTagline(character)}</p>
                                         )}

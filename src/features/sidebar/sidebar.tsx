@@ -9,6 +9,8 @@ import {
     Search,
     Settings,
     Sparkles,
+    Star,
+    StarOff,
     Trash2,
     UploadCloud,
     Users,
@@ -98,6 +100,46 @@ type CharacterRailProps = {
     onSelectCharacter: (characterId: string) => void;
 };
 
+function CharacterRailAvatar({
+    character,
+    isActive,
+    isPending,
+    onSelectCharacter,
+    onOpenCharacterMenu,
+}: {
+    character: CharacterSummary;
+    isActive: boolean;
+    isPending: boolean;
+    onSelectCharacter: (id: string) => void;
+    onOpenCharacterMenu: (event: MouseEvent, character: CharacterSummary) => void;
+}) {
+    return (
+        <button
+            className={`character-rail-avatar ${isActive ? "active" : ""} ${
+                isPending ? "pending" : ""
+            }`}
+            type="button"
+            title={character.name}
+            aria-label={character.name}
+            aria-current={isActive ? "true" : undefined}
+            aria-busy={isPending ? "true" : undefined}
+            onClick={() => onSelectCharacter(character.id)}
+            onContextMenu={(event) => onOpenCharacterMenu(event, character)}
+        >
+            {character.avatar ? (
+                <img src={character.avatar.path} alt="" />
+            ) : (
+                <span>{character.name.trim().charAt(0) || "?"}</span>
+            )}
+            {character.isFavorite && (
+                <div className="character-rail-avatar-favorite-badge">
+                    <Star size={10} fill="currentColor" />
+                </div>
+            )}
+        </button>
+    );
+}
+
 function CharacterRail({
     activeCharacterId,
     characters,
@@ -115,6 +157,8 @@ function CharacterRail({
     onSelectCharacter,
 }: CharacterRailProps) {
     const activeRowCharacterId = pendingCharacterId || activeCharacterId;
+    const favorites = characters.filter((c) => c.isFavorite);
+    const regular = characters.filter((c) => !c.isFavorite);
 
     return (
         <div
@@ -130,40 +174,37 @@ function CharacterRail({
             </div>
             <div className="character-rail-divider" />
             <div className="character-rail-roster" role="list">
-                {characters.length > 0 ? (
-                    characters.map((character) => {
-                        const isPending = character.id === pendingCharacterId;
-                        const isActive = character.id === activeRowCharacterId;
-
-                        return (
-                            <button
-                                className={`character-rail-avatar ${
-                                    isActive ? "active" : ""
-                                } ${isPending ? "pending" : ""}`}
+                {favorites.length > 0 && (
+                    <>
+                        {favorites.map((character) => (
+                            <CharacterRailAvatar
                                 key={character.id}
-                                type="button"
-                                title={character.name}
-                                aria-label={character.name}
-                                aria-current={isActive ? "true" : undefined}
-                                aria-busy={isPending ? "true" : undefined}
-                                onClick={() => onSelectCharacter(character.id)}
-                                onContextMenu={(event) =>
-                                    onOpenCharacterMenu(event, character)
-                                }
-                            >
-                                {character.avatar ? (
-                                    <img src={character.avatar.path} alt="" />
-                                ) : (
-                                    <span>{character.name.trim().charAt(0) || "?"}</span>
-                                )}
-                            </button>
-                        );
-                    })
-                ) : (
+                                character={character}
+                                isActive={character.id === activeRowCharacterId}
+                                isPending={character.id === pendingCharacterId}
+                                onSelectCharacter={onSelectCharacter}
+                                onOpenCharacterMenu={onOpenCharacterMenu}
+                            />
+                        ))}
+                        {regular.length > 0 && <div className="character-rail-divider" />}
+                    </>
+                )}
+                {regular.length > 0 ? (
+                    regular.map((character) => (
+                        <CharacterRailAvatar
+                            key={character.id}
+                            character={character}
+                            isActive={character.id === activeRowCharacterId}
+                            isPending={character.id === pendingCharacterId}
+                            onSelectCharacter={onSelectCharacter}
+                            onOpenCharacterMenu={onOpenCharacterMenu}
+                        />
+                    ))
+                ) : favorites.length === 0 ? (
                     <div className="character-rail-empty" title="No characters yet">
                         ?
                     </div>
-                )}
+                ) : null}
             </div>
             <div className="character-rail-actions">
                 <button
@@ -782,6 +823,22 @@ export function Sidebar({
                                 PNG
                             </button>
                         </div>
+                        <button
+                            type="button"
+                            role="menuitem"
+                            disabled={true}
+                            title="To favorite, open the character panel on the right"
+                        >
+                            {contextMenu.character.isFavorite ? (
+                                <>
+                                    <StarOff size={14} /> Remove Favorite
+                                </>
+                            ) : (
+                                <>
+                                    <Star size={14} /> Favorite
+                                </>
+                            )}
+                        </button>
                         <button
                             className="danger-menu-item"
                             type="button"

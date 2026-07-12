@@ -98,6 +98,7 @@ export type SmileyCharacter = {
     metadata?: {
         lorebookIds?: string[];
         primaryLorebookId?: string;
+        isFavorite?: boolean;
         [key: string]: unknown;
     };
     createdAt: string;
@@ -110,6 +111,7 @@ export type CharacterSummary = {
     tagline: string;
     avatar?: SmileyCharacter["avatar"];
     importedFrom?: SmileyCharacter["importedFrom"];
+    isFavorite?: boolean;
     updatedAt: string;
 };
 
@@ -120,6 +122,7 @@ export type CharacterIndexEntry = {
     basePath: string;
     avatar?: SmileyCharacter["avatar"];
     importedFrom?: SmileyCharacter["importedFrom"];
+    isFavorite?: boolean;
     updatedAt: string;
 };
 

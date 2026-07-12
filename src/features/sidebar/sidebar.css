@@ -158,6 +158,20 @@
     object-position: center;
 }
 
+.character-rail-avatar-favorite-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 16px;
+    height: 16px;
+    background: #0e0f12;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #eab308;
+    z-index: 2;
+}
+
 .character-rail-avatar span,
 .character-rail-empty {
     text-transform: uppercase;

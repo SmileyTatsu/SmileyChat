@@ -139,6 +139,7 @@
 }
 
 .profile-card > div {
+    flex: 1;
     min-width: 0;
 }
 
@@ -242,6 +243,30 @@
     color: #ffb4bd;
     font-size: 0.8rem;
     line-height: 1.35;
+}
+
+.profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between;
+}
+
+.favorite-btn {
+    color: var(--text-muted);
+    transition: color 0.15s ease;
+}
+
+.favorite-btn:hover {
+    color: var(--text-normal);
+}
+
+.favorite-btn.is-favorite {
+    color: #eab308;
+}
+
+.favorite-btn.is-favorite:hover {
+    color: #facc15;
 }
 
 .character-form {

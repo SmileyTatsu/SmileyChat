@@ -114,6 +114,7 @@ function normalizeCharacterSummary(value: unknown): CharacterSummary | undefined
     const name = asString(value.name);
     const avatar = normalizeImageAvatar(value.avatar);
     const importedFrom = normalizeImportedFrom(value.importedFrom);
+    const isFavorite = value.isFavorite === true;
 
     if (!id || !name) {
         return undefined;
@@ -125,6 +126,7 @@ function normalizeCharacterSummary(value: unknown): CharacterSummary | undefined
         tagline: asString(value.tagline),
         ...(avatar ? { avatar } : {}),
         ...(importedFrom ? { importedFrom } : {}),
+        ...(isFavorite ? { isFavorite } : {}),
         updatedAt: normalizeUpdatedAt(value.updatedAt, undefined, {
             requireIso: false,
         }),
@@ -256,6 +258,7 @@ export function characterToSummary(character: SmileyCharacter): CharacterSummary
         tagline: getCharacterTagline(character),
         ...(character.avatar ? { avatar: character.avatar } : {}),
         ...(character.importedFrom ? { importedFrom: character.importedFrom } : {}),
+        ...(character.metadata?.isFavorite ? { isFavorite: true } : {}),
         updatedAt: character.updatedAt,
     };
 }

@@ -596,6 +596,7 @@ function normalizeCharacterIndexEntry(value: unknown): CharacterIndexEntry | und
         ...(isRecord(value.importedFrom)
             ? { importedFrom: value.importedFrom as SmileyCharacter["importedFrom"] }
             : {}),
+        ...(value.isFavorite === true ? { isFavorite: true } : {}),
         updatedAt,
     };
 }
@@ -633,6 +634,7 @@ function indexEntryToSummary(entry: CharacterIndexEntry) {
         tagline: entry.tagline,
         ...(entry.avatar ? { avatar: entry.avatar } : {}),
         ...(entry.importedFrom ? { importedFrom: entry.importedFrom } : {}),
+        ...(entry.isFavorite ? { isFavorite: entry.isFavorite } : {}),
         updatedAt: entry.updatedAt,
     };
 }
