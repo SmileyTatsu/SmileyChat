@@ -14,6 +14,7 @@ export const regexReplacerManifest: PluginManifest = {
         "chat:output",
         "chat:message-update",
         "chat:prompt",
+        "state:read",
         "presets:macros",
         "storage",
     ],
