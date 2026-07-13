@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import {
+    applyMessageDisplayMiddlewares,
     closePluginModal,
     createPluginApi,
     getMessageUpdateMiddlewares,
@@ -180,6 +181,18 @@ describe("plugin registry runtime isolation", () => {
 
         setPluginEnabledState(pluginId, false);
         expect(getMessageUpdateMiddlewares()).not.toContain(middleware);
+    });
+
+    test("display middleware failures preserve the original message text", () => {
+        console.warn = () => {};
+        const api = pluginApi(uniqueId("message-display"), ["chat:display"]);
+        api.ui.registerMessageDisplayMiddleware(() => {
+            throw new Error("display transform failed");
+        });
+
+        expect(applyMessageDisplayMiddlewares("Saved chat text", {} as never)).toBe(
+            "Saved chat text",
+        );
     });
 
     test("modal onClose runs when a plugin modal is closed", () => {

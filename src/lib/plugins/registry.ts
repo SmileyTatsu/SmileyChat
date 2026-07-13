@@ -9,6 +9,7 @@ import type {
     ChatInputMiddleware,
     MessageUpdateMiddleware,
     MessageDisplayMiddleware,
+    MessageRenderContext,
     ChatOutputMiddleware,
     ChatOutputMiddlewareRegistration,
     LoadedPlugin,
@@ -298,6 +299,39 @@ export function getMessageRenderers() {
 
 export function getMessageDisplayMiddlewares() {
     return enabledValues(messageDisplayMiddlewares);
+}
+
+/**
+ * Display middleware runs during Preact rendering, so a plugin failure must
+ * never prevent the saved chat message from rendering.
+ */
+export function applyMessageDisplayMiddlewares(
+    content: string,
+    context: MessageRenderContext,
+) {
+    return messageDisplayMiddlewares
+        .filter((middleware) => isPluginEnabled(middleware.pluginId))
+        .reduce((current, middleware) => {
+            try {
+                const next = middleware.value(current, { ...context, content: current });
+
+                if (typeof next !== "string") {
+                    console.warn(
+                        `Plugin ${getPluginDisplayName(middleware.pluginId)} display middleware returned a non-text value.`,
+                    );
+                    return current;
+                }
+
+                return next;
+            } catch (error) {
+                warnPluginCallbackError(
+                    middleware.pluginId,
+                    "message display middleware",
+                    error,
+                );
+                return current;
+            }
+        }, content);
 }
 
 export function getPluginMessageActions() {

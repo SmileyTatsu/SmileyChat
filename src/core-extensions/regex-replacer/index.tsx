@@ -131,8 +131,11 @@ function runForDestination(
     destination: "save" | "display" | "prompt",
     depth: number,
 ) {
-    const profile = getRegexSettings().profiles.find(
-        (item) => item.id === getRegexSettings().activeProfileId,
+    const settings = getRegexSettings();
+    if (!settings.enabled) return text;
+
+    const profile = settings.profiles.find(
+        (item) => item.id === settings.activeProfileId,
     );
     if (
         !profile?.rules.some(

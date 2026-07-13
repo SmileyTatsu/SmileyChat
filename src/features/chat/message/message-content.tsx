@@ -5,7 +5,7 @@ import {
     type MessageFormattingOptions,
 } from "#frontend/lib/message-formatting/quote-highlighting";
 import type { MessageRenderer } from "#frontend/lib/plugins/types";
-import { getMessageDisplayMiddlewares } from "#frontend/lib/plugins/registry";
+import { applyMessageDisplayMiddlewares } from "#frontend/lib/plugins/registry";
 import type { ChatMode, Message } from "#frontend/types";
 
 import {
@@ -26,19 +26,15 @@ type MessageContentProps = {
 };
 
 export function MessageContent(props: MessageContentProps) {
-    const content = getMessageDisplayMiddlewares().reduce(
-        (current, middleware) =>
-            middleware(current, {
-                characterAvatarPath: props.characterAvatarPath,
-                characterDialogueColor: props.characterDialogueColor,
-                characterName: props.characterName,
-                content: current,
-                message: props.message,
-                messageFormatting: props.messageFormatting,
-                mode: props.mode,
-            }),
-        props.content,
-    );
+    const content = applyMessageDisplayMiddlewares(props.content, {
+        characterAvatarPath: props.characterAvatarPath,
+        characterDialogueColor: props.characterDialogueColor,
+        characterName: props.characterName,
+        content: props.content,
+        message: props.message,
+        messageFormatting: props.messageFormatting,
+        mode: props.mode,
+    });
 
     if (props.renderer) {
         return (
