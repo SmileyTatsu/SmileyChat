@@ -75,9 +75,23 @@ Use **NovelAI** to connect directly to NovelAI's text generation models with ful
 5. Click **Test Connection**.
 6. Click **Save**.
 
-_Note: SmileyChat uses the official Chat Completions endpoint for NovelAI, which natively applies instruct formats based on your chosen model. The connection panel will also dynamically route you to the correct base URL (e.g. `text.novelai.net` vs `api.novelai.net`) depending on your selection._
+_Note: SmileyChat uses the official Chat Completions endpoint for instruct-based NovelAI models, and the AI Text Generation endpoint for raw models like Erato or Kayra to natively apply formatting rules and artifact bans. The default base URL is `text.novelai.net`, and an advanced override is supported in the panel._
 
-## 6. Other Cloud APIs
+## 6. xAI / Grok
+
+Use **xAI** to connect directly to Grok through the xAI API.
+
+1. Click **New Profile**.
+2. Choose **xAI**.
+3. Enter your **xAI API key**.
+4. Keep the default base URL unless you need another one.
+5. Click **Load Models**.
+6. Select a Grok model, such as `grok-4.5`.
+7. Select your preferred `reasoning_effort` if applicable (`low`, `medium`, `high`).
+8. Click **Test Connection**.
+9. Click **Save**.
+
+## 7. Other Cloud APIs
 
 For cloud APIs that use the standard OpenAI Chat Completions format:
 

@@ -12,12 +12,10 @@ SmileyChat currently includes these provider adapters:
 - **OpenRouter**: OpenRouter-specific model catalog, app attribution, and provider routing controls.
 - **Google AI**: Direct browser calls to the Gemini API.
 - **Anthropic**: Direct browser calls to the Claude Messages API.
-- **NovelAI**: Direct browser calls to NovelAI's OpenAI-compatible completions endpoint.
+- **NovelAI**: Direct generation calls to NovelAI's generation API or compatible Chat Completions API.
+- **xAI**: Direct browser calls to the Grok Chat Completions API.
 
-Chat generation and model discovery are sent through the local Bun server using
-a saved connection profile. This lets remote devices use the PC's configured
-providers without receiving provider API keys. The server accepts only a saved
-profile ID; it is not a general-purpose provider proxy.
+Chat generation and model discovery are sent through the local Bun server using a saved connection profile (via `/api/generate`). This lets remote devices use the PC's configured providers without receiving provider API keys. The server accepts only a saved profile ID; it is not a general-purpose provider proxy.
 
 ## OpenAI-compatible APIs
 
@@ -51,11 +49,11 @@ SmileyChat sends fixed OpenRouter app attribution headers:
 - `X-OpenRouter-Title`: `SmileyChat`
 - `X-OpenRouter-Categories`: `roleplay,creative-writing,general-chat`
 
-The OpenRouter profile can store routing preferences such as `sort`, `allow_fallbacks`, `require_parameters`, `data_collection`, `zdr`, `order`, `only`, and `ignore`.
+The OpenRouter profile can store routing preferences such as `sort`, `allow_fallbacks`, `require_parameters`, `data_collection`, `zdr`, `order`, `only`, and `ignore`. When non-image files are attached, OpenRouter uses Responses-style file input paths.
 
 ## Google AI
 
-Use the Google AI provider to access Gemini models directly through the browser.
+Use the Google AI provider to access Gemini models directly.
 
 Defaults and endpoints:
 
@@ -65,13 +63,13 @@ Defaults and endpoints:
 - Generation: `POST {baseUrl}/models/{model}:generateContent?key={apiKey}`
 - Streaming generation: `POST {baseUrl}/models/{model}:streamGenerateContent?alt=sse&key={apiKey}`
 
-System and developer prompts are sent through `systemInstruction`. User and assistant history is converted to Google `contents` with `user` / `model` roles, and consecutive same-role turns are merged.
+System and developer prompts are sent through `systemInstruction`. User and assistant history is converted to Google `contents` with `user` / `model` roles, and consecutive same-role turns are merged. Non-image files are uploaded to Gemini Files and referenced as `fileData`.
 
 Model selection starts with the local default catalog in `src/data/default-google-ai-models.json`. Models loaded from the endpoint are shown under `Other`.
 
 ## Anthropic
 
-Use the Anthropic provider to access Claude through Anthropic's Messages API directly from the browser.
+Use the Anthropic provider to access Claude through Anthropic's Messages API.
 
 Defaults and endpoints:
 
@@ -85,7 +83,7 @@ Browser requests include:
 - `anthropic-version: 2023-06-01`
 - `anthropic-dangerous-direct-browser-access: true`
 
-System and developer prompts are joined into the top-level Anthropic `system` field. User and assistant history is converted to Anthropic Messages API turns, and consecutive same-role turns are merged.
+System and developer prompts are joined into the top-level Anthropic `system` field. User and assistant history is converted to Anthropic Messages API turns, and consecutive same-role turns are merged. PDF/plain-text files are uploaded to the Files API and referenced as `document` blocks.
 
 ## NovelAI
 
@@ -93,19 +91,29 @@ Use the NovelAI provider to access NovelAI models natively without relying on ge
 
 Defaults and endpoints:
 
+- Base URL: `https://text.novelai.net`
 - Default model: `llama-3-erato-v1`
-- Generation: `POST {baseUrl}/oa/v1/chat/completions`
+- Text Generation API: `POST {baseUrl}/ai/generate` or `POST {baseUrl}/ai/generate-stream` (used for `llama-3-erato-v1`, `kayra-v1`)
+- Chat Completions API: `POST {baseUrl}/oa/v1/chat/completions` (used for `xialong-v1`, `glm-4-6`, and custom model IDs)
 
-Base URL routing is handled dynamically based on the selected model:
+SmileyChat utilizes the NovelAI `/oa/v1/chat/completions` endpoint for instruct-based models to ensure instruct formatting templates are automatically applied by the NovelAI backend. For raw text models like Erato or Kayra, it uses the `/ai/generate` API and applies magic `logit_bias` arrays to automatically ban unwanted artifacts like dinkus and asterisms. Small text files are inlined directly into the prompt as NovelAI has no general files API.
 
-- `xialong-v1` and `glm-4-6` map to `https://text.novelai.net`
-- `llama-3-erato-v1`, `kayra-v1`, `clio-v1`, and custom models map to `https://api.novelai.net`
+## xAI
 
-SmileyChat utilizes the NovelAI `/oa/v1/chat/completions` endpoint instead of the raw text endpoint so that instruct formatting templates are automatically applied by the NovelAI backend. The provider implementation also includes magic `logit_bias` arrays for Erato and Kayra to ban unwanted artifacts like dinkus and asterisms automatically.
+Use the xAI provider to access Grok directly.
+
+Defaults and endpoints:
+
+- Base URL: `https://api.x.ai/v1`
+- Default model: `grok-4.5`
+- Model loading: `GET {baseUrl}/models`
+- Normal Generation: `POST {baseUrl}/chat/completions`
+
+When non-image files are attached, xAI uploads them with `purpose=assistants` and sends the turn through `POST {baseUrl}/responses`. The panel supports model catalog loading, a custom model ID, max completion tokens, and optional `reasoning_effort` values (`low`, `medium`, and `high`).
 
 ## Streaming
 
-OpenAI-compatible, OpenRouter, Google AI, Anthropic, and NovelAI adapters support streaming over SSE. Streaming is enabled by default through the app-level preference `preferences.chat.streaming` and can be disabled in Options > Settings.
+OpenAI-compatible, OpenRouter, Google AI, Anthropic, NovelAI, and xAI adapters support streaming over SSE. Streaming is enabled by default through the app-level preference `preferences.chat.streaming` and can be disabled in Options > Settings.
 
 Streaming is intentionally not a per-provider setting.
 

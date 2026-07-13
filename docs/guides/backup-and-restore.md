@@ -17,10 +17,10 @@ Inside this folder, you will find:
 - `personas/`: User profiles and avatars.
 - `presets/`: Prompt presets and generation settings.
 - `lorebooks/`: Native LoreBooks and imported World Info data.
-- `settings/`: Preferences, connection profiles, and the separate local API key file.
+- `settings/`: Preferences, connection profiles, core extensions data, and separate local API key files.
 - `plugins/`: Locally installed trusted plugins and plugin-owned storage.
 
-API keys are stored in `userData/settings/connection-secrets.json`. They are separated from normal connection settings to reduce accidental export, but they are not encrypted at rest.
+API keys are stored in `userData/settings/connection-secrets.json`. Secrets for Model Context Protocol (MCP) servers are in `userData/settings/core-extensions/mcp-secrets.json`. They are separated from normal connection settings to reduce accidental export, but they are not encrypted at rest.
 
 ## How to Backup
 

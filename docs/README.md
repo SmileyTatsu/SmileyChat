@@ -18,6 +18,7 @@ This folder contains user guides, reference material, plugin documentation, and 
 - [Providers & AI Setup](reference/providers.md)
 - [Preset Macros](reference/macros.md)
 - [User Data & Storage](reference/user-data.md)
+- [Local API Routes](reference/api.md)
 - [Security Model](reference/security.md)
 
 ## Development
