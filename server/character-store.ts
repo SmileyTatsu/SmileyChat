@@ -26,7 +26,8 @@ import {
 } from "./character-file-paths";
 import { moveToUniquePath } from "./character-file-utils";
 import { readFileBackedIndex, writeFileBackedIndex } from "./file-store";
-import { BadRequestError, writeJsonAtomic } from "./http";
+import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
+import { withResourceLock } from "./resource-lock";
 import {
     characterIndexPath,
     characterLibraryDir,
@@ -114,6 +115,12 @@ export async function readCharacterById(characterId: string) {
 }
 
 export async function writeCharacterById(characterId: string, value: unknown) {
+    return withResourceLock(`character:${characterId}`, () =>
+        writeCharacterByIdUnlocked(characterId, value),
+    );
+}
+
+async function writeCharacterByIdUnlocked(characterId: string, value: unknown) {
     const source = isRecord(value) ? value : {};
     const character = normalizeCharacter({
         ...source,
@@ -143,6 +150,34 @@ export async function writeCharacterById(characterId: string, value: unknown) {
     });
 
     return stored.character;
+}
+
+export async function patchCharacterById(characterId: string, value: unknown) {
+    return withResourceLock(`character:${characterId}`, async () => {
+        const patch = isRecord(value) && isRecord(value.data) ? value.data : undefined;
+        if (!patch) {
+            throw new BadRequestError("Character patch requires a data object.");
+        }
+
+        const existing = await readCharacterById(characterId);
+        if (!existing) {
+            throw new NotFoundError("Character not found.");
+        }
+
+        const character = normalizeCharacter({
+            ...existing,
+            data: { ...existing.data, ...patch },
+            updatedAt: new Date().toISOString(),
+        });
+        if (!character) {
+            throw new BadRequestError("Invalid character patch.");
+        }
+
+        const entry = await findCharacterIndexEntry(characterId);
+        const stored = await writeCharacterToLibrary(character, entry?.basePath);
+        await upsertCharacterIndexEntry(stored.character, stored.basePath);
+        return stored.character;
+    });
 }
 
 export async function createCharacter(value: unknown) {

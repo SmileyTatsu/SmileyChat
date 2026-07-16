@@ -190,6 +190,8 @@ export function App() {
         loadCharacterCollection,
         loadInitialChatState,
         pendingCharacterId,
+        patchCharacter,
+        patchChatMetadata,
         prepareCharacterAvatarUpload,
         queueChatSave,
         removeCharacterAvatar,
@@ -303,6 +305,8 @@ export function App() {
             loadPersonaCollection,
             loadPreferences,
             loadPresetCollection,
+            patchCharacter,
+            patchChatMetadata,
             selectCharacterRef: latestSelectCharacterForPluginsRef,
         });
     const pluginSnapshot: PluginAppSnapshot = useMemo(
@@ -398,15 +402,9 @@ export function App() {
                 return;
             }
 
-            queueChatSave({
-                ...activeChat,
-                metadata: {
-                    ...(activeChat.metadata ?? {}),
-                    ...metadata,
-                },
-            });
+            void patchChatMetadata(activeChat.id, { metadata });
         },
-        [activeChat, queueChatSave],
+        [activeChat, patchChatMetadata],
     );
     const handleToggleCharacter = useMemo(() => {
         if (!characterSummaries.characters.length) {

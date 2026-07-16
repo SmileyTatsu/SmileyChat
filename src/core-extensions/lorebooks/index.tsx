@@ -2,9 +2,15 @@ import sharedStyles from "../shared-ui.css?raw";
 import styles from "./styles.css?raw";
 
 import { BookOpen, Plus, Save, Search, Trash2 } from "lucide-preact";
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
-import { loadLorebook, saveLorebook } from "#frontend/lib/api/client";
+import {
+    addLorebookEntry,
+    deleteLorebookEntry,
+    loadLorebook,
+    patchLorebook,
+    updateLorebookEntry,
+} from "#frontend/lib/api/client";
 import { createId } from "#frontend/lib/common/ids";
 import type {
     Lorebook,
@@ -93,6 +99,8 @@ function LorebookManager({
     const [status, setStatus] = useState("");
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const entrySaveTimersRef = useRef(new Map<string, number>());
+    const entryRevisionRef = useRef(new Map<string, number>());
 
     useEffect(() => {
         if (!selectedLorebookId && summaries[0]?.id) {
@@ -178,16 +186,67 @@ function LorebookManager({
         });
     }
 
-    function updateEntry(entryId: string, patch: Partial<LorebookEntry>) {
+    function updateEntry(
+        entryId: string,
+        patch: Partial<LorebookEntry>,
+        debounced = false,
+    ) {
         if (!activeLorebook) {
             return;
         }
+
+        const revisionKey = `${activeLorebook.id}:${entryId}`;
+        const revision = (entryRevisionRef.current.get(revisionKey) ?? 0) + 1;
+        entryRevisionRef.current.set(revisionKey, revision);
 
         updateLorebook({
             entries: activeLorebook.entries.map((entry) =>
                 entry.id === entryId ? { ...entry, ...patch } : entry,
             ),
         });
+        const save = async () => {
+            try {
+                const result = await updateLorebookEntry(
+                    activeLorebook.id,
+                    entryId,
+                    patch,
+                );
+                // A delayed response may describe an older draft. Only merge its
+                // entry when no newer local edit has happened since this request.
+                if (entryRevisionRef.current.get(revisionKey) === revision) {
+                    const savedEntry = result.lorebook.entries.find(
+                        (entry) => entry.id === entryId,
+                    );
+                    if (savedEntry) {
+                        setActiveLorebook((current) =>
+                            current?.id === result.lorebook.id
+                                ? {
+                                      ...current,
+                                      entries: current.entries.map((entry) =>
+                                          entry.id === entryId ? savedEntry : entry,
+                                      ),
+                                      updatedAt: result.lorebook.updatedAt,
+                                  }
+                                : current,
+                        );
+                    }
+                }
+                api.events.emit("app:data-changed", { type: "lorebooks" });
+            } catch {
+                setStatus("Could not save entry.");
+            }
+        };
+        if (debounced) {
+            const timer = entrySaveTimersRef.current.get(entryId);
+            if (timer) window.clearTimeout(timer);
+            entrySaveTimersRef.current.set(
+                entryId,
+                window.setTimeout(() => {
+                    entrySaveTimersRef.current.delete(entryId);
+                    void save();
+                }, 450),
+            );
+        } else void save();
     }
 
     function addEntry() {
@@ -198,6 +257,12 @@ function LorebookManager({
         const entry = createEntry();
 
         updateLorebook({ entries: [...activeLorebook.entries, entry] });
+        void addLorebookEntry(activeLorebook.id, entry)
+            .then((result) => {
+                setActiveLorebook(result.lorebook);
+                api.events.emit("app:data-changed", { type: "lorebooks" });
+            })
+            .catch(() => setStatus("Could not add entry."));
         setSelection(entry.id);
         setEntryTab("content");
     }
@@ -229,6 +294,12 @@ function LorebookManager({
             nextEntries[Math.min(deletedIndex, nextEntries.length - 1)]?.id ?? "settings";
 
         updateLorebook({ entries: nextEntries });
+        void deleteLorebookEntry(activeLorebook.id, entryId)
+            .then((result) => {
+                setActiveLorebook(result.lorebook);
+                api.events.emit("app:data-changed", { type: "lorebooks" });
+            })
+            .catch(() => setStatus("Could not delete entry."));
         setSelection(nextSelection);
         setEntryTab("content");
         setStatus("Entry deleted. Save the LoreBook to keep this change.");
@@ -243,7 +314,13 @@ function LorebookManager({
         setStatus("");
 
         try {
-            const result = await saveLorebook(activeLorebook);
+            const result = await patchLorebook(activeLorebook.id, {
+                title: activeLorebook.title,
+                description: activeLorebook.description,
+                settings: activeLorebook.settings,
+                metadata: activeLorebook.metadata,
+                extensions: activeLorebook.extensions,
+            });
             setActiveLorebook(result.lorebook);
             api.events.emit("app:data-changed", { type: "lorebooks" });
             setStatus("Saved.");
@@ -371,11 +448,13 @@ function LorebookManager({
                         <button
                             className="primary"
                             type="button"
-                            disabled={!activeLorebook || saving}
+                            disabled={
+                                !activeLorebook || saving || selection !== "settings"
+                            }
                             onClick={() => void persist()}
                         >
                             <Save size={15} />
-                            <span>{saving ? "Saving" : "Save"}</span>
+                            <span>{saving ? "Saving" : "Save settings"}</span>
                         </button>
                     </div>
                 </div>
@@ -396,7 +475,9 @@ function LorebookManager({
                         entry={selectedEntry}
                         tab={entryTab}
                         onTabChange={setEntryTab}
-                        onChange={(patch) => updateEntry(selectedEntry.id, patch)}
+                        onChange={(patch, debounced) =>
+                            updateEntry(selectedEntry.id, patch, debounced)
+                        }
                         onDelete={() => deleteEntry(selectedEntry.id)}
                     />
                 ) : (
@@ -534,7 +615,7 @@ function EntryEditor({
     entry: LorebookEntry;
     tab: EntryTab;
     onTabChange: (tab: EntryTab) => void;
-    onChange: (patch: Partial<LorebookEntry>) => void;
+    onChange: (patch: Partial<LorebookEntry>, debounced?: boolean) => void;
     onDelete: () => void;
 }) {
     return (
@@ -575,7 +656,7 @@ function EntryEditor({
                         <TextField
                             label="Title"
                             value={entry.title}
-                            onChange={(title) => onChange({ title })}
+                            onChange={(title) => onChange({ title }, true)}
                         />
                         <CheckboxField
                             label="Enabled"
@@ -587,11 +668,14 @@ function EntryEditor({
                             <textarea
                                 value={entry.content}
                                 onInput={(event) =>
-                                    onChange({
-                                        content: (
-                                            event.currentTarget as HTMLTextAreaElement
-                                        ).value,
-                                    })
+                                    onChange(
+                                        {
+                                            content: (
+                                                event.currentTarget as HTMLTextAreaElement
+                                            ).value,
+                                        },
+                                        true,
+                                    )
                                 }
                             />
                         </label>
@@ -605,13 +689,15 @@ function EntryEditor({
                         <TextField
                             label="Primary Keys"
                             value={entry.keys.join(", ")}
-                            onChange={(value) => onChange({ keys: splitList(value) })}
+                            onChange={(value) =>
+                                onChange({ keys: splitList(value) }, true)
+                            }
                         />
                         <TextField
                             label="Secondary Keys"
                             value={entry.secondaryKeys.join(", ")}
                             onChange={(value) =>
-                                onChange({ secondaryKeys: splitList(value) })
+                                onChange({ secondaryKeys: splitList(value) }, true)
                             }
                         />
                         <label className="lbm-field">
@@ -751,7 +837,7 @@ function EntryEditor({
                             <TextField
                                 label="Outlet Name"
                                 value={entry.outletName}
-                                onChange={(outletName) => onChange({ outletName })}
+                                onChange={(outletName) => onChange({ outletName }, true)}
                             />
                         )}
                         <label className="lbm-field">

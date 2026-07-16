@@ -9,6 +9,7 @@ import {
     importUploadedCharacterFiles,
     readCharacterById,
     readCharacterSummaryCollection,
+    patchCharacterById,
     serveCharacterAvatar,
     updateCharacterIndex,
     writeCharacterAvatar,
@@ -31,6 +32,7 @@ import {
     readChatById,
     readChatSummaryCollection,
     updateChatIndex,
+    patchChatMetadataById,
     writeChatById,
 } from "./chat-store";
 import { ensureEnvFileExists, loadRuntimeEnv } from "./config/env-loader";
@@ -47,6 +49,10 @@ import {
     lorebookNotFoundResponse,
     readLorebookById,
     readLorebookCollection,
+    addLorebookEntry,
+    patchLorebookById,
+    patchLorebookEntry,
+    removeLorebookEntry,
     updateLorebookIndex,
     writeLorebookById,
 } from "./lorebook-store";
@@ -423,6 +429,17 @@ const createServer = () =>
 
                     return json({ ok: true, lorebook, lorebooks });
                 }),
+                PATCH: api(async (request) => {
+                    const lorebook = await patchLorebookById(
+                        request.params.lorebookId,
+                        await readJsonBody(request),
+                    );
+                    return json({
+                        ok: true,
+                        lorebook,
+                        lorebooks: await readLorebookCollection(),
+                    });
+                }),
 
                 DELETE: api(async (request) => {
                     const result = await deleteLorebookById(request.params.lorebookId);
@@ -430,6 +447,38 @@ const createServer = () =>
                         ? json({ ok: true, ...result })
                         : lorebookNotFoundResponse();
                 }),
+            },
+            "/api/lorebooks/:lorebookId/entries": {
+                POST: api(async (request) =>
+                    json({
+                        ok: true,
+                        lorebook: await addLorebookEntry(
+                            request.params.lorebookId,
+                            await readJsonBody(request),
+                        ),
+                    }),
+                ),
+            },
+            "/api/lorebooks/:lorebookId/entries/:entryId": {
+                PUT: api(async (request) =>
+                    json({
+                        ok: true,
+                        lorebook: await patchLorebookEntry(
+                            request.params.lorebookId,
+                            request.params.entryId,
+                            await readJsonBody(request),
+                        ),
+                    }),
+                ),
+                DELETE: api(async (request) =>
+                    json({
+                        ok: true,
+                        lorebook: await removeLorebookEntry(
+                            request.params.lorebookId,
+                            request.params.entryId,
+                        ),
+                    }),
+                ),
             },
 
             "/api/preferences": {
@@ -550,6 +599,18 @@ const createServer = () =>
                         ? json({ ok: true, ...result })
                         : json({ error: "Chat not found." }, 404);
                 }),
+            },
+            "/api/chats/:chatId/metadata": {
+                PATCH: api(async (request) =>
+                    json(
+                        chatSaveResponse(
+                            await patchChatMetadataById(
+                                request.params.chatId,
+                                await readJsonBody(request),
+                            ),
+                        ),
+                    ),
+                ),
             },
 
             "/api/personas": {
@@ -703,6 +764,18 @@ const createServer = () =>
                     const summary = characterToSummary(character);
 
                     return json({ ok: true, character, summary, characters });
+                }),
+                PATCH: api(async (request) => {
+                    const character = await patchCharacterById(
+                        request.params.characterId,
+                        await readJsonBody(request),
+                    );
+                    return json({
+                        ok: true,
+                        character,
+                        summary: characterToSummary(character),
+                        characters: await readCharacterSummaryCollection(),
+                    });
                 }),
 
                 DELETE: api(async (request) => {

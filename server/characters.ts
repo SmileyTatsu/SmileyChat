@@ -10,6 +10,7 @@ export {
     deleteCharacterById,
     readCharacterById,
     readCharacterSummaryCollection,
+    patchCharacterById,
     updateCharacterIndex,
     writeCharacterById,
 } from "./character-store";

@@ -8,6 +8,8 @@ import type {
     SmileyCharacter,
     SmileyPersona,
 } from "#frontend/types";
+import type { TavernCardDataV2 } from "../characters/types";
+import type { ChatMetadata } from "../chats/types";
 
 import type { ConnectionSecrets, ConnectionSettings } from "../connections/config";
 import type { PluginProfile, PluginProfilesState } from "../plugins/profiles";
@@ -18,6 +20,7 @@ import type {
     Lorebook,
     LorebookCollection,
     LorebookImportResult,
+    LorebookEntry,
 } from "../lorebooks/types";
 
 const csrfHeaderName = "x-smileychat-csrf";
@@ -238,7 +241,7 @@ async function dispatchLocalApiError(response: Response) {
     );
 }
 
-function jsonInit(method: "POST" | "PUT", body: unknown): RequestInit {
+function jsonInit(method: "POST" | "PUT" | "PATCH", body: unknown): RequestInit {
     return {
         method,
         headers: {
@@ -406,6 +409,52 @@ export function loadLorebook(lorebookId: string) {
     return requestJson<Lorebook>(`/api/lorebooks/${encodeURIComponent(lorebookId)}`);
 }
 
+export function createLorebook(data: Partial<Lorebook>) {
+    return requestJson<{
+        ok: true;
+        lorebook: Lorebook;
+        summary: import("../lorebooks/types").LorebookSummary;
+        lorebooks?: LorebookCollection;
+    }>("/api/lorebooks", jsonInit("POST", data));
+}
+
+export function patchLorebook(
+    lorebookId: string,
+    patch: Partial<
+        Pick<Lorebook, "title" | "description" | "settings" | "metadata" | "extensions">
+    >,
+) {
+    return requestJson<{ ok: true; lorebook: Lorebook; lorebooks?: LorebookCollection }>(
+        `/api/lorebooks/${encodeURIComponent(lorebookId)}`,
+        jsonInit("PATCH", patch),
+    );
+}
+
+export function addLorebookEntry(lorebookId: string, entry: Partial<LorebookEntry>) {
+    return requestJson<{ ok: true; lorebook: Lorebook }>(
+        `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries`,
+        jsonInit("POST", entry),
+    );
+}
+
+export function updateLorebookEntry(
+    lorebookId: string,
+    entryId: string,
+    patch: Partial<LorebookEntry>,
+) {
+    return requestJson<{ ok: true; lorebook: Lorebook }>(
+        `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries/${encodeURIComponent(entryId)}`,
+        jsonInit("PUT", patch),
+    );
+}
+
+export function deleteLorebookEntry(lorebookId: string, entryId: string) {
+    return requestJson<{ ok: true; lorebook: Lorebook }>(
+        `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries/${encodeURIComponent(entryId)}`,
+        { method: "DELETE" },
+    );
+}
+
 export function saveLorebook(lorebook: Lorebook) {
     return requestJson<{
         ok: true;
@@ -474,6 +523,19 @@ export function saveChat(chat: ChatSession) {
         ok: true;
         summary: ChatSummary;
     }>(`/api/chats/${encodeURIComponent(chat.id)}`, jsonInit("PUT", chat));
+}
+
+export type ChatMetadataPatch = Partial<
+    Pick<ChatSession, "title" | "defaultTitle" | "mode">
+> & {
+    metadata?: Partial<ChatMetadata>;
+};
+
+export function patchChatMetadata(chatId: string, patch: ChatMetadataPatch) {
+    return requestJson<{ ok: true; summary: ChatSummary }>(
+        `/api/chats/${encodeURIComponent(chatId)}/metadata`,
+        jsonInit("PATCH", patch),
+    );
 }
 
 export async function saveChatWithKeepAlive(chat: ChatSession) {
@@ -633,6 +695,14 @@ export function saveCharacter(character: SmileyCharacter) {
         character: SmileyCharacter;
         characters?: CharacterSummaryCollection;
     }>(`/api/characters/${encodeURIComponent(character.id)}`, jsonInit("PUT", character));
+}
+
+export function patchCharacter(characterId: string, data: Partial<TavernCardDataV2>) {
+    return requestJson<{
+        ok: true;
+        character: SmileyCharacter;
+        characters?: CharacterSummaryCollection;
+    }>(`/api/characters/${encodeURIComponent(characterId)}`, jsonInit("PATCH", { data }));
 }
 
 export function saveCharacterIndex(index: CharacterSummaryCollection) {

@@ -17,6 +17,7 @@ import type {
     LorebookCollection,
     LorebookImportResult,
     LorebookIndex,
+    LorebookEntry,
 } from "#frontend/lib/lorebooks/types";
 
 import {
@@ -29,6 +30,7 @@ import {
 import { BadRequestError, NotFoundError, json, writeJsonAtomic } from "./http";
 import { lorebookFilePath } from "./lorebook-file-paths";
 import { lorebookBooksDir, lorebookIndexPath, lorebookOrphanedDir } from "./paths";
+import { withResourceLock } from "./resource-lock";
 
 export async function readLorebookCollection(): Promise<LorebookCollection> {
     const index = await readLorebookIndex();
@@ -82,6 +84,12 @@ export async function createLorebook(value: unknown) {
 }
 
 export async function writeLorebookById(lorebookId: string, value: unknown) {
+    return withResourceLock(`lorebook:${lorebookId}`, () =>
+        writeLorebookByIdUnlocked(lorebookId, value),
+    );
+}
+
+async function writeLorebookByIdUnlocked(lorebookId: string, value: unknown) {
     const source = isRecord(value) ? value : {};
     const lorebook = normalizeLorebook({
         ...source,
@@ -104,6 +112,94 @@ export async function writeLorebookById(lorebookId: string, value: unknown) {
     }
 
     return lorebook;
+}
+
+export async function patchLorebookById(lorebookId: string, value: unknown) {
+    return withResourceLock(`lorebook:${lorebookId}`, async () => {
+        const existing = await readLorebookById(lorebookId);
+        if (!existing) throw new NotFoundError("LoreBook not found.");
+        const patch = isRecord(value) ? value : {};
+        const lorebook = normalizeLorebook({
+            ...existing,
+            ...(typeof patch.title === "string" ? { title: patch.title } : {}),
+            ...(typeof patch.description === "string"
+                ? { description: patch.description }
+                : {}),
+            ...(isRecord(patch.settings)
+                ? { settings: { ...existing.settings, ...patch.settings } }
+                : {}),
+            ...(isRecord(patch.metadata)
+                ? { metadata: { ...existing.metadata, ...patch.metadata } }
+                : {}),
+            ...(isRecord(patch.extensions)
+                ? { extensions: { ...existing.extensions, ...patch.extensions } }
+                : {}),
+            entries: existing.entries,
+            updatedAt: new Date().toISOString(),
+        });
+        if (!lorebook) throw new BadRequestError("Invalid LoreBook patch.");
+        await writeJsonAtomic(lorebookFilePath(lorebookId), lorebook);
+        return lorebook;
+    });
+}
+
+export async function addLorebookEntry(lorebookId: string, value: unknown) {
+    return withResourceLock(`lorebook:${lorebookId}`, async () => {
+        const lorebook = await readLorebookById(lorebookId);
+        if (!lorebook) throw new NotFoundError("LoreBook not found.");
+        const entry = normalizeEntry(value);
+        if (!entry) throw new BadRequestError("Invalid LoreBook entry.");
+        if (lorebook.entries.some((item) => item.id === entry.id)) {
+            throw new BadRequestError("LoreBook entry ID already exists.");
+        }
+        return writeLorebookEntries(lorebook, [...lorebook.entries, entry]);
+    });
+}
+
+export async function patchLorebookEntry(
+    lorebookId: string,
+    entryId: string,
+    value: unknown,
+) {
+    return withResourceLock(`lorebook:${lorebookId}`, async () => {
+        const lorebook = await readLorebookById(lorebookId);
+        if (!lorebook) throw new NotFoundError("LoreBook not found.");
+        const existing = lorebook.entries.find((entry) => entry.id === entryId);
+        if (!existing) throw new NotFoundError("LoreBook entry not found.");
+        const entry = normalizeEntry({
+            ...existing,
+            ...(isRecord(value) ? value : {}),
+            id: entryId,
+        });
+        if (!entry) throw new BadRequestError("Invalid LoreBook entry patch.");
+        return writeLorebookEntries(
+            lorebook,
+            lorebook.entries.map((item) => (item.id === entryId ? entry : item)),
+        );
+    });
+}
+
+export async function removeLorebookEntry(lorebookId: string, entryId: string) {
+    return withResourceLock(`lorebook:${lorebookId}`, async () => {
+        const lorebook = await readLorebookById(lorebookId);
+        if (!lorebook) throw new NotFoundError("LoreBook not found.");
+        if (!lorebook.entries.some((entry) => entry.id === entryId))
+            throw new NotFoundError("LoreBook entry not found.");
+        return writeLorebookEntries(
+            lorebook,
+            lorebook.entries.filter((entry) => entry.id !== entryId),
+        );
+    });
+}
+
+function normalizeEntry(value: unknown): LorebookEntry | undefined {
+    return normalizeLorebook({ title: "entry", entries: [value] })?.entries[0];
+}
+
+async function writeLorebookEntries(lorebook: Lorebook, entries: LorebookEntry[]) {
+    const next = { ...lorebook, entries, updatedAt: new Date().toISOString() };
+    await writeJsonAtomic(lorebookFilePath(lorebook.id), next);
+    return next;
 }
 
 export async function deleteLorebookById(lorebookId: string) {

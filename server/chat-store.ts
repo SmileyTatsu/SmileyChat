@@ -31,6 +31,7 @@ import {
 } from "./file-store";
 import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
 import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
+import { withResourceLock } from "./resource-lock";
 
 export async function readChatSummaryCollection(): Promise<ChatSummaryCollection> {
     const index = await readChatIndex();
@@ -157,6 +158,10 @@ export function createForkedChatDraft({
 }
 
 export async function writeChatById(chatId: string, value: unknown) {
+    return withResourceLock(`chat:${chatId}`, () => writeChatByIdUnlocked(chatId, value));
+}
+
+async function writeChatByIdUnlocked(chatId: string, value: unknown) {
     const source = isRecord(value) ? value : {};
     const normalizedChat = normalizeChat({
         ...source,
@@ -192,6 +197,29 @@ export async function writeChatById(chatId: string, value: unknown) {
     });
 
     return chat;
+}
+
+export async function patchChatMetadataById(chatId: string, value: unknown) {
+    return withResourceLock(`chat:${chatId}`, async () => {
+        const existing = await readChatById(chatId);
+        if (!existing) throw new NotFoundError("Chat not found.");
+        const patch = isRecord(value) ? value : {};
+        const chat = normalizeChat({
+            ...existing,
+            ...(typeof patch.title === "string" ? { title: patch.title } : {}),
+            ...(typeof patch.defaultTitle === "string"
+                ? { defaultTitle: patch.defaultTitle }
+                : {}),
+            ...(typeof patch.mode === "string" ? { mode: patch.mode } : {}),
+            ...(isRecord(patch.metadata)
+                ? { metadata: { ...existing.metadata, ...patch.metadata } }
+                : {}),
+            messages: existing.messages,
+            updatedAt: new Date().toISOString(),
+        });
+        if (!chat) throw new BadRequestError("Invalid chat metadata patch.");
+        return writeChatByIdUnlocked(chatId, chat);
+    });
 }
 
 export function shouldPreserveExistingChat(

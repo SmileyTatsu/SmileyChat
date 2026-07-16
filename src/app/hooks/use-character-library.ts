@@ -5,6 +5,7 @@ import {
     deleteCharacter as deleteCharacterRequest,
     loadCharacter,
     loadCharacterSummaries,
+    patchCharacter as patchCharacterRequest,
     saveCharacter,
     saveCharacterIndex,
 } from "#frontend/lib/api/client";
@@ -23,6 +24,7 @@ import type {
     ChatSummaryCollection,
     SmileyCharacter,
 } from "#frontend/types";
+import type { TavernCardDataV2 } from "#frontend/lib/characters/types";
 
 export function useCharacterLibrary() {
     const [characterSummaries, setCharacterSummariesState] =
@@ -288,6 +290,22 @@ export function useCharacterLibrary() {
         }
     }
 
+    async function patchCharacter(characterId: string, patch: Partial<TavernCardDataV2>) {
+        await flushPendingCharacterAutosaveWithoutStateUpdate();
+        try {
+            const result = await patchCharacterRequest(characterId, patch);
+            const saved = normalizeCharacter(result.character) ?? defaultCharacter;
+            characterCacheRef.current.set(saved.id, saved);
+            if (saved.id === latestCharacterRef.current.id) setCharacter(saved);
+            if (result.characters) setCharacterSummaries(result.characters);
+            else updateCharacterSummary(characterToSummary(saved));
+            setCharacterLoadError("");
+        } catch (error) {
+            setCharacterLoadError(messageFromError(error));
+            throw error;
+        }
+    }
+
     async function removeCharacterAvatar(characterId: string) {
         await flushPendingCharacterAutosaveWithoutStateUpdate();
 
@@ -430,6 +448,7 @@ export function useCharacterLibrary() {
         loadCharacterCollection,
         loadCharacterCollectionStrict,
         prepareCharacterAvatarUpload,
+        patchCharacter,
         removeCharacterAvatar,
         reorderCharacters,
         saveActiveCharacterSelection,

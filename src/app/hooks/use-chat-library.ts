@@ -7,6 +7,7 @@ import {
     forkChat as forkChatRequest,
     loadChat,
     loadChatSummaries,
+    patchChatMetadata as patchChatMetadataRequest,
     saveChatIndex,
     uploadChatAttachments,
 } from "#frontend/lib/api/client";
@@ -33,6 +34,7 @@ import type {
     SmileyPersona,
     UserStatus,
 } from "#frontend/types";
+import type { ChatMetadataPatch } from "#frontend/lib/api/client";
 
 import { useChatAutosave } from "./use-chat-autosave";
 
@@ -569,6 +571,29 @@ export function useChatLibrary({
         }
     }
 
+    async function patchChatMetadata(chatId: string, patch: ChatMetadataPatch) {
+        await flushPendingChatAutosaveWithoutStateUpdate();
+        try {
+            const result = await patchChatMetadataRequest(chatId, patch);
+            const current = latestChatRef.current;
+            if (current?.id === chatId) {
+                setActiveChat({
+                    ...current,
+                    ...patch,
+                    ...(patch.metadata
+                        ? { metadata: { ...current.metadata, ...patch.metadata } }
+                        : {}),
+                    updatedAt: result.summary.updatedAt,
+                });
+            }
+            updateChatSummary(result.summary);
+            setChatLoadError("");
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+            throw error;
+        }
+    }
+
     async function changeGroupAvatar(chatId: string, file: File) {
         await flushPendingChatAutosaveWithoutStateUpdate();
 
@@ -792,6 +817,7 @@ export function useChatLibrary({
         loadInitialChatState,
         loadChatCollection,
         persistChat,
+        patchChatMetadata,
         queueChatSave,
         renameChat,
         selectChat,

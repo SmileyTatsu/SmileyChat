@@ -97,7 +97,16 @@ let presetHandlers: Partial<PluginPresetHandlers> = {};
 
 type PluginAppActionHandlers = Pick<
     PluginActionsApi,
-    "editMessage" | "generateResponse" | "sendMessage" | "switchCharacter"
+    | "editMessage"
+    | "generateResponse"
+    | "sendMessage"
+    | "switchCharacter"
+    | "updateCharacter"
+    | "createLorebook"
+    | "addLorebookEntry"
+    | "updateLorebookEntry"
+    | "deleteLorebookEntry"
+    | "updateChatMetadata"
 > & {
     injectMessage: (
         role: Parameters<PluginActionsApi["injectMessage"]>[0],
@@ -908,6 +917,48 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             }
 
             await handler(characterId);
+        },
+        async updateCharacter(characterId, patch) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.updateCharacter;
+            if (!handler)
+                throw new Error("Plugin updateCharacter action is not available.");
+            await handler(characterId, patch);
+        },
+        async createLorebook(data) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.createLorebook;
+            if (!handler)
+                throw new Error("Plugin createLorebook action is not available.");
+            return handler(data);
+        },
+        async addLorebookEntry(lorebookId, entry) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.addLorebookEntry;
+            if (!handler)
+                throw new Error("Plugin addLorebookEntry action is not available.");
+            await handler(lorebookId, entry);
+        },
+        async updateLorebookEntry(lorebookId, entryId, patch) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.updateLorebookEntry;
+            if (!handler)
+                throw new Error("Plugin updateLorebookEntry action is not available.");
+            await handler(lorebookId, entryId, patch);
+        },
+        async deleteLorebookEntry(lorebookId, entryId) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.deleteLorebookEntry;
+            if (!handler)
+                throw new Error("Plugin deleteLorebookEntry action is not available.");
+            await handler(lorebookId, entryId);
+        },
+        async updateChatMetadata(chatId, patch) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.updateChatMetadata;
+            if (!handler)
+                throw new Error("Plugin updateChatMetadata action is not available.");
+            await handler(chatId, patch);
         },
         setCharacterPresence(status) {
             requireDeclaredPluginPermission(manifest, "actions");

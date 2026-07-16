@@ -22,6 +22,14 @@ import type {
     PluginModelGenerateRequest,
 } from "#frontend/lib/plugins/types";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
+import {
+    addLorebookEntry,
+    createLorebook,
+    deleteLorebookEntry,
+    updateLorebookEntry,
+} from "#frontend/lib/api/client";
+import type { ChatMetadataPatch } from "#frontend/lib/api/client";
+import type { TavernCardDataV2 } from "#frontend/lib/characters/types";
 
 import { openSettings } from "../ui-state";
 
@@ -59,6 +67,11 @@ type UseAppPluginBridgeOptions = {
     loadPresetCollection: () => Promise<void>;
     selectCharacterRef: MutableRef<(characterId: string) => Promise<void>>;
     chatSessionRef: MutableRef<ChatSessionActions>;
+    patchCharacter: (
+        characterId: string,
+        patch: Partial<TavernCardDataV2>,
+    ) => Promise<void>;
+    patchChatMetadata: (chatId: string, patch: ChatMetadataPatch) => Promise<void>;
 };
 
 export function useAppPluginBridge({
@@ -71,6 +84,8 @@ export function useAppPluginBridge({
     loadPreferences,
     loadPresetCollection,
     selectCharacterRef,
+    patchCharacter,
+    patchChatMetadata,
 }: UseAppPluginBridgeOptions) {
     const [pluginRegistryRevision, setPluginRegistryRevision] = useState(0);
     const loadersRef = useRef({
@@ -156,10 +171,29 @@ export function useAppPluginBridge({
                     options?.files ?? options?.images,
                 ),
             switchCharacter: (characterId) => selectCharacterRef.current(characterId),
+            updateCharacter: patchCharacter,
+            updateChatMetadata: patchChatMetadata,
+            createLorebook: async (data) => {
+                const result = await createLorebook(data);
+                await loadersRef.current.loadLorebookCollection();
+                return result.summary;
+            },
+            addLorebookEntry: async (id, entry) => {
+                await addLorebookEntry(id, entry);
+                await loadersRef.current.loadLorebookCollection();
+            },
+            updateLorebookEntry: async (id, entryId, patch) => {
+                await updateLorebookEntry(id, entryId, patch);
+                await loadersRef.current.loadLorebookCollection();
+            },
+            deleteLorebookEntry: async (id, entryId) => {
+                await deleteLorebookEntry(id, entryId);
+                await loadersRef.current.loadLorebookCollection();
+            },
         });
 
         return () => setPluginAppActionHandlers({});
-    }, [chatSessionRef, selectCharacterRef]);
+    }, [chatSessionRef, patchCharacter, patchChatMetadata, selectCharacterRef]);
 
     useEffect(() => {
         setPluginModelHandlers({

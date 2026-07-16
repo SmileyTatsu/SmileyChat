@@ -262,6 +262,8 @@ export function useCharacterChats({
         loadInitialChatState,
         pendingCharacterId,
         prepareCharacterAvatarUpload,
+        patchCharacter: characterLibrary.patchCharacter,
+        patchChatMetadata: chatLibrary.patchChatMetadata,
         queueChatSave: chatLibrary.queueChatSave,
         removeCharacterAvatar,
         reorderCharacters: characterLibrary.reorderCharacters,

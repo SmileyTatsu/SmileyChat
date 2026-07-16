@@ -9,6 +9,9 @@ import type {
     SmileyPersona,
     UserStatus,
 } from "#frontend/types";
+import type { TavernCardDataV2 } from "../characters/types";
+import type { ChatMetadataPatch } from "../api/client";
+import type { Lorebook, LorebookEntry, LorebookSummary } from "../lorebooks/types";
 
 import type { ConnectionProfile, ConnectionSettings } from "../connections/config";
 import type {
@@ -377,6 +380,16 @@ export type PluginActionsApi = {
     editMessage(messageId: string, content: string): Promise<void>;
     generateResponse(): Promise<void>;
     switchCharacter(characterId: string): Promise<void>;
+    updateCharacter(characterId: string, patch: Partial<TavernCardDataV2>): Promise<void>;
+    createLorebook(data: Partial<Lorebook>): Promise<LorebookSummary>;
+    addLorebookEntry(lorebookId: string, entry: Partial<LorebookEntry>): Promise<void>;
+    updateLorebookEntry(
+        lorebookId: string,
+        entryId: string,
+        patch: Partial<LorebookEntry>,
+    ): Promise<void>;
+    deleteLorebookEntry(lorebookId: string, entryId: string): Promise<void>;
+    updateChatMetadata(chatId: string, patch: ChatMetadataPatch): Promise<void>;
     setCharacterPresence(status: PluginCharacterPresenceStatus): void;
     setDraft(text: string): void;
     insertDraft(text: string): void;
