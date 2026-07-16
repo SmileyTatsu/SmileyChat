@@ -1,104 +1,100 @@
-# SmileyChat
+<div align="center">
+  
+<img src="public/SmileyChat_header.png" alt="SmileyChat Banner" width="100%" />
 
-> **Project Status: Early Pre-Alpha**
-> SmileyChat is currently in a very early stage of development. Please keep in mind that performance is not yet fully optimized, features are still being added, and you may encounter bugs. The core architecture is actively evolving.
+**A clean, local-first frontend for utility, chatting, roleplay, or storytelling with LLMs.**
 
-SmileyChat is a local-first frontend application for chatting, roleplay, and storytelling with AI chatbots. Designed to be clean, accessible, and friendly to both casual users and writers.
+[![Project Status](https://img.shields.io/badge/status-Beta-blue.svg)](#project-status)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Discord](https://img.shields.io/discord/1166241535617142867?label=Discord&logo=discord&logoColor=white)](https://discord.gg/PTWXzugDXG) 
 
-## Related Repositories
+</div>
 
-- [smileychat-plugins](https://github.com/SmileyTatsu/smileychat-plugins): verified plugin registry, registry schema, and plugin contribution docs.
-- [smileychat-plugin-template](https://github.com/SmileyTatsu/smileychat-plugin-template): starter template for building distributable SmileyChat plugins.
+---
+
+> **Project Status: Beta**  
+> SmileyChat is in Beta. The core features are stable, and we are now focusing on squashing bugs, improving performance, and refining the user experience. You may still encounter occasional bugs.
+
+## What is SmileyChat?
+
+SmileyChat is a local-first frontend application designed for interacting with AI chatbots. Whether you are looking for casual chatting, immersive roleplay, or deep storytelling, SmileyChat provides a clean, accessible, and user-friendly experience for both beginners and experienced writers.
+
+[IMAGE 2: A high-quality screenshot showing the main application interface in "Chatting" mode, featuring the dark mode design, character sidebar on the left, and a chat window in the center.]
+
+[IMAGE 3: A high-quality screenshot showing the "Roleplaying / Storytelling" mode, highlighting the writing-focused interface with longer paragraphs and a cleaner text layout.]
 
 ## Features
 
-- **Dual Visual Modes**: Seamlessly switch between a casual "Chatting" mode, like Discord, and a "Roleplaying / Storytelling" mode designed for reading and writing long scenes.
-- **Local Persistence**: All your characters, chats, and personas are saved entirely locally in standard JSON files. No cloud lock-in.
-- **Providers**: Connect your favorite local models, such as LMStudio, Ollama, and text-generation-webui, or cloud providers through dedicated adapters for OpenAI-compatible APIs, OpenRouter, Google AI / Gemini, Anthropic / Claude, and NovelAI.
-- **Character Card Support**: Import Tavern-style V1/V2/V3 JSON and PNG character cards easily through drag and drop or file selection.
-- **Extensible Plugin System**: Extend the core functionality using local ESM plugins.
+- **Local Persistence**: Your data belongs to you. All characters, chats, and personas are saved locally in standard JSON files. No cloud lock-in.
+- **Provider Support**: Connect your favorite AI backends. We feature dedicated adapters for OpenAI-compatible APIs, OpenRouter, Google AI / Gemini, Anthropic / Claude, NovelAI, and xAI. Includes built-in support for response streaming.
+- **Character Cards**: Easily import Tavern-style V1, V2, and V3 JSON or PNG character cards via drag-and-drop. View and edit character details in a dedicated sidebar.
+- **Advanced Presets & Prompts**: Full support for custom preset formats, SillyTavern preset imports, and comprehensive macro replacement (`{{char}}`, `{{user}}`, `{{last_message}}`, etc.) to heavily customize AI behavior.
+- **Personas**: Create and manage multiple user personas. Switch between them instantly and set custom visual statuses (Online, Away, Do Not Disturb).
+- **Attachments & Multimodality**: Support for image and file attachments during chats, integrating directly with multimodal providers.
+- **Context Management**: Intelligent context trimming based on your local provider's token limits to ensure prompt stability and prevent token overflow.
+- **Extensible Plugin System**: Customize and extend the core functionality using local ESM plugins.
 
-## Installation & Usage
+### Built-in Utilities
+Included as bundled plugins, SmileyChat provides powerful tools right out of the box:
+- **LoreBooks**: Manage World Info with native support for creating, importing, and exporting LoreBooks to inject dynamic contextual information into your active chats.
+- **Chat Formatter**: A dedicated formatter for cleaner chat presentation.
+- **Regex Replacer**: Automatically format and replace text in messages using custom regular expressions.
+- **Chat Summarizer**: Generate concise summaries of long conversations to save context tokens.
+- **Post Processing**: Apply custom processing prompts to refine or alter the AI's final output.
+- **MCP Servers**: Built-in support for Model Context Protocol integration.
 
-SmileyChat runs locally. After it starts, open the displayed URL in your browser, usually `http://127.0.0.1:4173`.
+---
+
+## Getting Started
+
+SmileyChat runs locally on your machine. Once started, access it in your browser (typically at `http://127.0.0.1:4173`).
 
 ### Windows
-
-Install [Git](https://git-scm.com/) and [Bun](https://bun.sh/), clone the repository, then run:
+1. Install [Git](https://git-scm.com/).
+2. Clone the repository and run the startup script (it will offer to automatically install Bun if you don't have it):
 
 ```cmd
+git clone https://github.com/SmileyTatsu/SmileyChat.git
+cd SmileyChat
 SmileyChat.Windows.cmd
 ```
 
-To update before starting:
+*(To update the app before starting, use `SmileyChat.Windows.Update.cmd`)*
 
-```cmd
-scripts\windows\update-start.cmd
-```
-
-### Ubuntu / Debian
-
-Install Git, curl, and unzip if they are not already available:
+### Linux (Ubuntu / Debian / Others)
+First, ensure Git, curl, and unzip are installed via your package manager. For Debian/Ubuntu, run:
 
 ```bash
 sudo apt update
 sudo apt install -y git curl unzip
 ```
 
-Install Bun:
-
-```bash
-curl -fsSL https://bun.sh/install | bash
-source ~/.bashrc
-```
-
-Clone and start SmileyChat:
+Then, clone the repository and run the startup script (it will offer to automatically install Bun if you don't have it):
 
 ```bash
 git clone https://github.com/SmileyTatsu/SmileyChat.git
 cd SmileyChat
-bun install
-bun run build
-bun run start
+./SmileyChat.Linux.sh
 ```
 
-### Linux
-
-For other Linux distributions, install Git, curl, and unzip with your system package manager, install [Bun](https://bun.sh/), then run:
-
-```bash
-git clone https://github.com/SmileyTatsu/SmileyChat.git
-cd SmileyChat
-bun install
-bun run build
-bun run start
-```
+*(To update the app before starting, use `./SmileyChat.Linux.Update.sh`)*
 
 ### Android / Termux
+Android is supported using Termux and a Bun compatibility shim. 
+**[Read the full Android walkthrough](docs/android-termux.md)**.
 
-Android support uses Termux and a Bun compatibility shim. See [`docs/android-termux.md`](docs/android-termux.md) for the full walkthrough.
-
-After setup, start or update SmileyChat with:
-
+Once configured, start or update SmileyChat with:
 ```sh
 sh ./SmileyChat.Termux.sh
 ```
 
-### Manual Start
-
-From an existing checkout with Bun installed:
-
-```bash
-bun install
-bun run build
-bun run start
-```
+---
 
 ## Server Configuration
 
-SmileyChat binds to **`0.0.0.0` by default** so LAN devices, Tailscale peers, and Docker containers can reach it out of the box. The safe-by-default lockdown keeps that safe: any non-loopback request gets a friendly "set up access" page until you configure Basic Auth or an IP allowlist below. Edit `.env`, which is auto-created from `.env.example` on first boot. Most settings hot-reload within about 2 seconds, no restart needed.
+By default, SmileyChat binds to **`0.0.0.0`**, making it accessible to LAN devices, Tailscale peers, and Docker containers out of the box. 
 
-The headline knobs:
+**Safe-by-Default:** Any non-loopback request will show a "set up access" page until you configure authentication. Edit the `.env` file (auto-created on first boot) to manage access. Most changes hot-reload in ~2 seconds.
 
 ```bash
 # Interface the server binds to. 0.0.0.0 = all interfaces (default).
@@ -109,90 +105,71 @@ SMILEYCHAT_HOST=0.0.0.0
 SMILEYCHAT_BASIC_AUTH_USER=
 SMILEYCHAT_BASIC_AUTH_PASS=
 
-# Or, restrict by IP/CIDR instead of (or alongside) Basic Auth.
+# Restrict access by IP/CIDR instead of (or alongside) Basic Auth.
 SMILEYCHAT_IP_ALLOWLIST=192.168.1.0/24,10.0.0.5
-
-# When neither of the above is set, SmileyChat refuses non-loopback
-# requests with a friendly "set up access" page. Opt back in with these
-# only when you understand what they mean:
-SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK=false
-SMILEYCHAT_ALLOW_UNAUTHENTICATED_REMOTE=false
 ```
 
-When running behind a reverse proxy or under a DNS name, list the public browser origins that may make state-changing requests:
+> For reverse proxy setups, Docker, Tailscale, or public access, please review our comprehensive **[Security Model Documentation](docs/reference/security.md)**.
+
+---
+
+## Documentation
+
+Dive deeper into SmileyChat's features and technical architecture in the `docs/` folder.
+
+### How-To Guides
+- [Connecting AI Models](docs/guides/connecting-models.md)
+- [Importing Characters](docs/guides/importing-characters.md)
+- [Understanding Presets](docs/guides/understanding-presets.md)
+- [Backup and Restore Data](docs/guides/backup-and-restore.md)
+- [Accessing SmileyChat Remotely](docs/guides/remote-access.md)
+- [Using LoreBooks](docs/guides/lorebooks.md)
+- [Troubleshooting](docs/guides/troubleshooting.md)
+
+### Technical Details
+- [Providers & AI Setup](docs/reference/providers.md)
+- [Preset Macros](docs/reference/macros.md)
+- [User Data & Storage](docs/reference/user-data.md)
+- [Core Architecture](docs/development/architecture.md)
+- [Security Model](docs/reference/security.md)
+- [Plugins System](docs/plugins/README.md)
+
+---
+
+## Development & Ecosystem
+
+### Ecosystem Repositories
+- [**smileychat-plugins**](https://github.com/SmileyTatsu/smileychat-plugins): Verified plugin registry, schemas, and contribution docs.
+- [**smileychat-plugin-template**](https://github.com/SmileyTatsu/smileychat-plugin-template): Starter template for building distributable plugins.
+
+### Running in Dev Mode
+To run the app with Hot Module Replacement (HMR) for active development:
 
 ```bash
-SMILEYCHAT_TRUSTED_ORIGINS=https://chat.example.com,http://192.168.1.20:4173
-# Required when the proxy supplies X-Forwarded-* headers.
-SMILEYCHAT_TRUSTED_PROXIES=127.0.0.1/32,::1/128
-```
-
-Tailscale (`100.64.0.0/10`) and Docker bridge (`172.16.0.0/12`) traffic must authenticate by default. Set `SMILEYCHAT_BYPASS_AUTH_TAILSCALE=true` or `SMILEYCHAT_BYPASS_AUTH_DOCKER=true` only when every peer or container is trusted: each bypass skips both the IP allowlist and Basic Auth. Remote access to connection secrets additionally requires `SMILEYCHAT_ADMIN_SECRET` in the `X-SmileyChat-Admin-Secret` header.
-
-See [docs/reference/security.md](docs/reference/security.md) for the full security model: every layer, every env var, what it protects against, and recommended recipes for local / LAN / Tailscale / public-internet deployments.
-
-## Development
-
-To run the app in development mode with Hot Module Replacement (HMR):
-
-```bash
+# Terminal 1: Frontend
 bun run dev
-# In a separate terminal, start the local API server:
+
+# Terminal 2: Local API server
 bun run dev:api
 ```
 
-Useful checks:
-
+Helpful checks before submitting PRs:
 ```bash
 bun run typecheck
 bun test
 bun run build
 ```
 
-## Documentation
+See the [Development Guide](docs/development/development.md) for more details.
 
-Check the [docs/](docs/) folder for guides, reference material, plugin docs, and technical notes.
-
-### How-To Guides
-
-- [Running SmileyChat on Android via Termux](docs/android-termux.md)
-- [How to Connect AI Models](docs/guides/connecting-models.md)
-- [How to Import Characters](docs/guides/importing-characters.md)
-- [Understanding Presets](docs/guides/understanding-presets.md)
-- [How to Backup and Restore Data](docs/guides/backup-and-restore.md)
-- [How to Access SmileyChat Remotely](docs/guides/remote-access.md)
-- [Troubleshooting](docs/guides/troubleshooting.md)
-- [Using LoreBooks](docs/guides/lorebooks.md)
-
-### Technical Details
-
-- [Providers & AI Setup](docs/reference/providers.md)
-- [Preset Macros](docs/reference/macros.md)
-- [User Data & Storage](docs/reference/user-data.md)
-- [Security Model](docs/reference/security.md)
-- [Development Guide](docs/development/development.md)
-- [Core Architecture](docs/development/architecture.md)
-- [Plugins System](docs/plugins/README.md)
-
-## License
-
-SmileyChat is licensed under the [GNU Affero General Public License v3.0](LICENSE).
-
-Third-party plugins that interact with SmileyChat only through the documented plugin runtime API may use their own licenses. Modified versions of SmileyChat itself remain covered by AGPL-3.0.
+---
 
 ## Credits & Acknowledgements
 
 - **Post-Processing Default Prompts:** The default pipeline prompts for the post-processing extension were adapted from [closuretxt's recast-post-processing](https://github.com/closuretxt/recast-post-processing).
 
-## AI Disclosure
+## License & Contact
 
-This project was built with the assistance of AI. Please note:
-
-1. AI was primarily used for frontend development and UI structuring.
-2. All code written by AI has been strictly reviewed at least twice by a human.
-3. **For Contributors:** You are welcome to use AI tools for your PRs, but you are expected to know exactly what the AI changed. Do not submit blind generations. Low-quality code will not be merged.
-
-## Contact
-
-- **Support Server:** [SmileyCord](https://discord.gg/PTWXzugDXG)
-- **Non-support Inquiries:** SmileyTatsu@waifu.club
+- **License:** [GNU AGPL v3.0](LICENSE). Modified versions of SmileyChat must remain covered by AGPL-3.0. Third-party plugins using the documented API may use their own licenses.
+- **Community & Support:** Join the [SmileyCord Discord Server](https://discord.gg/PTWXzugDXG)
+- **Inquiries:** SmileyTatsu@waifu.club
