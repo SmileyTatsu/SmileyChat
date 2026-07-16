@@ -43,6 +43,11 @@ function resolvePresetMacrosInternal(
     depth: number,
     resolvingKeys: Set<string>,
 ) {
+    // Skip regex work entirely if no macros are present.
+    if (!content || !content.includes("{{")) {
+        return content;
+    }
+
     const shouldTrim = /\{\{\s*trim\s*\}\}/.test(content);
     let resolved = content.replace(commentMacroPattern, "");
 
