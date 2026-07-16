@@ -6,7 +6,7 @@
 
 [![Project Status](https://img.shields.io/badge/status-Beta-blue.svg)](#project-status)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Discord](https://img.shields.io/discord/1166241535617142867?label=Discord&logo=discord&logoColor=white)](https://discord.gg/PTWXzugDXG) 
+[![Discord](https://img.shields.io/discord/1166241535617142867?label=Discord&logo=discord&logoColor=white)](https://discord.gg/PTWXzugDXG)
 
 </div>
 
@@ -18,10 +18,6 @@
 ## What is SmileyChat?
 
 SmileyChat is a local-first frontend application designed for interacting with AI chatbots. Whether you are looking for casual chatting, immersive roleplay, or deep storytelling, SmileyChat provides a clean, accessible, and user-friendly experience for both beginners and experienced writers.
-
-[IMAGE 2: A high-quality screenshot showing the main application interface in "Chatting" mode, featuring the dark mode design, character sidebar on the left, and a chat window in the center.]
-
-[IMAGE 3: A high-quality screenshot showing the "Roleplaying / Storytelling" mode, highlighting the writing-focused interface with longer paragraphs and a cleaner text layout.]
 
 ## Features
 
@@ -35,7 +31,9 @@ SmileyChat is a local-first frontend application designed for interacting with A
 - **Extensible Plugin System**: Customize and extend the core functionality using local ESM plugins.
 
 ### Built-in Utilities
+
 Included as bundled plugins, SmileyChat provides powerful tools right out of the box:
+
 - **LoreBooks**: Manage World Info with native support for creating, importing, and exporting LoreBooks to inject dynamic contextual information into your active chats.
 - **Chat Formatter**: A dedicated formatter for cleaner chat presentation.
 - **Regex Replacer**: Automatically format and replace text in messages using custom regular expressions.
@@ -50,6 +48,7 @@ Included as bundled plugins, SmileyChat provides powerful tools right out of the
 SmileyChat runs locally on your machine. Once started, access it in your browser (typically at `http://127.0.0.1:4173`).
 
 ### Windows
+
 1. Install [Git](https://git-scm.com/).
 2. Clone the repository and run the startup script (it will offer to automatically install Bun if you don't have it):
 
@@ -59,9 +58,10 @@ cd SmileyChat
 SmileyChat.Windows.cmd
 ```
 
-*(To update the app before starting, use `SmileyChat.Windows.Update.cmd`)*
+_(To update the app before starting, use `SmileyChat.Windows.Update.cmd`)_
 
 ### Linux (Ubuntu / Debian / Others)
+
 First, ensure Git, curl, and unzip are installed via your package manager. For Debian/Ubuntu, run:
 
 ```bash
@@ -77,13 +77,15 @@ cd SmileyChat
 ./SmileyChat.Linux.sh
 ```
 
-*(To update the app before starting, use `./SmileyChat.Linux.Update.sh`)*
+_(To update the app before starting, use `./SmileyChat.Linux.Update.sh`)_
 
 ### Android / Termux
-Android is supported using Termux and a Bun compatibility shim. 
+
+Android is supported using Termux and a Bun compatibility shim.
 **[Read the full Android walkthrough](docs/android-termux.md)**.
 
 Once configured, start or update SmileyChat with:
+
 ```sh
 sh ./SmileyChat.Termux.sh
 ```
@@ -92,7 +94,7 @@ sh ./SmileyChat.Termux.sh
 
 ## Server Configuration
 
-By default, SmileyChat binds to **`0.0.0.0`**, making it accessible to LAN devices, Tailscale peers, and Docker containers out of the box. 
+By default, SmileyChat binds to **`0.0.0.0`**, making it accessible to LAN devices, Tailscale peers, and Docker containers out of the box.
 
 **Safe-by-Default:** Any non-loopback request will show a "set up access" page until you configure authentication. Edit the `.env` file (auto-created on first boot) to manage access. Most changes hot-reload in ~2 seconds.
 
@@ -118,6 +120,7 @@ SMILEYCHAT_IP_ALLOWLIST=192.168.1.0/24,10.0.0.5
 Dive deeper into SmileyChat's features and technical architecture in the `docs/` folder.
 
 ### How-To Guides
+
 - [Connecting AI Models](docs/guides/connecting-models.md)
 - [Importing Characters](docs/guides/importing-characters.md)
 - [Understanding Presets](docs/guides/understanding-presets.md)
@@ -127,6 +130,7 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 - [Troubleshooting](docs/guides/troubleshooting.md)
 
 ### Technical Details
+
 - [Providers & AI Setup](docs/reference/providers.md)
 - [Preset Macros](docs/reference/macros.md)
 - [User Data & Storage](docs/reference/user-data.md)
@@ -139,10 +143,12 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 ## Development & Ecosystem
 
 ### Ecosystem Repositories
+
 - [**smileychat-plugins**](https://github.com/SmileyTatsu/smileychat-plugins): Verified plugin registry, schemas, and contribution docs.
 - [**smileychat-plugin-template**](https://github.com/SmileyTatsu/smileychat-plugin-template): Starter template for building distributable plugins.
 
 ### Running in Dev Mode
+
 To run the app with Hot Module Replacement (HMR) for active development:
 
 ```bash
@@ -154,6 +160,7 @@ bun run dev:api
 ```
 
 Helpful checks before submitting PRs:
+
 ```bash
 bun run typecheck
 bun test
