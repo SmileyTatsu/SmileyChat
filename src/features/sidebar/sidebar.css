@@ -1093,7 +1093,7 @@
     border-color: #7e8fb4;
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 820px) {
     .sidebar-mobile-close-btn {
         display: inline-flex;
     }
