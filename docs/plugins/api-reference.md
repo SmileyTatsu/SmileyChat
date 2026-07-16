@@ -105,6 +105,11 @@ await api.actions.editMessage("message-id", "Updated message text.");
 api.actions.setCharacterPresence("away");
 api.actions.setDraft("Draft text");
 api.actions.insertDraft(" appended text");
+
+// Atomic data mutations
+await api.actions.updateCharacter(character.id, { personality: "Friendly and upbeat." });
+await api.actions.updateChatMetadata(chat.id, { metadata: { customPluginState: 1 } });
+await api.actions.addLorebookEntry(lorebook.id, { keys: ["magic"], content: "..." });
 ```
 
 Requires `actions`.
@@ -160,6 +165,34 @@ api.actions.setCharacterPresence("online");
 ```
 
 Presence is UI/runtime state and is not saved to `userData`. Multiple plugins can set presence; the effective priority is `offline`, then `dnd`, then `away`, then `online`. A plugin's override is removed when that plugin is deactivated.
+
+### Atomic Data Mutations
+
+Plugins can safely modify underlying data (Characters, Lorebooks, and Chats) using granular actions. These mutations use serialized REST patches to avoid race conditions with user edits and other plugins. The frontend state will instantly reflect changes.
+
+```js
+// Update specific character card fields
+await api.actions.updateCharacter("character-id", { 
+    scenario: "A new scenario begins.",
+    personality: "Determined."
+});
+
+// Update chat metadata or mode (does not affect messages)
+await api.actions.updateChatMetadata("chat-id", { 
+    title: "New Chapter",
+    metadata: { storyAct: 2 } 
+});
+
+// Manage Lorebooks
+const newBook = await api.actions.createLorebook({ title: "Campaign Notes" });
+await api.actions.addLorebookEntry(newBook.id, {
+    title: "The Artifact",
+    keys: ["artifact", "relic"],
+    content: "A mysterious glowing stone."
+});
+await api.actions.updateLorebookEntry(newBook.id, "entry-id", { content: "It glows brighter now." });
+await api.actions.deleteLorebookEntry(newBook.id, "entry-id");
+```
 
 ## `api.model.generate`
 

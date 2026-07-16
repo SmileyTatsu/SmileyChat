@@ -11,6 +11,7 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `PUT /api/characters/index`: Save the active character and ordering metadata.
 - `GET /api/characters/:characterId`: Load a single saved character by ID.
 - `PUT /api/characters/:characterId`: Update a single character by ID.
+- `PATCH /api/characters/:characterId`: Patch a single character's data field without overwriting other properties.
 - `DELETE /api/characters/:characterId`: Delete a character (accepts `?deleteChats=true` to delete associated chats).
 - `GET /api/characters/:characterId/avatar`: Serve a saved character's avatar image.
 - `POST /api/characters/:characterId/avatar`: Upload and save a character avatar image.
@@ -25,6 +26,7 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `POST /api/chats`: Create a new saved chat session JSON file.
 - `GET /api/chats/:chatId`: Load a saved chat session by ID.
 - `PUT /api/chats/:chatId`: Update a chat session.
+- `PATCH /api/chats/:chatId/metadata`: Patch a chat session's title, mode, and metadata without modifying messages.
 - `DELETE /api/chats/:chatId`: Delete a saved chat session.
 - `POST /api/chats/:chatId/fork`: Fork an existing chat at a specific message ID.
 - `PUT /api/chats/index`: Save active chat selection metadata.
@@ -61,6 +63,10 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `POST /api/lorebooks`: Create a saved LoreBook JSON file.
 - `GET /api/lorebooks/:lorebookId`: Load one saved LoreBook.
 - `PUT /api/lorebooks/:lorebookId`: Update one LoreBook.
+- `PATCH /api/lorebooks/:lorebookId`: Patch one LoreBook's settings, title, description, and metadata without replacing entries.
+- `POST /api/lorebooks/:lorebookId/entries`: Add a new entry to the LoreBook.
+- `PUT /api/lorebooks/:lorebookId/entries/:entryId`: Update an existing LoreBook entry.
+- `DELETE /api/lorebooks/:lorebookId/entries/:entryId`: Remove a LoreBook entry.
 - `DELETE /api/lorebooks/:lorebookId`: Delete one saved LoreBook.
 - `PUT /api/lorebooks/index`: Save active LoreBook and ordering metadata.
 - `POST /api/lorebooks/import`: Import uploaded SmileyChat or SillyTavern World Info JSON files.
