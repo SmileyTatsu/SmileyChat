@@ -75,9 +75,9 @@ export function useChatLibrary({
     const { flushPendingChatAutosaveWithoutStateUpdate, persistChat, queueChatSave } =
         useChatAutosave({
             latestChatRef,
+            latestChatSummariesRef,
             setActiveChat,
             setChatLoadError,
-            setChatSummaries,
             updateChatSummary,
         });
 

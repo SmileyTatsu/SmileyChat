@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "preact/hooks";
 
 import { saveChat, saveChatWithKeepAlive } from "#frontend/lib/api/client";
-import { chatToSummary, normalizeChat } from "#frontend/lib/chats/normalize";
+import { chatToSummary } from "#frontend/lib/chats/normalize";
 import { messageFromError } from "#frontend/lib/common/errors";
 import type { ChatSession, ChatSummary, ChatSummaryCollection } from "#frontend/types";
 
@@ -13,24 +13,23 @@ type MutableRef<T> = {
 
 type UseChatAutosaveOptions = {
     latestChatRef: MutableRef<ChatSession | undefined>;
+    latestChatSummariesRef: MutableRef<ChatSummaryCollection>;
     setActiveChat: (chat: ChatSession | undefined) => void;
     setChatLoadError: (message: string) => void;
-    setChatSummaries: (summaries: ChatSummaryCollection) => void;
     updateChatSummary: (summary: ChatSummary) => void;
 };
 
 type SaveResult = {
-    chat: ChatSession;
-    chats?: ChatSummaryCollection;
+    summary: ChatSummary;
 };
 
 const autosaveDelayMs = 450;
 
 export function useChatAutosave({
     latestChatRef,
+    latestChatSummariesRef,
     setActiveChat,
     setChatLoadError,
-    setChatSummaries,
     updateChatSummary,
 }: UseChatAutosaveOptions) {
     const autosaveTimersRef = useRef(new Map<string, number>());
@@ -67,22 +66,16 @@ export function useChatAutosave({
     }, []);
 
     function queueChatSave(nextChat: ChatSession) {
-        const safeChat = normalizeChat(nextChat);
-
-        if (!safeChat) {
-            return;
-        }
-
-        updateLocalChatState(safeChat, true);
+        updateLocalChatState(nextChat, true);
         setChatLoadError("");
-        scheduledChatsRef.current.set(safeChat.id, safeChat);
-        clearPendingChatAutosaveTimer(safeChat.id);
+        scheduledChatsRef.current.set(nextChat.id, nextChat);
+        clearPendingChatAutosaveTimer(nextChat.id);
         autosaveTimersRef.current.set(
-            safeChat.id,
+            nextChat.id,
             window.setTimeout(() => {
-                autosaveTimersRef.current.delete(safeChat.id);
-                const scheduledChat = scheduledChatsRef.current.get(safeChat.id);
-                scheduledChatsRef.current.delete(safeChat.id);
+                autosaveTimersRef.current.delete(nextChat.id);
+                const scheduledChat = scheduledChatsRef.current.get(nextChat.id);
+                scheduledChatsRef.current.delete(nextChat.id);
 
                 if (scheduledChat) {
                     void enqueueChatSave(scheduledChat);
@@ -124,20 +117,14 @@ export function useChatAutosave({
     }
 
     async function persistChat(nextChat: ChatSession, updateState = true) {
-        const safeChat = normalizeChat(nextChat);
-
-        if (!safeChat) {
-            return;
-        }
-
-        clearPendingChatAutosaveTimer(safeChat.id);
-        scheduledChatsRef.current.delete(safeChat.id);
+        clearPendingChatAutosaveTimer(nextChat.id);
+        scheduledChatsRef.current.delete(nextChat.id);
 
         if (updateState) {
-            updateLocalChatState(safeChat, true);
+            updateLocalChatState(nextChat, true);
         }
 
-        await enqueueChatSave(safeChat);
+        await enqueueChatSave(nextChat);
     }
 
     function enqueueChatSave(chat: ChatSession) {
@@ -151,21 +138,16 @@ export function useChatAutosave({
         }
 
         const queue = createLatestSaveQueue<ChatSession, SaveResult>({
-            save: async (chat) => {
-                const result = (await saveChat(chat)) as SaveResult;
-                return {
-                    ...result,
-                    chat: normalizeChat(result.chat) ?? chat,
-                };
-            },
+            save: (chat) => saveChat(chat),
             onSaved: (_chat, result) => {
-                if (result.chat.id === latestChatRef.current?.id) {
-                    setActiveChat(result.chat);
-                }
-                if (result.chats) {
-                    setChatSummaries(result.chats);
-                } else {
-                    updateChatSummary(chatToSummary(result.chat));
+                if (
+                    shouldApplySavedChatSummary(
+                        result.summary,
+                        latestChatRef.current,
+                        latestChatSummariesRef.current,
+                    )
+                ) {
+                    updateChatSummary(result.summary);
                 }
                 setChatLoadError("");
             },
@@ -191,4 +173,20 @@ export function useChatAutosave({
         persistChat,
         queueChatSave,
     };
+}
+
+export function shouldApplySavedChatSummary(
+    savedSummary: ChatSummary,
+    activeChat: ChatSession | undefined,
+    chatSummaries: ChatSummaryCollection,
+) {
+    const localSummary =
+        activeChat?.id === savedSummary.id
+            ? chatToSummary(activeChat)
+            : chatSummaries.chats.find((chat) => chat.id === savedSummary.id);
+
+    return (
+        !localSummary ||
+        Date.parse(savedSummary.updatedAt) >= Date.parse(localSummary.updatedAt)
+    );
 }

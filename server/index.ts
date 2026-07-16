@@ -22,6 +22,7 @@ import {
 } from "./chat-assets";
 import { exportGroupChatDefinition, importGroupChatDefinition } from "./chat-groups";
 import { importUploadedChatFile } from "./chat-imports";
+import { chatSaveResponse } from "./chat-save-response";
 import {
     createChat,
     deleteChatById,
@@ -540,9 +541,7 @@ const createServer = () =>
                         request.params.chatId,
                         await readJsonBody(request),
                     );
-                    const chats = await readChatSummaryCollection();
-
-                    return json({ ok: true, chat, chats });
+                    return json(chatSaveResponse(chat));
                 }),
 
                 DELETE: api(async (request) => {

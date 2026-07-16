@@ -168,10 +168,7 @@ export async function writeChatById(chatId: string, value: unknown) {
 
     const existingChat = await readChatById(chatId);
     const chat = sanitizeChatAttachmentUrls(normalizedChat);
-    if (
-        existingChat &&
-        timestampMs(existingChat.updatedAt) > timestampMs(chat.updatedAt)
-    ) {
+    if (existingChat && shouldPreserveExistingChat(existingChat, chat)) {
         return existingChat;
     }
 
@@ -195,6 +192,16 @@ export async function writeChatById(chatId: string, value: unknown) {
     });
 
     return chat;
+}
+
+export function shouldPreserveExistingChat(
+    existingChat: ChatSession | undefined,
+    incomingChat: ChatSession,
+) {
+    return (
+        existingChat !== undefined &&
+        timestampMs(existingChat.updatedAt) > timestampMs(incomingChat.updatedAt)
+    );
 }
 
 export async function deleteChatById(chatId: string) {

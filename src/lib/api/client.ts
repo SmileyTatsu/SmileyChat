@@ -2,6 +2,7 @@ import type {
     CharacterSummaryCollection,
     ChatAttachment,
     ChatSession,
+    ChatSummary,
     ChatSummaryCollection,
     PersonaSummaryCollection,
     SmileyCharacter,
@@ -471,8 +472,7 @@ export function forkChat(chatId: string, messageId: string) {
 export function saveChat(chat: ChatSession) {
     return requestJson<{
         ok: true;
-        chat: ChatSession;
-        chats?: ChatSummaryCollection;
+        summary: ChatSummary;
     }>(`/api/chats/${encodeURIComponent(chat.id)}`, jsonInit("PUT", chat));
 }
 
