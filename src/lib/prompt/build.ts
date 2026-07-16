@@ -4,6 +4,10 @@ import type { ChatGenerationMessage } from "../connections/types";
 import { compilePresetMessagesWithMetadata } from "../presets/compile";
 import type { SmileyPreset } from "../presets/types";
 import {
+    protectedHistoryMessageId,
+    selectHistoryMessagesForBudget,
+} from "./history-budget";
+import {
     applyPromptInjectionsWithMetadata,
     type AnchoredPromptMessage,
 } from "./injections";
@@ -37,11 +41,17 @@ export async function buildPromptForGeneration({
     const processedContext = await applyContextMiddlewares(context, contextMiddlewares);
     const injections = await collectPromptInjections(processedContext, injectors);
     const budget = planPromptBudget(processedContext, injections);
+    const historyMessages = selectHistoryMessagesForBudget({
+        messages: processedContext.messages,
+        availableHistoryTokens: budget.availableHistoryTokens,
+    });
     const outlets = createPromptOutletRegistry(injections);
     const compiled = compilePresetMessagesWithMetadata(processedContext.preset, {
         character: processedContext.character,
         generation: processedContext.generation,
         group: processedContext.group,
+        // Pre-selection is a fast conservative estimate; final budget is enforced after compile.
+        historyMessages,
         metadata: processedContext.metadata ?? processedContext.chat.metadata,
         messages: processedContext.messages,
         mode: processedContext.mode,
@@ -51,8 +61,8 @@ export async function buildPromptForGeneration({
         userStatus: processedContext.userStatus,
     });
     const promptItems = applyPromptInjectionsWithMetadata(compiled, injections);
-    const trimmedPrompt = trimAssembledPromptForEstimatedContext({
-        messages: processedContext.messages,
+    const trimmedPrompt = finalizeAssembledPromptBudget({
+        messages: historyMessages,
         promptItems,
         tokenBudget: processedContext.tokenBudget,
     });
@@ -140,7 +150,7 @@ function normalizePromptInjections(value: PromptInjection[]) {
     );
 }
 
-function trimAssembledPromptForEstimatedContext({
+function finalizeAssembledPromptBudget({
     messages,
     promptItems,
     tokenBudget,
@@ -150,8 +160,9 @@ function trimAssembledPromptForEstimatedContext({
     tokenBudget: number;
 }) {
     const output = [...promptItems];
+    const itemCosts = output.map((item) => estimateGenerationMessage(item.message));
     const protectedHistoryId = protectedHistoryMessageId(messages);
-    let tokenEstimate = estimateAnchoredPromptMessages(output);
+    let tokenEstimate = itemCosts.reduce((total, cost) => total + cost, 0);
 
     while (tokenEstimate > tokenBudget) {
         const index = firstRemovableHistoryIndex(output, protectedHistoryId);
@@ -160,8 +171,8 @@ function trimAssembledPromptForEstimatedContext({
             break;
         }
 
-        removeHistoryPromptAt(output, index);
-        tokenEstimate = estimateAnchoredPromptMessages(output);
+        const removedCost = removeHistoryPromptAt(output, itemCosts, index);
+        tokenEstimate -= removedCost;
     }
 
     while (tokenEstimate > tokenBudget) {
@@ -171,8 +182,9 @@ function trimAssembledPromptForEstimatedContext({
             break;
         }
 
+        tokenEstimate -= itemCosts[index] ?? 0;
         output.splice(index, 1);
-        tokenEstimate = estimateAnchoredPromptMessages(output);
+        itemCosts.splice(index, 1);
     }
 
     const promptMessages = output.map((item) => item.message);
@@ -190,22 +202,6 @@ function trimAssembledPromptForEstimatedContext({
         promptMessages,
         tokenEstimate,
     };
-}
-
-function protectedHistoryMessageId(messages: Message[]) {
-    const promptMessages = messages.filter(
-        (message) =>
-            message.metadata?.includeInPrompt !== false &&
-            message.metadata?.promptRole !== "none",
-    );
-
-    for (let index = promptMessages.length - 1; index >= 0; index -= 1) {
-        if (promptMessages[index].role === "user") {
-            return promptMessages[index].id;
-        }
-    }
-
-    return promptMessages[promptMessages.length - 1]?.id;
 }
 
 function firstRemovableHistoryIndex(
@@ -242,12 +238,18 @@ function firstRemovableInjectionIndex(messages: AnchoredPromptMessage[]) {
     );
 }
 
-function removeHistoryPromptAt(messages: AnchoredPromptMessage[], index: number) {
+function removeHistoryPromptAt(
+    messages: AnchoredPromptMessage[],
+    itemCosts: number[],
+    index: number,
+) {
     const item = messages[index];
 
     if (!item?.message.toolCalls?.length && !item?.message.toolResult) {
+        const cost = itemCosts[index] ?? 0;
         messages.splice(index, 1);
-        return;
+        itemCosts.splice(index, 1);
+        return cost;
     }
 
     let start = index;
@@ -271,7 +273,15 @@ function removeHistoryPromptAt(messages: AnchoredPromptMessage[], index: number)
         deleteCount += 1;
     }
 
+    let removedCost = 0;
+
+    for (let offset = 0; offset < deleteCount; offset += 1) {
+        removedCost += itemCosts[start + offset] ?? 0;
+    }
+
     messages.splice(start, deleteCount);
+    itemCosts.splice(start, deleteCount);
+    return removedCost;
 }
 
 function isAdjacentToolProtocolPair(
@@ -293,13 +303,6 @@ function isAdjacentToolProtocolPair(
         (right.message.toolResult &&
             leftCallIds.has(right.message.toolResult.toolCallId)) ||
         (left.message.toolResult && rightCallIds.has(left.message.toolResult.toolCallId)),
-    );
-}
-
-function estimateAnchoredPromptMessages(messages: AnchoredPromptMessage[]) {
-    return messages.reduce(
-        (total, item) => total + estimateGenerationMessage(item.message),
-        0,
     );
 }
 

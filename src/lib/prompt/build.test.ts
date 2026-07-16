@@ -200,6 +200,108 @@ describe("buildPromptForGeneration", () => {
             }),
         ).rejects.toThrow("exceeds the active context token limit");
     });
+
+    test("pre-trims long history before compiling selected turns only", async () => {
+        const messages = Array.from({ length: 200 }, (_, index) =>
+            message(
+                `m${index + 1}`,
+                index % 2 === 0 ? "user" : "character",
+                `turn ${index + 1} ${"word ".repeat(20)}`,
+            ),
+        );
+        const result = await buildPromptForGeneration({
+            context: createPromptContext({
+                messages,
+                preset: createTinyPreset(),
+                tokenBudget: 900,
+            }),
+        });
+
+        expect(result.messages.length).toBeGreaterThan(0);
+        expect(result.messages.length).toBeLessThan(messages.length);
+        expect(result.messages[result.messages.length - 1]?.id).toBe("m200");
+        expect(result.debug.trimmedMessageIds).toContain("m1");
+        expect(result.debug.trimmedMessageIds.length).toBe(
+            messages.length - result.messages.length,
+        );
+        expect(result.debug.selectedMessageIds).toEqual(
+            result.messages.map((item) => item.id),
+        );
+    });
+
+    test("keeps the latest user turn when older history is discarded", async () => {
+        const result = await buildPromptForGeneration({
+            context: createPromptContext({
+                messages: [
+                    message("m1", "user", "old ".repeat(120)),
+                    message("m2", "character", "mid ".repeat(120)),
+                    message("m3", "user", "latest"),
+                ],
+                preset: createTinyPreset(),
+                tokenBudget: 240,
+            }),
+        });
+
+        expect(result.messages.map((item) => item.id)).toEqual(["m3"]);
+        expect(result.debug.trimmedMessageIds).toEqual(["m1", "m2"]);
+    });
+
+    test("resolves {{message_count}} against the full session while inserting only budgeted history", async () => {
+        const messages = Array.from({ length: 1000 }, (_, index) =>
+            message(
+                `m${index + 1}`,
+                index % 2 === 0 ? "user" : "character",
+                `turn ${index + 1} ${"word ".repeat(12)}`,
+            ),
+        );
+        const result = await buildPromptForGeneration({
+            context: createPromptContext({
+                messages,
+                preset: createMessageCountPreset(),
+                tokenBudget: 1200,
+            }),
+        });
+
+        expect(result.messages.length).toBeGreaterThan(0);
+        expect(result.messages.length).toBeLessThan(100);
+        expect(
+            result.promptMessages.some(
+                (item) =>
+                    typeof item.content === "string" && item.content.includes("1000"),
+            ),
+        ).toBe(true);
+        expect(result.messages[result.messages.length - 1]?.id).toBe("m1000");
+    });
+
+    test("final budget trim keeps the latest user turn when history macros expand", async () => {
+        const longDescription = "desc ".repeat(400);
+        const character = createCharacter();
+        character.data.description = longDescription;
+
+        const result = await buildPromptForGeneration({
+            context: createPromptContext({
+                character,
+                messages: [
+                    message("m1", "character", "{{char_description}}"),
+                    message("m2", "user", "old ".repeat(40)),
+                    message("m3", "character", "{{char_description}}"),
+                    message("m4", "user", "latest"),
+                ],
+                preset: createTinyPreset(),
+                tokenBudget: 500,
+            }),
+        });
+
+        expect(result.messages.map((item) => item.id)).toContain("m4");
+        expect(result.messages[result.messages.length - 1]?.id).toBe("m4");
+        expect(result.debug.tokenEstimate).toBeLessThanOrEqual(500);
+        expect(
+            result.promptMessages.some(
+                (item) =>
+                    typeof item.content === "string" && item.content.includes("latest"),
+            ),
+        ).toBe(true);
+    });
 });
 
 function createPromptContext(
@@ -325,5 +427,23 @@ function createTinyPreset(): SmileyPreset {
         ],
         createdAt,
         updatedAt: createdAt,
+    };
+}
+
+function createMessageCountPreset(): SmileyPreset {
+    const preset = createTinyPreset();
+
+    return {
+        ...preset,
+        id: "message-count-preset",
+        title: "Message count",
+        prompts: preset.prompts.map((prompt) =>
+            prompt.id === "system"
+                ? {
+                      ...prompt,
+                      content: "Message count: {{message_count}}",
+                  }
+                : prompt,
+        ),
     };
 }

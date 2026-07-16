@@ -15,6 +15,7 @@ import { formatCharacterBook, resolvePresetMacros } from "./macros";
 import { messageAuthorForPrompt } from "./message-format";
 import type { PresetPrompt, SmileyPreset } from "./types";
 import type { AnchoredPromptMessage } from "../prompt/injections";
+import { isMessageIncludedInPrompt } from "../prompt/message-utils";
 import type { PromptOutletRegistry } from "../prompt/outlets";
 import type { PromptGenerationContext } from "../prompt/types";
 
@@ -25,7 +26,16 @@ type CompilePresetContext = {
         memberIds?: string[];
     };
     generation?: PromptGenerationContext;
+    /**
+     * Budget-selected turns inserted as chat history.
+     * When omitted, `messages` is used for both macros and history insertion.
+     */
+    historyMessages?: Message[];
     metadata?: Record<string, unknown>;
+    /**
+     * Full session messages used for macro resolution
+     * (`{{message_count}}`, `{{last_message}}`, plugins, etc.).
+     */
     messages: Message[];
     mode: ChatMode;
     outlets?: PromptOutletRegistry;
@@ -33,6 +43,25 @@ type CompilePresetContext = {
     personaName: string;
     userStatus: UserStatus;
 };
+
+function historyMessagesForCompile(context: CompilePresetContext) {
+    return context.historyMessages ?? context.messages;
+}
+
+function macroContextForCompile(context: CompilePresetContext) {
+    return {
+        character: context.character,
+        generation: context.generation,
+        group: context.group,
+        metadata: context.metadata,
+        messages: context.messages,
+        mode: context.mode,
+        outlets: context.outlets,
+        personaDescription: context.personaDescription,
+        personaName: context.personaName,
+        userStatus: context.userStatus,
+    };
+}
 
 export function compilePresetContext(
     preset: SmileyPreset | undefined,
@@ -71,7 +100,7 @@ export function compilePresetMessagesWithMetadata(
                 },
                 source: "preset",
             },
-            ...context.messages
+            ...historyMessagesForCompile(context)
                 .filter(isMessageIncludedInPrompt)
                 .flatMap((message) => toAnchoredHistoryMessages(message, context)),
         ];
@@ -121,7 +150,7 @@ function contentForPrompt(
         ? promptContent
         : emptyDynamicPromptContent(promptId, context);
 
-    return resolvePresetMacros(rawContent, context);
+    return resolvePresetMacros(rawContent, macroContextForCompile(context));
 }
 
 function emptyDynamicPromptContent(promptId: string, context: CompilePresetContext) {
@@ -140,7 +169,7 @@ function emptyDynamicPromptContent(promptId: string, context: CompilePresetConte
         case dynamicPromptIds.worldInfoAfter:
             return "";
         case dynamicPromptIds.chatHistory:
-            return context.messages
+            return historyMessagesForCompile(context)
                 .filter(isMessageIncludedInPrompt)
                 .map((message) => messageTextForHistory(message, context))
                 .join("\n");
@@ -202,16 +231,21 @@ function injectChatHistoryPrompt(
     const match = chatHistoryMacroPattern().exec(prompt.content);
 
     if (!match) {
-        return injectConversationMessages(context.messages, injectedPrompts, context);
+        return injectConversationMessages(
+            historyMessagesForCompile(context),
+            injectedPrompts,
+            context,
+        );
     }
 
+    const macros = macroContextForCompile(context);
     const before = resolvePresetMacros(
         prompt.content.slice(0, match.index),
-        context,
+        macros,
     ).trim();
     const after = resolvePresetMacros(
         prompt.content.slice(match.index + match[0].length),
-        context,
+        macros,
     ).trim();
     const output: AnchoredPromptMessage[] = [];
 
@@ -220,7 +254,11 @@ function injectChatHistoryPrompt(
     }
 
     output.push(
-        ...injectConversationMessages(context.messages, injectedPrompts, context),
+        ...injectConversationMessages(
+            historyMessagesForCompile(context),
+            injectedPrompts,
+            context,
+        ),
     );
 
     if (after) {
@@ -372,21 +410,6 @@ function toAnchoredHistoryMessages(
     ];
 }
 
-function isMessageIncludedInPrompt(message: Message) {
-    if (
-        message.toolCalls?.length ||
-        message.toolResult ||
-        getActiveSwipe(message)?.toolActivities?.length
-    ) {
-        return true;
-    }
-
-    return (
-        message.metadata?.includeInPrompt !== false &&
-        message.metadata?.promptRole !== "none"
-    );
-}
-
 function promptRoleForMessage(message: Message): ChatGenerationMessage["role"] {
     if (message.toolCalls?.length) {
         return "assistant";
@@ -414,7 +437,10 @@ function messageContentForPrompt(message: Message, context: CompilePresetContext
         return getMessageContent(message);
     }
 
-    return resolvePresetMacros(getMessageContent(message), context);
+    return resolvePresetMacros(
+        getMessageContent(message),
+        macroContextForCompile(context),
+    );
 }
 
 function messageTextForHistory(message: Message, context: CompilePresetContext) {
