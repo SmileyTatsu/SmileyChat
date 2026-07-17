@@ -3,7 +3,6 @@ import type { PresetPrompt, SmileyPreset } from "#frontend/lib/presets/types";
 
 export function collectPresetWarnings(
     preset: SmileyPreset | undefined,
-    selectedPrompt: PresetPrompt | undefined,
 ) {
     if (!preset) {
         return ["No active preset is available."];
@@ -64,12 +63,23 @@ export function collectPresetWarnings(
         );
     }
 
-    if (selectedPrompt && selectedPrompt.content.trim().length === 0) {
+    return warnings;
+}
+
+export function collectSelectedPromptWarnings(
+    selectedPrompt: PresetPrompt | undefined,
+) {
+    if (!selectedPrompt) {
+        return [];
+    }
+
+    const warnings: string[] = [];
+
+    if (selectedPrompt.content.trim().length === 0) {
         warnings.push("The selected prompt is empty and will be omitted.");
     }
 
     if (
-        selectedPrompt &&
         selectedPrompt.injectionPosition !== "none" &&
         (!Number.isFinite(selectedPrompt.injectionDepth) ||
             selectedPrompt.injectionDepth < 0)
