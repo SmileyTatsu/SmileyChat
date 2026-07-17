@@ -5,6 +5,7 @@ import {
     deletePersona as deletePersonaRequest,
     loadPersona,
     loadPersonaSummaries,
+    patchPersona as patchPersonaRequest,
     savePersona,
     savePersonaIndex,
 } from "#frontend/lib/api/client";
@@ -244,6 +245,19 @@ export function usePersonaLibrary() {
         queuePersonaSave(nextPersona);
     }
 
+    async function patchPersona(personaId: string, patch: Partial<SmileyPersona>) {
+        await flushPendingPersonaAutosaveWithoutStateUpdate();
+        ignorePendingPersonaSaveResponses();
+
+        try {
+            const result = await patchPersonaRequest(personaId, patch);
+            applySavedPersona(result.persona, result.personas);
+        } catch (error) {
+            setPersonaLoadError(messageFromError(error));
+            throw error;
+        }
+    }
+
     function applySavedPersona(
         savedPersona: SmileyPersona,
         summaries?: PersonaSummaryCollection,
@@ -341,6 +355,7 @@ export function usePersonaLibrary() {
         personaEditorPersona,
         personaLoadError,
         personaSummaries,
+        patchPersona,
         selectPersona,
         selectPersonaForEditing,
         updatePersona,

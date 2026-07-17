@@ -172,15 +172,21 @@ Plugins can safely modify underlying data (Characters, Lorebooks, and Chats) usi
 
 ```js
 // Update specific character card fields
-await api.actions.updateCharacter("character-id", { 
+await api.actions.updateCharacter("character-id", {
     scenario: "A new scenario begins.",
-    personality: "Determined."
+    personality: "Determined.",
+});
+
+// Update active Persona (the user) fields
+await api.actions.updatePersona("persona-id", {
+    name: "New Name",
+    description: "I am wearing a wizard hat."
 });
 
 // Update chat metadata or mode (does not affect messages)
-await api.actions.updateChatMetadata("chat-id", { 
+await api.actions.updateChatMetadata("chat-id", {
     title: "New Chapter",
-    metadata: { storyAct: 2 } 
+    metadata: { storyAct: 2 },
 });
 
 // Manage Lorebooks
@@ -188,9 +194,11 @@ const newBook = await api.actions.createLorebook({ title: "Campaign Notes" });
 await api.actions.addLorebookEntry(newBook.id, {
     title: "The Artifact",
     keys: ["artifact", "relic"],
-    content: "A mysterious glowing stone."
+    content: "A mysterious glowing stone.",
 });
-await api.actions.updateLorebookEntry(newBook.id, "entry-id", { content: "It glows brighter now." });
+await api.actions.updateLorebookEntry(newBook.id, "entry-id", {
+    content: "It glows brighter now.",
+});
 await api.actions.deleteLorebookEntry(newBook.id, "entry-id");
 ```
 

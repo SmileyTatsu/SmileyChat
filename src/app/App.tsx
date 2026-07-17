@@ -158,6 +158,7 @@ export function App() {
         personaEditorPersona,
         personaLoadError,
         personaSummaries,
+        patchPersona,
         selectPersona,
         selectPersonaForEditing,
         updatePersona,
@@ -307,6 +308,7 @@ export function App() {
             loadPresetCollection,
             patchCharacter,
             patchChatMetadata,
+            patchPersona,
             selectCharacterRef: latestSelectCharacterForPluginsRef,
         });
     const pluginSnapshot: PluginAppSnapshot = useMemo(

@@ -102,6 +102,7 @@ type PluginAppActionHandlers = Pick<
     | "sendMessage"
     | "switchCharacter"
     | "updateCharacter"
+    | "updatePersona"
     | "createLorebook"
     | "addLorebookEntry"
     | "updateLorebookEntry"
@@ -924,6 +925,13 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             if (!handler)
                 throw new Error("Plugin updateCharacter action is not available.");
             await handler(characterId, patch);
+        },
+        async updatePersona(personaId, patch) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.updatePersona;
+            if (!handler)
+                throw new Error("Plugin updatePersona action is not available.");
+            await handler(personaId, patch);
         },
         async createLorebook(data) {
             requireDeclaredPluginPermission(manifest, "actions");

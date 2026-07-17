@@ -65,6 +65,7 @@ import {
     deletePersonaById,
     readPersonaById,
     readPersonaSummaryCollection,
+    patchPersonaById,
     updatePersonaIndex,
     writePersonaById,
 } from "./persona-store";
@@ -661,6 +662,16 @@ const createServer = () =>
 
                 PUT: api(async (request) => {
                     const persona = await writePersonaById(
+                        request.params.personaId,
+                        await readJsonBody(request),
+                    );
+                    const personas = await readPersonaSummaryCollection();
+
+                    return json({ ok: true, persona, personas });
+                }),
+
+                PATCH: api(async (request) => {
+                    const persona = await patchPersonaById(
                         request.params.personaId,
                         await readJsonBody(request),
                     );

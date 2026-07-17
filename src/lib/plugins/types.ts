@@ -381,6 +381,7 @@ export type PluginActionsApi = {
     generateResponse(): Promise<void>;
     switchCharacter(characterId: string): Promise<void>;
     updateCharacter(characterId: string, patch: Partial<TavernCardDataV2>): Promise<void>;
+    updatePersona(personaId: string, patch: Partial<SmileyPersona>): Promise<void>;
     createLorebook(data: Partial<Lorebook>): Promise<LorebookSummary>;
     addLorebookEntry(lorebookId: string, entry: Partial<LorebookEntry>): Promise<void>;
     updateLorebookEntry(

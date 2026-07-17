@@ -634,6 +634,14 @@ export function savePersona(persona: SmileyPersona) {
     }>(`/api/personas/${encodeURIComponent(persona.id)}`, jsonInit("PUT", persona));
 }
 
+export function patchPersona(personaId: string, patch: Partial<SmileyPersona>) {
+    return requestJson<{
+        ok: true;
+        persona: SmileyPersona;
+        personas?: PersonaSummaryCollection;
+    }>(`/api/personas/${encodeURIComponent(personaId)}`, jsonInit("PATCH", patch));
+}
+
 export function uploadPersonaAvatar(personaId: string, file: File) {
     return requestJson<{
         ok: true;

@@ -30,6 +30,7 @@ import {
 } from "#frontend/lib/api/client";
 import type { ChatMetadataPatch } from "#frontend/lib/api/client";
 import type { TavernCardDataV2 } from "#frontend/lib/characters/types";
+import type { SmileyPersona } from "#frontend/lib/personas/types";
 
 import { openSettings } from "../ui-state";
 
@@ -72,6 +73,7 @@ type UseAppPluginBridgeOptions = {
         patch: Partial<TavernCardDataV2>,
     ) => Promise<void>;
     patchChatMetadata: (chatId: string, patch: ChatMetadataPatch) => Promise<void>;
+    patchPersona: (personaId: string, patch: Partial<SmileyPersona>) => Promise<void>;
 };
 
 export function useAppPluginBridge({
@@ -86,6 +88,7 @@ export function useAppPluginBridge({
     selectCharacterRef,
     patchCharacter,
     patchChatMetadata,
+    patchPersona,
 }: UseAppPluginBridgeOptions) {
     const [pluginRegistryRevision, setPluginRegistryRevision] = useState(0);
     const loadersRef = useRef({
@@ -173,6 +176,7 @@ export function useAppPluginBridge({
             switchCharacter: (characterId) => selectCharacterRef.current(characterId),
             updateCharacter: patchCharacter,
             updateChatMetadata: patchChatMetadata,
+            updatePersona: patchPersona,
             createLorebook: async (data) => {
                 const result = await createLorebook(data);
                 await loadersRef.current.loadLorebookCollection();
@@ -193,7 +197,13 @@ export function useAppPluginBridge({
         });
 
         return () => setPluginAppActionHandlers({});
-    }, [chatSessionRef, patchCharacter, patchChatMetadata, selectCharacterRef]);
+    }, [
+        chatSessionRef,
+        patchCharacter,
+        patchChatMetadata,
+        patchPersona,
+        selectCharacterRef,
+    ]);
 
     useEffect(() => {
         setPluginModelHandlers({

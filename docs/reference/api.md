@@ -43,6 +43,7 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `POST /api/personas`: Create a saved persona JSON file.
 - `GET /api/personas/:personaId`: Load one saved persona.
 - `PUT /api/personas/:personaId`: Save one saved persona.
+- `PATCH /api/personas/:personaId`: Patch one persona's fields without replacing the entire object.
 - `DELETE /api/personas/:personaId`: Delete one saved persona.
 - `PUT /api/personas/index`: Save active persona and ordering metadata.
 - `POST /api/personas/:personaId/avatar`: Save a persona avatar image.

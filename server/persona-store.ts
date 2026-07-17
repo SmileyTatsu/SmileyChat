@@ -20,10 +20,11 @@ import {
     readFileBackedIndex,
     writeFileBackedIndex,
 } from "./file-store";
-import { BadRequestError, writeJsonAtomic } from "./http";
+import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
 import { personaCardsDir, personaIndexPath, personaOrphanedDir } from "./paths";
 import { personaFilePath } from "./persona-file-paths";
 import { deletePersonaAvatarAsset } from "./persona-images";
+import { withResourceLock } from "./resource-lock";
 
 export async function readPersonaSummaryCollection(): Promise<PersonaSummaryCollection> {
     const index = await readPersonaIndex();
@@ -77,6 +78,12 @@ export async function createPersona(value: unknown) {
 }
 
 export async function writePersonaById(personaId: string, value: unknown) {
+    return withResourceLock(`persona:${personaId}`, () =>
+        writePersonaByIdUnlocked(personaId, value),
+    );
+}
+
+async function writePersonaByIdUnlocked(personaId: string, value: unknown) {
     const source = isRecord(value) ? value : {};
     const persona = normalizePersona({
         ...source,
@@ -104,6 +111,38 @@ export async function writePersonaById(personaId: string, value: unknown) {
     }
 
     return persona;
+}
+
+export async function patchPersonaById(personaId: string, value: unknown) {
+    return withResourceLock(`persona:${personaId}`, async () => {
+        const patch = isRecord(value) ? value : undefined;
+        if (!patch) {
+            throw new BadRequestError("Persona patch must be an object.");
+        }
+
+        const existingPersona = await readPersonaById(personaId);
+        if (!existingPersona) {
+            throw new NotFoundError("Persona not found.");
+        }
+
+        const persona = normalizePersona({
+            ...existingPersona,
+            ...patch,
+            id: personaId,
+            createdAt: existingPersona.createdAt,
+            updatedAt: new Date().toISOString(),
+        });
+        if (!persona) {
+            throw new BadRequestError("Invalid persona patch.");
+        }
+
+        await writeJsonAtomic(personaFilePath(personaId), persona);
+        if (existingPersona.avatar?.path !== persona.avatar?.path) {
+            await deletePersonaAvatarAsset(existingPersona);
+        }
+
+        return persona;
+    });
 }
 
 export async function updatePersonaIndex(value: unknown) {
