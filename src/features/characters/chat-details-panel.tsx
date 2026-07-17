@@ -1,9 +1,14 @@
-import { BookOpen, FileText, Search, Terminal, X } from "lucide-preact";
+import { BookOpen, FileText, Plug, Search, Terminal, Wrench, X } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { ChatAuthorNote, ChatMetadata } from "#frontend/types";
-import { getPluginChatDetailsSections } from "#frontend/lib/plugins/registry";
+import {
+    getPluginChatDetailsSections,
+    getRegisteredPluginTools,
+    subscribeToPluginRegistry,
+} from "#frontend/lib/plugins/registry";
+import type { RegisteredPluginTool } from "#frontend/lib/plugins/registry";
 import { createPluginStorage } from "#frontend/lib/plugins/runtime";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 
@@ -54,6 +59,131 @@ export function isAuthorNoteActive(authorNote: ChatAuthorNote | undefined) {
 
 export function hasChatLorebooks(chatMetadata: ChatMetadata | undefined) {
     return Boolean(chatMetadata?.lorebookIds?.length);
+}
+
+type ToolSection = "built-in" | "mcp" | "plugin";
+
+function toolSection(tool: RegisteredPluginTool): ToolSection {
+    if (tool.category === "mcp") return "mcp";
+    return tool.source === "core" ? "built-in" : "plugin";
+}
+
+function ChatToolsPicker({
+    chatMetadata,
+    pluginSnapshot,
+    onUpdateChatMetadata,
+}: Pick<
+    ChatDetailsPanelProps,
+    "chatMetadata" | "pluginSnapshot" | "onUpdateChatMetadata"
+>) {
+    const [registryRevision, setRegistryRevision] = useState(0);
+    const enabledGroups = new Set(chatMetadata?.enabledToolGroups ?? []);
+
+    useEffect(
+        () =>
+            subscribeToPluginRegistry(() =>
+                setRegistryRevision((revision) => revision + 1),
+            ),
+        [],
+    );
+
+    const groups = useMemo(() => {
+        const grouped = new Map<
+            string,
+            { entry: RegisteredPluginTool; tools: RegisteredPluginTool[] }
+        >();
+
+        for (const entry of getRegisteredPluginTools(pluginSnapshot)) {
+            const current = grouped.get(entry.groupId);
+            if (current) current.tools.push(entry);
+            else grouped.set(entry.groupId, { entry, tools: [entry] });
+        }
+
+        return [...grouped.values()].sort((left, right) =>
+            left.entry.groupLabel.localeCompare(right.entry.groupLabel),
+        );
+    }, [pluginSnapshot, registryRevision]);
+
+    const sections: Array<{ id: ToolSection; label: string; icon: typeof Wrench }> = [
+        { id: "built-in", label: "Built-in Tools", icon: Wrench },
+        { id: "mcp", label: "External MCP Servers", icon: Plug },
+        { id: "plugin", label: "Plugin Tools", icon: Wrench },
+    ];
+
+    function toggleGroup(groupId: string) {
+        const next = new Set(enabledGroups);
+        if (next.has(groupId)) next.delete(groupId);
+        else next.add(groupId);
+        onUpdateChatMetadata({ enabledToolGroups: [...next] });
+    }
+
+    return (
+        <section className="chat-tools-picker" aria-labelledby="chat-tools-title">
+            <div className="chat-tools-picker-header">
+                <div>
+                    <h3 id="chat-tools-title">
+                        <Wrench size={16} aria-hidden="true" />
+                        Tools &amp; Connections
+                    </h3>
+                    <p>Enable the tools this chat may offer to the model.</p>
+                </div>
+            </div>
+
+            {groups.length === 0 ? (
+                <p className="chat-tools-empty">
+                    No tools are available. Enable a tools plugin or configure MCP Servers
+                    in Options.
+                </p>
+            ) : (
+                sections.map(({ id, label, icon: Icon }) => {
+                    const sectionGroups = groups.filter(
+                        (group) => toolSection(group.entry) === id,
+                    );
+                    if (!sectionGroups.length) return null;
+
+                    return (
+                        <div className="tool-group-section" key={id}>
+                            <h4>
+                                <Icon size={14} aria-hidden="true" />
+                                {label}
+                            </h4>
+                            {sectionGroups.map(({ entry, tools }) => {
+                                const availableCount = tools.filter(
+                                    (tool) => tool.isAvailable,
+                                ).length;
+                                const isAvailable = availableCount > 0;
+                                const enabled = enabledGroups.has(entry.groupId);
+                                return (
+                                    <label className="tool-group" key={entry.groupId}>
+                                        <span className="tool-group-copy">
+                                            <strong>{entry.groupLabel}</strong>
+                                            <small>
+                                                {isAvailable
+                                                    ? `${tools.length} tool${tools.length === 1 ? "" : "s"}${availableCount < tools.length ? ` (${availableCount} available)` : ""}`
+                                                    : "Unavailable in this chat"}
+                                            </small>
+                                        </span>
+                                        <span className="tool-toggle-switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={enabled}
+                                                disabled={!isAvailable}
+                                                onChange={() =>
+                                                    toggleGroup(entry.groupId)
+                                                }
+                                                aria-label={`Enable ${entry.groupLabel} tools for this chat`}
+                                            />
+                                            <span aria-hidden="true" />
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    );
+                })
+            )}
+        </section>
+    );
 }
 
 export function ChatDetailsPanel({
@@ -401,6 +531,12 @@ export function ChatDetailsPanel({
                     </>
                 )}
             </section>
+
+            <ChatToolsPicker
+                chatMetadata={chatMetadata}
+                pluginSnapshot={pluginSnapshot}
+                onUpdateChatMetadata={onUpdateChatMetadata}
+            />
 
             {chatDetailsSections.length > 0 &&
                 pluginSnapshot &&

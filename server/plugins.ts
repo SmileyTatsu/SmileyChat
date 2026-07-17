@@ -35,7 +35,7 @@ const corePluginIds = new Set([
     "smiley-post-processing",
     "smiley-mcp",
     "smiley-regex-replacer",
-    "workspace-tools",
+    "smiley-workspace-tools",
 ]);
 const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;

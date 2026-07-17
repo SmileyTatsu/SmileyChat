@@ -29,7 +29,6 @@ import {
     getInputMiddlewares,
     getOutputMiddlewares,
     getPluginSnapshot,
-    getPluginTool,
     getPluginTools,
     getPromptContextMiddlewares,
     getPromptInjectors,
@@ -200,12 +199,20 @@ export function usePromptGeneration({
             sourceUserStatus,
             options,
         );
-        const registeredTools = getPluginTools();
-        const tools = registeredTools.map(({ name, description, parameters }) => ({
-            name,
-            description,
-            parameters,
-        }));
+        const sourceChat = options.sourceChat ?? latestChatRef.current;
+        const allowedTools = new Map(
+            getPluginTools(
+                getPluginSnapshot(),
+                sourceChat?.metadata?.enabledToolGroups ?? [],
+            ).map((tool) => [tool.name, tool]),
+        );
+        const tools = [...allowedTools.values()].map(
+            ({ name, description, parameters }) => ({
+                name,
+                description,
+                parameters,
+            }),
+        );
 
         if (tools.length) {
             request.tools = tools;
@@ -215,6 +222,7 @@ export function usePromptGeneration({
         const { result, activities, promptMessages } = await runToolLoop(
             connection,
             request,
+            allowedTools,
             options.onToolActivities,
         );
 
@@ -235,6 +243,7 @@ export function usePromptGeneration({
     async function runToolLoop(
         connection: ReturnType<typeof getAdapterForSettings>,
         request: ChatGenerationRequest,
+        allowedTools: Map<string, ReturnType<typeof getPluginTools>[number]>,
         onToolActivities?: (activities: MessageToolActivity[]) => void,
     ) {
         let promptMessages = request.promptMessages ?? [];
@@ -255,7 +264,7 @@ export function usePromptGeneration({
             const toolResults: ToolResult[] = [];
 
             for (const call of result.toolCalls) {
-                const toolDef = getPluginTool(call.name);
+                const toolDef = allowedTools.get(call.name);
                 if (toolDef?.displayName) {
                     call.displayName = toolDef.displayName;
                 }
@@ -271,7 +280,11 @@ export function usePromptGeneration({
                 };
                 onToolActivities?.([...activities, pendingActivity]);
 
-                const toolResult = await runPluginTool(call, request.signal);
+                const toolResult = await runPluginTool(
+                    call,
+                    request.signal,
+                    allowedTools,
+                );
                 toolResults.push(toolResult);
                 activities.push({ call, result: toolResult });
                 onToolActivities?.([...activities]);
@@ -307,8 +320,9 @@ export function usePromptGeneration({
     async function runPluginTool(
         call: ToolCall,
         signal?: AbortSignal,
+        allowedTools?: Map<string, ReturnType<typeof getPluginTools>[number]>,
     ): Promise<ToolResult> {
-        const tool = getPluginTool(call.name);
+        const tool = allowedTools?.get(call.name);
 
         console.info(
             "[SmileyChat tool call]",
@@ -317,7 +331,7 @@ export function usePromptGeneration({
         );
 
         if (!tool) {
-            const content = `Tool error: Tool "${call.name}" is not registered or enabled.`;
+            const content = `Tool error: Tool "${call.name}" is not enabled for this chat.`;
             console.error("[SmileyChat tool error]", call.name, content);
             return {
                 toolCallId: call.id,
@@ -436,7 +450,11 @@ export function usePromptGeneration({
             sourceUserStatus,
             options,
         );
-        const tools = getPluginTools().map(({ name, description, parameters }) => ({
+        const sourceChat = options.sourceChat ?? latestChatRef.current;
+        const tools = getPluginTools(
+            getPluginSnapshot(),
+            sourceChat?.metadata?.enabledToolGroups ?? [],
+        ).map(({ name, description, parameters }) => ({
             name,
             description,
             parameters,

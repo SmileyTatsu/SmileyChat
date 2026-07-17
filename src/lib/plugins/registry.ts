@@ -442,10 +442,53 @@ export function getPluginConnectionProviders() {
     return enabledValues([...connectionProviders.values()]);
 }
 
-export function getPluginTools(snapshot = latestSnapshot) {
-    return enabledValues([...pluginTools.values()]).filter(
-        (tool) => !snapshot || !tool.isAvailable || tool.isAvailable(snapshot),
-    );
+export type RegisteredPluginTool = {
+    pluginId: string;
+    groupId: string;
+    groupLabel: string;
+    category?: "mcp";
+    source: "core" | "user";
+    isAvailable: boolean;
+    tool: PluginTool;
+};
+
+export function getRegisteredPluginTools(
+    snapshot = latestSnapshot,
+): RegisteredPluginTool[] {
+    return [...pluginTools.values()]
+        .filter((entry) => isPluginEnabled(entry.pluginId))
+        .map(({ pluginId, value: tool }) => {
+            const group = tool.toolGroup;
+            const groupKey = group?.id.trim() || pluginId;
+            const manifest = loadedPlugins.find(
+                (plugin) => plugin.manifest.id === pluginId,
+            )?.manifest;
+            const source = manifest?.source ?? "user";
+
+            return {
+                pluginId,
+                groupId: `${pluginId}:${groupKey}`,
+                groupLabel: group?.label?.trim() || manifest?.name || pluginId,
+                ...(group?.category ? { category: group.category } : {}),
+                source,
+                isAvailable: !snapshot || !tool.isAvailable || tool.isAvailable(snapshot),
+                tool,
+            };
+        });
+}
+
+export function getPluginTools(
+    snapshot = latestSnapshot,
+    enabledToolGroups?: Iterable<string>,
+) {
+    const enabledGroups = enabledToolGroups ? new Set(enabledToolGroups) : undefined;
+
+    return getRegisteredPluginTools(snapshot)
+        .filter(
+            (entry) =>
+                entry.isAvailable && (!enabledGroups || enabledGroups.has(entry.groupId)),
+        )
+        .map((entry) => entry.tool);
 }
 
 export function getPluginTool(name: string, snapshot = latestSnapshot) {

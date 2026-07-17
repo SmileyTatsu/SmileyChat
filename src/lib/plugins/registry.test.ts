@@ -8,6 +8,7 @@ import {
     getOutputMiddlewares,
     getPluginCharacterDetailsSections,
     getPluginConnectionProviderOwnerId,
+    getRegisteredPluginTools,
     getPluginMacroValue,
     getPluginModalInstances,
     setPluginModelHandlers,
@@ -181,6 +182,34 @@ describe("plugin registry runtime isolation", () => {
 
         setPluginEnabledState(pluginId, false);
         expect(getMessageUpdateMiddlewares()).not.toContain(middleware);
+    });
+
+    test("tool discovery preserves plugin-owned group metadata before availability filtering", () => {
+        const pluginId = uniqueId("tool-group");
+        const api = pluginApi(pluginId, ["tools:register"]);
+
+        const dispose = api.tools.registerTool({
+            name: uniqueId("tool"),
+            description: "A test tool.",
+            parameters: { type: "object" },
+            toolGroup: { id: "server-a", label: "Server A", category: "mcp" },
+            isAvailable: () => false,
+            run: () => "unused",
+        });
+        const tool = getRegisteredPluginTools({} as PluginAppSnapshot).find(
+            (entry) => entry.pluginId === pluginId,
+        );
+
+        expect(tool).toEqual(
+            expect.objectContaining({
+                groupId: `${pluginId}:server-a`,
+                groupLabel: "Server A",
+                category: "mcp",
+                isAvailable: false,
+            }),
+        );
+
+        dispose();
     });
 
     test("display middleware failures preserve the original message text", () => {

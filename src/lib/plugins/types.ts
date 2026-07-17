@@ -337,6 +337,16 @@ export type PluginToolContext = PluginAppSnapshot & {
 };
 
 export type PluginTool = ToolDefinition & {
+    /**
+     * Optional chat-scoped access group. Tools from the same plugin share the
+     * plugin group by default; integrations such as MCP can provide a finer
+     * group for each external server.
+     */
+    toolGroup?: {
+        id: string;
+        label?: string;
+        category?: "mcp";
+    };
     /** Return false when a registered tool is not available in the active chat. */
     isAvailable?: (context: PluginAppSnapshot) => boolean;
     run: (

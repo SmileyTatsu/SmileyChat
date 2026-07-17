@@ -1,14 +1,10 @@
-import { Plug, RefreshCw } from "lucide-preact";
+import { RefreshCw } from "lucide-preact";
 import { useEffect, useState } from "preact/hooks";
 import { localApiFetch } from "#frontend/lib/api/client";
 import { mcpManifest } from "./manifest";
 import { exportOpenCodeMcp } from "#frontend/lib/mcp/config";
 import type { McpServerRecord, McpSettings, McpTool } from "#frontend/lib/mcp/types";
-import type {
-    PluginChatDetailsSectionProps,
-    PluginTool,
-    SmileyPluginApi,
-} from "#frontend/lib/plugins/types";
+import type { PluginTool, SmileyPluginApi } from "#frontend/lib/plugins/types";
 import styles from "./styles.css?raw";
 
 export { mcpManifest };
@@ -28,13 +24,6 @@ export async function activate(api: SmileyPluginApi) {
         label: "MCP Servers",
         render: () => <McpSettings api={api} />,
     });
-    api.ui.registerChatDetailsSection({
-        id: "picker",
-        render: ({ snapshot, updateChatMetadata }) => (
-            <McpPicker snapshot={snapshot} updateChatMetadata={updateChatMetadata} />
-        ),
-    });
-
     return () => {
         if (connectionRefreshTimer !== undefined) {
             window.clearTimeout(connectionRefreshTimer);
@@ -111,10 +100,11 @@ function toPluginTool(tool: McpTool): PluginTool {
         displayName: formatMcpToolName(tool.serverName, tool.name, tool.title),
         description: `MCP · ${tool.serverName} · ${tool.description ?? tool.name}`,
         parameters: tool.inputSchema,
-        isAvailable: (snapshot) =>
-            Boolean(
-                snapshot.activeChat?.metadata?.mcp?.serverIds.includes(tool.serverId),
-            ),
+        toolGroup: {
+            id: tool.serverId,
+            label: tool.serverName,
+            category: "mcp",
+        },
         run: async (args, context) => {
             const result = await request<{ content: string; isError?: boolean }>(
                 `/api/mcp/${encodeURIComponent(tool.serverId)}/tools/${encodeURIComponent(tool.name)}`,
@@ -353,80 +343,6 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
 
             {error && <p className="chat-error">{error}</p>}
         </section>
-    );
-}
-
-function McpPicker({
-    snapshot,
-    updateChatMetadata,
-}: {
-    snapshot: PluginChatDetailsSectionProps["snapshot"];
-    updateChatMetadata: PluginChatDetailsSectionProps["updateChatMetadata"];
-}) {
-    const selected = new Set(snapshot?.activeChat?.metadata?.mcp?.serverIds ?? []);
-    const [ids, setIds] = useState(selected);
-
-    // Keep local selection state in sync if chat changes externally
-    useEffect(() => {
-        setIds(new Set(snapshot?.activeChat?.metadata?.mcp?.serverIds ?? []));
-    }, [snapshot?.activeChat?.metadata?.mcp?.serverIds]);
-
-    const chat = snapshot?.activeChat;
-    if (!chat) return <p>No active chat.</p>;
-
-    const toggleServer = (serverId: string) => {
-        const next = new Set(ids);
-        if (next.has(serverId)) {
-            next.delete(serverId);
-        } else {
-            next.add(serverId);
-        }
-        setIds(next);
-        updateChatMetadata({
-            mcp: { serverIds: [...next] },
-        });
-    };
-
-    return (
-        <div className="mcp-picker">
-            <div className="mcp-picker-header">
-                <h3>
-                    <Plug size={16} aria-hidden="true" />
-                    MCP Servers
-                </h3>
-                <p>Provide additional tools to the AI for this chat.</p>
-            </div>
-            <div className="mcp-picker-list">
-                {latest === undefined ? (
-                    <p className="spp-muted" role="status">
-                        Loading MCP servers…
-                    </p>
-                ) : latest.servers.length === 0 ? (
-                    <p className="spp-muted">No servers configured.</p>
-                ) : (
-                    latest?.servers.map((server) => (
-                        <label className="mcp-check" key={server.id}>
-                            <input
-                                type="checkbox"
-                                checked={ids.has(server.id)}
-                                disabled={!server.enabled || !server.connected}
-                                onChange={() => toggleServer(server.id)}
-                            />
-                            <span>
-                                <span>{server.name}</span>
-                                <small>
-                                    {server.connecting
-                                        ? "Connecting and discovering tools…"
-                                        : server.connected
-                                          ? `${server.tools.length} available tools`
-                                          : "Not connected"}
-                                </small>
-                            </span>
-                        </label>
-                    ))
-                )}
-            </div>
-        </div>
     );
 }
 

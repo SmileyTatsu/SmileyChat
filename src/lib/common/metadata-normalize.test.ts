@@ -32,6 +32,31 @@ describe("metadata preservation", () => {
         expect(chat?.metadata?.custom).toEqual({ ok: true });
     });
 
+    test("migrates legacy MCP selections into chat tool groups", () => {
+        const chat = normalizeChat({
+            id: "chat-1",
+            characterId: "char-1",
+            defaultTitle: "Chat",
+            mode: "chat",
+            metadata: {
+                mcp: { serverIds: ["local-files", "local-files", "search"] },
+                enabledToolGroups: ["workspace-tools:workspace-tools"],
+                custom: true,
+            },
+            messages: [],
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+        });
+
+        expect(chat?.metadata?.enabledToolGroups).toEqual([
+            "workspace-tools:workspace-tools",
+            "smiley-mcp:local-files",
+            "smiley-mcp:search",
+        ]);
+        expect(chat?.metadata?.mcp).toBeUndefined();
+        expect(chat?.metadata?.custom).toBe(true);
+    });
+
     test("preserves chat file attachments during normalization", () => {
         const chat = normalizeChat({
             id: "chat-1",

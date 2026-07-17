@@ -2,7 +2,6 @@ import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import { getMessageCreatedAt } from "#frontend/lib/messages";
-import { normalizeMcpSelection } from "#frontend/lib/mcp/config";
 
 import type {
     ChatAttachment,
@@ -568,8 +567,38 @@ function normalizeMetadata(value: unknown): ChatMetadata | undefined {
         return undefined;
     }
 
-    const mcp = normalizeMcpSelection(value.mcp);
-    return { ...value, ...(mcp ? { mcp } : {}) };
+    const enabledToolGroups = uniqueStrings(value.enabledToolGroups);
+    const legacyMcpServerIds = isRecord(value.mcp)
+        ? uniqueStrings(value.mcp.serverIds)
+        : [];
+    const nextEnabledToolGroups = Array.from(
+        new Set([
+            ...enabledToolGroups,
+            ...legacyMcpServerIds.map((serverId) => `smiley-mcp:${serverId}`),
+        ]),
+    );
+    const { mcp: _legacyMcp, enabledToolGroups: _groups, ...metadata } = value;
+    return {
+        ...metadata,
+        ...(nextEnabledToolGroups.length
+            ? { enabledToolGroups: nextEnabledToolGroups }
+            : {}),
+    };
+}
+
+function uniqueStrings(value: unknown) {
+    return Array.from(
+        new Set(
+            Array.isArray(value)
+                ? value
+                      .filter(
+                          (item): item is string =>
+                              typeof item === "string" && Boolean(item.trim()),
+                      )
+                      .map((item) => item.trim())
+                : [],
+        ),
+    );
 }
 
 function asString(value: unknown) {

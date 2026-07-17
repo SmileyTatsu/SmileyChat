@@ -61,6 +61,7 @@ export type ChatAuthorNote = {
 
 export type ChatMetadata = {
     authorNote?: ChatAuthorNote;
+    enabledToolGroups?: string[];
     lorebookIds?: string[];
     loreState?: ChatRuntimeState["lorebooks"];
     mcp?: { serverIds: string[] };
