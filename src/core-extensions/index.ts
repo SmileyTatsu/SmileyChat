@@ -5,6 +5,7 @@ import { postProcessingPlugin } from "./post-processing";
 import { regexReplacerPlugin } from "./regex-replacer";
 import { smileyChatFormatterPlugin } from "./smiley-chat-formatter";
 import { mcpPlugin } from "./mcp";
+import { workspaceToolsPlugin } from "./workspace-tools";
 
 export const corePlugins = [
     smileyChatFormatterPlugin,
@@ -13,6 +14,7 @@ export const corePlugins = [
     postProcessingPlugin,
     regexReplacerPlugin,
     mcpPlugin,
+    workspaceToolsPlugin,
 ];
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
 

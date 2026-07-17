@@ -35,6 +35,7 @@ const corePluginIds = new Set([
     "smiley-post-processing",
     "smiley-mcp",
     "smiley-regex-replacer",
+    "workspace-tools",
 ]);
 const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;
@@ -1272,6 +1273,7 @@ const corePluginCategories: Record<string, PluginCategory> = {
     "smiley-lorebooks": "memory-lore",
     "smiley-post-processing": "input-output",
     "smiley-mcp": "tools",
+    "workspace-tools": "tools",
 };
 
 const corePluginNames: Record<string, string> = {
@@ -1280,6 +1282,7 @@ const corePluginNames: Record<string, string> = {
     "smiley-lorebooks": "smiley-lorebooks",
     "smiley-post-processing": "smiley-post-processing",
     "smiley-mcp": "MCP Servers",
+    "workspace-tools": "Workspace AI Tools",
 };
 
 async function readCorePluginState(pluginId: string) {
@@ -1304,6 +1307,7 @@ const corePluginDefaultEnabled: Record<string, boolean> = {
     "smiley-chat-summarizer": false,
     "smiley-post-processing": false,
     "smiley-mcp": false,
+    "workspace-tools": false,
 };
 
 async function writeCorePluginEnabled(pluginId: string, enabled: boolean) {

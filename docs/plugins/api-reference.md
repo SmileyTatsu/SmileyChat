@@ -180,7 +180,7 @@ await api.actions.updateCharacter("character-id", {
 // Update active Persona (the user) fields
 await api.actions.updatePersona("persona-id", {
     name: "New Name",
-    description: "I am wearing a wizard hat."
+    description: "I am wearing a wizard hat.",
 });
 
 // Update chat metadata or mode (does not affect messages)
