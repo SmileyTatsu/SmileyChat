@@ -30,7 +30,6 @@ export const BUILT_IN_PROFILES: PluginProfile[] = [
             "Baseline SmileyChat setup with every plugin at its installed default. Create your own profiles with New.",
         builtin: true,
         enabledPlugins: {},
-        defaultEnabled: true,
     },
 ];
 
@@ -40,7 +39,7 @@ export function getBuiltInProfile(profileId: string): PluginProfile | undefined 
 
 export function resolveProfileEnabled(
     profile: PluginProfile,
-    plugin: { id: string; category?: PluginCategory },
+    plugin: { id: string; category?: PluginCategory; defaultEnabled?: boolean },
 ): boolean {
     if (Object.prototype.hasOwnProperty.call(profile.enabledPlugins, plugin.id)) {
         return profile.enabledPlugins[plugin.id];
@@ -53,12 +52,12 @@ export function resolveProfileEnabled(
         return categoryDefault;
     }
 
-    return profile.defaultEnabled ?? true;
+    return profile.defaultEnabled ?? plugin.defaultEnabled ?? true;
 }
 
 export function buildAppliedEnabledMap(
     profile: PluginProfile,
-    plugins: Array<{ id: string; category?: PluginCategory }>,
+    plugins: Array<{ id: string; category?: PluginCategory; defaultEnabled?: boolean }>,
 ): Record<string, boolean> {
     const map: Record<string, boolean> = {};
 

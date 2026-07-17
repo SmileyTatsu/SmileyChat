@@ -21,6 +21,7 @@ import {
 } from "#frontend/lib/plugins/activation";
 import {
     BUILT_IN_PROFILES,
+    buildAppliedEnabledMap,
     DEFAULT_PROFILE_ID,
     isStateCustom,
     type PluginProfile,
@@ -104,8 +105,19 @@ export function usePluginSettings() {
     const activeProfileId = profilesPayload?.activeProfileId ?? DEFAULT_PROFILE_ID;
     const activeProfile =
         allProfiles.find((profile) => profile.id === activeProfileId) ?? allProfiles[0];
+    const expectedEnabledMap = useMemo(() => {
+        if (!profilesPayload || !activeProfile) return {};
+
+        const profileDefaults = buildAppliedEnabledMap(activeProfile, plugins);
+        return Object.fromEntries(
+            plugins.map((plugin) => [
+                plugin.id,
+                profilesPayload.lastApplied[plugin.id] ?? profileDefaults[plugin.id],
+            ]),
+        );
+    }, [activeProfile, plugins, profilesPayload]);
     const isCustom = profilesPayload
-        ? isStateCustom(currentEnabledMap, profilesPayload.lastApplied)
+        ? isStateCustom(currentEnabledMap, expectedEnabledMap)
         : false;
     const setProfilesStateFromSave = (state: PluginProfilesState) => {
         setProfilesPayload({

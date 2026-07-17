@@ -19,7 +19,11 @@ export const corePlugins = [
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
 
 export function getCorePluginManifests() {
-    return corePlugins.map((plugin) => plugin.manifest);
+    return corePlugins.map((plugin) => ({
+        ...plugin.manifest,
+        defaultEnabled:
+            plugin.manifest.defaultEnabled ?? plugin.manifest.enabled !== false,
+    }));
 }
 
 export function mergeCoreAndUserPluginManifests<
@@ -41,6 +45,10 @@ export function mergeCoreAndUserPluginManifests<
                 typeof coreOverrides.get(manifest.id)?.enabled === "boolean"
                     ? coreOverrides.get(manifest.id)?.enabled
                     : manifest.enabled,
+            defaultEnabled:
+                coreOverrides.get(manifest.id)?.defaultEnabled ??
+                manifest.defaultEnabled ??
+                manifest.enabled !== false,
         })),
         ...userManifests.filter((manifest) => !corePluginIds.has(manifest.id)),
     ];

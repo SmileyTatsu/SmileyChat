@@ -929,6 +929,11 @@ export async function updatePluginEnabled(pluginId: string, enabled: unknown) {
     const manifest = (await file.json()) as Record<string, unknown>;
     const nextManifest = {
         ...manifest,
+        // Preserve the original manifest state so the Default profile can restore it.
+        defaultEnabled:
+            typeof manifest.defaultEnabled === "boolean"
+                ? manifest.defaultEnabled
+                : manifest.enabled !== false,
         enabled,
     };
 
@@ -1220,6 +1225,10 @@ function normalizePluginManifest(
         main,
         styles,
         permissions,
+        defaultEnabled:
+            typeof manifest.defaultEnabled === "boolean"
+                ? manifest.defaultEnabled
+                : manifest.enabled !== false,
         enabled: manifest.enabled !== false,
         category: normalizeCategory(manifest.category),
     };
@@ -1255,12 +1264,14 @@ async function readCorePluginManifests() {
 
 async function readCorePluginManifest(pluginId: string): Promise<PluginManifest> {
     const state = await readCorePluginState(pluginId);
+    const defaultEnabled = corePluginDefaultEnabled[pluginId] ?? true;
 
     return {
         id: pluginId,
         name: corePluginNames[pluginId] ?? pluginId,
         version: "0.0.0",
         main: "",
+        defaultEnabled,
         enabled: state.enabled,
         source: "core",
         category: corePluginCategories[pluginId] ?? "other",

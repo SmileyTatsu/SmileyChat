@@ -39,6 +39,33 @@ describe("plugin profile activation", () => {
         expect(requests).toEqual([]);
     });
 
+    test("keeps disabled-by-default plugins disabled for the Default profile", async () => {
+        const result = await applyProfileToPlugins(
+            {
+                builtin: true,
+                enabledPlugins: {},
+                id: "default",
+                name: "Default",
+            },
+            [
+                pluginManifest("enabled-plugin", { defaultEnabled: true }),
+                pluginManifest("disabled-plugin", {
+                    defaultEnabled: false,
+                    enabled: false,
+                }),
+            ],
+        );
+
+        expect(result).toEqual({
+            appliedEnabled: {
+                "enabled-plugin": true,
+                "disabled-plugin": false,
+            },
+            configChanges: [],
+            enabledChanges: [],
+        });
+    });
+
     test("restores only explicit plugin config snapshots", async () => {
         const requests: Array<{ body?: string; method?: string; url: string }> = [];
         mockFetch(async (input, init) => {

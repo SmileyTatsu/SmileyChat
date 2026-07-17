@@ -63,6 +63,8 @@ export type PluginManifest = {
     main: string;
     styles?: string[];
     permissions?: string[];
+    /** The state a plugin ships with, before a user or profile changes it. */
+    defaultEnabled?: boolean;
     enabled?: boolean;
     entryUrl?: string;
     styleUrls?: string[];
