@@ -1,8 +1,10 @@
 import {
     AlertTriangle,
+    CheckCircle2,
     Download,
     Eye,
     FilePenLine,
+    LoaderCircle,
     Plus,
     SlidersHorizontal,
     Trash,
@@ -51,6 +53,7 @@ import { PresetEditor, type OrderedPrompt } from "./presets/preset-editor";
 import { PresetPreview } from "./presets/preset-preview";
 import {
     collectPresetWarnings,
+    collectSelectedPromptWarnings,
     warningsForPromptDeletion,
 } from "./presets/preset-warnings";
 import { usePresetAutosave } from "./presets/use-preset-autosave";
@@ -140,8 +143,12 @@ export function PresetSettings({
         [activePreset, character, messages, mode, persona, userStatus],
     );
     const presetWarnings = useMemo(
-        () => collectPresetWarnings(activePreset, selectedPrompt),
-        [activePreset, selectedPrompt],
+        () => collectPresetWarnings(activePreset),
+        [activePreset],
+    );
+    const selectedPromptWarnings = useMemo(
+        () => collectSelectedPromptWarnings(selectedPrompt),
+        [selectedPrompt],
     );
     const generationWarnings = useMemo(
         () => collectGenerationWarnings(activePreset?.generation, connectionSettings),
@@ -492,35 +499,71 @@ export function PresetSettings({
                         />
                     </label>
 
-                    <div
-                        className="preset-subnav"
-                        role="tablist"
-                        aria-label="Preset view"
-                    >
-                        <button
-                            className={activeView === "editor" ? "active" : ""}
-                            type="button"
-                            onClick={() => setActiveView("editor")}
+                    <div className="preset-subnav-row">
+                        <div
+                            className="preset-subnav"
+                            role="tablist"
+                            aria-label="Preset view"
                         >
-                            <FilePenLine size={16} />
-                            Editor
-                        </button>
-                        <button
-                            className={activeView === "generation" ? "active" : ""}
-                            type="button"
-                            onClick={() => setActiveView("generation")}
-                        >
-                            <SlidersHorizontal size={16} />
-                            Generation
-                        </button>
-                        <button
-                            className={activeView === "preview" ? "active" : ""}
-                            type="button"
-                            onClick={() => setActiveView("preview")}
-                        >
-                            <Eye size={16} />
-                            Preview
-                        </button>
+                            <button
+                                className={activeView === "editor" ? "active" : ""}
+                                type="button"
+                                onClick={() => setActiveView("editor")}
+                            >
+                                <FilePenLine size={16} />
+                                Editor
+                            </button>
+                            <button
+                                className={
+                                    activeView === "generation" ? "active" : ""
+                                }
+                                type="button"
+                                onClick={() => setActiveView("generation")}
+                            >
+                                <SlidersHorizontal size={16} />
+                                Generation
+                            </button>
+                            <button
+                                className={activeView === "preview" ? "active" : ""}
+                                type="button"
+                                onClick={() => setActiveView("preview")}
+                            >
+                                <Eye size={16} />
+                                Preview
+                            </button>
+                        </div>
+
+                        <div className="preset-tab-status">
+                            {activeView === "editor" &&
+                                selectedPromptWarnings.map((warning) => (
+                                    <span
+                                        className="preset-warning-badge"
+                                        key={warning}
+                                        role="status"
+                                        title={warning}
+                                    >
+                                        <AlertTriangle aria-hidden="true" size={14} />
+                                        {warning}
+                                    </span>
+                                ))}
+                            {(requestState === "loading" ||
+                                requestState === "success") && (
+                                <span
+                                    className={`preset-save-badge ${requestState}`}
+                                    role="status"
+                                    title={statusMessage}
+                                >
+                                    {requestState === "loading" ? (
+                                        <LoaderCircle aria-hidden="true" size={14} />
+                                    ) : (
+                                        <CheckCircle2 aria-hidden="true" size={14} />
+                                    )}
+                                    {requestState === "loading"
+                                        ? "Saving..."
+                                        : "Saved"}
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {presetWarnings.length > 0 && (
@@ -562,13 +605,12 @@ export function PresetSettings({
                         <PresetPreview
                             compiledContextPreview={compiledContextPreview}
                             compiledMessagesPreview={compiledMessagesPreview}
-                            requestState={requestState}
                         />
                     )}
                 </>
             )}
 
-            {statusMessage && (
+            {requestState === "error" && statusMessage && (
                 <p className={`connection-status ${requestState}`}>{statusMessage}</p>
             )}
 

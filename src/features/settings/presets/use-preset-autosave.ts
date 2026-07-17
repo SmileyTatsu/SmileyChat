@@ -19,6 +19,7 @@ export function usePresetAutosave({
     onCollectionChange,
 }: UsePresetAutosaveOptions) {
     const autosaveTimerRef = useRef<number | undefined>(undefined);
+    const successTimerRef = useRef<number | undefined>(undefined);
     const lastSavedSnapshotRef = useRef(
         JSON.stringify(normalizePresetCollection(collection)),
     );
@@ -45,12 +46,33 @@ export function usePresetAutosave({
         latestCollectionRef.current = collection;
     }, [collection]);
 
+    useEffect(() => {
+        if (requestState !== "success") {
+            return;
+        }
+
+        successTimerRef.current = window.setTimeout(() => {
+            setRequestState("idle");
+            setStatusMessage("");
+        }, 2500);
+
+        return () => {
+            if (successTimerRef.current) {
+                window.clearTimeout(successTimerRef.current);
+            }
+        };
+    }, [requestState, statusMessage]);
+
     useEffect(
         () => () => {
             mountedRef.current = false;
 
             if (autosaveTimerRef.current) {
                 window.clearTimeout(autosaveTimerRef.current);
+            }
+
+            if (successTimerRef.current) {
+                window.clearTimeout(successTimerRef.current);
             }
 
             const latestCollection = normalizePresetCollection(
