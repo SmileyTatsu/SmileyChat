@@ -24,8 +24,11 @@ import type {
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import {
     addLorebookEntry,
+    createCharacter,
     createLorebook,
+    createPersona,
     deleteLorebookEntry,
+    saveCharacterIndex,
     updateLorebookEntry,
 } from "#frontend/lib/api/client";
 import type { ChatMetadataPatch } from "#frontend/lib/api/client";
@@ -174,8 +177,33 @@ export function useAppPluginBridge({
                     options?.files ?? options?.images,
                 ),
             switchCharacter: (characterId) => selectCharacterRef.current(characterId),
+            createCharacter: async (character) => {
+                const activeCharacterId = getPluginSnapshot()?.character.id;
+                const result = await createCharacter(character);
+
+                // Core UI creation deliberately opens the new character. Tool-driven
+                // creation should only add it to the library, leaving the workspace alone.
+                if (
+                    activeCharacterId &&
+                    activeCharacterId !== result.character.id &&
+                    result.characters
+                ) {
+                    await saveCharacterIndex({
+                        ...result.characters,
+                        activeCharacterId,
+                    });
+                }
+
+                await loadersRef.current.loadCharacterCollection();
+                return result.character;
+            },
             updateCharacter: patchCharacter,
             updateChatMetadata: patchChatMetadata,
+            createPersona: async (persona) => {
+                const result = await createPersona(persona);
+                await loadersRef.current.loadPersonaCollection();
+                return result.persona;
+            },
             updatePersona: patchPersona,
             createLorebook: async (data) => {
                 const result = await createLorebook(data);

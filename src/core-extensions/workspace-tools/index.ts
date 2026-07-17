@@ -1,6 +1,8 @@
 import { localApiFetch } from "#frontend/lib/api/client";
+import { createBlankCharacter } from "#frontend/lib/characters/normalize";
 import type { ChatSession, ChatSummary, SmileyCharacter } from "#frontend/types";
 import type { Lorebook } from "#frontend/lib/lorebooks/types";
+import { createBlankPersona } from "#frontend/lib/personas/defaults";
 import type { SmileyPersona } from "#frontend/types";
 import type { PluginTool, SmileyPluginApi } from "#frontend/lib/plugins/types";
 import { workspaceToolsManifest } from "./manifest";
@@ -59,6 +61,25 @@ export function activate(api: SmileyPluginApi) {
                         name,
                     })),
                 );
+            },
+        },
+        {
+            name: "create_persona",
+            description: "Create a new saved persona.",
+            parameters: stringParameters(
+                {
+                    name: { type: "string" },
+                    description: { type: "string" },
+                },
+                ["name"],
+            ),
+            run: async (args) => {
+                const persona = createBlankPersona(requiredString(args, "name"));
+                if ("description" in args) {
+                    persona.description = requiredString(args, "description");
+                }
+                const createdPersona = await api.actions.createPersona(persona);
+                return json({ ok: true, id: createdPersona.id });
             },
         },
         {
@@ -128,6 +149,32 @@ export function activate(api: SmileyPluginApi) {
             description: "List all saved characters with their IDs, names, and taglines.",
             parameters: stringParameters({}),
             run: async () => json((await loadCharacters()).characters),
+        },
+        {
+            name: "create_character",
+            description: "Create a new saved character card.",
+            parameters: stringParameters(
+                {
+                    name: { type: "string" },
+                    description: { type: "string" },
+                    personality: { type: "string" },
+                    scenario: { type: "string" },
+                    first_mes: { type: "string" },
+                    mes_example: { type: "string" },
+                    creator_notes: { type: "string" },
+                    tags: { type: "array", items: { type: "string" } },
+                },
+                ["name"],
+            ),
+            run: async (args) => {
+                const character = createBlankCharacter(requiredString(args, "name"));
+                const patch = characterWritingPatch(args);
+                Object.assign(character.data, patch);
+                if ("tags" in args)
+                    character.data.tags = requiredStringArray(args, "tags");
+                const createdCharacter = await api.actions.createCharacter(character);
+                return json({ ok: true, id: createdCharacter.id });
+            },
         },
         {
             name: "search_characters",

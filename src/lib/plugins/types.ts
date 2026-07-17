@@ -390,7 +390,9 @@ export type PluginActionsApi = {
     editMessage(messageId: string, content: string): Promise<void>;
     generateResponse(): Promise<void>;
     switchCharacter(characterId: string): Promise<void>;
+    createCharacter(character: SmileyCharacter): Promise<SmileyCharacter>;
     updateCharacter(characterId: string, patch: Partial<TavernCardDataV2>): Promise<void>;
+    createPersona(persona: SmileyPersona): Promise<SmileyPersona>;
     updatePersona(personaId: string, patch: Partial<SmileyPersona>): Promise<void>;
     createLorebook(data: Partial<Lorebook>): Promise<LorebookSummary>;
     addLorebookEntry(lorebookId: string, entry: Partial<LorebookEntry>): Promise<void>;

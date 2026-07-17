@@ -101,7 +101,9 @@ type PluginAppActionHandlers = Pick<
     | "generateResponse"
     | "sendMessage"
     | "switchCharacter"
+    | "createCharacter"
     | "updateCharacter"
+    | "createPersona"
     | "updatePersona"
     | "createLorebook"
     | "addLorebookEntry"
@@ -969,12 +971,26 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
                 throw new Error("Plugin updateCharacter action is not available.");
             await handler(characterId, patch);
         },
+        async createCharacter(character) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.createCharacter;
+            if (!handler)
+                throw new Error("Plugin createCharacter action is not available.");
+            return handler(character);
+        },
         async updatePersona(personaId, patch) {
             requireDeclaredPluginPermission(manifest, "actions");
             const handler = appActionHandlers.updatePersona;
             if (!handler)
                 throw new Error("Plugin updatePersona action is not available.");
             await handler(personaId, patch);
+        },
+        async createPersona(persona) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.createPersona;
+            if (!handler)
+                throw new Error("Plugin createPersona action is not available.");
+            return handler(persona);
         },
         async createLorebook(data) {
             requireDeclaredPluginPermission(manifest, "actions");
