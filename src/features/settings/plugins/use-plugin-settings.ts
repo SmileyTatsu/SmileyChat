@@ -15,10 +15,7 @@ import {
     type PluginProfilesPayload,
 } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
-import {
-    applyProfileToPlugins,
-    snapshotAllPluginConfigs,
-} from "#frontend/lib/plugins/activation";
+import { applyProfileToPlugins } from "#frontend/lib/plugins/activation";
 import {
     BUILT_IN_PROFILES,
     buildAppliedEnabledMap,
@@ -106,16 +103,8 @@ export function usePluginSettings() {
     const activeProfile =
         allProfiles.find((profile) => profile.id === activeProfileId) ?? allProfiles[0];
     const expectedEnabledMap = useMemo(() => {
-        if (!profilesPayload || !activeProfile) return {};
-
-        const profileDefaults = buildAppliedEnabledMap(activeProfile, plugins);
-        return Object.fromEntries(
-            plugins.map((plugin) => [
-                plugin.id,
-                profilesPayload.lastApplied[plugin.id] ?? profileDefaults[plugin.id],
-            ]),
-        );
-    }, [activeProfile, plugins, profilesPayload]);
+        return activeProfile ? buildAppliedEnabledMap(activeProfile, plugins) : {};
+    }, [activeProfile, plugins]);
     const isCustom = profilesPayload
         ? isStateCustom(currentEnabledMap, expectedEnabledMap)
         : false;
@@ -123,6 +112,7 @@ export function usePluginSettings() {
         setProfilesPayload({
             activeProfileId: state.activeProfileId,
             lastApplied: state.lastApplied,
+            customEnabledByProfile: state.customEnabledByProfile,
             builtinProfiles: profilesPayload?.builtinProfiles ?? BUILT_IN_PROFILES,
             userProfiles: state.userProfiles,
         });
@@ -331,6 +321,37 @@ export function usePluginSettings() {
                 deactivatePlugin(plugin.id);
             }
 
+            if (profilesPayload && activeProfile) {
+                const profileDefaults = buildAppliedEnabledMap(activeProfile, plugins);
+                const currentOverrides =
+                    profilesPayload.customEnabledByProfile[activeProfile.id] ?? {};
+                const nextOverrides = { ...currentOverrides };
+
+                if (nextEnabled === profileDefaults[plugin.id]) {
+                    delete nextOverrides[plugin.id];
+                } else {
+                    nextOverrides[plugin.id] = nextEnabled;
+                }
+
+                const customEnabledByProfile = {
+                    ...profilesPayload.customEnabledByProfile,
+                };
+                if (Object.keys(nextOverrides).length > 0) {
+                    customEnabledByProfile[activeProfile.id] = nextOverrides;
+                } else {
+                    delete customEnabledByProfile[activeProfile.id];
+                }
+
+                const saved = await savePluginProfilesState({
+                    version: 1,
+                    activeProfileId: profilesPayload.activeProfileId,
+                    lastApplied: profilesPayload.lastApplied,
+                    customEnabledByProfile,
+                    userProfiles: profilesPayload.userProfiles,
+                });
+                setProfilesStateFromSave(saved.state);
+            }
+
             setStatusMessage(
                 `${plugin.name} ${nextEnabled ? "enabled" : "disabled"}.${
                     enablingUnverified
@@ -530,8 +551,17 @@ export function usePluginSettings() {
         setRequestState("loading");
 
         try {
+            const profileOverrides =
+                profilesPayload.customEnabledByProfile[profile.id] ?? {};
+            const profileWithOverrides: PluginProfile = {
+                ...profile,
+                enabledPlugins: {
+                    ...profile.enabledPlugins,
+                    ...profileOverrides,
+                },
+            };
             const { appliedEnabled, enabledChanges, configChanges } =
-                await applyProfileToPlugins(profile, plugins);
+                await applyProfileToPlugins(profileWithOverrides, plugins);
             const refreshed = await loadPluginManifests();
             setPlugins(mergeCoreAndUserPluginManifests(refreshed.plugins));
 
@@ -539,6 +569,7 @@ export function usePluginSettings() {
                 version: 1,
                 activeProfileId: profile.id,
                 lastApplied: appliedEnabled,
+                customEnabledByProfile: profilesPayload.customEnabledByProfile,
                 userProfiles: profilesPayload.userProfiles,
             };
             const saved = await savePluginProfilesState(nextState);
@@ -563,21 +594,25 @@ export function usePluginSettings() {
 
         setRequestState("loading");
         try {
-            const pluginConfig = await snapshotAllPluginConfigs(plugins);
             const newProfile: PluginProfile = {
                 id,
                 name,
-                description: "User-defined profile.",
+                description: "Starts from each plugin's installed default state.",
                 builtin: false,
-                enabledPlugins: { ...currentEnabledMap },
-                pluginConfig,
-                defaultEnabled: true,
+                enabledPlugins: {},
             };
+            const { appliedEnabled, enabledChanges } = await applyProfileToPlugins(
+                newProfile,
+                plugins,
+            );
+            const refreshed = await loadPluginManifests();
+            setPlugins(mergeCoreAndUserPluginManifests(refreshed.plugins));
 
             const nextState: PluginProfilesState = {
                 version: 1,
                 activeProfileId: id,
-                lastApplied: { ...currentEnabledMap },
+                lastApplied: appliedEnabled,
+                customEnabledByProfile: profilesPayload.customEnabledByProfile,
                 userProfiles: [
                     ...profilesPayload.userProfiles.filter(
                         (profile) => profile.id !== id,
@@ -587,7 +622,9 @@ export function usePluginSettings() {
             };
             const saved = await savePluginProfilesState(nextState);
             setProfilesStateFromSave(saved.state);
-            setStatusMessage(`Created "${name}" from the current plugin state.`);
+            setStatusMessage(
+                `Created "${name}" from plugin defaults. ${enabledChanges.length} toggled.`,
+            );
             setRequestState("success");
         } catch (error) {
             setStatusMessage(messageFromError(error, "Could not create profile."));
@@ -617,6 +654,18 @@ export function usePluginSettings() {
                 version: 1,
                 activeProfileId: id,
                 lastApplied: { ...profilesPayload.lastApplied },
+                customEnabledByProfile: {
+                    ...profilesPayload.customEnabledByProfile,
+                    ...(profilesPayload.customEnabledByProfile[activeProfile.id]
+                        ? {
+                              [id]: {
+                                  ...profilesPayload.customEnabledByProfile[
+                                      activeProfile.id
+                                  ],
+                              },
+                          }
+                        : {}),
+                },
                 userProfiles: [...profilesPayload.userProfiles, duplicated],
             };
             const saved = await savePluginProfilesState(nextState);
@@ -634,8 +683,38 @@ export function usePluginSettings() {
         setRequestState("loading");
         try {
             const response = await deletePluginProfile(activeProfile.id);
-            setProfilesStateFromSave(response.state);
-            setStatusMessage(`Deleted "${activeProfile.name}". Active profile reset.`);
+            const fallbackProfile =
+                allProfiles.find(
+                    (profile) => profile.id === response.state.activeProfileId,
+                ) ?? BUILT_IN_PROFILES[0];
+            const fallbackOverrides =
+                response.state.customEnabledByProfile[fallbackProfile.id] ?? {};
+            const { appliedEnabled, enabledChanges, configChanges } =
+                await applyProfileToPlugins(
+                    {
+                        ...fallbackProfile,
+                        enabledPlugins: {
+                            ...fallbackProfile.enabledPlugins,
+                            ...fallbackOverrides,
+                        },
+                    },
+                    plugins,
+                );
+            const refreshed = await loadPluginManifests();
+            setPlugins(mergeCoreAndUserPluginManifests(refreshed.plugins));
+
+            const saved = await savePluginProfilesState({
+                ...response.state,
+                lastApplied: appliedEnabled,
+            });
+            setProfilesStateFromSave(saved.state);
+            setStatusMessage(
+                `Deleted "${activeProfile.name}" and applied ${fallbackProfile.name}. ${enabledChanges.length} toggled${
+                    configChanges.length > 0
+                        ? `; ${configChanges.length} config restored.`
+                        : "."
+                }`,
+            );
             setRequestState("success");
         } catch (error) {
             setStatusMessage(messageFromError(error, "Could not delete profile."));
@@ -679,6 +758,7 @@ export function usePluginSettings() {
                 version: 1,
                 activeProfileId: profilesPayload.activeProfileId,
                 lastApplied: profilesPayload.lastApplied,
+                customEnabledByProfile: profilesPayload.customEnabledByProfile,
                 userProfiles: profilesPayload.userProfiles.map((profile) =>
                     profile.id === activeProfile.id
                         ? {

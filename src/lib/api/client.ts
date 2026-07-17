@@ -355,6 +355,7 @@ export function savePluginEnabled(pluginId: string, enabled: boolean) {
 export type PluginProfilesPayload = {
     activeProfileId: string;
     lastApplied: Record<string, boolean>;
+    customEnabledByProfile: Record<string, Record<string, boolean>>;
     builtinProfiles: PluginProfile[];
     userProfiles: PluginProfile[];
 };

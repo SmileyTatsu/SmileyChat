@@ -14,6 +14,7 @@ import { pluginProfilesPath } from "./paths";
 type PluginProfilesResponse = {
     activeProfileId: string;
     lastApplied: Record<string, boolean>;
+    customEnabledByProfile: Record<string, Record<string, boolean>>;
     builtinProfiles: PluginProfile[];
     userProfiles: PluginProfile[];
 };
@@ -39,6 +40,7 @@ export async function readPluginProfiles() {
     const response: PluginProfilesResponse = {
         activeProfileId: state.activeProfileId,
         lastApplied: state.lastApplied,
+        customEnabledByProfile: state.customEnabledByProfile,
         builtinProfiles: BUILT_IN_PROFILES,
         userProfiles: state.userProfiles,
     };
@@ -76,6 +78,11 @@ export async function deleteUserPluginProfile(profileId: string) {
     const nextState: PluginProfilesState = {
         ...state,
         activeProfileId: nextActiveProfileId,
+        customEnabledByProfile: Object.fromEntries(
+            Object.entries(state.customEnabledByProfile).filter(
+                ([id]) => id !== profileId,
+            ),
+        ),
         userProfiles: filteredUserProfiles,
     };
 
@@ -90,6 +97,7 @@ function defaultPluginProfilesState(): PluginProfilesState {
         version: 1,
         activeProfileId: DEFAULT_PROFILE_ID,
         lastApplied: {},
+        customEnabledByProfile: {},
         userProfiles: [],
     };
 }
@@ -110,11 +118,15 @@ function normalizePluginProfilesState(
               .map((profile) => normalizeUserProfile(profile))
               .filter(Boolean) as PluginProfile[])
         : [];
+    const customEnabledByProfile = normalizeProfileEnabledMaps(
+        value.customEnabledByProfile,
+    );
 
     return {
         version: 1,
         activeProfileId,
         lastApplied,
+        customEnabledByProfile,
         userProfiles,
     };
 }
@@ -180,6 +192,28 @@ function normalizeEnabledMap(value: Record<string, unknown>): Record<string, boo
     }
 
     return map;
+}
+
+function normalizeProfileEnabledMaps(
+    value: unknown,
+): Record<string, Record<string, boolean>> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return {};
+    }
+
+    const result: Record<string, Record<string, boolean>> = {};
+    for (const [profileId, enabledMap] of Object.entries(value)) {
+        if (!profileId.trim() || !enabledMap || typeof enabledMap !== "object") {
+            continue;
+        }
+
+        const normalized = normalizeEnabledMap(enabledMap as Record<string, unknown>);
+        if (Object.keys(normalized).length > 0) {
+            result[profileId] = normalized;
+        }
+    }
+
+    return result;
 }
 
 function normalizeCategoryDefaults(value: unknown) {

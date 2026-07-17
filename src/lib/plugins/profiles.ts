@@ -17,6 +17,8 @@ export type PluginProfilesState = {
     version: 1;
     activeProfileId: string;
     lastApplied: Record<string, boolean>;
+    /** Manual plugin toggles retained independently for each selected profile. */
+    customEnabledByProfile: Record<string, Record<string, boolean>>;
     userProfiles: PluginProfile[];
 };
 

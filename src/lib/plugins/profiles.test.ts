@@ -27,4 +27,20 @@ describe("plugin profile defaults", () => {
 
         expect(isStateCustom({ disabled: true }, expected)).toBe(true);
     });
+
+    test("keeps a profile override distinct from its default baseline", () => {
+        const baseline = buildAppliedEnabledMap(defaultProfile, [
+            { id: "workspace", defaultEnabled: false },
+        ]);
+        const withOverride = buildAppliedEnabledMap(
+            {
+                ...defaultProfile,
+                enabledPlugins: { workspace: true },
+            },
+            [{ id: "workspace", defaultEnabled: false }],
+        );
+
+        expect(withOverride).toEqual({ workspace: true });
+        expect(isStateCustom(withOverride, baseline)).toBe(true);
+    });
 });

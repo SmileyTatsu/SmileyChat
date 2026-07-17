@@ -1318,7 +1318,7 @@ const corePluginDefaultEnabled: Record<string, boolean> = {
     "smiley-chat-summarizer": false,
     "smiley-post-processing": false,
     "smiley-mcp": false,
-    "workspace-tools": false,
+    "smiley-workspace-tools": false,
 };
 
 async function writeCorePluginEnabled(pluginId: string, enabled: boolean) {
