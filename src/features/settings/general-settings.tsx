@@ -137,6 +137,21 @@ export function GeneralSettings({
                     />
                 </SettingField>
 
+                <SettingField label="Codeblock font">
+                    <input
+                        className="settings-text-input"
+                        type="text"
+                        value={preferences.appearance.codeblockFontFamily}
+                        placeholder="Default monospace"
+                        spellcheck={false}
+                        onInput={(event) =>
+                            updateAppearance({
+                                codeblockFontFamily: event.currentTarget.value,
+                            })
+                        }
+                    />
+                </SettingField>
+
                 <ToggleRow
                     checked={preferences.appearance.showTimestamps}
                     label="Show timestamps"

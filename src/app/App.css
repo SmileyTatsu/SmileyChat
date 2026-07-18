@@ -383,6 +383,12 @@
         sans-serif;
     --app-font-family: var(--custom-ui-font-family, var(--default-font-family));
     --chat-font-family: var(--custom-chat-font-family, var(--default-font-family));
+    --default-codeblock-font-family:
+        ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    --codeblock-font-family: var(
+        --custom-codeblock-font-family,
+        var(--default-codeblock-font-family)
+    );
 
     --message-gap: 12px;
     --message-font-size: 1rem;
