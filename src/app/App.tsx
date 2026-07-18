@@ -741,6 +741,7 @@ export function App() {
 
     const uiFontFamily = preferences.appearance.uiFontFamily.trim();
     const chatFontFamily = preferences.appearance.chatFontFamily.trim();
+    const codeblockFontFamily = preferences.appearance.codeblockFontFamily.trim();
     const handleClearLocalApiWarning = useEventCallback(() => {
         setLocalApiWarning("");
     });
@@ -900,6 +901,9 @@ export function App() {
                     : undefined,
                 "--custom-chat-font-family": chatFontFamily
                     ? `${chatFontFamily}, var(--default-font-family)`
+                    : undefined,
+                "--custom-codeblock-font-family": codeblockFontFamily
+                    ? `${codeblockFontFamily}, var(--default-codeblock-font-family)`
                     : undefined,
             }}
         >

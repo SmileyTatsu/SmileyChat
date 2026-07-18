@@ -7,6 +7,7 @@ describe("app preference normalization", () => {
         const preferences = normalizeAppPreferences({ appearance: {} });
 
         expect(preferences.appearance.timeFormat).toBe("12h");
+        expect(preferences.appearance.codeblockFontFamily).toBe("");
         expect(preferences.appearance.customCss).toBe("");
     });
 
@@ -20,6 +21,18 @@ describe("app preference normalization", () => {
 
         expect(preferences.appearance.timeFormat).toBe("24h");
         expect(preferences.appearance.customCss).toBe(".message { max-width: 70ch; }");
+    });
+
+    test("preserves and sanitizes the codeblock font preference", () => {
+        const preferences = normalizeAppPreferences({
+            appearance: {
+                codeblockFontFamily: '"JetBrains Mono"; color: red',
+            },
+        });
+
+        expect(preferences.appearance.codeblockFontFamily).toBe(
+            '"JetBrains Mono" color: red',
+        );
     });
 
     test("rejects invalid hour formats", () => {

@@ -19,6 +19,7 @@ export type AppPreferences = {
         italicizeRpMessages: boolean;
         uiFontFamily: string;
         chatFontFamily: string;
+        codeblockFontFamily: string;
         customCss: string;
     };
     chat: {
@@ -48,6 +49,7 @@ export const defaultAppPreferences: AppPreferences = {
         italicizeRpMessages: true,
         uiFontFamily: "",
         chatFontFamily: "",
+        codeblockFontFamily: "",
         customCss: "",
     },
     chat: {
@@ -115,6 +117,10 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             chatFontFamily: normalizeFontFamily(
                 appearance.chatFontFamily,
                 defaultAppPreferences.appearance.chatFontFamily,
+            ),
+            codeblockFontFamily: normalizeFontFamily(
+                appearance.codeblockFontFamily,
+                defaultAppPreferences.appearance.codeblockFontFamily,
             ),
             customCss:
                 typeof appearance.customCss === "string"
