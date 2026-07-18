@@ -1684,6 +1684,31 @@
     gap: 7px;
 }
 
+.preset-preview-subnav {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 3px;
+    border-radius: 7px;
+    background: #191b21;
+    padding: 3px;
+}
+
+.preset-preview-subnav button {
+    min-height: 28px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #9da3b4;
+    padding: 0 9px;
+    font-size: 0.78rem;
+}
+
+.preset-preview-subnav button:hover,
+.preset-preview-subnav button.active {
+    background: #303440;
+    color: #ececf1;
+}
+
 .preset-warning-badge {
     display: inline-flex;
     align-items: center;
@@ -2119,7 +2144,6 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    gap: 12px;
     min-height: 0;
     overflow: hidden;
 }
@@ -2133,6 +2157,11 @@
     overflow: auto;
     padding-right: 8px;
     scrollbar-gutter: stable;
+}
+
+.preset-preview-panel > .context-preview {
+    flex: 1;
+    min-height: 0;
 }
 
 .compiled-message {

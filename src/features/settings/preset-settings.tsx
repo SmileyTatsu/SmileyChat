@@ -71,6 +71,7 @@ type PresetSettingsProps = {
 };
 
 type PresetPanelView = "editor" | "generation" | "preview";
+type PresetPreviewView = "compiled" | "flat";
 
 export function PresetSettings({
     character,
@@ -86,6 +87,8 @@ export function PresetSettings({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedPromptId, setSelectedPromptId] = useState("");
     const [activeView, setActiveView] = useState<PresetPanelView>("editor");
+    const [activePreviewView, setActivePreviewView] =
+        useState<PresetPreviewView>("compiled");
     const [confirmAction, setConfirmAction] = useState<PresetConfirmAction | undefined>();
     const { requestState, setRequestState, setStatusMessage, statusMessage } =
         usePresetAutosave({
@@ -235,7 +238,7 @@ export function PresetSettings({
     }
 
     function updateCollection(nextCollection: PresetCollection) {
-        onCollectionChange(normalizePresetCollection(nextCollection));
+        onCollectionChange(nextCollection);
     }
 
     function updateActivePreset(updater: (preset: SmileyPreset) => SmileyPreset) {
@@ -508,6 +511,8 @@ export function PresetSettings({
                             <button
                                 className={activeView === "editor" ? "active" : ""}
                                 type="button"
+                                role="tab"
+                                aria-selected={activeView === "editor"}
                                 onClick={() => setActiveView("editor")}
                             >
                                 <FilePenLine size={16} />
@@ -518,6 +523,8 @@ export function PresetSettings({
                                     activeView === "generation" ? "active" : ""
                                 }
                                 type="button"
+                                role="tab"
+                                aria-selected={activeView === "generation"}
                                 onClick={() => setActiveView("generation")}
                             >
                                 <SlidersHorizontal size={16} />
@@ -526,6 +533,8 @@ export function PresetSettings({
                             <button
                                 className={activeView === "preview" ? "active" : ""}
                                 type="button"
+                                role="tab"
+                                aria-selected={activeView === "preview"}
                                 onClick={() => setActiveView("preview")}
                             >
                                 <Eye size={16} />
@@ -534,6 +543,44 @@ export function PresetSettings({
                         </div>
 
                         <div className="preset-tab-status">
+                            {activeView === "preview" && (
+                                <div
+                                    className="preset-preview-subnav"
+                                    role="tablist"
+                                    aria-label="Preview format"
+                                >
+                                    <button
+                                        className={
+                                            activePreviewView === "compiled"
+                                                ? "active"
+                                                : ""
+                                        }
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={
+                                            activePreviewView === "compiled"
+                                        }
+                                        onClick={() =>
+                                            setActivePreviewView("compiled")
+                                        }
+                                    >
+                                        Compiled
+                                    </button>
+                                    <button
+                                        className={
+                                            activePreviewView === "flat"
+                                                ? "active"
+                                                : ""
+                                        }
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={activePreviewView === "flat"}
+                                        onClick={() => setActivePreviewView("flat")}
+                                    >
+                                        Flat
+                                    </button>
+                                </div>
+                            )}
                             {activeView === "editor" &&
                                 selectedPromptWarnings.map((warning) => (
                                     <span
@@ -603,6 +650,7 @@ export function PresetSettings({
 
                     {activeView === "preview" && (
                         <PresetPreview
+                            activeView={activePreviewView}
                             compiledContextPreview={compiledContextPreview}
                             compiledMessagesPreview={compiledMessagesPreview}
                         />

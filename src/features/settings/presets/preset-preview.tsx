@@ -2,45 +2,39 @@ import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
 import { messageContentToText } from "#frontend/lib/connections/images";
 
 type PresetPreviewProps = {
+    activeView: "compiled" | "flat";
     compiledContextPreview: string;
     compiledMessagesPreview: ChatGenerationMessage[];
 };
 
 export function PresetPreview({
+    activeView,
     compiledContextPreview,
     compiledMessagesPreview,
 }: PresetPreviewProps) {
     return (
-        <section className="preset-preview-panel" aria-label="Compiled preset preview">
-            <div className="preset-section-header">
-                <h3>Compiled messages</h3>
-            </div>
-            <div className="compiled-message-list">
-                {compiledMessagesPreview.map((message, index) => (
-                    <article
-                        className="compiled-message"
-                        key={`${message.role}-${index}`}
-                    >
-                        <strong>{message.role}</strong>
-                        <pre>{messageContentToText(message.content)}</pre>
-                    </article>
-                ))}
-            </div>
-            <label
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    flex: 1,
-                    minHeight: 0,
-                }}
-            >
-                Flat context preview
+        <section className="preset-preview-panel" aria-label="Preset preview">
+            {activeView === "compiled" ? (
+                <div className="compiled-message-list" role="tabpanel">
+                    {compiledMessagesPreview.map((message, index) => (
+                        <article
+                            className="compiled-message"
+                            key={`${message.role}-${index}`}
+                        >
+                            <strong>{message.role}</strong>
+                            <pre>{messageContentToText(message.content)}</pre>
+                        </article>
+                    ))}
+                </div>
+            ) : (
                 <textarea
                     className="context-preview"
+                    aria-label="Flat context preview"
+                    role="tabpanel"
                     readOnly
                     value={compiledContextPreview}
                 />
-            </label>
+            )}
         </section>
     );
 }
