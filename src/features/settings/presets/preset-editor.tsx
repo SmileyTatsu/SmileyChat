@@ -1,7 +1,8 @@
+import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-preact";
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
-import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-preact";
 
+import { cn } from "#frontend/lib/common/style";
 import type {
     PresetInjectionPosition,
     PresetPrompt,
@@ -103,17 +104,15 @@ export function PresetEditor({
                         Prompt
                     </button>
                 </div>
+
                 <div className="prompt-list">
                     {orderedPrompts.map(({ entry, prompt }, index) => (
                         <div
-                            className={[
-                                "prompt-row",
-                                selectedPromptId === prompt.id ? "active" : "",
-                                draggedPromptId === prompt.id ? "dragging" : "",
-                                dropTargetPromptId === prompt.id ? "drop-target" : "",
-                            ]
-                                .filter(Boolean)
-                                .join(" ")}
+                            className={cn("prompt-row", {
+                                active: selectedPromptId === prompt.id,
+                                dragging: draggedPromptId === prompt.id,
+                                "drop-target": dropTargetPromptId === prompt.id,
+                            })}
                             key={prompt.id}
                             onDragLeave={() => {
                                 if (dropTargetPromptId === prompt.id) {
@@ -134,6 +133,7 @@ export function PresetEditor({
                             >
                                 <GripVertical size={16} />
                             </button>
+
                             <input
                                 aria-label={`Enable ${prompt.title}`}
                                 type="checkbox"
@@ -141,7 +141,7 @@ export function PresetEditor({
                                 onInput={(event) =>
                                     onUpdateOrderEntry(
                                         prompt.id,
-                                        (event.currentTarget as HTMLInputElement).checked,
+                                        event.currentTarget.checked,
                                     )
                                 }
                             />
@@ -152,6 +152,7 @@ export function PresetEditor({
                                 <strong>{prompt.title}</strong>
                                 <small>{prompt.role}</small>
                             </button>
+
                             <span className="prompt-move-buttons">
                                 <button
                                     aria-label="Move prompt up"
@@ -185,118 +186,122 @@ export function PresetEditor({
                     <>
                         <div className="preset-section-header">
                             <h3>Prompt</h3>
-                            <button type="button" onClick={onDeleteSelectedPrompt}>
-                                <Trash2 size={15} />
-                                Delete
-                            </button>
+                            <div className="prompt-detail-actions">
+                                <label className="prompt-enabled-toggle">
+                                    <input
+                                        type="checkbox"
+                                        checked={
+                                            selectedPromptOrderEntry?.enabled ?? true
+                                        }
+                                        onChange={(event) =>
+                                            onUpdateOrderEntry(
+                                                selectedPrompt.id,
+                                                event.currentTarget.checked,
+                                            )
+                                        }
+                                    />
+                                    <span
+                                        className="prompt-enabled-track"
+                                        aria-hidden="true"
+                                    >
+                                        <span />
+                                    </span>
+                                    <span>Enabled</span>
+                                </label>
+
+                                <button
+                                    className="danger-button"
+                                    type="button"
+                                    onClick={onDeleteSelectedPrompt}
+                                >
+                                    <Trash2 size={15} />
+                                    Delete
+                                </button>
+                            </div>
                         </div>
-                        <label>
-                            Title
-                            <input
-                                value={selectedPrompt.title}
-                                onInput={(event) =>
-                                    onUpdatePrompt(selectedPrompt.id, {
-                                        title: (event.currentTarget as HTMLInputElement)
-                                            .value,
-                                    })
-                                }
-                            />
-                        </label>
-                        <div className="preset-field-grid">
+                        <div className="prompt-detail-fields">
                             <label>
-                                Role
-                                <select
-                                    value={selectedPrompt.role}
-                                    onInput={(event) =>
-                                        onUpdatePrompt(selectedPrompt.id, {
-                                            role: (
-                                                event.currentTarget as HTMLSelectElement
-                                            ).value as PresetPromptRole,
-                                        })
-                                    }
-                                >
-                                    <option value="system">System</option>
-                                    <option value="user">User</option>
-                                    <option value="assistant">Assistant</option>
-                                </select>
-                            </label>
-                            <label>
-                                Injection
-                                <select
-                                    value={selectedPrompt.injectionPosition}
-                                    onInput={(event) =>
-                                        onUpdatePrompt(selectedPrompt.id, {
-                                            injectionPosition: (
-                                                event.currentTarget as HTMLSelectElement
-                                            ).value as PresetInjectionPosition,
-                                        })
-                                    }
-                                >
-                                    <option value="none">None</option>
-                                    <option value="before">Before</option>
-                                    <option value="after">After</option>
-                                </select>
-                            </label>
-                            <label>
-                                Depth
+                                Title
                                 <input
-                                    disabled={selectedPrompt.injectionPosition === "none"}
-                                    min={0}
-                                    type="number"
-                                    value={selectedPrompt.injectionDepth}
+                                    value={selectedPrompt.title}
                                     onInput={(event) =>
                                         onUpdatePrompt(selectedPrompt.id, {
-                                            injectionDepth: Number(
-                                                (event.currentTarget as HTMLInputElement)
-                                                    .value,
-                                            ),
+                                            title: event.currentTarget.value,
+                                        })
+                                    }
+                                />
+                            </label>
+                            <div className="preset-field-grid">
+                                <label>
+                                    Role
+                                    <select
+                                        value={selectedPrompt.role}
+                                        onInput={(event) =>
+                                            onUpdatePrompt(selectedPrompt.id, {
+                                                role: event.currentTarget
+                                                    .value as PresetPromptRole,
+                                            })
+                                        }
+                                    >
+                                        <option value="system">System</option>
+                                        <option value="user">User</option>
+                                        <option value="assistant">Assistant</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    Injection
+                                    <select
+                                        value={selectedPrompt.injectionPosition}
+                                        onInput={(event) =>
+                                            onUpdatePrompt(selectedPrompt.id, {
+                                                injectionPosition: event.currentTarget
+                                                    .value as PresetInjectionPosition,
+                                            })
+                                        }
+                                    >
+                                        <option value="none">None</option>
+                                        <option value="before">Before</option>
+                                        <option value="after">After</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    Depth
+                                    <input
+                                        disabled={
+                                            selectedPrompt.injectionPosition === "none"
+                                        }
+                                        min={0}
+                                        type="number"
+                                        value={selectedPrompt.injectionDepth}
+                                        onInput={(event) =>
+                                            onUpdatePrompt(selectedPrompt.id, {
+                                                injectionDepth: Number(
+                                                    event.currentTarget.value,
+                                                ),
+                                            })
+                                        }
+                                    />
+                                </label>
+                            </div>
+                            <p className="field-hint">
+                                Injection inserts this prompt around a conversation
+                                message. Depth 0 targets the latest message, 1 targets the
+                                previous message, and higher values move farther back in
+                                the chat.
+                            </p>
+                            <label className="prompt-content-field">
+                                Content
+                                <textarea
+                                    className="preset-prompt-content"
+                                    value={selectedPrompt.content}
+                                    onInput={(event) =>
+                                        onUpdatePrompt(selectedPrompt.id, {
+                                            content: event.currentTarget.value,
                                         })
                                     }
                                 />
                             </label>
                         </div>
-                        <p className="field-hint">
-                            Injection inserts this prompt around a conversation message.
-                            Depth 0 targets the latest message, 1 targets the previous
-                            message, and higher values move farther back in the chat.
-                        </p>
-                        <div className="preset-toggle-row compact">
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={selectedPromptOrderEntry?.enabled ?? true}
-                                    onInput={(event) =>
-                                        onUpdateOrderEntry(
-                                            selectedPrompt.id,
-                                            (event.currentTarget as HTMLInputElement)
-                                                .checked,
-                                        )
-                                    }
-                                />
-                                Enabled
-                            </label>
-                        </div>
-                        <label
-                            style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                flex: 1,
-                                minHeight: 0,
-                            }}
-                        >
-                            Content
-                            <textarea
-                                className="preset-prompt-content"
-                                value={selectedPrompt.content}
-                                onInput={(event) =>
-                                    onUpdatePrompt(selectedPrompt.id, {
-                                        content: (
-                                            event.currentTarget as HTMLTextAreaElement
-                                        ).value,
-                                    })
-                                }
-                            />
-                        </label>
                     </>
                 ) : (
                     <p className="muted-copy">No prompt selected.</p>
