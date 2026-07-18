@@ -2,6 +2,33 @@ import { describe, expect, test } from "bun:test";
 import { normalizeConnectionSettings, sanitizeConnectionSettings } from "./config";
 
 describe("connection config normalization", () => {
+    test("preserves a valid cached OpenAI-compatible model catalog", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-openai",
+            profiles: [
+                {
+                    id: "profile-openai",
+                    name: "OpenAI",
+                    provider: "openai-compatible",
+                    config: {
+                        baseUrl: "https://api.openai.com/v1",
+                        cachedModels: [{ id: "gpt-custom" }],
+                        model: { source: "api", id: "gpt-custom" },
+                    },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.config).toMatchObject({
+            cachedModels: [
+                { id: "gpt-custom", object: "model", created: 0, owned_by: "" },
+            ],
+        });
+    });
+
     test("normalizes connection context token budgets", () => {
         const settings = normalizeConnectionSettings({
             version: 1,

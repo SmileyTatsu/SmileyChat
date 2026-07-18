@@ -32,7 +32,7 @@ Common examples:
 
 The provider sends `model` and ordered chat-completion `messages`, then normalizes the first assistant message from `choices`.
 
-Model selection starts with the local default catalog in `src/data/default-openai-models.json`. Models loaded from `GET {baseUrl}/models` are shown under `Other`, and a custom model field remains available for endpoints that require manual IDs.
+Model selection starts with the local default catalog in `src/data/default-openai-models.json`. Models loaded from `GET {baseUrl}/models` are shown under `Other` and cached with the connection profile. The cache is replaced when models are loaded again and cleared when the base URL or API key changes. A custom model field remains available for endpoints that require manual IDs.
 
 ## OpenRouter
 

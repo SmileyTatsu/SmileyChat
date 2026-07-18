@@ -6,6 +6,7 @@ import { defaultOutputTokenLimit, normalizeOutputTokenLimit } from "../output-to
 
 import type {
     OpenAICompatibleConnectionConfig,
+    OpenAICompatibleModel,
     OpenAICompatibleReasoningConfig,
 } from "./types";
 
@@ -32,6 +33,7 @@ export function normalizeOpenAICompatibleConfig(
                 ? config.baseUrl
                 : defaultOpenAICompatibleConfig.baseUrl,
         apiKey: stringOrUndefined(config.apiKey),
+        cachedModels: normalizeCachedModels(config.cachedModels),
         maxCompletionTokens: normalizeOutputTokenLimit(config.maxCompletionTokens, 16),
         model: {
             source: modelSource,
@@ -42,6 +44,29 @@ export function normalizeOpenAICompatibleConfig(
         },
         reasoning: normalizeOpenAICompatibleReasoningConfig(config.reasoning),
     };
+}
+
+function normalizeCachedModels(value: unknown): OpenAICompatibleModel[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const models = value.flatMap((item) => {
+        if (!isRecord(item) || typeof item.id !== "string") {
+            return [];
+        }
+
+        return [
+            {
+                id: item.id,
+                object: "model" as const,
+                created: typeof item.created === "number" ? item.created : 0,
+                owned_by: typeof item.owned_by === "string" ? item.owned_by : "",
+            },
+        ];
+    });
+
+    return models.length > 0 ? models : undefined;
 }
 
 function normalizeOpenAICompatibleReasoningConfig(

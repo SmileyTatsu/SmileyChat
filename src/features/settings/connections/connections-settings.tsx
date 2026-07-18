@@ -79,7 +79,6 @@ import { XAIConnection } from "./providers/xai-connection";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
-const cachedModelsByProfileId: Record<string, OpenAICompatibleModel[]> = {};
 const cachedOpenRouterModelsByProfileId: Record<string, OpenRouterModel[]> = {};
 const cachedGoogleAIModelsByProfileId: Record<string, GoogleAIModel[]> = {};
 const cachedAnthropicModelsByProfileId: Record<string, AnthropicModel[]> = {};
@@ -100,9 +99,6 @@ export function ConnectionsSettings({
     settings,
     onSettingsChange,
 }: ConnectionsSettingsProps) {
-    const [modelsByProfileId, setModelsByProfileId] = useState<
-        Record<string, OpenAICompatibleModel[]>
-    >(() => ({ ...cachedModelsByProfileId }));
     const [openRouterModelsByProfileId, setOpenRouterModelsByProfileId] = useState<
         Record<string, OpenRouterModel[]>
     >(() => ({ ...cachedOpenRouterModelsByProfileId }));
@@ -121,7 +117,9 @@ export function ConnectionsSettings({
 
     const activeProfile = getActiveConnectionProfile(settings);
     const isBusy = requestState === "loading";
-    const activeModels = activeProfile ? (modelsByProfileId[activeProfile.id] ?? []) : [];
+    const activeModels = isOpenAICompatibleProfile(activeProfile)
+        ? (activeProfile.config.cachedModels ?? [])
+        : [];
     const activeOpenRouterModels = activeProfile
         ? (openRouterModelsByProfileId[activeProfile.id] ?? [])
         : [];
@@ -210,6 +208,9 @@ export function ConnectionsSettings({
             const nextSettings = updateProfileConfig(settings, activeProfile.id, {
                 ...activeProfile.config,
                 apiKey: undefined,
+                ...(isOpenAICompatibleProfile(activeProfile)
+                    ? { cachedModels: undefined }
+                    : {}),
             });
             onSettingsChange(nextSettings);
 
@@ -643,16 +644,19 @@ export function ConnectionsSettings({
         setStatusMessage(
             `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
         );
+        updateActiveProfileConfig({
+            ...activeProfile.config,
+            cachedModels: undefined,
+        });
 
         try {
             const nextModels = (await loadConnectionModels(activeProfile.id))
                 .models as OpenAICompatibleModel[];
 
-            cachedModelsByProfileId[activeProfile.id] = nextModels;
-            setModelsByProfileId((current) => ({
-                ...current,
-                [activeProfile.id]: nextModels,
-            }));
+            let nextConfig = {
+                ...activeProfile.config,
+                cachedModels: nextModels,
+            };
 
             if (nextModels[0] && activeProfile.config.model.source !== "custom") {
                 const currentId = activeProfile.config.model.id;
@@ -661,15 +665,14 @@ export function ConnectionsSettings({
                     nextModels.some((model) => model.id === currentId);
 
                 if (!currentIsLoaded) {
-                    updateActiveProfileConfig({
-                        ...activeProfile.config,
-                        model: {
-                            source: "api",
-                            id: nextModels[0].id,
-                        },
-                    });
+                    nextConfig = {
+                        ...nextConfig,
+                        model: { source: "api", id: nextModels[0].id },
+                    };
                 }
             }
+
+            updateActiveProfileConfig(nextConfig);
 
             setStatusMessage(
                 `Loaded ${nextModels.length} model(s) from ${trimTrailingSlash(activeProfile.config.baseUrl)}/models.`,
@@ -686,7 +689,14 @@ export function ConnectionsSettings({
             return;
         }
 
-        onSettingsChange(updateProfileConfig(settings, activeProfile.id, nextConfig));
+        const config =
+            isOpenAICompatibleProfile(activeProfile) &&
+            (nextConfig.baseUrl !== activeProfile.config.baseUrl ||
+                nextConfig.apiKey !== activeProfile.config.apiKey)
+                ? { ...nextConfig, cachedModels: undefined }
+                : nextConfig;
+
+        onSettingsChange(updateProfileConfig(settings, activeProfile.id, config));
     }
 
     function updateActiveProfileName(name: string) {
@@ -806,6 +816,9 @@ export function ConnectionsSettings({
             config: {
                 ...activeProfile.config,
                 apiKey: undefined,
+                ...(isOpenAICompatibleProfile(activeProfile)
+                    ? { cachedModels: undefined }
+                    : {}),
             },
             contextTokenBudget: activeProfile.contextTokenBudget,
             createdAt: now,
@@ -837,12 +850,6 @@ export function ConnectionsSettings({
         };
 
         onSettingsChange(nextSettings);
-        setModelsByProfileId((current) => {
-            const next = { ...current };
-            delete next[activeProfile.id];
-            return next;
-        });
-        delete cachedModelsByProfileId[activeProfile.id];
         setOpenRouterModelsByProfileId((current) => {
             const next = { ...current };
             delete next[activeProfile.id];
