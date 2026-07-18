@@ -704,6 +704,7 @@ textarea:disabled {
 .plugins-view-switcher,
 .marketplace-filter-pills,
 .preset-subnav,
+.preset-preview-subnav,
 .settings-segmented-control,
 .swipe-controls {
     border: 0;
@@ -715,6 +716,7 @@ textarea:disabled {
 .inline-group-segments button.active,
 .plugins-view-switcher button.active,
 .preset-subnav button.active,
+.preset-preview-subnav button.active,
 .settings-segmented-control button.active,
 .marketplace-filter-pills .pill-active {
     background: var(--surface-4);
