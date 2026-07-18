@@ -4,6 +4,7 @@ import type { ChatGenerationMessageContentPart } from "../types";
 export type OpenAICompatibleConnectionConfig = {
     baseUrl: string;
     apiKey?: string;
+    cachedModels?: OpenAICompatibleModel[];
     maxCompletionTokens?: number;
     model: OpenAICompatibleModelSelection;
     reasoning?: OpenAICompatibleReasoningConfig;
