@@ -8,6 +8,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { json } from "./http";
 import { mcpSecretsPath, mcpSettingsPath } from "./paths";
+import { isCorePluginEnabled } from "./plugins";
 import {
     defaultMcpSettings,
     exportOpenCodeMcp,
@@ -81,6 +82,10 @@ export async function writeMcpServers(body: unknown) {
 }
 
 export async function connectMcpServer(id: string) {
+    if (!(await isMcpPluginEnabled())) {
+        return json({ error: "The MCP Servers plugin is disabled." }, 409);
+    }
+
     const settings = await readSettings();
     const server = settings.servers.find((item) => item.id === id);
     if (!server) return json({ error: "MCP server not found." }, 404);
@@ -92,6 +97,10 @@ export async function connectMcpServer(id: string) {
 
 export async function autoConnectMcpServers() {
     try {
+        if (!(await isMcpPluginEnabled())) {
+            return;
+        }
+
         const settings = await readSettings();
         const secrets = await readSecrets();
         const enabledServers = settings.servers.filter((server) => server.enabled);
@@ -117,6 +126,10 @@ export async function refreshMcpServer(id: string) {
 }
 
 export async function callMcpTool(serverId: string, toolName: string, args: unknown) {
+    if (!(await isMcpPluginEnabled())) {
+        return json({ error: "The MCP Servers plugin is disabled." }, 409);
+    }
+
     const settings = await readSettings();
     const server = settings.servers.find((item) => item.id === serverId && item.enabled);
     if (!server) return json({ error: "MCP server is unavailable." }, 404);
@@ -142,6 +155,10 @@ export async function callMcpTool(serverId: string, toolName: string, args: unkn
         ),
         isError: result.isError === true,
     });
+}
+
+async function isMcpPluginEnabled() {
+    return isCorePluginEnabled("smiley-mcp");
 }
 
 async function records(settings: McpSettings): Promise<McpServerRecord[]> {

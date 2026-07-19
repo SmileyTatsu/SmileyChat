@@ -918,6 +918,14 @@ export async function updatePluginEnabled(pluginId: string, enabled: unknown) {
     if (pluginRecord.source === "core") {
         const plugin = await writeCorePluginEnabled(pluginId, enabled);
 
+        // Core plugins can own server-side resources in addition to their UI.
+        // Stop MCP child processes immediately rather than leaving them alive
+        // until the next server restart.
+        if (pluginId === "smiley-mcp" && !enabled) {
+            const { closeAll } = await import("./mcp");
+            await closeAll();
+        }
+
         return json({
             ok: true,
             plugin,
@@ -1312,6 +1320,18 @@ async function readCorePluginState(pluginId: string) {
     } catch {
         return { enabled: defaultEnabled };
     }
+}
+
+/**
+ * Plugin profiles apply their selected state through `updatePluginEnabled`, so
+ * server-side extensions can use this persisted state after a restart too.
+ */
+export async function isCorePluginEnabled(pluginId: string): Promise<boolean> {
+    if (!corePluginIds.has(pluginId)) {
+        return false;
+    }
+
+    return (await readCorePluginState(pluginId)).enabled;
 }
 
 const corePluginDefaultEnabled: Record<string, boolean> = {
