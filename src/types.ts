@@ -105,6 +105,11 @@ export type MessageSwipe = {
     status?: "error";
     toolActivities?: MessageToolActivity[];
     timeline?: SwipeTimelineEntry[];
+    pendingToolContinuation?: {
+        profileId: string;
+        generation?: import("./lib/presets/types").PresetGenerationSettings;
+        toolCalls: MessageToolCall[];
+    };
 };
 
 export type {

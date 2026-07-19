@@ -254,6 +254,7 @@ export function updateActiveSwipeContent(
     reasoningDetails?: unknown,
     toolActivities?: MessageSwipe["toolActivities"],
     timeline?: MessageSwipe["timeline"],
+    pendingToolContinuation?: MessageSwipe["pendingToolContinuation"],
 ): Message {
     if (message.swipes.length === 0) {
         const swipe = createMessageSwipe(content, status);
@@ -267,6 +268,7 @@ export function updateActiveSwipeContent(
                     ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                     ...(toolActivities?.length ? { toolActivities } : {}),
                     ...(timeline?.length ? { timeline } : {}),
+                    ...(pendingToolContinuation ? { pendingToolContinuation } : {}),
                 },
             ],
             activeSwipeIndex: 0,
@@ -285,6 +287,7 @@ export function updateActiveSwipeContent(
                       ...(status ? { status } : {}),
                       ...(toolActivities?.length ? { toolActivities } : {}),
                       ...(timeline?.length ? { timeline } : {}),
+                      ...(pendingToolContinuation ? { pendingToolContinuation } : {}),
                   }
                 : swipe,
         ),
@@ -323,6 +326,23 @@ export function updateActiveSwipeReasoning(
                   }
                 : swipe,
         ),
+    };
+}
+
+export function setActiveSwipePendingToolContinuation(
+    message: Message,
+    pendingToolContinuation: MessageSwipe["pendingToolContinuation"],
+): Message {
+    return {
+        ...message,
+        swipes: message.swipes.map((swipe, index) => {
+            if (index !== message.activeSwipeIndex) return swipe;
+            if (!pendingToolContinuation) {
+                const { pendingToolContinuation: _pending, ...nextSwipe } = swipe;
+                return nextSwipe;
+            }
+            return { ...swipe, pendingToolContinuation };
+        }),
     };
 }
 
@@ -369,6 +389,7 @@ export function appendMessageSwipe(
     reasoningDetails?: unknown,
     toolActivities?: MessageSwipe["toolActivities"],
     timeline?: MessageSwipe["timeline"],
+    pendingToolContinuation?: MessageSwipe["pendingToolContinuation"],
 ): Message {
     const swipe = createMessageSwipe(content, status);
     const swipes = [
@@ -379,6 +400,7 @@ export function appendMessageSwipe(
             ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
             ...(toolActivities?.length ? { toolActivities } : {}),
             ...(timeline?.length ? { timeline } : {}),
+            ...(pendingToolContinuation ? { pendingToolContinuation } : {}),
         },
     ];
 

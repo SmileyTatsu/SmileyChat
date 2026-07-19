@@ -30,6 +30,7 @@ export type AppPreferences = {
         streaming: boolean;
         showThoughtProcess: boolean;
         showToolActivity: boolean;
+        toolIterationLimit: number;
     };
     layout: {
         characterPanelOpenByDefault: boolean;
@@ -61,6 +62,7 @@ export const defaultAppPreferences: AppPreferences = {
         streaming: true,
         showThoughtProcess: true,
         showToolActivity: true,
+        toolIterationLimit: 8,
     },
     layout: {
         characterPanelOpenByDefault: true,
@@ -159,6 +161,12 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             showToolActivity: booleanOrFallback(
                 chat.showToolActivity,
                 defaultAppPreferences.chat.showToolActivity,
+            ),
+            toolIterationLimit: numberInRange(
+                chat.toolIterationLimit,
+                defaultAppPreferences.chat.toolIterationLimit,
+                1,
+                32,
             ),
         },
         layout: {

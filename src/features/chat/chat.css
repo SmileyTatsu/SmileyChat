@@ -686,6 +686,56 @@
     padding: 0;
 }
 
+.tool-continuation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    color: #e2c08d;
+    font-size: 0.82rem;
+    border: 1px solid rgba(226, 174, 91, 0.48);
+    border-radius: 8px;
+    background: rgba(226, 174, 91, 0.1);
+    padding: 10px 12px;
+    line-height: 1.45;
+}
+
+.tool-continuation p {
+    margin: 0;
+}
+
+.tool-continuation button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    border: 1px solid #735a34;
+    border-radius: 6px;
+    background: #4a3a22;
+    color: #f7e6cc;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+
+.tool-continuation button:hover:not(:disabled) {
+    background: #5d4829;
+    border-color: #8c6e3f;
+}
+
+.tool-continuation button:focus-visible {
+    outline: 2px solid #e2ae5b;
+    outline-offset: 2px;
+}
+
+.tool-continuation button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .swipe-controls button {
     width: 38px;
     height: 34px;

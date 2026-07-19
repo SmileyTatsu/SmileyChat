@@ -80,6 +80,12 @@ export type DebugGenerationPayload = {
     payload: unknown;
 };
 
+export type PendingToolContinuation = {
+    generation?: ChatGenerationRequest["generation"];
+    profileId: string;
+    toolCalls: ToolCall[];
+};
+
 export function usePromptGeneration({
     character,
     connectionSettings,
@@ -99,10 +105,15 @@ export function usePromptGeneration({
             ),
         [presetCollection],
     );
-    const contextTokenBudget = normalizeContextTokenBudget(
-        getActiveConnectionProfile(connectionSettings)?.contextTokenBudget,
-        defaultContextTokenBudget,
-    );
+    function contextTokenBudgetForProfile(profileId?: string) {
+        const profile = profileId
+            ? connectionSettings.profiles.find((item) => item.id === profileId)
+            : getActiveConnectionProfile(connectionSettings);
+        return normalizeContextTokenBudget(
+            profile?.contextTokenBudget,
+            defaultContextTokenBudget,
+        );
+    }
 
     function groupPromptContext(sourceChat: ChatSession | undefined) {
         if (!sourceChat || !isGroupChat(sourceChat)) {
@@ -185,15 +196,17 @@ export function usePromptGeneration({
             onToolActivities?: (activities: MessageToolActivity[]) => void;
             onTimeline?: (timeline: SwipeTimelineEntry[]) => void;
             signal?: AbortSignal;
+            continuation?: PendingToolContinuation;
             sourceChat?: ChatSession;
             stream?: boolean;
             targetMessageId?: string;
             trigger?: PromptGenerationTrigger;
         } = {},
     ) {
-        const connection = createServerGenerationConnection(
-            getActiveConnectionProfile(sourceConnectionSettings)?.id,
-        );
+        const profileId =
+            options.continuation?.profileId ??
+            getActiveConnectionProfile(sourceConnectionSettings)?.id;
+        const connection = createServerGenerationConnection(profileId);
         const request = await buildGenerationRequest(
             sourceMessages,
             sourceCharacter,
@@ -201,6 +214,9 @@ export function usePromptGeneration({
             sourceUserStatus,
             options,
         );
+        if (options.continuation?.generation) {
+            request.generation = options.continuation.generation;
+        }
         const sourceChat = options.sourceChat ?? latestChatRef.current;
         const allowedTools = new Map(
             getPluginTools(
@@ -221,13 +237,32 @@ export function usePromptGeneration({
         }
 
         const generationMessages = request.messages;
-        const { result, activities, promptMessages, timeline } = await runToolLoop(
-            connection,
-            request,
-            allowedTools,
-            options.onToolActivities,
-            options.onTimeline,
-        );
+        const { result, activities, promptMessages, timeline, pendingToolCalls } =
+            await runToolLoop(
+                connection,
+                request,
+                allowedTools,
+                options.onToolActivities,
+                options.onTimeline,
+                options.continuation?.toolCalls,
+                preferences.chat.toolIterationLimit,
+            );
+        // Any unexecuted tool calls must become a resumable continuation. This
+        // covers the normal iteration cap and edge cases that leave tool calls
+        // pending without a final assistant text turn.
+        const unresolvedToolCalls = pendingToolCalls?.length
+            ? pendingToolCalls
+            : result.toolCalls?.length
+              ? result.toolCalls
+              : undefined;
+        const pendingToolContinuation =
+            unresolvedToolCalls?.length && profileId
+                ? ({
+                      generation: request.generation,
+                      profileId,
+                      toolCalls: unresolvedToolCalls,
+                  } satisfies PendingToolContinuation)
+                : undefined;
 
         const message = await applyOutputMiddlewares(
             result.message,
@@ -240,7 +275,13 @@ export function usePromptGeneration({
             options,
         );
 
-        return { ...result, message, toolActivities: activities, timeline };
+        return {
+            ...result,
+            message,
+            toolActivities: activities,
+            timeline,
+            ...(pendingToolContinuation ? { pendingToolContinuation } : {}),
+        };
     }
 
     async function runToolLoop(
@@ -249,11 +290,12 @@ export function usePromptGeneration({
         allowedTools: Map<string, ReturnType<typeof getPluginTools>[number]>,
         onToolActivities?: (activities: MessageToolActivity[]) => void,
         onTimeline?: (timeline: SwipeTimelineEntry[]) => void,
+        initialToolCalls: ToolCall[] | undefined = undefined,
+        maxIterations = 8,
     ) {
         let promptMessages = request.promptMessages ?? [];
         const activities: ToolActivity[] = [];
         const timeline: SwipeTimelineEntry[] = [];
-        const maxIterations = 8;
 
         const emitTimeline = () => onTimeline?.([...timeline]);
         const generateTurn = async () => {
@@ -305,13 +347,22 @@ export function usePromptGeneration({
             return result;
         };
 
-        let result = await generateTurn();
+        let result = initialToolCalls?.length
+            ? ({
+                  message: "",
+                  provider: "smileychat-continuation",
+                  toolCalls: initialToolCalls,
+              } as Awaited<ReturnType<typeof generateTurn>>)
+            : await generateTurn();
+        let resultAlreadyInPrompt = Boolean(initialToolCalls?.length);
+        let limitReached = false;
+        let pendingToolCalls: ToolCall[] | undefined;
 
         for (let iteration = 0; result.toolCalls?.length; iteration += 1) {
             if (iteration >= maxIterations) {
-                throw new Error(
-                    `Tool calling stopped after ${maxIterations} model iterations.`,
-                );
+                limitReached = true;
+                pendingToolCalls = result.toolCalls;
+                break;
             }
 
             const toolResults: ToolResult[] = [];
@@ -354,13 +405,17 @@ export function usePromptGeneration({
 
             promptMessages = [
                 ...promptMessages,
-                {
-                    role: ChatGenerationMessageRole.Assistant,
-                    content: result.message,
-                    reasoning: result.reasoning,
-                    reasoningDetails: result.reasoningDetails,
-                    toolCalls: result.toolCalls,
-                },
+                ...(resultAlreadyInPrompt
+                    ? []
+                    : [
+                          {
+                              role: ChatGenerationMessageRole.Assistant,
+                              content: result.message,
+                              reasoning: result.reasoning,
+                              reasoningDetails: result.reasoningDetails,
+                              toolCalls: result.toolCalls,
+                          },
+                      ]),
                 ...toolResults.map(
                     (toolResult): ChatGenerationMessage => ({
                         role: ChatGenerationMessageRole.User,
@@ -371,9 +426,17 @@ export function usePromptGeneration({
             ];
 
             result = await generateTurn();
+            resultAlreadyInPrompt = false;
         }
 
-        return { result, activities, promptMessages, timeline };
+        return {
+            result,
+            activities,
+            promptMessages,
+            timeline,
+            limitReached,
+            pendingToolCalls,
+        };
     }
 
     async function runPluginTool(
@@ -539,12 +602,16 @@ export function usePromptGeneration({
             onReasoningToken?: (token: string) => void;
             onToken?: (token: string) => void;
             signal?: AbortSignal;
+            continuation?: PendingToolContinuation;
             sourceChat?: ChatSession;
             stream?: boolean;
             targetMessageId?: string;
             trigger?: PromptGenerationTrigger;
         } = {},
     ): Promise<ChatGenerationRequest> {
+        const contextTokenBudget = contextTokenBudgetForProfile(
+            options.continuation?.profileId,
+        );
         const sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );

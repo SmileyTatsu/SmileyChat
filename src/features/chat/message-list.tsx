@@ -45,12 +45,14 @@ type MessageListProps = {
     showRpCharacterImages: boolean;
     showThoughtProcess: boolean;
     showToolActivity: boolean;
+    toolIterationLimit: number;
 
     onDeleteMessage: (messageId: string) => void;
     onDeleteMessageSwipe: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
     onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
+    onContinueGeneration: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onRemoveAllAttachments: (messageId: string) => void;
@@ -75,6 +77,7 @@ export const MessageList = memo(function MessageList({
     showRpCharacterImages,
     showThoughtProcess,
     showToolActivity,
+    toolIterationLimit,
     showTimestamps,
     timeFormat,
     messageFormatting,
@@ -83,6 +86,7 @@ export const MessageList = memo(function MessageList({
     onEditMessage,
     onForkMessage,
     onNextSwipe,
+    onContinueGeneration,
     onPreviousSwipe,
     onRemoveAttachment,
     onRemoveAllAttachments,
@@ -540,12 +544,14 @@ export const MessageList = memo(function MessageList({
                             showTimestamps={showTimestamps}
                             showToolActivity={showToolActivity}
                             timeFormat={timeFormat}
+                            toolIterationLimit={toolIterationLimit}
                             onCancelEdit={cancelEdit}
                             onCloseMenu={closeMessageMenu}
                             onCopyMessage={copyMessage}
                             onDeleteMessage={requestDeleteMessage}
                             onForkMessage={onForkMessage}
                             onNextSwipe={onNextSwipe}
+                            onContinueGeneration={onContinueGeneration}
                             onPreviousSwipe={onPreviousSwipe}
                             onRemoveAttachment={requestRemoveAttachment}
                             onRemoveAllAttachments={requestRemoveAllAttachments}

@@ -6,6 +6,7 @@ import {
     FilePenLine,
     GitFork,
     MoreHorizontal,
+    Play,
     Trash2,
     User,
     Wrench,
@@ -69,12 +70,14 @@ export type MessageItemProps = {
     showThoughtProcess: boolean;
     showToolActivity: boolean;
     timeFormat: TimeFormat;
+    toolIterationLimit: number;
     onCancelEdit: () => void;
     onCloseMenu: () => void;
     onCopyMessage: (message: Message) => void | Promise<void>;
     onDeleteMessage: (message: Message) => void;
     onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
+    onContinueGeneration: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onRemoveAllAttachments: (message: Message) => void;
@@ -111,12 +114,14 @@ export const MessageItem = memo(function MessageItem({
     showThoughtProcess,
     showToolActivity,
     timeFormat,
+    toolIterationLimit,
     onCancelEdit,
     onCloseMenu,
     onCopyMessage,
     onDeleteMessage,
     onForkMessage,
     onNextSwipe,
+    onContinueGeneration,
     onPreviousSwipe,
     onRemoveAttachment,
     onRemoveAllAttachments,
@@ -406,6 +411,22 @@ export const MessageItem = memo(function MessageItem({
                         onVisibleContentChange={onVisibleContentChange}
                     />
                 )}
+                {!isEditing && isLastMessage && activeSwipe?.pendingToolContinuation && (
+                    <div className="tool-continuation">
+                        <p>
+                            Tool-call limit of {toolIterationLimit} reached. Continue when
+                            you want the task to proceed.
+                        </p>
+                        <button
+                            type="button"
+                            disabled={isPendingSwipe}
+                            onClick={() => onContinueGeneration(message.id)}
+                        >
+                            <Play size={15} aria-hidden="true" />
+                            Continue Generation
+                        </button>
+                    </div>
+                )}
             </div>
         </article>
     );
@@ -488,12 +509,14 @@ function areMessageItemPropsEqual(
         previous.showThoughtProcess === next.showThoughtProcess &&
         previous.showToolActivity === next.showToolActivity &&
         previous.timeFormat === next.timeFormat &&
+        previous.toolIterationLimit === next.toolIterationLimit &&
         previous.onCancelEdit === next.onCancelEdit &&
         previous.onCloseMenu === next.onCloseMenu &&
         previous.onCopyMessage === next.onCopyMessage &&
         previous.onDeleteMessage === next.onDeleteMessage &&
         previous.onForkMessage === next.onForkMessage &&
         previous.onNextSwipe === next.onNextSwipe &&
+        previous.onContinueGeneration === next.onContinueGeneration &&
         previous.onPreviousSwipe === next.onPreviousSwipe &&
         previous.onRemoveAttachment === next.onRemoveAttachment &&
         previous.onRemoveAllAttachments === next.onRemoveAllAttachments &&

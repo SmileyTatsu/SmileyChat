@@ -4,6 +4,7 @@ import {
     updateActiveSwipeAttachments,
     updateActiveSwipeContent,
     updateActiveSwipeReasoning,
+    setActiveSwipePendingToolContinuation,
     getMessageContent,
 } from "#frontend/lib/messages";
 import {
@@ -139,14 +140,19 @@ export function useMessageOperations({
         updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId
-                    ? updateActiveSwipeContent(
-                          message,
-                          resolveChatMacros(
-                              content,
-                              sourceChat.messages.filter((item) => item.id !== messageId),
+                    ? setActiveSwipePendingToolContinuation(
+                          updateActiveSwipeContent(
+                              message,
+                              resolveChatMacros(
+                                  content,
+                                  sourceChat.messages.filter(
+                                      (item) => item.id !== messageId,
+                                  ),
+                              ),
+                              undefined,
+                              "",
                           ),
                           undefined,
-                          "",
                       )
                     : message,
             ),
@@ -222,6 +228,7 @@ export function useMessageOperations({
         sourceChat = latestChatRef.current,
         toolActivities?: Message["swipes"][number]["toolActivities"],
         timeline?: Message["swipes"][number]["timeline"],
+        pendingToolContinuation?: Message["swipes"][number]["pendingToolContinuation"],
     ) {
         if (!sourceChat) {
             return;
@@ -238,6 +245,7 @@ export function useMessageOperations({
                           reasoningDetails,
                           toolActivities,
                           timeline,
+                          pendingToolContinuation,
                       )
                     : message,
             ),
@@ -254,6 +262,9 @@ export function useMessageOperations({
         reasoningDetails?: unknown,
         toolActivities?: Message["swipes"][number]["toolActivities"],
         timeline?: Message["swipes"][number]["timeline"],
+        pendingToolContinuation?:
+            | Message["swipes"][number]["pendingToolContinuation"]
+            | null,
     ) {
         const sourceChat = latestChatRef.current;
 
@@ -264,15 +275,23 @@ export function useMessageOperations({
         updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId
-                    ? updateActiveSwipeContent(
-                          message,
-                          content,
-                          status,
-                          reasoning,
-                          reasoningDetails,
-                          toolActivities,
-                          timeline,
-                      )
+                    ? (() => {
+                          const updated = updateActiveSwipeContent(
+                              message,
+                              content,
+                              status,
+                              reasoning,
+                              reasoningDetails,
+                              toolActivities,
+                              timeline,
+                          );
+                          return pendingToolContinuation === undefined
+                              ? updated
+                              : setActiveSwipePendingToolContinuation(
+                                    updated,
+                                    pendingToolContinuation ?? undefined,
+                                );
+                      })()
                     : message,
             ),
             sourceChat,

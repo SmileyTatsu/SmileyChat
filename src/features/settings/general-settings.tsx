@@ -274,6 +274,21 @@ export function GeneralSettings({
                     label="Show tool activity"
                     onChange={(showToolActivity) => updateChat({ showToolActivity })}
                 />
+
+                <SettingField
+                    label="Tool-call iterations per generation"
+                    description="Maximum number of consecutive tool-call requests before pausing to ask for confirmation."
+                >
+                    <NumberInput
+                        min={1}
+                        max={32}
+                        step={1}
+                        value={preferences.chat.toolIterationLimit}
+                        onChange={(toolIterationLimit) =>
+                            updateChat({ toolIterationLimit })
+                        }
+                    />
+                </SettingField>
             </section>
 
             <section className="settings-card">
@@ -376,14 +391,19 @@ export function GeneralSettings({
 
 function SettingField({
     children,
+    description,
     label,
 }: {
     children: ComponentChildren;
+    description?: string;
     label: string;
 }) {
     return (
         <div className="settings-field">
-            <span>{label}</span>
+            <span>
+                <strong>{label}</strong>
+                {description && <small>{description}</small>}
+            </span>
             {children}
         </div>
     );

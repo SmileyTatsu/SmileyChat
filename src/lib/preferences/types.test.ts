@@ -44,4 +44,15 @@ describe("app preference normalization", () => {
             defaultAppPreferences.appearance.timeFormat,
         );
     });
+
+    test("normalizes the tool iteration limit", () => {
+        expect(
+            normalizeAppPreferences({ chat: { toolIterationLimit: 99 } }).chat
+                .toolIterationLimit,
+        ).toBe(32);
+        expect(
+            normalizeAppPreferences({ chat: { toolIterationLimit: 12 } }).chat
+                .toolIterationLimit,
+        ).toBe(12);
+    });
 });

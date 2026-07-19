@@ -372,32 +372,53 @@ function toAnchoredHistoryMessages(
 ): AnchoredPromptMessage[] {
     const activeSwipe = getActiveSwipe(message);
     const activities = activeSwipe?.toolActivities;
+    const pendingContinuation = activeSwipe?.pendingToolContinuation;
 
-    if (activities?.length) {
+    if (activities?.length || pendingContinuation?.toolCalls.length) {
         return [
-            {
-                message: {
-                    role: promptRoleForMessage(message),
-                    content: "",
-                    toolCalls: activities.map((a) => a.call),
-                },
-                messageId: message.id,
-                source: "history" as const,
-            },
-            ...activities.map((activity) => ({
-                message: {
-                    role: "user" as const,
-                    content: activity.result.content,
-                    toolResult: activity.result,
-                },
-                messageId: message.id,
-                source: "history" as const,
-            })),
-            {
-                message: toGenerationMessage(message, context),
-                messageId: message.id,
-                source: "history" as const,
-            },
+            ...(activities?.length
+                ? [
+                      {
+                          message: {
+                              role: promptRoleForMessage(message),
+                              content: "",
+                              toolCalls: activities.map((activity) => activity.call),
+                          },
+                          messageId: message.id,
+                          source: "history" as const,
+                      },
+                      ...activities.map((activity) => ({
+                          message: {
+                              role: "user" as const,
+                              content: activity.result.content,
+                              toolResult: activity.result,
+                          },
+                          messageId: message.id,
+                          source: "history" as const,
+                      })),
+                  ]
+                : []),
+            pendingContinuation?.toolCalls.length
+                ? {
+                      message: {
+                          role: "assistant" as const,
+                          content: messageContentWithAttachments(message, context),
+                          ...(getMessageReasoning(message)
+                              ? { reasoning: getMessageReasoning(message) }
+                              : {}),
+                          ...(getMessageReasoningDetails(message) !== undefined
+                              ? { reasoningDetails: getMessageReasoningDetails(message) }
+                              : {}),
+                          toolCalls: pendingContinuation.toolCalls,
+                      },
+                      messageId: message.id,
+                      source: "history" as const,
+                  }
+                : {
+                      message: toGenerationMessage(message, context),
+                      messageId: message.id,
+                      source: "history" as const,
+                  },
         ];
     }
 

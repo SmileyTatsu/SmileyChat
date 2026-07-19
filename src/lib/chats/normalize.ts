@@ -405,6 +405,72 @@ function normalizeSwipe(value: unknown): MessageSwipe | undefined {
         normalizeMessageToolActivities(value.toolActivities).length
             ? { toolActivities: normalizeMessageToolActivities(value.toolActivities) }
             : {}),
+        ...(normalizeSwipeTimeline(value.timeline).length
+            ? { timeline: normalizeSwipeTimeline(value.timeline) }
+            : {}),
+        ...(normalizePendingToolContinuation(value.pendingToolContinuation)
+            ? {
+                  pendingToolContinuation: normalizePendingToolContinuation(
+                      value.pendingToolContinuation,
+                  ),
+              }
+            : {}),
+    };
+}
+
+function normalizeSwipeTimeline(value: unknown): NonNullable<MessageSwipe["timeline"]> {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .map((item) => {
+            if (!isRecord(item)) return undefined;
+            const id = asString(item.id) || createId("timeline");
+
+            if (item.type === "thought") {
+                const content = asString(item.content);
+                if (!content) return undefined;
+                return {
+                    id,
+                    type: "thought" as const,
+                    content,
+                    ...("details" in item ? { details: item.details } : {}),
+                };
+            }
+
+            if (item.type === "tool") {
+                const activity = normalizeMessageToolActivities(
+                    item.activity ? [item.activity] : [],
+                )[0];
+                if (!activity) return undefined;
+                return {
+                    id,
+                    type: "tool" as const,
+                    activity,
+                };
+            }
+
+            return undefined;
+        })
+        .filter((item): item is NonNullable<MessageSwipe["timeline"]>[number] =>
+            Boolean(item),
+        );
+}
+
+function normalizePendingToolContinuation(
+    value: unknown,
+): MessageSwipe["pendingToolContinuation"] {
+    if (!isRecord(value)) return undefined;
+
+    const profileId = asString(value.profileId).trim();
+    const toolCalls = normalizeToolCalls(value.toolCalls);
+    if (!profileId || toolCalls.length === 0) return undefined;
+
+    return {
+        profileId,
+        ...(isRecord(value.generation) ? { generation: value.generation } : {}),
+        toolCalls,
     };
 }
 

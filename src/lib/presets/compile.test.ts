@@ -171,6 +171,58 @@ describe("compilePresetMessages", () => {
             }),
         ]);
     });
+
+    test("keeps a paused tool-call turn after completed tool activities", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const messages = [
+            {
+                ...message("m1", "character", "Checking the final record."),
+                swipes: [
+                    {
+                        id: "m1-swipe",
+                        content: "Checking the final record.",
+                        createdAt: "2026-01-01T00:00:00.000Z",
+                        toolActivities: [
+                            {
+                                call: {
+                                    id: "call-1",
+                                    name: "lookup",
+                                    argumentsText: "{}",
+                                },
+                                result: {
+                                    toolCallId: "call-1",
+                                    name: "lookup",
+                                    content: "First result",
+                                },
+                            },
+                        ],
+                        pendingToolContinuation: {
+                            profileId: "profile-1",
+                            toolCalls: [
+                                { id: "call-2", name: "verify", argumentsText: "{}" },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ];
+
+        expect(compilePresetMessages(preset, context({ messages }))).toEqual([
+            expect.objectContaining({
+                toolCalls: [expect.objectContaining({ id: "call-1" })],
+            }),
+            expect.objectContaining({
+                toolResult: expect.objectContaining({ toolCallId: "call-1" }),
+            }),
+            expect.objectContaining({
+                role: "assistant",
+                content: "Checking the final record.",
+                toolCalls: [expect.objectContaining({ id: "call-2" })],
+            }),
+        ]);
+    });
 });
 
 function context(overrides: { messages?: Message[] } = {}) {

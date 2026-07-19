@@ -8,7 +8,9 @@ import {
     createCharacterErrorMessage,
     createCharacterMessage,
     createUserMessage,
+    getActiveSwipe,
     getMessageAttachments,
+    setActiveSwipePendingToolContinuation,
     updateActiveSwipeContent,
 } from "#frontend/lib/messages";
 import {
@@ -237,9 +239,16 @@ export function useChatSession({
             text || attachments.length
                 ? createUserMessage(text, persona, attachments)
                 : undefined;
+        const messagesWithoutAbandonedContinuation = sourceMessages.map(
+            (message, index) =>
+                index === sourceMessages.length - 1 &&
+                getActiveSwipe(message)?.pendingToolContinuation
+                    ? setActiveSwipePendingToolContinuation(message, undefined)
+                    : message,
+        );
         const nextMessages = userMessage
-            ? [...sourceMessages, userMessage]
-            : sourceMessages;
+            ? [...messagesWithoutAbandonedContinuation, userMessage]
+            : messagesWithoutAbandonedContinuation;
         const pendingChat = userMessage
             ? {
                   ...sourceChat,
@@ -345,15 +354,18 @@ export function useChatSession({
                     result.reasoningDetails,
                     result.toolActivities,
                     result.timeline,
+                    result.pendingToolContinuation ?? null,
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(streamingReply.id, resultAttachments);
                 }
-                scheduleAutomaticGroupResponse({
-                    autoTurnCount: options.autoTurnCount ?? 0,
-                    chatId,
-                    suppressAutoResponses: options.suppressAutoResponses === true,
-                });
+                if (!result.pendingToolContinuation) {
+                    scheduleAutomaticGroupResponse({
+                        autoTurnCount: options.autoTurnCount ?? 0,
+                        chatId,
+                        suppressAutoResponses: options.suppressAutoResponses === true,
+                    });
+                }
             } else {
                 const resultAttachments = await saveGeneratedImageAttachments(
                     chatId,
@@ -376,16 +388,22 @@ export function useChatSession({
                 if (reply.swipes.length > 0 && result.toolActivities?.length) {
                     reply.swipes[0].toolActivities = result.toolActivities;
                 }
+                if (reply.swipes.length > 0 && result.pendingToolContinuation) {
+                    reply.swipes[0].pendingToolContinuation =
+                        result.pendingToolContinuation;
+                }
 
                 updateChatMessages(
                     [...pendingChat.messages, reply],
                     currentOrSourceChat(pendingChat),
                 );
-                scheduleAutomaticGroupResponse({
-                    autoTurnCount: options.autoTurnCount ?? 0,
-                    chatId,
-                    suppressAutoResponses: options.suppressAutoResponses === true,
-                });
+                if (!result.pendingToolContinuation) {
+                    scheduleAutomaticGroupResponse({
+                        autoTurnCount: options.autoTurnCount ?? 0,
+                        chatId,
+                        suppressAutoResponses: options.suppressAutoResponses === true,
+                    });
+                }
             }
         } catch (error) {
             if (isAbortError(error)) {
@@ -554,6 +572,7 @@ export function useChatSession({
                     result.reasoningDetails,
                     result.toolActivities,
                     result.timeline,
+                    result.pendingToolContinuation ?? null,
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
@@ -572,6 +591,7 @@ export function useChatSession({
                     targetChat,
                     result.toolActivities,
                     result.timeline,
+                    result.pendingToolContinuation,
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
@@ -600,6 +620,106 @@ export function useChatSession({
                 setChatError(
                     "Generation failed. Swipe the failed response again to retry.",
                 );
+            }
+        } finally {
+            endGenerationController(chatId, abortController);
+            endChatPending(chatId);
+        }
+    }
+
+    async function continueGeneration(messageId: string) {
+        const sourceChat = latestChatRef.current;
+        const lastMessage = sourceChat?.messages[sourceChat.messages.length - 1];
+
+        if (
+            !sourceChat ||
+            !lastMessage ||
+            lastMessage.id !== messageId ||
+            isChatPending(sourceChat.id)
+        ) {
+            return;
+        }
+
+        const activeSwipe = getActiveSwipe(lastMessage);
+        const continuation = activeSwipe?.pendingToolContinuation;
+        if (
+            !continuation ||
+            lastMessage.activeSwipeIndex !== lastMessage.swipes.length - 1
+        ) {
+            return;
+        }
+
+        const generationCharacter =
+            groupCharacters.find((item) => item.id === lastMessage.authorCharacterId) ??
+            selectGenerationCharacter({
+                character,
+                groupCharacters,
+                messages: sourceChat.messages.slice(0, -1),
+                sourceChat,
+            });
+        const streamGeneration = shouldStreamGeneration(
+            preferences.chat.streaming,
+            connectionSettings,
+        );
+        const priorActivities = activeSwipe.toolActivities ?? [];
+        const priorTimeline = activeSwipe.timeline ?? [];
+        const chatId = sourceChat.id;
+        let streamedContent = "";
+
+        setChatError("");
+        beginChatPending(chatId, messageId);
+        const abortController = beginGenerationController(chatId, {
+            swipeMessageId: streamGeneration ? messageId : undefined,
+        });
+
+        try {
+            const result = await generateWithPreset(
+                sourceChat.messages,
+                generationCharacter,
+                mode,
+                userStatus,
+                connectionSettings,
+                {
+                    continuation,
+                    promptCharacter: promptCharacterForGeneration({
+                        activeSpeaker: generationCharacter,
+                        groupCharacters,
+                        sourceChat,
+                    }),
+                    sourceChat,
+                    stream: streamGeneration,
+                    trigger: "send",
+                    onTimeline: (timeline) => {
+                        if (!abortController.signal.aborted && streamGeneration) {
+                            setStreamingMessageTimeline(messageId, [
+                                ...priorTimeline,
+                                ...timeline,
+                            ]);
+                        }
+                    },
+                    onToken: (token) => {
+                        if (abortController.signal.aborted || !streamGeneration) return;
+                        streamedContent += token;
+                        setStreamingMessageContent(messageId, streamedContent);
+                    },
+                    signal: abortController.signal,
+                },
+            );
+            if (abortController.signal.aborted) return;
+
+            updateMessageContent(
+                messageId,
+                result.message,
+                undefined,
+                result.reasoning,
+                result.reasoningDetails,
+                [...priorActivities, ...(result.toolActivities ?? [])],
+                [...priorTimeline, ...(result.timeline ?? [])],
+                result.pendingToolContinuation ?? null,
+            );
+        } catch (error) {
+            if (!isAbortError(error)) {
+                setChatError(generationErrorMessage(error));
             }
         } finally {
             endGenerationController(chatId, abortController);
@@ -889,6 +1009,7 @@ export function useChatSession({
 
     return {
         chatError,
+        continueGeneration,
         deleteMessage,
         editMessage,
         getDebugPayload,
