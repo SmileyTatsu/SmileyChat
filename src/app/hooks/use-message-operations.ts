@@ -221,6 +221,7 @@ export function useMessageOperations({
         reasoningDetails?: unknown,
         sourceChat = latestChatRef.current,
         toolActivities?: Message["swipes"][number]["toolActivities"],
+        timeline?: Message["swipes"][number]["timeline"],
     ) {
         if (!sourceChat) {
             return;
@@ -236,6 +237,7 @@ export function useMessageOperations({
                           reasoning,
                           reasoningDetails,
                           toolActivities,
+                          timeline,
                       )
                     : message,
             ),
@@ -251,6 +253,7 @@ export function useMessageOperations({
         reasoning?: string,
         reasoningDetails?: unknown,
         toolActivities?: Message["swipes"][number]["toolActivities"],
+        timeline?: Message["swipes"][number]["timeline"],
     ) {
         const sourceChat = latestChatRef.current;
 
@@ -268,6 +271,7 @@ export function useMessageOperations({
                           reasoning,
                           reasoningDetails,
                           toolActivities,
+                          timeline,
                       )
                     : message,
             ),

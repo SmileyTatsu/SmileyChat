@@ -262,8 +262,15 @@ export function GeneralSettings({
                 />
 
                 <ToggleRow
+                    checked={preferences.chat.showThoughtProcess}
+                    description="Show the combined thought and tool activity panel on model replies."
+                    label="Show thought process"
+                    onChange={(showThoughtProcess) => updateChat({ showThoughtProcess })}
+                />
+
+                <ToggleRow
                     checked={preferences.chat.showToolActivity}
-                    description="Show display-only entries when plugins run model-requested tools."
+                    description="Show tool entries inside the thought process panel."
                     label="Show tool activity"
                     onChange={(showToolActivity) => updateChat({ showToolActivity })}
                 />

@@ -1,6 +1,6 @@
 import { signal, type Signal } from "@preact/signals";
 
-import type { Message, MessageToolActivity } from "#frontend/types";
+import type { Message, MessageToolActivity, SwipeTimelineEntry } from "#frontend/types";
 
 export type StreamingMessageDraft = {
     content?: string;
@@ -9,6 +9,7 @@ export type StreamingMessageDraft = {
     reasoningDetails?: unknown;
     status?: Message["swipes"][number]["status"];
     toolActivities?: MessageToolActivity[];
+    timeline?: SwipeTimelineEntry[];
 };
 
 const streamingMessageDraftSignals = new Map<
@@ -42,6 +43,13 @@ export function setStreamingToolActivities(
     toolActivities: MessageToolActivity[],
 ) {
     setStreamingMessageDraft(messageId, { toolActivities });
+}
+
+export function setStreamingMessageTimeline(
+    messageId: string,
+    timeline: SwipeTimelineEntry[],
+) {
+    setStreamingMessageDraft(messageId, { timeline });
 }
 
 export function setStreamingMessageReasoning(
@@ -91,8 +99,42 @@ export function hasStreamingMessageDraftValue(draft: StreamingMessageDraft | und
             (draft.reasoning?.length ?? 0) > 0 ||
             (draft.generatedImageCount ?? 0) > 0 ||
             (draft.toolActivities?.length ?? 0) > 0 ||
+            (draft.timeline?.length ?? 0) > 0 ||
             draft.status),
     );
+}
+
+export function applyStreamingMessageDraft(
+    message: Message,
+    draft: StreamingMessageDraft | undefined,
+) {
+    if (!draft) return message;
+
+    const activeSwipe = message.swipes[message.activeSwipeIndex] ?? message.swipes[0];
+    if (!activeSwipe) return message;
+
+    return {
+        ...message,
+        swipes: message.swipes.map((swipe, index) =>
+            index === message.activeSwipeIndex
+                ? {
+                      ...swipe,
+                      ...(draft.content !== undefined ? { content: draft.content } : {}),
+                      ...(draft.reasoning !== undefined
+                          ? { reasoning: draft.reasoning }
+                          : {}),
+                      ...(draft.reasoningDetails !== undefined
+                          ? { reasoningDetails: draft.reasoningDetails }
+                          : {}),
+                      ...(draft.status ? { status: draft.status } : {}),
+                      ...(draft.toolActivities
+                          ? { toolActivities: draft.toolActivities }
+                          : {}),
+                      ...(draft.timeline ? { timeline: draft.timeline } : {}),
+                  }
+                : swipe,
+        ),
+    };
 }
 
 function setStreamingMessageDraft(messageId: string, patch: StreamingMessageDraft) {

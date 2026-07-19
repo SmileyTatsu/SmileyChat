@@ -52,6 +52,7 @@ import type {
     ChatSession,
     Message,
     MessageToolActivity,
+    SwipeTimelineEntry,
     SmileyCharacter,
     SmileyPersona,
     UserStatus,
@@ -182,6 +183,7 @@ export function usePromptGeneration({
             onReasoningToken?: (token: string) => void;
             onToken?: (token: string) => void;
             onToolActivities?: (activities: MessageToolActivity[]) => void;
+            onTimeline?: (timeline: SwipeTimelineEntry[]) => void;
             signal?: AbortSignal;
             sourceChat?: ChatSession;
             stream?: boolean;
@@ -219,11 +221,12 @@ export function usePromptGeneration({
         }
 
         const generationMessages = request.messages;
-        const { result, activities, promptMessages } = await runToolLoop(
+        const { result, activities, promptMessages, timeline } = await runToolLoop(
             connection,
             request,
             allowedTools,
             options.onToolActivities,
+            options.onTimeline,
         );
 
         const message = await applyOutputMiddlewares(
@@ -237,7 +240,7 @@ export function usePromptGeneration({
             options,
         );
 
-        return { ...result, message, toolActivities: activities };
+        return { ...result, message, toolActivities: activities, timeline };
     }
 
     async function runToolLoop(
@@ -245,14 +248,64 @@ export function usePromptGeneration({
         request: ChatGenerationRequest,
         allowedTools: Map<string, ReturnType<typeof getPluginTools>[number]>,
         onToolActivities?: (activities: MessageToolActivity[]) => void,
+        onTimeline?: (timeline: SwipeTimelineEntry[]) => void,
     ) {
         let promptMessages = request.promptMessages ?? [];
-        let result = await connection.generate({
-            ...request,
-            promptMessages,
-        });
         const activities: ToolActivity[] = [];
+        const timeline: SwipeTimelineEntry[] = [];
         const maxIterations = 8;
+
+        const emitTimeline = () => onTimeline?.([...timeline]);
+        const generateTurn = async () => {
+            let streamedReasoning = "";
+            let thoughtEntry:
+                | Extract<SwipeTimelineEntry, { type: "thought" }>
+                | undefined;
+            const appendThought = (content: string, details?: unknown) => {
+                if (!content) return;
+
+                if (!thoughtEntry) {
+                    thoughtEntry = {
+                        id: `thought-${timeline.length + 1}`,
+                        type: "thought",
+                        content: "",
+                    };
+                    timeline.push(thoughtEntry);
+                }
+
+                thoughtEntry.content += content;
+                if (details !== undefined) thoughtEntry.details = details;
+                emitTimeline();
+            };
+            const result = await connection.generate({
+                ...request,
+                promptMessages,
+                onReasoningToken: (token) => {
+                    streamedReasoning += token;
+                    appendThought(token);
+                    request.onReasoningToken?.(token);
+                },
+            });
+
+            if (result.reasoning && result.reasoning !== streamedReasoning) {
+                if (thoughtEntry) {
+                    thoughtEntry.content = result.reasoning;
+                    if (result.reasoningDetails !== undefined) {
+                        thoughtEntry.details = result.reasoningDetails;
+                    }
+                    emitTimeline();
+                } else {
+                    appendThought(result.reasoning, result.reasoningDetails);
+                }
+            } else if (thoughtEntry && result.reasoningDetails !== undefined) {
+                thoughtEntry.details = result.reasoningDetails;
+                emitTimeline();
+            }
+
+            return result;
+        };
+
+        let result = await generateTurn();
 
         for (let iteration = 0; result.toolCalls?.length; iteration += 1) {
             if (iteration >= maxIterations) {
@@ -278,6 +331,13 @@ export function usePromptGeneration({
                     },
                     status: "running",
                 };
+                const timelineEntry: SwipeTimelineEntry = {
+                    id: call.id,
+                    type: "tool",
+                    activity: pendingActivity,
+                };
+                timeline.push(timelineEntry);
+                emitTimeline();
                 onToolActivities?.([...activities, pendingActivity]);
 
                 const toolResult = await runPluginTool(
@@ -287,6 +347,8 @@ export function usePromptGeneration({
                 );
                 toolResults.push(toolResult);
                 activities.push({ call, result: toolResult });
+                timelineEntry.activity = { call, result: toolResult };
+                emitTimeline();
                 onToolActivities?.([...activities]);
             }
 
@@ -308,13 +370,10 @@ export function usePromptGeneration({
                 ),
             ];
 
-            result = await connection.generate({
-                ...request,
-                promptMessages,
-            });
+            result = await generateTurn();
         }
 
-        return { result, activities, promptMessages };
+        return { result, activities, promptMessages, timeline };
     }
 
     async function runPluginTool(

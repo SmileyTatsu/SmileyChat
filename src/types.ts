@@ -56,6 +56,19 @@ export type MessageToolActivity = {
     status?: "running";
 };
 
+export type SwipeTimelineEntry =
+    | {
+          id: string;
+          type: "thought";
+          content: string;
+          details?: unknown;
+      }
+    | {
+          id: string;
+          type: "tool";
+          activity: MessageToolActivity;
+      };
+
 export type MessageMetadata = {
     origin?: "plugin";
     pluginId?: string;
@@ -91,6 +104,7 @@ export type MessageSwipe = {
     reasoningDetails?: unknown;
     status?: "error";
     toolActivities?: MessageToolActivity[];
+    timeline?: SwipeTimelineEntry[];
 };
 
 export type {

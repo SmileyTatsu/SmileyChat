@@ -197,6 +197,47 @@ export function getMessageReasoningDetails(message: Message) {
     return getActiveSwipe(message)?.reasoningDetails;
 }
 
+export function getMessageTimeline(message: Message) {
+    const swipe = getActiveSwipe(message);
+
+    if (!swipe) return [];
+    if (swipe.timeline?.length) return swipe.timeline;
+
+    return [
+        ...(swipe.toolActivities ?? []).map((activity) => ({
+            id: activity.call.id,
+            type: "tool" as const,
+            activity,
+        })),
+        ...(swipe.reasoning
+            ? [
+                  {
+                      id: "legacy-thought",
+                      type: "thought" as const,
+                      content: swipe.reasoning,
+                      ...(swipe.reasoningDetails !== undefined
+                          ? { details: swipe.reasoningDetails }
+                          : {}),
+                  },
+              ]
+            : []),
+    ];
+}
+
+export function getVisibleMessageTimeline(
+    timeline: MessageSwipe["timeline"] | undefined,
+    showThoughtProcess: boolean,
+    showToolActivity: boolean,
+) {
+    if (!showThoughtProcess) return [];
+
+    return (timeline ?? []).filter(
+        (entry) =>
+            (entry.type === "thought" && entry.content.length > 0) ||
+            (entry.type === "tool" && showToolActivity),
+    );
+}
+
 export function getMessageCreatedAt(message: Message) {
     return getActiveSwipe(message)?.createdAt ?? message.createdAt;
 }
@@ -212,6 +253,7 @@ export function updateActiveSwipeContent(
     reasoning?: string,
     reasoningDetails?: unknown,
     toolActivities?: MessageSwipe["toolActivities"],
+    timeline?: MessageSwipe["timeline"],
 ): Message {
     if (message.swipes.length === 0) {
         const swipe = createMessageSwipe(content, status);
@@ -224,6 +266,7 @@ export function updateActiveSwipeContent(
                     ...(reasoning ? { reasoning } : {}),
                     ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                     ...(toolActivities?.length ? { toolActivities } : {}),
+                    ...(timeline?.length ? { timeline } : {}),
                 },
             ],
             activeSwipeIndex: 0,
@@ -241,6 +284,7 @@ export function updateActiveSwipeContent(
                       ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                       ...(status ? { status } : {}),
                       ...(toolActivities?.length ? { toolActivities } : {}),
+                      ...(timeline?.length ? { timeline } : {}),
                   }
                 : swipe,
         ),
@@ -324,6 +368,7 @@ export function appendMessageSwipe(
     reasoning?: string,
     reasoningDetails?: unknown,
     toolActivities?: MessageSwipe["toolActivities"],
+    timeline?: MessageSwipe["timeline"],
 ): Message {
     const swipe = createMessageSwipe(content, status);
     const swipes = [
@@ -333,6 +378,7 @@ export function appendMessageSwipe(
             ...(reasoning ? { reasoning } : {}),
             ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
             ...(toolActivities?.length ? { toolActivities } : {}),
+            ...(timeline?.length ? { timeline } : {}),
         },
     ];
 

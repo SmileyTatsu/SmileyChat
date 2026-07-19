@@ -19,7 +19,8 @@ import { getPluginTool } from "#frontend/lib/plugins/registry";
 import {
     getMessageAttachments,
     getMessageContent,
-    getMessageReasoning,
+    getMessageTimeline,
+    getVisibleMessageTimeline,
     isActiveSwipeError,
     getActiveSwipe,
 } from "#frontend/lib/messages";
@@ -30,9 +31,9 @@ import type {
     PluginMessageAction,
 } from "#frontend/lib/plugins/types";
 import {
+    applyStreamingMessageDraft,
     getStreamingMessageDraft,
     getStreamingMessageDraftSignal,
-    type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
 import type { ChatMode, Message, MessageToolActivity } from "#frontend/types";
 import type { TimeFormat } from "#frontend/lib/preferences/types";
@@ -40,7 +41,6 @@ import type { TimeFormat } from "#frontend/lib/preferences/types";
 import { MessageAttachments, StreamingGeneratedImages } from "./message-attachment";
 import { MessageContent } from "./message-content";
 import { MessageHeader } from "./message-header";
-import { MessageReasoning } from "./message-reasoning";
 import {
     PluginRenderSurface,
     pluginIdFromScopedId,
@@ -66,6 +66,7 @@ export type MessageItemProps = {
     renderer?: MessageRenderer;
     showRpCharacterImages: boolean;
     showTimestamps: boolean;
+    showThoughtProcess: boolean;
     showToolActivity: boolean;
     timeFormat: TimeFormat;
     onCancelEdit: () => void;
@@ -107,6 +108,7 @@ export const MessageItem = memo(function MessageItem({
     renderer,
     showRpCharacterImages,
     showTimestamps,
+    showThoughtProcess,
     showToolActivity,
     timeFormat,
     onCancelEdit,
@@ -398,6 +400,7 @@ export const MessageItem = memo(function MessageItem({
                         mode={mode}
                         messageFormatting={messageFormatting}
                         renderer={renderer}
+                        showThoughtProcess={showThoughtProcess}
                         showToolActivity={showToolActivity}
                         onRemoveAttachment={onRemoveAttachment}
                         onVisibleContentChange={onVisibleContentChange}
@@ -482,6 +485,7 @@ function areMessageItemPropsEqual(
         previous.renderer === next.renderer &&
         previous.showRpCharacterImages === next.showRpCharacterImages &&
         previous.showTimestamps === next.showTimestamps &&
+        previous.showThoughtProcess === next.showThoughtProcess &&
         previous.showToolActivity === next.showToolActivity &&
         previous.timeFormat === next.timeFormat &&
         previous.onCancelEdit === next.onCancelEdit &&
@@ -509,6 +513,7 @@ type MessageLiveContentProps = {
     mode: ChatMode;
     messageFormatting: MessageFormattingOptions;
     renderer?: MessageRenderer;
+    showThoughtProcess: boolean;
     showToolActivity: boolean;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onVisibleContentChange: () => void;
@@ -523,22 +528,29 @@ function MessageLiveContent({
     mode,
     messageFormatting,
     renderer,
+    showThoughtProcess,
     showToolActivity,
     onRemoveAttachment,
     onVisibleContentChange,
 }: MessageLiveContentProps) {
     const streamingDraft = getStreamingMessageDraftSignal(message.id).value;
-    const renderedMessage = applyStreamingDraftForRender(message, streamingDraft);
+    const renderedMessage = applyStreamingMessageDraft(message, streamingDraft);
     const content = getMessageContent(renderedMessage);
-    const reasoning = getMessageReasoning(renderedMessage);
     const attachments = getMessageAttachments(renderedMessage);
-    const toolActivities = getActiveSwipe(renderedMessage)?.toolActivities;
+    const timeline = getMessageTimeline(renderedMessage);
     const draftScrollVersion = [
         streamingDraft?.content?.length ?? 0,
         streamingDraft?.reasoning?.length ?? 0,
         streamingDraft?.generatedImageCount ?? 0,
         streamingDraft?.toolActivities
             ?.map((activity) => activity.status ?? activity.result.content)
+            .join(":") ?? "",
+        streamingDraft?.timeline
+            ?.map((entry) =>
+                entry.type === "thought"
+                    ? entry.content.length
+                    : `${entry.activity.call.id}:${entry.activity.status ?? entry.activity.result.content}`,
+            )
             .join(":") ?? "",
     ].join(":");
 
@@ -550,11 +562,11 @@ function MessageLiveContent({
 
     return (
         <>
-            {showToolActivity &&
-                toolActivities?.map((activity) => (
-                    <ToolActivityMessage key={activity.call.id} activity={activity} />
-                ))}
-            <MessageReasoning reasoning={reasoning} />
+            <ThoughtProcess
+                show={showThoughtProcess}
+                showToolActivity={showToolActivity}
+                timeline={timeline}
+            />
             <MessageAttachments
                 attachments={attachments}
                 chatId={chatId}
@@ -578,43 +590,51 @@ function MessageLiveContent({
     );
 }
 
-function getMessageWithLatestStreamingDraft(message: Message) {
-    return applyStreamingDraftForRender(message, getStreamingMessageDraft(message.id));
+function ThoughtProcess({
+    show,
+    showToolActivity,
+    timeline,
+}: {
+    show: boolean;
+    showToolActivity: boolean;
+    timeline: ReturnType<typeof getMessageTimeline>;
+}) {
+    const entries = getVisibleMessageTimeline(timeline, show, showToolActivity);
+    const hasRunningTool = entries.some(
+        (entry) => entry.type === "tool" && entry.activity.status === "running",
+    );
+    const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        if (hasRunningTool) setIsOpen(true);
+    }, [hasRunningTool]);
+
+    if (!show || !entries.length) return null;
+
+    return (
+        <details
+            className="message-reasoning thought-process"
+            open={hasRunningTool || isOpen}
+            onToggle={(event) => {
+                if (!hasRunningTool) setIsOpen(event.currentTarget.open);
+            }}
+        >
+            <summary>Thought Process</summary>
+            <div className="thought-process-timeline">
+                {entries.map((entry) =>
+                    entry.type === "thought" ? (
+                        <p className="thought-process-thought" key={entry.id}>
+                            {entry.content}
+                        </p>
+                    ) : (
+                        <ToolActivityMessage key={entry.id} activity={entry.activity} />
+                    ),
+                )}
+            </div>
+        </details>
+    );
 }
 
-function applyStreamingDraftForRender(
-    message: Message,
-    draft: StreamingMessageDraft | undefined,
-) {
-    if (!draft) {
-        return message;
-    }
-
-    const activeSwipe = message.swipes[message.activeSwipeIndex] ?? message.swipes[0];
-
-    if (!activeSwipe) {
-        return message;
-    }
-
-    return {
-        ...message,
-        swipes: message.swipes.map((swipe, index) =>
-            index === message.activeSwipeIndex
-                ? {
-                      ...swipe,
-                      ...(draft.content !== undefined ? { content: draft.content } : {}),
-                      ...(draft.reasoning !== undefined
-                          ? { reasoning: draft.reasoning }
-                          : {}),
-                      ...(draft.reasoningDetails !== undefined
-                          ? { reasoningDetails: draft.reasoningDetails }
-                          : {}),
-                      ...(draft.status ? { status: draft.status } : {}),
-                      ...(draft.toolActivities
-                          ? { toolActivities: draft.toolActivities }
-                          : {}),
-                  }
-                : swipe,
-        ),
-    };
+function getMessageWithLatestStreamingDraft(message: Message) {
+    return applyStreamingMessageDraft(message, getStreamingMessageDraft(message.id));
 }

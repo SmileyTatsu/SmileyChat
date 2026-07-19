@@ -14,8 +14,7 @@ import {
 import {
     setStreamingGeneratedImageCount,
     setStreamingMessageContent,
-    setStreamingMessageReasoning,
-    setStreamingToolActivities,
+    setStreamingMessageTimeline,
 } from "#frontend/lib/streaming-message-drafts";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
@@ -265,7 +264,6 @@ export function useChatSession({
               )
             : undefined;
         let streamedContent = "";
-        let streamedReasoning = "";
         const streamedImages: string[] = [];
         setChatError("");
         beginChatPending(chatId);
@@ -296,10 +294,10 @@ export function useChatSession({
                     sourceChat: pendingChat,
                     stream: streamGeneration,
                     trigger: options.autoTurnCount ? "auto-group" : "send",
-                    onToolActivities: streamingReply
-                        ? (activities) => {
+                    onTimeline: streamingReply
+                        ? (timeline) => {
                               if (abortController.signal.aborted) return;
-                              setStreamingToolActivities(streamingReply.id, activities);
+                              setStreamingMessageTimeline(streamingReply.id, timeline);
                           }
                         : undefined,
                     onToken: streamingReply
@@ -311,18 +309,6 @@ export function useChatSession({
                               setStreamingMessageContent(
                                   streamingReply.id,
                                   streamedContent,
-                              );
-                          }
-                        : undefined,
-                    onReasoningToken: streamingReply
-                        ? (token) => {
-                              if (abortController.signal.aborted) {
-                                  return;
-                              }
-                              streamedReasoning += token;
-                              setStreamingMessageReasoning(
-                                  streamingReply.id,
-                                  streamedReasoning,
                               );
                           }
                         : undefined,
@@ -358,6 +344,7 @@ export function useChatSession({
                     result.reasoning,
                     result.reasoningDetails,
                     result.toolActivities,
+                    result.timeline,
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(streamingReply.id, resultAttachments);
@@ -382,6 +369,7 @@ export function useChatSession({
                     ),
                     result.reasoning,
                     result.reasoningDetails,
+                    result.timeline,
                 );
 
                 // Set the tool activities directly onto the reply's initial swipe
@@ -494,7 +482,6 @@ export function useChatSession({
             swipeMessageId: streamGeneration ? messageId : undefined,
         });
         let streamedContent = "";
-        let streamedReasoning = "";
         const streamedImages: string[] = [];
 
         try {
@@ -518,10 +505,10 @@ export function useChatSession({
                     stream: streamGeneration,
                     targetMessageId: messageId,
                     trigger: "swipe",
-                    onToolActivities: streamGeneration
-                        ? (activities) => {
+                    onTimeline: streamGeneration
+                        ? (timeline) => {
                               if (abortController.signal.aborted) return;
-                              setStreamingToolActivities(messageId, activities);
+                              setStreamingMessageTimeline(messageId, timeline);
                           }
                         : undefined,
                     onToken: streamGeneration
@@ -531,15 +518,6 @@ export function useChatSession({
                               }
                               streamedContent += token;
                               setStreamingMessageContent(messageId, streamedContent);
-                          }
-                        : undefined,
-                    onReasoningToken: streamGeneration
-                        ? (token) => {
-                              if (abortController.signal.aborted) {
-                                  return;
-                              }
-                              streamedReasoning += token;
-                              setStreamingMessageReasoning(messageId, streamedReasoning);
                           }
                         : undefined,
                     onImage: streamGeneration
@@ -575,6 +553,7 @@ export function useChatSession({
                     result.reasoning,
                     result.reasoningDetails,
                     result.toolActivities,
+                    result.timeline,
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
@@ -592,6 +571,7 @@ export function useChatSession({
                     result.reasoningDetails,
                     targetChat,
                     result.toolActivities,
+                    result.timeline,
                 );
                 if (resultAttachments.length) {
                     updateMessageAttachments(messageId, resultAttachments);
@@ -955,8 +935,9 @@ function withMessageReasoning(
     message: Message,
     reasoning?: string,
     reasoningDetails?: unknown,
+    timeline?: Message["swipes"][number]["timeline"],
 ) {
-    if (!reasoning && reasoningDetails === undefined) {
+    if (!reasoning && reasoningDetails === undefined && !timeline?.length) {
         return message;
     }
 
@@ -966,6 +947,8 @@ function withMessageReasoning(
         undefined,
         reasoning,
         reasoningDetails,
+        undefined,
+        timeline,
     );
 }
 

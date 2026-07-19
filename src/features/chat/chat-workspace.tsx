@@ -199,6 +199,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     pendingSwipeMessageId={pendingSwipeMessageId}
                     resetKey={activeChatId}
                     showRpCharacterImages={preferences.appearance.showRpCharacterImages}
+                    showThoughtProcess={preferences.chat.showThoughtProcess}
                     showTimestamps={preferences.appearance.showTimestamps}
                     showToolActivity={preferences.chat.showToolActivity}
                     timeFormat={preferences.appearance.timeFormat}

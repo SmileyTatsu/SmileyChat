@@ -625,6 +625,25 @@
     gap: 6px;
 }
 
+.thought-process-timeline {
+    display: grid;
+    gap: 8px;
+    border-top: 1px solid rgba(151, 164, 196, 0.12);
+    padding: 10px 12px;
+    background: rgba(18, 20, 26, 0.3);
+}
+
+.thought-process .thought-process-thought {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.thought-process .tool-activity {
+    margin: 0;
+}
+
 .tool-activity.running {
     border-color: rgba(108, 143, 235, 0.28);
 }

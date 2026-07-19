@@ -43,6 +43,7 @@ type MessageListProps = {
     pendingSwipeMessageId?: string;
     resetKey: string;
     showRpCharacterImages: boolean;
+    showThoughtProcess: boolean;
     showToolActivity: boolean;
 
     onDeleteMessage: (messageId: string) => void;
@@ -72,6 +73,7 @@ export const MessageList = memo(function MessageList({
     pendingSwipeMessageId,
     resetKey,
     showRpCharacterImages,
+    showThoughtProcess,
     showToolActivity,
     showTimestamps,
     timeFormat,
@@ -534,6 +536,7 @@ export const MessageList = memo(function MessageList({
                             messageFormatting={messageFormatting}
                             canForkMessages={canForkMessages}
                             showRpCharacterImages={showRpCharacterImages}
+                            showThoughtProcess={showThoughtProcess}
                             showTimestamps={showTimestamps}
                             showToolActivity={showToolActivity}
                             timeFormat={timeFormat}

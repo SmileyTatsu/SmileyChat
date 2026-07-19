@@ -519,9 +519,7 @@ export function PresetSettings({
                                 Editor
                             </button>
                             <button
-                                className={
-                                    activeView === "generation" ? "active" : ""
-                                }
+                                className={activeView === "generation" ? "active" : ""}
                                 type="button"
                                 role="tab"
                                 aria-selected={activeView === "generation"}
@@ -557,20 +555,14 @@ export function PresetSettings({
                                         }
                                         type="button"
                                         role="tab"
-                                        aria-selected={
-                                            activePreviewView === "compiled"
-                                        }
-                                        onClick={() =>
-                                            setActivePreviewView("compiled")
-                                        }
+                                        aria-selected={activePreviewView === "compiled"}
+                                        onClick={() => setActivePreviewView("compiled")}
                                     >
                                         Compiled
                                     </button>
                                     <button
                                         className={
-                                            activePreviewView === "flat"
-                                                ? "active"
-                                                : ""
+                                            activePreviewView === "flat" ? "active" : ""
                                         }
                                         type="button"
                                         role="tab"
@@ -605,9 +597,7 @@ export function PresetSettings({
                                     ) : (
                                         <CheckCircle2 aria-hidden="true" size={14} />
                                     )}
-                                    {requestState === "loading"
-                                        ? "Saving..."
-                                        : "Saved"}
+                                    {requestState === "loading" ? "Saving..." : "Saved"}
                                 </span>
                             )}
                         </div>

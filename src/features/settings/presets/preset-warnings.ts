@@ -1,9 +1,7 @@
 import { dynamicPromptIds } from "#frontend/lib/presets/defaults";
 import type { PresetPrompt, SmileyPreset } from "#frontend/lib/presets/types";
 
-export function collectPresetWarnings(
-    preset: SmileyPreset | undefined,
-) {
+export function collectPresetWarnings(preset: SmileyPreset | undefined) {
     if (!preset) {
         return ["No active preset is available."];
     }
@@ -66,9 +64,7 @@ export function collectPresetWarnings(
     return warnings;
 }
 
-export function collectSelectedPromptWarnings(
-    selectedPrompt: PresetPrompt | undefined,
-) {
+export function collectSelectedPromptWarnings(selectedPrompt: PresetPrompt | undefined) {
     if (!selectedPrompt) {
         return [];
     }
