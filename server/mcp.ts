@@ -9,6 +9,7 @@ import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/typ
 import { json } from "./http";
 import { mcpSecretsPath, mcpSettingsPath } from "./paths";
 import { isCorePluginEnabled } from "./plugins";
+import { assignProcessToSmileyChatJob } from "./windows-process-job";
 import {
     defaultMcpSettings,
     exportOpenCodeMcp,
@@ -34,6 +35,13 @@ type Connection = {
 };
 
 const connections = new Map<string, Connection>();
+
+class ManagedStdioClientTransport extends StdioClientTransport {
+    override async start() {
+        await super.start();
+        if (this.pid) assignProcessToSmileyChatJob(this.pid);
+    }
+}
 
 async function readSettings(): Promise<McpSettings> {
     try {
@@ -189,7 +197,7 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
     );
     const transport =
         server.transport === "stdio"
-            ? new StdioClientTransport({
+            ? new ManagedStdioClientTransport({
                   command: server.command![0]!,
                   args: server.command!.slice(1),
                   env: { ...env, ...secrets },
