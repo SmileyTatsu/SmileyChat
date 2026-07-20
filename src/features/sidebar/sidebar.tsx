@@ -24,6 +24,7 @@ import {
     chatDisplayTitle,
     defaultGroupTitle,
     isGroupChat,
+    isGroupWorkspace,
 } from "#frontend/lib/chats/normalize";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type {
@@ -39,6 +40,7 @@ import { PersonaBar } from "../personas/persona-bar";
 import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
 import { ChatList } from "./components/chat-list";
 import { GroupChatCreator } from "./components/group-chat-creator";
+import { GroupAvatar } from "../chat/group-avatar";
 import { useCharacterCardDrop } from "./hooks/use-character-card-drop";
 import { useSortableList } from "./hooks/use-sortable-list";
 import { formatChatCount, formatChatMeta, normalizeFilterText } from "./sidebar-helpers";
@@ -53,6 +55,10 @@ type SidebarProps = {
     chatImportStatusFading?: boolean;
     chatLoadError?: string;
     characters: CharacterSummary[];
+    groupChats?: ChatSummary[];
+    groupConversations?: ChatSummary[];
+    railOrder?: string[];
+    activeGroupId?: string;
     characterImportStatus?: string;
     characterLoadError?: string;
     hasCharacters: boolean;
@@ -75,10 +81,13 @@ type SidebarProps = {
     onOpenPersonasSettings: () => void;
     onChangeGroupAvatar: (chatId: string, file: File) => void;
     onDeleteChat: (chatId: string) => void;
+    onDeleteGroup?: (groupId: string) => void;
     onDeleteCharacter: (characterId: string, options?: { deleteChats?: boolean }) => void;
     onExportCharacter: (characterId: string, format: "json" | "png") => void;
     onRemoveCharacterAvatar: (characterId: string) => void;
     onReorderCharacters: (characters: CharacterSummary[]) => void;
+    onReorderRail?: (ids: string[]) => void;
+    onSelectGroup?: (groupId: string) => void;
     onRenameChat: (chatId: string, title: string) => void;
     onSelectChat: (chatId: string) => void;
     onSelectCharacter: (characterId: string) => void;
@@ -86,9 +95,11 @@ type SidebarProps = {
     onStatusChange: (status: UserStatus) => void;
 };
 
+type RailCharacter = CharacterSummary & { groupChat?: ChatSummary };
+
 type CharacterRailProps = {
     activeCharacterId: string;
-    characters: CharacterSummary[];
+    characters: RailCharacter[];
     importInputRef: RefObject<HTMLInputElement>;
     isCharacterDropActive: boolean;
     pendingCharacterId?: string;
@@ -99,8 +110,8 @@ type CharacterRailProps = {
     onCreateCharacter: () => void;
     onImportFiles: (files: File[]) => void;
     onOpenSettings: () => void;
-    onOpenCharacterMenu: (event: MouseEvent, character: CharacterSummary) => void;
-    onReorderCharacters: (characters: CharacterSummary[]) => void;
+    onOpenCharacterMenu: (event: MouseEvent, character: RailCharacter) => void;
+    onReorderCharacters: (characters: RailCharacter[]) => void;
     onSelectCharacter: (characterId: string) => void;
 };
 
@@ -113,13 +124,13 @@ function CharacterRailAvatar({
     onSelectCharacter,
     onOpenCharacterMenu,
 }: {
-    character: CharacterSummary;
+    character: RailCharacter;
     index: number;
     isActive: boolean;
     isPending: boolean;
     isReordering: boolean;
     onSelectCharacter: (id: string) => void;
-    onOpenCharacterMenu: (event: MouseEvent, character: CharacterSummary) => void;
+    onOpenCharacterMenu: (event: MouseEvent, character: RailCharacter) => void;
 }) {
     return (
         <button
@@ -144,7 +155,17 @@ function CharacterRailAvatar({
             }}
         >
             <span className="character-rail-avatar-visual" aria-hidden="true">
-                {character.avatar ? (
+                {character.groupChat ? (
+                    <GroupAvatar
+                        className="character-rail-group-avatar"
+                        customPath={
+                            character.groupChat.group?.avatar?.type === "custom"
+                                ? character.groupChat.group.avatar.path
+                                : undefined
+                        }
+                        members={character.groupChat.members ?? []}
+                    />
+                ) : character.avatar ? (
                     <img src={character.avatar.path} alt="" />
                 ) : (
                     <span>{character.name.trim().charAt(0) || "?"}</span>
@@ -328,6 +349,10 @@ export function Sidebar({
     chatLoadError,
     chatCountsByCharacterId,
     characters,
+    groupChats = [],
+    groupConversations = [],
+    railOrder = [],
+    activeGroupId,
     characterImportStatus,
     characterLoadError,
     hasCharacters,
@@ -346,13 +371,16 @@ export function Sidebar({
     onOpenPersonasSettings,
     onChangeGroupAvatar,
     onDeleteChat,
+    onDeleteGroup,
     onDeleteCharacter,
     onExportCharacter,
     onRemoveCharacterAvatar,
     onReorderCharacters,
+    onReorderRail,
     onRenameChat,
     onSelectChat,
     onSelectCharacter,
+    onSelectGroup,
     onSelectPersona,
     onStatusChange,
 }: SidebarProps) {
@@ -369,7 +397,7 @@ export function Sidebar({
     } = useCharacterCardDrop({ onImportCharacterFiles });
     const [contextMenu, setContextMenu] = useState<
         | {
-              character: CharacterSummary;
+              character: RailCharacter;
               x: number;
               y: number;
           }
@@ -403,7 +431,7 @@ export function Sidebar({
         [],
     );
 
-    function openCharacterMenu(event: MouseEvent, character: CharacterSummary) {
+    function openCharacterMenu(event: MouseEvent, character: RailCharacter) {
         event.preventDefault();
         setContextMenu({
             character,
@@ -492,7 +520,11 @@ export function Sidebar({
             return;
         }
 
-        onDeleteChat(chatDeleteCandidate.id);
+        if (isGroupWorkspace(chatDeleteCandidate)) {
+            onDeleteGroup?.(chatDeleteCandidate.id);
+        } else {
+            onDeleteChat(chatDeleteCandidate.id);
+        }
         setChatDeleteCandidate(undefined);
     }
 
@@ -565,16 +597,41 @@ export function Sidebar({
         () => characters.find((character) => character.id === activeCharacterId),
         [activeCharacterId, characters],
     );
+    const railCharacters = useMemo(() => {
+        const groups: RailCharacter[] = groupChats.map((chat) => ({
+            id: chat.id,
+            name: chat.group?.title || chat.title || chat.defaultTitle,
+            tagline: `Group: ${(chat.members ?? []).map((member) => member.name).join(", ")}`,
+            isFavorite: Boolean(chat.metadata?.isFavorite),
+            updatedAt: chat.updatedAt,
+            groupChat: chat,
+        }));
+        const byId = new Map<string, RailCharacter>(
+            [...characters, ...groups].map((item) => [item.id, item]),
+        );
+        const ordered = railOrder
+            .map((id) => byId.get(id))
+            .filter(Boolean) as RailCharacter[];
+        const remaining = [...byId.values()].filter(
+            (item) => !railOrder.includes(item.id),
+        );
+        return [...ordered, ...remaining];
+    }, [characters, groupChats, railOrder]);
+    const selectedRailId = activeGroupId || activeCharacterId;
     const contextualChats = useMemo(
         () =>
-            chats.filter((chat) =>
-                isGroupChat(chat)
-                    ? (chat.members ?? []).some(
-                          (member) => member.characterId === activeCharacterId,
-                      )
-                    : chat.characterId === activeCharacterId,
-            ),
-        [activeCharacterId, chats],
+            activeGroupId
+                ? (() => {
+                      const conversations = groupConversations.filter(
+                          (chat) =>
+                              chat.metadata?.smileychatGroup?.groupId === activeGroupId,
+                      );
+                      return conversations.length > 0
+                          ? conversations
+                          : groupChats.filter((chat) => chat.id === activeGroupId);
+                  })()
+                : chats,
+        [activeGroupId, chats, groupConversations, groupChats],
     );
     const normalizedChatFilter = useMemo(
         () => normalizeFilterText(chatFilter),
@@ -600,8 +657,8 @@ export function Sidebar({
                 aria-label="Chats and characters"
             >
                 <CharacterRail
-                    activeCharacterId={activeCharacterId}
-                    characters={characters}
+                    activeCharacterId={selectedRailId}
+                    characters={railCharacters}
                     importInputRef={importInputRef}
                     isCharacterDropActive={isCharacterDropActive}
                     pendingCharacterId={pendingCharacterId}
@@ -613,9 +670,16 @@ export function Sidebar({
                     onImportFiles={importFiles}
                     onOpenSettings={onOpenSettings}
                     onOpenCharacterMenu={openCharacterMenu}
-                    onReorderCharacters={onReorderCharacters}
+                    onReorderCharacters={(items) => {
+                        onReorderRail?.(items.map((item) => item.id));
+                        onReorderCharacters(items.filter((item) => !item.groupChat));
+                    }}
                     onSelectCharacter={(characterId) => {
-                        onSelectCharacter(characterId);
+                        const group = railCharacters.find(
+                            (item) => item.id === characterId,
+                        )?.groupChat;
+                        if (group) onSelectGroup?.(group.id);
+                        else onSelectCharacter(characterId);
                         onOpenChange(true);
                     }}
                 />
@@ -626,8 +690,8 @@ export function Sidebar({
     return (
         <aside className="sidebar-container open" aria-label="Chats and characters">
             <CharacterRail
-                activeCharacterId={activeCharacterId}
-                characters={characters}
+                activeCharacterId={selectedRailId}
+                characters={railCharacters}
                 importInputRef={importInputRef}
                 isCharacterDropActive={isCharacterDropActive}
                 pendingCharacterId={pendingCharacterId}
@@ -639,8 +703,17 @@ export function Sidebar({
                 onImportFiles={importFiles}
                 onOpenSettings={onOpenSettings}
                 onOpenCharacterMenu={openCharacterMenu}
-                onReorderCharacters={onReorderCharacters}
-                onSelectCharacter={onSelectCharacter}
+                onReorderCharacters={(items) => {
+                    onReorderRail?.(items.map((item) => item.id));
+                    onReorderCharacters(items.filter((item) => !item.groupChat));
+                }}
+                onSelectCharacter={(characterId) => {
+                    const group = railCharacters.find(
+                        (item) => item.id === characterId,
+                    )?.groupChat;
+                    if (group) onSelectGroup?.(group.id);
+                    else onSelectCharacter(characterId);
+                }}
             />
 
             <div className="left-rail open">
@@ -648,7 +721,11 @@ export function Sidebar({
                     <div className="chat-rail-title-block">
                         <span>Chats with</span>
                         <strong>
-                            {activeCharacter?.name ?? "No character selected"}
+                            {activeGroupId
+                                ? (railCharacters.find(
+                                      (item) => item.id === activeGroupId,
+                                  )?.name ?? "Group")
+                                : (activeCharacter?.name ?? "No character selected")}
                         </strong>
                     </div>
                     <button
@@ -666,7 +743,11 @@ export function Sidebar({
                     <button
                         className="new-chat-button"
                         type="button"
-                        title="Start a new chat with the active character"
+                        title={
+                            activeGroupId
+                                ? "Start a new conversation in this group"
+                                : "Start a new chat with the active character"
+                        }
                         disabled={!hasCharacters}
                         onClick={onNewChat}
                     >
@@ -851,76 +932,123 @@ export function Sidebar({
                         }}
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div
-                            className="context-submenu"
-                            role="group"
-                            aria-label="Export card"
-                        >
-                            <span>Export card</span>
-                            <button
-                                type="button"
-                                role="menuitem"
-                                onClick={() => {
-                                    onExportCharacter(contextMenu.character.id, "json");
-                                    setContextMenu(undefined);
-                                }}
-                            >
-                                <Download size={14} />
-                                JSON
-                            </button>
-                            <button
-                                type="button"
-                                role="menuitem"
-                                disabled={contextMenu.character.avatar?.type !== "png"}
-                                title={
-                                    contextMenu.character.avatar?.type === "png"
-                                        ? "Export PNG card"
-                                        : "PNG export needs a PNG avatar"
-                                }
-                                onClick={() => {
-                                    onExportCharacter(contextMenu.character.id, "png");
-                                    setContextMenu(undefined);
-                                }}
-                            >
-                                <Download size={14} />
-                                PNG
-                            </button>
-                        </div>
-                        <button
-                            type="button"
-                            role="menuitem"
-                            disabled={true}
-                            title="To favorite, open the character panel on the right"
-                        >
-                            {contextMenu.character.isFavorite ? (
-                                <>
-                                    <StarOff size={14} /> Remove Favorite
-                                </>
-                            ) : (
-                                <>
-                                    <Star size={14} /> Favorite
-                                </>
-                            )}
-                        </button>
-                        <button
-                            className="danger-menu-item"
-                            type="button"
-                            role="menuitem"
-                            disabled={!contextMenu.character.avatar}
-                            onClick={() => requestAvatarDelete(contextMenu.character)}
-                        >
-                            <ImageOff size={14} />
-                            Remove image
-                        </button>
-                        <button
-                            className="danger-menu-item"
-                            type="button"
-                            role="menuitem"
-                            onClick={() => requestCharacterDelete(contextMenu.character)}
-                        >
-                            <Trash2 size={14} />
-                            Delete character
-                        </button>
+                        {contextMenu.character.groupChat ? (
+                            <>
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                        setRenameCandidate(
+                                            contextMenu.character.groupChat,
+                                        );
+                                        setRenameDraft(
+                                            contextMenu.character.groupChat!.title ?? "",
+                                        );
+                                        setContextMenu(undefined);
+                                    }}
+                                >
+                                    <PencilLine size={14} /> Rename group
+                                </button>
+                                <button
+                                    className="danger-menu-item"
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                        setChatDeleteCandidate(
+                                            contextMenu.character.groupChat,
+                                        );
+                                        setContextMenu(undefined);
+                                    }}
+                                >
+                                    <Trash2 size={14} /> Delete group
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div
+                                    className="context-submenu"
+                                    role="group"
+                                    aria-label="Export card"
+                                >
+                                    <span>Export card</span>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                            onExportCharacter(
+                                                contextMenu.character.id,
+                                                "json",
+                                            );
+                                            setContextMenu(undefined);
+                                        }}
+                                    >
+                                        <Download size={14} />
+                                        JSON
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={
+                                            contextMenu.character.avatar?.type !== "png"
+                                        }
+                                        title={
+                                            contextMenu.character.avatar?.type === "png"
+                                                ? "Export PNG card"
+                                                : "PNG export needs a PNG avatar"
+                                        }
+                                        onClick={() => {
+                                            onExportCharacter(
+                                                contextMenu.character.id,
+                                                "png",
+                                            );
+                                            setContextMenu(undefined);
+                                        }}
+                                    >
+                                        <Download size={14} />
+                                        PNG
+                                    </button>
+                                </div>
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    disabled={true}
+                                    title="To favorite, open the character panel on the right"
+                                >
+                                    {contextMenu.character.isFavorite ? (
+                                        <>
+                                            <StarOff size={14} /> Remove Favorite
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Star size={14} /> Favorite
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    className="danger-menu-item"
+                                    type="button"
+                                    role="menuitem"
+                                    disabled={!contextMenu.character.avatar}
+                                    onClick={() =>
+                                        requestAvatarDelete(contextMenu.character)
+                                    }
+                                >
+                                    <ImageOff size={14} />
+                                    Remove image
+                                </button>
+                                <button
+                                    className="danger-menu-item"
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() =>
+                                        requestCharacterDelete(contextMenu.character)
+                                    }
+                                >
+                                    <Trash2 size={14} />
+                                    Delete character
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -1160,11 +1288,16 @@ export function Sidebar({
                     >
                         <header>
                             <AlertTriangle size={19} />
-                            <h2>Delete chat?</h2>
+                            <h2>
+                                {isGroupWorkspace(chatDeleteCandidate)
+                                    ? "Delete group?"
+                                    : "Delete chat?"}
+                            </h2>
                         </header>
                         <p>
-                            This deletes "{chatDisplayTitle(chatDeleteCandidate)}" and its
-                            saved messages from userData. This cannot be undone.
+                            {isGroupWorkspace(chatDeleteCandidate)
+                                ? `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and every conversation in the group from userData. This cannot be undone.`
+                                : `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and its saved messages from userData. This cannot be undone.`}
                         </p>
                         <div className="message-confirm-actions">
                             <button

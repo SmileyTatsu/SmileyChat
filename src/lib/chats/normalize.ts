@@ -170,6 +170,35 @@ export function isGroupChat(chat: Pick<ChatSession | ChatSummary, "kind" | "memb
     return chat.kind === "group" && Boolean(chat.members?.length);
 }
 
+export function getSmileyGroupMetadata(
+    chat: Pick<ChatSession | ChatSummary, "metadata">,
+) {
+    const value = chat.metadata?.smileychatGroup;
+    return value &&
+        typeof value.groupId === "string" &&
+        (value.role === "workspace" || value.role === "conversation")
+        ? value
+        : undefined;
+}
+
+export function isGroupWorkspace(
+    chat: Pick<ChatSession | ChatSummary, "kind" | "members" | "metadata">,
+) {
+    if (!isGroupChat(chat)) return false;
+
+    // Metadata-free groups predate workspaces. Their existing chat remains the
+    // single conversation and also acts as its rail workspace until upgraded.
+    const metadata = getSmileyGroupMetadata(chat);
+    return !metadata || metadata.role === "workspace";
+}
+
+export function groupWorkspaceId(
+    chat: Pick<ChatSession | ChatSummary, "id" | "kind" | "members" | "metadata">,
+) {
+    const metadata = getSmileyGroupMetadata(chat);
+    return metadata?.groupId || (isGroupChat(chat) ? chat.id : "");
+}
+
 export function defaultGroupTitle(members: ChatGroupMember[]) {
     const names = members
         .slice()

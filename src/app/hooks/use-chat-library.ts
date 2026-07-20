@@ -11,12 +11,19 @@ import {
     saveChatIndex,
     uploadChatAttachments,
 } from "#frontend/lib/api/client";
-import { createChatSession, createGroupChatSession } from "#frontend/lib/chats/defaults";
+import {
+    createChatSession,
+    createGroupChatSession,
+    createGroupWorkspaceSession,
+} from "#frontend/lib/chats/defaults";
 import {
     chatDisplayTitle,
     chatToSummary,
     defaultGroupTitle,
+    getSmileyGroupMetadata,
+    groupWorkspaceId,
     isGroupChat,
+    isGroupWorkspace,
     normalizeChat,
     normalizeChatSummaryCollection,
 } from "#frontend/lib/chats/normalize";
@@ -342,6 +349,17 @@ export function useChatLibrary({
                 throw new Error("Choose at least one saved character.");
             }
 
+            const workspace = createGroupWorkspaceSession({
+                characters: safeCharacters,
+                greetingMode,
+                mode: defaultNewChatMode,
+                title,
+            });
+            const workspaceResult = (await createChatRequest(workspace)) as {
+                chat: ChatSession;
+                chats?: ChatSummaryCollection;
+            };
+            const savedWorkspace = normalizeChat(workspaceResult.chat) ?? workspace;
             const chat = createGroupChatSession({
                 characters: safeCharacters,
                 greetingMode,
@@ -351,8 +369,14 @@ export function useChatLibrary({
                     greetingMode,
                 ),
                 mode: defaultNewChatMode,
-                title,
             });
+            chat.metadata = {
+                ...chat.metadata,
+                smileychatGroup: {
+                    groupId: savedWorkspace.id,
+                    role: "conversation",
+                },
+            };
             const result = (await createChatRequest(chat)) as {
                 chat: ChatSession;
                 chats?: ChatSummaryCollection;
@@ -367,11 +391,99 @@ export function useChatLibrary({
             if (result.chats) {
                 setChatSummaries(result.chats);
             } else {
+                updateChatSummary(chatToSummary(savedWorkspace));
                 updateChatSummary(chatToSummary(createdChat));
             }
 
             setChatLoadError("");
             return createdChat;
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+            return undefined;
+        }
+    }
+
+    async function createGroupConversation(workspaceId: string) {
+        const workspaceSummary = latestChatSummariesRef.current.chats.find(
+            (chat) => chat.id === workspaceId && isGroupWorkspace(chat),
+        );
+        if (!workspaceSummary) {
+            setChatLoadError("Group workspace not found.");
+            return undefined;
+        }
+
+        try {
+            let workspace = normalizeChat(await loadChat(workspaceId));
+            if (!workspace || !isGroupWorkspace(workspace)) {
+                throw new Error("Group workspace not found.");
+            }
+            const characters = await fetchGroupCharacters(workspace);
+            const legacyGroup = !getSmileyGroupMetadata(workspace);
+
+            // A legacy group used its only conversation as the rail workspace.
+            // Before adding a second conversation, split out a hidden workspace
+            // and retain the original file (including all messages) as a linked
+            // conversation.
+            if (legacyGroup) {
+                const nextWorkspace = createGroupWorkspaceSession({
+                    characters,
+                    greetingMode: workspace.group?.greetingMode ?? "all",
+                    mode: workspace.mode,
+                    title: workspace.group?.title ?? workspace.title,
+                });
+                nextWorkspace.characterId = workspace.characterId;
+                nextWorkspace.members = workspace.members;
+                nextWorkspace.group = workspace.group;
+                nextWorkspace.defaultTitle = workspace.defaultTitle;
+
+                const workspaceResult = (await createChatRequest(nextWorkspace)) as {
+                    chat: ChatSession;
+                    chats?: ChatSummaryCollection;
+                };
+                const savedWorkspace =
+                    normalizeChat(workspaceResult.chat) ?? nextWorkspace;
+                const migratedConversation: ChatSession = {
+                    ...workspace,
+                    metadata: {
+                        ...workspace.metadata,
+                        smileychatGroup: {
+                            groupId: savedWorkspace.id,
+                            role: "conversation",
+                        },
+                    },
+                    updatedAt: new Date().toISOString(),
+                };
+                await persistChat(migratedConversation);
+                workspace = savedWorkspace;
+                if (workspaceResult.chats) setChatSummaries(workspaceResult.chats);
+            }
+
+            const greetingMode = workspace.group?.greetingMode ?? "all";
+            const conversation = createGroupChatSession({
+                characters,
+                greetingMode,
+                messages: createGroupGreetingMessages(
+                    characters,
+                    defaultNewChatMode,
+                    greetingMode,
+                ),
+                mode: defaultNewChatMode,
+            });
+            conversation.metadata = {
+                ...conversation.metadata,
+                smileychatGroup: { groupId: workspace.id, role: "conversation" },
+            };
+            const result = (await createChatRequest(conversation)) as {
+                chat: ChatSession;
+                chats?: ChatSummaryCollection;
+            };
+            const created = normalizeChat(result.chat) ?? conversation;
+            setActiveChat(created);
+            await activateGroupCharactersForChat(created);
+            setMode(created.mode);
+            if (result.chats) setChatSummaries(result.chats);
+            else updateChatSummary(chatToSummary(created));
+            return created;
         } catch (error) {
             setChatLoadError(messageFromError(error));
             return undefined;
@@ -503,11 +615,13 @@ export function useChatLibrary({
                 return undefined;
             }
 
-            const loadedChat = normalizeChat(rawChat);
+            let loadedChat = normalizeChat(rawChat);
 
             if (!loadedChat) {
                 throw new Error("Invalid chat.");
             }
+
+            loadedChat = await hydrateGroupConversation(loadedChat);
 
             setActiveChat(loadedChat);
             await activateGroupCharactersForChat(loadedChat);
@@ -543,6 +657,21 @@ export function useChatLibrary({
                 setIsChatLoading(false);
             }
         }
+    }
+
+    async function hydrateGroupConversation(chat: ChatSession) {
+        const metadata = getSmileyGroupMetadata(chat);
+        if (!metadata || metadata.role !== "conversation") return chat;
+
+        const workspace = normalizeChat(await loadChat(metadata.groupId));
+        if (!workspace || !isGroupWorkspace(workspace)) return chat;
+
+        return {
+            ...chat,
+            characterId: workspace.characterId,
+            members: workspace.members,
+            group: workspace.group,
+        };
     }
 
     async function renameChat(chatId: string, title: string) {
@@ -684,6 +813,28 @@ export function useChatLibrary({
             );
             const deletedCharacterId =
                 deletedChatSummary?.characterId ?? activeCharacterId;
+            const deletedGroupMetadata = deletedChatSummary
+                ? getSmileyGroupMetadata(deletedChatSummary)
+                : undefined;
+            const deletedGroupId = deletedChatSummary
+                ? groupWorkspaceId(deletedChatSummary)
+                : "";
+
+            if (deletedGroupMetadata?.role === "conversation") {
+                const conversationCount = latestChatSummariesRef.current.chats.filter(
+                    (chat) =>
+                        getSmileyGroupMetadata(chat)?.role === "conversation" &&
+                        groupWorkspaceId(chat) === deletedGroupId,
+                ).length;
+
+                if (conversationCount <= 1) {
+                    setChatLoadError(
+                        "This is the group's only conversation. Delete the group instead.",
+                    );
+                    return;
+                }
+            }
+
             const result = (await deleteChatRequest(chatId)) as {
                 chats?: ChatSummaryCollection;
             };
@@ -692,6 +843,24 @@ export function useChatLibrary({
             setChatSummaries(summaries);
 
             if (deletedActiveChat) {
+                if (deletedGroupMetadata?.role === "conversation") {
+                    const nextConversation = summaries.chats
+                        .filter(
+                            (chat) =>
+                                getSmileyGroupMetadata(chat)?.role === "conversation" &&
+                                groupWorkspaceId(chat) === deletedGroupId,
+                        )
+                        .sort((left, right) =>
+                            right.updatedAt.localeCompare(left.updatedAt),
+                        )[0];
+
+                    if (nextConversation) {
+                        await selectChat(nextConversation.id);
+                    }
+                    setChatLoadError("");
+                    return;
+                }
+
                 if (deletedChatSummary && isGroupChat(deletedChatSummary)) {
                     setActiveChat(undefined);
                     setGroupCharacters([]);
@@ -728,6 +897,32 @@ export function useChatLibrary({
         }
     }
 
+    async function deleteGroup(workspaceId: string) {
+        await flushPendingChatAutosaveWithoutStateUpdate();
+        const ids = latestChatSummariesRef.current.chats
+            .filter(
+                (chat) =>
+                    chat.id === workspaceId || groupWorkspaceId(chat) === workspaceId,
+            )
+            .map((chat) => chat.id);
+        try {
+            for (const id of ids) {
+                await deleteChatRequest(id);
+            }
+            const summaries = normalizeChatSummaryCollection(await loadChatSummaries());
+            setChatSummaries(summaries);
+            if (
+                latestChatRef.current &&
+                groupWorkspaceId(latestChatRef.current) === workspaceId
+            ) {
+                clearChatState();
+            }
+            setChatLoadError("");
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+        }
+    }
+
     function changeMode(nextMode: ChatMode) {
         setMode(nextMode);
 
@@ -744,6 +939,19 @@ export function useChatLibrary({
     }
 
     async function updateActiveGroupChat(nextChat: ChatSession) {
+        const groupMetadata = getSmileyGroupMetadata(nextChat);
+        if (groupMetadata?.role === "conversation") {
+            const workspace = normalizeChat(await loadChat(groupMetadata.groupId));
+            if (workspace && isGroupWorkspace(workspace)) {
+                await persistChat({
+                    ...workspace,
+                    characterId: nextChat.characterId,
+                    members: nextChat.members,
+                    group: nextChat.group,
+                    updatedAt: new Date().toISOString(),
+                });
+            }
+        }
         queueChatSave(nextChat);
 
         if (!isGroupChat(nextChat)) {
@@ -766,12 +974,8 @@ export function useChatLibrary({
 
     const activeCharacterChats = useMemo(
         () =>
-            chatSummaries.chats.filter((chat) =>
-                isGroupChat(chat)
-                    ? (chat.members ?? []).some(
-                          (member) => member.characterId === activeCharacterId,
-                      )
-                    : chat.characterId === activeCharacterId,
+            chatSummaries.chats.filter(
+                (chat) => !isGroupChat(chat) && chat.characterId === activeCharacterId,
             ),
         [activeCharacterId, chatSummaries.chats],
     );
@@ -800,6 +1004,7 @@ export function useChatLibrary({
         activeChatTitle,
         changeGroupAvatar,
         changeMode,
+        createGroupConversation,
         chatCountsByCharacterId,
         chatLoadError,
         chatSummaries,
@@ -807,6 +1012,7 @@ export function useChatLibrary({
         createChatForCharacter,
         createGroupChat,
         deleteChat,
+        deleteGroup,
         flushPendingChatAutosaveWithoutStateUpdate,
         forkChatAtMessage,
         groupCharacters,

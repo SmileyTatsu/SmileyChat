@@ -60,6 +60,11 @@ export type ChatAuthorNote = {
 };
 
 export type ChatMetadata = {
+    /** SmileyChat's local-only grouping marker. Kept in metadata for backwards compatibility. */
+    smileychatGroup?: {
+        groupId: string;
+        role: "workspace" | "conversation";
+    };
     authorNote?: ChatAuthorNote;
     enabledToolGroups?: string[];
     lorebookIds?: string[];

@@ -4,6 +4,7 @@ import {
     ImagePlus,
     Megaphone,
     Plus,
+    Star,
     Trash2,
     Volume2,
     VolumeX,
@@ -175,6 +176,13 @@ export function GroupPanel({
         });
     }
 
+    function toggleFavorite() {
+        onUpdateChatMetadata({
+            ...chat.metadata,
+            isFavorite: !chat.metadata?.isFavorite,
+        });
+    }
+
     return (
         <aside
             className={`character-panel group-panel ${isOpen ? "open" : "collapsed"}`}
@@ -238,7 +246,35 @@ export function GroupPanel({
                                     </span>
                                 </button>
                                 <div>
-                                    <h3>{chat.title || defaultTitle}</h3>
+                                    <div className="profile-name-row">
+                                        <h3>
+                                            {group.title || chat.title || defaultTitle}
+                                        </h3>
+                                        <button
+                                            className={`icon-button favorite-btn ${chat.metadata?.isFavorite ? "is-favorite" : ""}`}
+                                            type="button"
+                                            title={
+                                                chat.metadata?.isFavorite
+                                                    ? "Remove from favorites"
+                                                    : "Add to favorites"
+                                            }
+                                            aria-label={
+                                                chat.metadata?.isFavorite
+                                                    ? "Remove from favorites"
+                                                    : "Add to favorites"
+                                            }
+                                            onClick={toggleFavorite}
+                                        >
+                                            <Star
+                                                size={16}
+                                                fill={
+                                                    chat.metadata?.isFavorite
+                                                        ? "currentColor"
+                                                        : "none"
+                                                }
+                                            />
+                                        </button>
+                                    </div>
                                     <p>
                                         {members.length} member
                                         {members.length === 1 ? "" : "s"}

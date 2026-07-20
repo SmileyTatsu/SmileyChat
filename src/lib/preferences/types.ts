@@ -34,6 +34,7 @@ export type AppPreferences = {
     };
     layout: {
         characterPanelOpenByDefault: boolean;
+        railOrder: string[];
     };
 };
 
@@ -66,6 +67,7 @@ export const defaultAppPreferences: AppPreferences = {
     },
     layout: {
         characterPanelOpenByDefault: true,
+        railOrder: [],
     },
 };
 
@@ -174,8 +176,20 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 layout.characterPanelOpenByDefault,
                 defaultAppPreferences.layout.characterPanelOpenByDefault,
             ),
+            railOrder: normalizeRailOrder(layout.railOrder),
         },
     };
+}
+
+function normalizeRailOrder(value: unknown) {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set<string>();
+    return value.filter((item): item is string => {
+        const id = typeof item === "string" ? item.trim() : "";
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+    });
 }
 
 function normalizeMessageDensity(value: unknown, fallback: MessageDensity) {

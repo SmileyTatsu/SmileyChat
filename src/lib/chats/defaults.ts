@@ -80,6 +80,36 @@ export function createGroupChatSession({
     };
 }
 
+/** A group workspace is a normal local chat file with no visible message history. */
+export function createGroupWorkspaceSession({
+    characters,
+    greetingMode = "all",
+    mode,
+    title,
+}: Omit<CreateGroupChatOptions, "messages">) {
+    const workspace = createGroupChatSession({
+        characters,
+        greetingMode,
+        messages: [],
+        mode,
+        title,
+    });
+    return {
+        ...workspace,
+        metadata: {
+            ...workspace.metadata,
+            smileychatGroup: { groupId: workspace.id, role: "workspace" as const },
+        },
+    };
+}
+
+type CreateGroupChatOptions = {
+    characters: SmileyCharacter[];
+    greetingMode?: GroupGreetingMode;
+    mode: ChatMode;
+    title?: string;
+};
+
 function defaultChatTitle(characterName: string, createdAt: string) {
     const date = new Date(createdAt);
     const formattedDate = new Intl.DateTimeFormat(undefined, {

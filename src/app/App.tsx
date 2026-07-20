@@ -21,7 +21,12 @@ import {
     saveConnectionSettings,
 } from "#frontend/lib/api/client";
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
-import { isGroupChat } from "#frontend/lib/chats/normalize";
+import {
+    getSmileyGroupMetadata,
+    groupWorkspaceId,
+    isGroupChat,
+    isGroupWorkspace,
+} from "#frontend/lib/chats/normalize";
 import { messageFromError } from "#frontend/lib/common/errors";
 import {
     applyConnectionSecrets,
@@ -168,6 +173,7 @@ export function App() {
         activeChat,
         activeChatTitle,
         chatCountsByCharacterId,
+        chatSummaries,
         groupCharacters,
         applySavedCharacter,
         changeGroupAvatar,
@@ -182,8 +188,10 @@ export function App() {
         chatLoadError,
         createCharacter,
         createGroupChat,
+        createGroupConversation,
         deleteCharacter,
         deleteChat,
+        deleteGroup,
         exportCharacter,
         forkChatAtMessage,
         importCharacterFiles,
@@ -688,6 +696,39 @@ export function App() {
             });
     }
 
+    const groupWorkspaces = useMemo(
+        () => chatSummaries.chats.filter((chat) => isGroupWorkspace(chat)),
+        [chatSummaries.chats],
+    );
+    const groupConversations = useMemo(
+        () =>
+            chatSummaries.chats.filter(
+                (chat) =>
+                    isGroupChat(chat) &&
+                    getSmileyGroupMetadata(chat)?.role === "conversation",
+            ),
+        [chatSummaries.chats],
+    );
+    const activeGroupId =
+        activeChat && isGroupChat(activeChat) ? groupWorkspaceId(activeChat) : "";
+
+    useEffect(() => {
+        const ids = [
+            ...characterSummaries.characters.map((character) => character.id),
+            ...groupWorkspaces.map((group) => group.id),
+        ];
+        const valid = new Set(ids);
+        const retained = preferences.layout.railOrder.filter((id) => valid.has(id));
+        const newIds = ids.filter((id) => !retained.includes(id));
+        const railOrder = [...newIds, ...retained];
+        if (railOrder.join("\u0000") !== preferences.layout.railOrder.join("\u0000")) {
+            updatePreferences({
+                ...preferences,
+                layout: { ...preferences.layout, railOrder },
+            });
+        }
+    }, [characterSummaries.characters, groupWorkspaces, preferences]);
+
     async function loadPlugins() {
         try {
             const response = await loadPluginManifests();
@@ -764,7 +805,11 @@ export function App() {
         void importChatFile(file);
     });
     const handleSidebarNewChat = useEventCallback(() => {
-        startNewChat();
+        if (activeGroupId) {
+            void createGroupConversation(activeGroupId);
+        } else {
+            startNewChat();
+        }
         if (isMobileLayout) {
             setActiveSidebarOpen(false);
         }
@@ -793,6 +838,9 @@ export function App() {
     const handleSidebarDeleteChat = useEventCallback((chatId: string) => {
         void deleteChat(chatId);
     });
+    const handleSidebarDeleteGroup = useEventCallback((groupId: string) => {
+        void deleteGroup(groupId);
+    });
     const handleSidebarChangeGroupAvatar = useEventCallback(
         (chatId: string, file: File) => {
             void changeGroupAvatar(chatId, file);
@@ -809,6 +857,25 @@ export function App() {
     });
     const handleSidebarSelectCharacter = useEventCallback((characterId: string) => {
         void selectCharacter(characterId);
+    });
+    const handleSidebarSelectGroup = useEventCallback((groupId: string) => {
+        const conversations = chatSummaries.chats
+            .filter(
+                (chat) =>
+                    isGroupChat(chat) &&
+                    getSmileyGroupMetadata(chat)?.role === "conversation" &&
+                    groupWorkspaceId(chat) === groupId,
+            )
+            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+        const next =
+            conversations[0] ?? chatSummaries.chats.find((chat) => chat.id === groupId);
+        if (next) void selectChat(next.id);
+    });
+    const handleSidebarReorderRail = useEventCallback((ids: string[]) => {
+        updatePreferences({
+            ...preferences,
+            layout: { ...preferences.layout, railOrder: ids },
+        });
     });
     const handleSidebarSelectPersona = useEventCallback((personaId: string) => {
         void selectPersona(personaId);
@@ -931,7 +998,11 @@ export function App() {
             <SidebarHost
                 activeChatId={activeChat?.id ?? ""}
                 activeCharacterId={character.id}
+                activeGroupId={activeGroupId}
                 chats={activeCharacterChats}
+                groupChats={groupWorkspaces}
+                groupConversations={groupConversations}
+                railOrder={preferences.layout.railOrder}
                 chatImportStatus={chatImportStatus}
                 chatImportStatusFading={chatImportStatusFading}
                 chatLoadError={chatLoadError}
@@ -958,11 +1029,14 @@ export function App() {
                 onExportCharacter={handleSidebarExportCharacter}
                 onRemoveCharacterAvatar={handleSidebarRemoveCharacterAvatar}
                 onReorderCharacters={reorderCharacters}
+                onReorderRail={handleSidebarReorderRail}
                 onDeleteChat={handleSidebarDeleteChat}
+                onDeleteGroup={handleSidebarDeleteGroup}
                 onChangeGroupAvatar={handleSidebarChangeGroupAvatar}
                 onRenameChat={handleSidebarRenameChat}
                 onSelectChat={handleSidebarSelectChat}
                 onSelectCharacter={handleSidebarSelectCharacter}
+                onSelectGroup={handleSidebarSelectGroup}
                 onSelectPersona={handleSidebarSelectPersona}
                 onStatusChange={setUserStatus}
             />
