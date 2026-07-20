@@ -1,4 +1,13 @@
-import { BookOpen, Download, FileJson, Trash2, Upload } from "lucide-preact";
+import {
+    BookOpen,
+    ChevronDown,
+    ChevronUp,
+    Download,
+    FileJson,
+    Search,
+    Trash2,
+    Upload,
+} from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import {
@@ -33,6 +42,8 @@ export function LorebooksSettings({
     const [titleDraft, setTitleDraft] = useState("");
     const [isBusy, setIsBusy] = useState(false);
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [expandedEntries, setExpandedEntries] = useState<Record<string, boolean>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
     const selectedId =
         activeLorebook?.id ||
@@ -51,11 +62,38 @@ export function LorebooksSettings({
         }
 
         void selectLorebook(selectedId);
+        setSearchQuery("");
+        setExpandedEntries({});
     }, [selectedId]);
 
     useEffect(() => {
         setTitleDraft(activeLorebook?.title ?? "");
     }, [activeLorebook?.id, activeLorebook?.title]);
+
+    const filteredEntries = useMemo(() => {
+        if (!activeLorebook?.entries) {
+            return [];
+        }
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) {
+            return activeLorebook.entries;
+        }
+        return activeLorebook.entries.filter((entry) => {
+            const matchesTitle = entry.title?.toLowerCase().includes(query);
+            const matchesContent = entry.content?.toLowerCase().includes(query);
+            const matchesKeys = entry.keys?.some((key) =>
+                key.toLowerCase().includes(query),
+            );
+            return matchesTitle || matchesContent || matchesKeys;
+        });
+    }, [activeLorebook?.entries, searchQuery]);
+
+    const toggleEntry = (id: string) => {
+        setExpandedEntries((prev) => ({
+            ...prev,
+            [id]: !prev[id],
+        }));
+    };
 
     async function selectLorebook(lorebookId: string) {
         try {
@@ -351,6 +389,106 @@ export function LorebooksSettings({
                                     </dd>
                                 </div>
                             </dl>
+
+                            <div className="lorebook-entries-viewer">
+                                <header className="entries-viewer-header">
+                                    <h4>Entries ({activeLorebook.entries.length})</h4>
+                                    <div className="entries-search-wrap">
+                                        <Search size={14} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search entries..."
+                                            value={searchQuery}
+                                            disabled={isBusy}
+                                            onInput={(event) =>
+                                                setSearchQuery(event.currentTarget.value)
+                                            }
+                                        />
+                                    </div>
+                                </header>
+                                <div className="entries-viewer-list">
+                                    {filteredEntries.length === 0 ? (
+                                        <p className="no-entries-found">
+                                            {activeLorebook.entries.length === 0
+                                                ? "This LoreBook has no entries."
+                                                : "No matching entries found."}
+                                        </p>
+                                    ) : (
+                                        filteredEntries.map((entry) => {
+                                            const isExpanded =
+                                                !!expandedEntries[entry.id];
+                                            return (
+                                                <div
+                                                    className={`entry-item-card ${
+                                                        entry.enabled ? "" : "disabled"
+                                                    }`}
+                                                    key={entry.id}
+                                                >
+                                                    <div
+                                                        className="entry-item-header"
+                                                        onClick={() =>
+                                                            toggleEntry(entry.id)
+                                                        }
+                                                    >
+                                                        <div className="entry-item-title-section">
+                                                            <span className="entry-item-title">
+                                                                {entry.title ||
+                                                                    "Untitled Entry"}
+                                                            </span>
+                                                            {!entry.enabled && (
+                                                                <span className="entry-disabled-badge">
+                                                                    Disabled
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="entry-expand-toggle"
+                                                            aria-label={
+                                                                isExpanded
+                                                                    ? "Collapse entry content"
+                                                                    : "Expand entry content"
+                                                            }
+                                                        >
+                                                            {isExpanded ? (
+                                                                <ChevronUp size={16} />
+                                                            ) : (
+                                                                <ChevronDown size={16} />
+                                                            )}
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="entry-item-meta">
+                                                        <span className="entry-position-badge">
+                                                            {entry.position} (depth{" "}
+                                                            {entry.depth})
+                                                        </span>
+                                                        {entry.keys.length > 0 && (
+                                                            <div className="entry-keys-pills">
+                                                                {entry.keys.map((key) => (
+                                                                    <span
+                                                                        className="key-pill"
+                                                                        key={key}
+                                                                    >
+                                                                        {key}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {isExpanded && (
+                                                        <pre className="entry-item-content">
+                                                            {entry.content}
+                                                        </pre>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="button-row">
                                 <div className="export-menu-wrap">
                                     <button
