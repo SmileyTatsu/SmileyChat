@@ -5,9 +5,16 @@ import { safeImageUrl, safeUrl } from "./safety";
 import { getFormatterSettings } from "./settings";
 
 type InlineRenderer = (content: string) => FormatterNode[];
+type ListMatch = {
+    indent: number;
+    ordered: boolean;
+    content: string;
+    start?: number;
+};
 
 const markdownTokenPattern =
     /(`[^`\n]+`|\*\*\*[\s\S]+?\*\*\*|___[\s\S]+?___|\*\*[^*\n]+?\*\*|__[^_\n]+?__|~~[^~\n]+?~~|\*[^*\n]+?\*|_[^_\n]+?_|!\[[^\]\n]*\]\([^) \n]+(?:\s+"[^"\n]{0,120}")?\)|\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]{0,120}")?\))/g;
+const escapableMarkdownCharacters = "\\!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 
 export function renderMarkdownBlocks(
     api: FormatterApi,
@@ -75,13 +82,29 @@ export function renderMarkdownBlocks(
             continue;
         }
 
-        const heading = line.match(/^(#{1,3})\s+(.+)$/);
+        const table = parseTable(api, lines, index, renderInlineContent);
+        if (table) {
+            flushParagraph();
+            blocks.push(table.node);
+            index = table.nextIndex;
+            continue;
+        }
+
+        if (isHorizontalRule(line)) {
+            flushParagraph();
+            blocks.push(api.ui.h("hr", { className: "scf-rule" }));
+            index += 1;
+            continue;
+        }
+
+        const heading = line.match(/^(#{1,6})\s+(.+)$/);
         if (heading) {
             flushParagraph();
+            const level = heading[1].length;
             blocks.push(
                 api.ui.h(
-                    `h${Math.min(heading[1].length + 2, 5)}`,
-                    { className: "scf-heading" },
+                    `h${Math.min(level + 2, 6)}`,
+                    { className: `scf-heading scf-heading-level-${level}` },
                     renderInlineContent(heading[2].trim()),
                 ),
             );
@@ -110,31 +133,11 @@ export function renderMarkdownBlocks(
             continue;
         }
 
-        const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
-        const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
-        if (unordered || ordered) {
+        const list = parseListBlock(api, lines, index, renderInlineContent);
+        if (list) {
             flushParagraph();
-            const orderedList = Boolean(ordered);
-            const items: ComponentChild[] = [];
-
-            while (index < lines.length) {
-                const itemMatch = orderedList
-                    ? lines[index].match(/^\s*\d+[.)]\s+(.+)$/)
-                    : lines[index].match(/^\s*[-*+]\s+(.+)$/);
-
-                if (!itemMatch) {
-                    break;
-                }
-
-                items.push(
-                    api.ui.h("li", null, renderInlineContent(itemMatch[1].trim())),
-                );
-                index += 1;
-            }
-
-            blocks.push(
-                api.ui.h(orderedList ? "ol" : "ul", { className: "scf-list" }, items),
-            );
+            blocks.push(list.node);
+            index = list.nextIndex;
             continue;
         }
 
@@ -157,25 +160,377 @@ export function parseInlineMarkdown(
     }
 
     const nodes: FormatterNode[] = [];
-    let index = 0;
+    let plainText = "";
 
-    for (const match of text.matchAll(markdownTokenPattern)) {
-        const token = match[0];
-        const tokenIndex = match.index ?? 0;
+    const flushPlainText = () => {
+        if (!plainText) return;
 
-        if (tokenIndex > index) {
-            nodes.push(text.slice(index, tokenIndex));
+        let index = 0;
+        for (const match of plainText.matchAll(markdownTokenPattern)) {
+            const token = match[0];
+            const tokenIndex = match.index ?? 0;
+
+            if (tokenIndex > index) {
+                nodes.push(plainText.slice(index, tokenIndex));
+            }
+
+            nodes.push(renderMarkdownToken(api, token, renderInlineContent));
+            index = tokenIndex + token.length;
         }
 
-        nodes.push(renderMarkdownToken(api, token, renderInlineContent));
-        index = tokenIndex + token.length;
+        if (index < plainText.length) {
+            nodes.push(plainText.slice(index));
+        }
+
+        plainText = "";
+    };
+
+    for (let index = 0; index < text.length; index += 1) {
+        if (text[index] === "`") {
+            const closingIndex = text.indexOf("`", index + 1);
+
+            if (closingIndex > index + 1) {
+                flushPlainText();
+                nodes.push(
+                    api.ui.h(
+                        "code",
+                        { className: "scf-code" },
+                        text.slice(index + 1, closingIndex),
+                    ),
+                );
+                index = closingIndex;
+                continue;
+            }
+        }
+
+        if (
+            text[index] === "\\" &&
+            text[index + 1] &&
+            escapableMarkdownCharacters.includes(text[index + 1])
+        ) {
+            flushPlainText();
+            nodes.push(text[index + 1]);
+            index += 1;
+            continue;
+        }
+
+        plainText += text[index];
     }
 
-    if (index < text.length) {
-        nodes.push(text.slice(index));
-    }
+    flushPlainText();
 
     return nodes.length ? nodes : [text];
+}
+
+function parseTable(
+    api: FormatterApi,
+    lines: string[],
+    index: number,
+    renderInlineContent: InlineRenderer,
+) {
+    if (index + 1 >= lines.length) {
+        return undefined;
+    }
+
+    const headers = splitTableRow(lines[index]);
+    const delimiters = splitTableRow(lines[index + 1]);
+
+    if (
+        !headers ||
+        !delimiters ||
+        !headers.length ||
+        headers.length !== delimiters.length ||
+        !delimiters.every((cell) => /^:?-+:?$/.test(cell))
+    ) {
+        return undefined;
+    }
+
+    const alignments = delimiters.map(tableAlignment);
+    const rows: string[][] = [];
+    let nextIndex = index + 2;
+
+    while (nextIndex < lines.length) {
+        const row = splitTableRow(lines[nextIndex]);
+        if (!row) {
+            break;
+        }
+
+        rows.push(row);
+        nextIndex += 1;
+    }
+
+    const cellStyle = (columnIndex: number) =>
+        alignments[columnIndex] ? { textAlign: alignments[columnIndex] } : undefined;
+    const normalizedRow = (row: string[]) =>
+        headers.map((_, columnIndex) => row[columnIndex] ?? "");
+
+    return {
+        nextIndex,
+        node: api.ui.h(
+            "div",
+            {
+                "aria-label": "Markdown table",
+                className: "scf-table-wrap",
+                role: "region",
+                tabIndex: 0,
+            },
+            [
+                api.ui.h("table", { className: "scf-table" }, [
+                    api.ui.h("thead", null, [
+                        api.ui.h(
+                            "tr",
+                            null,
+                            headers.map((header, columnIndex) =>
+                                api.ui.h(
+                                    "th",
+                                    {
+                                        key: `header-${columnIndex}`,
+                                        scope: "col",
+                                        style: cellStyle(columnIndex),
+                                    },
+                                    renderInlineContent(header),
+                                ),
+                            ),
+                        ),
+                    ]),
+                    rows.length
+                        ? api.ui.h(
+                              "tbody",
+                              null,
+                              rows.map((row, rowIndex) =>
+                                  api.ui.h(
+                                      "tr",
+                                      { key: `row-${rowIndex}` },
+                                      normalizedRow(row).map((cell, columnIndex) =>
+                                          api.ui.h(
+                                              "td",
+                                              {
+                                                  key: `cell-${rowIndex}-${columnIndex}`,
+                                                  style: cellStyle(columnIndex),
+                                              },
+                                              renderInlineContent(cell),
+                                          ),
+                                      ),
+                                  ),
+                              ),
+                          )
+                        : null,
+                ]),
+            ],
+        ),
+    };
+}
+
+function splitTableRow(line: string) {
+    if (!hasUnescapedPipe(line)) {
+        return undefined;
+    }
+
+    const trimmed = line.trim();
+    const cells: string[] = [];
+    let cell = "";
+
+    for (let index = 0; index < trimmed.length; index += 1) {
+        const character = trimmed[index];
+
+        if (character === "\\" && index + 1 < trimmed.length) {
+            cell += character + trimmed[index + 1];
+            index += 1;
+        } else if (character === "|") {
+            cells.push(cell.trim());
+            cell = "";
+        } else {
+            cell += character;
+        }
+    }
+
+    cells.push(cell.trim());
+
+    if (trimmed.startsWith("|")) {
+        cells.shift();
+    }
+    if (endsWithUnescapedPipe(trimmed)) {
+        cells.pop();
+    }
+
+    return cells;
+}
+
+function hasUnescapedPipe(value: string) {
+    return splitTableRowCandidate(value);
+}
+
+function splitTableRowCandidate(value: string) {
+    for (let index = 0; index < value.length; index += 1) {
+        if (value[index] === "\\") {
+            index += 1;
+        } else if (value[index] === "|") {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function endsWithUnescapedPipe(value: string) {
+    if (!value.endsWith("|")) {
+        return false;
+    }
+
+    let slashCount = 0;
+    for (let index = value.length - 2; index >= 0 && value[index] === "\\"; index -= 1) {
+        slashCount += 1;
+    }
+
+    return slashCount % 2 === 0;
+}
+
+function tableAlignment(delimiter: string) {
+    if (delimiter.startsWith(":") && delimiter.endsWith(":")) return "center";
+    if (delimiter.startsWith(":")) return "left";
+    if (delimiter.endsWith(":")) return "right";
+    return undefined;
+}
+
+function isHorizontalRule(line: string) {
+    return (
+        /^\s{0,3}(?:-\s*){3,}$/.test(line) ||
+        /^\s{0,3}(?:\*\s*){3,}$/.test(line) ||
+        /^\s{0,3}(?:_\s*){3,}$/.test(line)
+    );
+}
+
+function parseListBlock(
+    api: FormatterApi,
+    lines: string[],
+    startIndex: number,
+    renderInlineContent: InlineRenderer,
+    expectedIndent?: number,
+) {
+    const first =
+        startIndex < lines.length ? matchListItem(lines[startIndex]) : undefined;
+    if (!first || (expectedIndent !== undefined && first.indent !== expectedIndent)) {
+        return undefined;
+    }
+
+    const items: ComponentChild[] = [];
+    const listIndent = first.indent;
+    const ordered = first.ordered;
+    let nextIndex = startIndex;
+    let hasTaskItems = false;
+
+    while (nextIndex < lines.length) {
+        const item = matchListItem(lines[nextIndex]);
+        if (!item || item.indent !== listIndent || item.ordered !== ordered) {
+            break;
+        }
+
+        const itemLines = [item.content];
+        nextIndex += 1;
+
+        while (nextIndex < lines.length) {
+            const nextLine = lines[nextIndex];
+            const nextItem = matchListItem(nextLine);
+
+            if (nextItem || !nextLine.trim() || leadingIndent(nextLine) <= listIndent) {
+                break;
+            }
+
+            itemLines.push(nextLine.trim());
+            nextIndex += 1;
+        }
+
+        const itemContent = itemLines.join("\n");
+        const task = itemContent.match(/^\[([ xX])\]\s+([\s\S]+)$/);
+        const children: ComponentChild[] = [];
+        if (task) {
+            hasTaskItems = true;
+            children.push(
+                api.ui.h("label", { className: "scf-task-label" }, [
+                    api.ui.h("input", {
+                        "aria-label":
+                            task[1].toLowerCase() === "x"
+                                ? "Completed task"
+                                : "Incomplete task",
+                        checked: task[1].toLowerCase() === "x",
+                        disabled: true,
+                        readOnly: true,
+                        type: "checkbox",
+                    }),
+                    api.ui.h(
+                        "span",
+                        null,
+                        joinInlineLines(
+                            api,
+                            task[2].trim().split("\n"),
+                            renderInlineContent,
+                        ),
+                    ),
+                ]),
+            );
+        } else {
+            children.push(...joinInlineLines(api, itemLines, renderInlineContent));
+        }
+
+        while (nextIndex < lines.length) {
+            const nestedFirst = matchListItem(lines[nextIndex]);
+            if (!nestedFirst || nestedFirst.indent <= listIndent) {
+                break;
+            }
+
+            const nested = parseListBlock(api, lines, nextIndex, renderInlineContent);
+            if (!nested) {
+                break;
+            }
+
+            children.push(nested.node);
+            nextIndex = nested.nextIndex;
+        }
+
+        items.push(api.ui.h("li", null, children));
+    }
+
+    if (!items.length) {
+        return undefined;
+    }
+
+    return {
+        indent: listIndent,
+        nextIndex,
+        node: api.ui.h(
+            ordered ? "ol" : "ul",
+            {
+                className: hasTaskItems ? "scf-list scf-task-list" : "scf-list",
+                ...(ordered && first.start !== 1 ? { start: first.start } : {}),
+            },
+            items,
+        ),
+    };
+}
+
+function matchListItem(line: string): ListMatch | undefined {
+    const match = line.match(/^(\s*)(?:(\d+)[.)]|[-*+])\s+(.+)$/);
+    if (!match) {
+        return undefined;
+    }
+
+    return {
+        content: match[3],
+        indent: indentWidth(match[1]),
+        ordered: Boolean(match[2]),
+        start: match[2] ? Number(match[2]) : undefined,
+    };
+}
+
+function indentWidth(value: string) {
+    return [...value].reduce(
+        (width, character) => width + (character === "\t" ? 4 : 1),
+        0,
+    );
+}
+
+function leadingIndent(value: string) {
+    return indentWidth(value.match(/^\s*/)?.[0] ?? "");
 }
 
 function joinInlineLines(
@@ -191,10 +546,6 @@ function renderMarkdownToken(
     token: string,
     renderInlineContent: InlineRenderer,
 ): FormatterNode {
-    if (token.startsWith("`") && token.endsWith("`")) {
-        return api.ui.h("code", { className: "scf-code" }, token.slice(1, -1));
-    }
-
     if (
         (token.startsWith("***") && token.endsWith("***")) ||
         (token.startsWith("___") && token.endsWith("___"))
