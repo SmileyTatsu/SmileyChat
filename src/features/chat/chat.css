@@ -1249,6 +1249,19 @@
     margin-left: auto;
 }
 
+.prompt-debug-origin {
+    overflow: hidden;
+    max-width: min(42ch, 42%);
+    color: #c5b7ff;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.prompt-debug-origin.source {
+    color: #8cc9e8;
+}
+
 .prompt-role-badge {
     display: inline-flex;
     align-items: center;

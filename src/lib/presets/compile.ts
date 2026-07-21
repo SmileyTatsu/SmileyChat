@@ -235,6 +235,7 @@ function injectChatHistoryPrompt(
             historyMessagesForCompile(context),
             injectedPrompts,
             context,
+            prompt.id,
         );
     }
 
@@ -258,6 +259,7 @@ function injectChatHistoryPrompt(
             historyMessagesForCompile(context),
             injectedPrompts,
             context,
+            prompt.id,
         ),
     );
 
@@ -272,6 +274,7 @@ function injectConversationMessages(
     sourceMessages: Message[],
     injectedPrompts: Array<{ prompt: PresetPrompt; content: string }>,
     context: CompilePresetContext,
+    historyPromptId: string,
 ) {
     const promptMessages = sourceMessages.filter(isMessageIncludedInPrompt);
 
@@ -301,7 +304,9 @@ function injectConversationMessages(
             }
         }
 
-        output.push(...toAnchoredHistoryMessages(promptMessages[index], context));
+        output.push(
+            ...toAnchoredHistoryMessages(promptMessages[index], context, historyPromptId),
+        );
 
         for (const injectedPrompt of injectedPrompts) {
             if (
@@ -369,6 +374,7 @@ function toGenerationMessage(
 function toAnchoredHistoryMessages(
     message: Message,
     context: CompilePresetContext,
+    promptId?: string,
 ): AnchoredPromptMessage[] {
     const activeSwipe = getActiveSwipe(message);
     const activities = activeSwipe?.toolActivities;
@@ -385,6 +391,7 @@ function toAnchoredHistoryMessages(
                               toolCalls: activities.map((activity) => activity.call),
                           },
                           messageId: message.id,
+                          promptId,
                           source: "history" as const,
                       },
                       ...activities.map((activity) => ({
@@ -394,6 +401,7 @@ function toAnchoredHistoryMessages(
                               toolResult: activity.result,
                           },
                           messageId: message.id,
+                          promptId,
                           source: "history" as const,
                       })),
                   ]
@@ -412,11 +420,13 @@ function toAnchoredHistoryMessages(
                           toolCalls: pendingContinuation.toolCalls,
                       },
                       messageId: message.id,
+                      promptId,
                       source: "history" as const,
                   }
                 : {
                       message: toGenerationMessage(message, context),
                       messageId: message.id,
+                      promptId,
                       source: "history" as const,
                   },
         ];
@@ -426,6 +436,7 @@ function toAnchoredHistoryMessages(
         {
             message: toGenerationMessage(message, context),
             messageId: message.id,
+            promptId,
             source: "history" as const,
         },
     ];

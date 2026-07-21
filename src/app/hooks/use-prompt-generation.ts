@@ -45,6 +45,7 @@ import type { PresetCollection } from "#frontend/lib/presets/types";
 import {
     assertPromptMessagesWithinBudget,
     buildPromptForGeneration,
+    reconcilePromptDebugBlocks,
 } from "#frontend/lib/prompt/build";
 import type { PromptGenerationTrigger, PromptInjector } from "#frontend/lib/prompt/types";
 import type {
@@ -686,7 +687,7 @@ export function usePromptGeneration({
         return {
             generation: activePreset?.generation,
             messages: generationMessages,
-            debug: promptBuild.debug,
+            debug: reconcilePromptDebugBlocks(promptBuild.debug, promptMessages),
             onImage: options.onImage,
             onReasoningToken: options.onReasoningToken,
             onToken: options.onToken,

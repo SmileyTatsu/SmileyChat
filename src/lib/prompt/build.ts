@@ -20,6 +20,7 @@ import {
 import type {
     PromptBuildContext,
     PromptBuildDebug,
+    PromptDebugBlock,
     PromptBuildResult,
     PromptBudgetPlan,
     PromptContextMiddleware,
@@ -72,6 +73,8 @@ export async function buildPromptForGeneration({
             budget,
             injections,
             messages: trimmedPrompt.messages,
+            promptItems: trimmedPrompt.promptItems,
+            preset: processedContext.preset,
             sourceMessages: processedContext.messages,
             tokenEstimate: trimmedPrompt.tokenEstimate,
         }),
@@ -199,6 +202,7 @@ function finalizeAssembledPromptBudget({
 
     return {
         messages: messages.filter((message) => selectedMessageIds.has(message.id)),
+        promptItems: output,
         promptMessages,
         tokenEstimate,
     };
@@ -321,22 +325,57 @@ export function assertPromptMessagesWithinBudget(
     );
 }
 
+export function reconcilePromptDebugBlocks(
+    debug: PromptBuildDebug,
+    promptMessages: ChatGenerationMessage[],
+): PromptBuildDebug {
+    const availableBlocks = new Map<string, PromptDebugBlock[]>();
+
+    for (const block of debug.blocks) {
+        const matches = availableBlocks.get(block.messageFingerprint) ?? [];
+        matches.push(block);
+        availableBlocks.set(block.messageFingerprint, matches);
+    }
+
+    return {
+        ...debug,
+        blocks: promptMessages.map((message) => {
+            const fingerprint = promptMessageFingerprint(message);
+            const block = availableBlocks.get(fingerprint)?.shift();
+
+            return (
+                block ?? {
+                    kind: "source",
+                    label: "Modified or added by prompt middleware",
+                    messageFingerprint: fingerprint,
+                    source: "middleware",
+                }
+            );
+        }),
+    };
+}
+
 function buildDebug({
     budget,
     injections,
     messages,
+    promptItems,
+    preset,
     sourceMessages,
     tokenEstimate,
 }: {
     budget: PromptBudgetPlan;
     injections: PromptInjection[];
     messages: Message[];
+    promptItems: AnchoredPromptMessage[];
+    preset: SmileyPreset | undefined;
     sourceMessages: Message[];
     tokenEstimate: number;
 }): PromptBuildDebug {
     const selectedMessageIds = new Set(messages.map((message) => message.id));
 
     return {
+        blocks: promptItems.map((item) => promptDebugBlock(item, preset)),
         budget,
         injections,
         selectedMessageIds: messages.map((message) => message.id),
@@ -349,6 +388,72 @@ function buildDebug({
                 ? ["Estimated prompt size exceeds the active context token budget."]
                 : [],
     };
+}
+
+function promptDebugBlock(
+    item: AnchoredPromptMessage,
+    preset: SmileyPreset | undefined,
+): PromptDebugBlock {
+    const messageFingerprint = promptMessageFingerprint(item.message);
+    const prompt = item.promptId
+        ? preset?.prompts.find((candidate) => candidate.id === item.promptId)
+        : undefined;
+
+    if (prompt) {
+        return {
+            kind: "prompt",
+            label: prompt.title,
+            messageFingerprint,
+            source: item.source,
+        };
+    }
+
+    if (item.source === "history") {
+        return {
+            kind: "source",
+            label: "Chat History",
+            messageFingerprint,
+            source: "history",
+        };
+    }
+
+    if (item.source === "injection") {
+        return {
+            kind: "source",
+            label: injectionDebugLabel(item.injectionId, item.injectionSource),
+            messageFingerprint,
+            source: "injection",
+        };
+    }
+
+    return {
+        kind: "source",
+        label: "Preset fallback",
+        messageFingerprint,
+        source: "preset",
+    };
+}
+
+function injectionDebugLabel(
+    injectionId: string | undefined,
+    source: PromptInjection["source"] | undefined,
+) {
+    if (injectionId === "core.author-note") return "Author Note";
+    if (source === "lorebook") return "LoreBook";
+    if (source === "plugin") return "Plugin injection";
+    if (source === "preset") return "Preset injection";
+    return "Core prompt injection";
+}
+
+function promptMessageFingerprint(message: ChatGenerationMessage) {
+    return JSON.stringify([
+        message.role,
+        message.content,
+        message.reasoning,
+        message.reasoningDetails,
+        message.toolCalls,
+        message.toolResult,
+    ]);
 }
 
 export function activePresetFromCollection(

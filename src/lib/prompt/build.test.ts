@@ -12,9 +12,59 @@ import { defaultAppPreferences } from "../preferences/types";
 import { createDefaultPreset } from "../presets/defaults";
 import type { SmileyPreset } from "../presets/types";
 import type { PromptBuildContext } from "./types";
-import { buildPromptForGeneration } from "./build";
+import { buildPromptForGeneration, reconcilePromptDebugBlocks } from "./build";
 
 describe("buildPromptForGeneration", () => {
+    test("keeps preset titles and injection sources with compiled debug blocks", async () => {
+        const preset = createTinyPreset();
+        const reminder = {
+            id: "reminder",
+            title: "Scene Reminder",
+            role: "system" as const,
+            content: "Keep the scene rainy.",
+            systemPrompt: false,
+            marker: true,
+            injectionPosition: "before" as const,
+            injectionDepth: 0,
+            forbidOverrides: false,
+            anchor: "before-history" as const,
+        };
+        const result = await buildPromptForGeneration({
+            context: createPromptContext({
+                messages: [message("m1", "user", "Hello")],
+                preset: {
+                    ...preset,
+                    prompts: [...preset.prompts, reminder],
+                    promptOrder: [
+                        ...preset.promptOrder,
+                        { promptId: reminder.id, enabled: true },
+                    ],
+                },
+            }),
+            injectors: [
+                () => [
+                    {
+                        id: "lore-entry",
+                        anchor: "before-history",
+                        content: "The city is old.",
+                        order: 0,
+                        role: "system",
+                        source: "lorebook",
+                    },
+                ],
+            ],
+        });
+
+        expect(result.debug.blocks.map((block) => block.label)).toEqual(
+            expect.arrayContaining(["System", "History", "Scene Reminder", "LoreBook"]),
+        );
+
+        const changed = reconcilePromptDebugBlocks(result.debug, [
+            { ...result.promptMessages[0], content: "Changed by middleware" },
+        ]);
+        expect(changed.blocks[0]?.label).toBe("Modified or added by prompt middleware");
+    });
+
     test("counts structured injections before trimming history", async () => {
         const context = createPromptContext({
             messages: [

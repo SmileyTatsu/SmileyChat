@@ -3,6 +3,7 @@ import { useMemo, useState } from "preact/hooks";
 
 import type { DebugGenerationPayload } from "#frontend/app/hooks/use-prompt-generation";
 import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
+import type { PromptDebugBlock } from "#frontend/lib/prompt/types";
 import { estimateGenerationMessage } from "#frontend/lib/prompt/token-estimator";
 
 type ChatPayloadModalProps = {
@@ -111,6 +112,7 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                                         key={`${message.role}-${index}`}
                                         index={index}
                                         message={message}
+                                        debugBlock={data.request.debug?.blocks[index]}
                                     />
                                 ))
                             ) : (
@@ -162,9 +164,11 @@ function looksLikeLargeBase64(value: string) {
 function PromptMessageCard({
     index,
     message,
+    debugBlock,
 }: {
     index: number;
     message: ChatGenerationMessage;
+    debugBlock?: PromptDebugBlock;
 }) {
     return (
         <article className="chat-payload-block">
@@ -172,6 +176,12 @@ function PromptMessageCard({
                 <span className={`prompt-role-badge role-${message.role}`}>
                     {message.role}
                 </span>
+                {debugBlock && (
+                    <span className={`prompt-debug-origin ${debugBlock.kind}`}>
+                        {debugBlock.kind === "prompt" ? "Prompt" : "Source"}:{" "}
+                        {debugBlock.label}
+                    </span>
+                )}
                 <span>Block {index + 1}</span>
                 <span>{estimateGenerationMessage(message)} tokens est.</span>
             </header>

@@ -84,12 +84,21 @@ export type PromptBudgetPlan = {
 };
 
 export type PromptBuildDebug = {
+    blocks: PromptDebugBlock[];
     budget: PromptBudgetPlan;
     injections: PromptInjection[];
     selectedMessageIds: string[];
     tokenEstimate: number;
     trimmedMessageIds: string[];
     warnings: string[];
+};
+
+export type PromptDebugBlock = {
+    /** Matches a compiled message so its label can survive prompt middleware. */
+    messageFingerprint: string;
+    kind: "prompt" | "source";
+    label: string;
+    source: "history" | "injection" | "preset" | "middleware";
 };
 
 export type PromptContextMiddleware = (

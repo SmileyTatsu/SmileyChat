@@ -7,6 +7,7 @@ type AnchoredPromptMessage = {
     injectionId?: string;
     injectionOrder?: number;
     injectionPriority?: number;
+    injectionSource?: PromptInjection["source"];
     messageId?: string;
     message: ChatGenerationMessage;
     promptId?: string;
@@ -47,6 +48,7 @@ function insertPromptInjection(
         injectionId: injection.id,
         injectionOrder: injection.order,
         injectionPriority: injection.priority,
+        injectionSource: injection.source,
         message: promptInjectionToMessage(injection),
         source: "injection" as const,
         tokenBudgetBehavior: injection.tokenBudgetBehavior,
