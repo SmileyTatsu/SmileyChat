@@ -37,6 +37,16 @@ export function resolvePresetMacros(content: string, context: MacroContext) {
     return resolvePresetMacrosInternal(content, context, 0, new Set());
 }
 
+/**
+ * Resolves only macros backed by a character card. This is used while building
+ * joined group cards so each member's own card references stay attached to that
+ * member; session and preset macros are deliberately left for normal prompt
+ * compilation.
+ */
+export function resolveCharacterCardMacros(content: string, character: SmileyCharacter) {
+    return resolveCharacterCardMacrosInternal(content, character, 0, new Set());
+}
+
 function resolvePresetMacrosInternal(
     content: string,
     context: MacroContext,
@@ -82,6 +92,47 @@ function resolvePresetMacrosInternal(
     return shouldTrim ? resolved.trim() : resolved;
 }
 
+function resolveCharacterCardMacrosInternal(
+    content: string,
+    character: SmileyCharacter,
+    depth: number,
+    resolvingKeys: Set<string>,
+): string {
+    if (!content || !content.includes("{{")) {
+        return content;
+    }
+
+    const resolved = content.replace(commentMacroPattern, "");
+
+    return resolved.replace(macroPattern, (match, key: string) => {
+        const normalizedKey = key.trim().toLowerCase();
+        const macroValue = characterCardMacroValue(normalizedKey, character, [], false);
+
+        if (!macroValue) {
+            return match;
+        }
+
+        if (macroValue.recursive && resolvingKeys.has(normalizedKey)) {
+            return match;
+        }
+
+        if (!macroValue.recursive || depth >= maxNestedMacroDepth) {
+            return macroValue.value;
+        }
+
+        resolvingKeys.add(normalizedKey);
+        const resolvedValue = resolveCharacterCardMacrosInternal(
+            macroValue.value,
+            character,
+            depth + 1,
+            resolvingKeys,
+        );
+        resolvingKeys.delete(normalizedKey);
+
+        return resolvedValue;
+    });
+}
+
 function valueForMacro(key: string, context: MacroContext): MacroValue | undefined {
     const outletName = outletMacroName(key);
 
@@ -89,40 +140,17 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
         return { recursive: true, value: context.outlets?.render(outletName) ?? "" };
     }
 
-    switch (key) {
-        // Character card fields
-        case "char":
-            return { recursive: true, value: context.character.data.name };
-        case "char_description":
-            return { recursive: true, value: context.character.data.description };
-        case "char_personality":
-        case "personality":
-            return { recursive: true, value: context.character.data.personality };
-        case "tagline":
-            return { recursive: true, value: getCharacterTagline(context.character) };
-        case "scenario":
-            return { recursive: true, value: context.character.data.scenario };
-        case "char_first_message":
-            return context.character.data.first_mes
-                ? { recursive: true, value: context.character.data.first_mes }
-                : { value: firstCharacterMessage(context.messages) };
-        case "char_message_examples":
-        case "message_examples":
-        case "mes_example":
-            return { recursive: true, value: context.character.data.mes_example };
-        case "char_system_prompt":
-        case "system_prompt":
-            return { recursive: true, value: context.character.data.system_prompt };
-        case "char_post_history_instructions":
-        case "post_history_instructions":
-            return {
-                recursive: true,
-                value: context.character.data.post_history_instructions,
-            };
-        case "character_book":
-        case "char_lore":
-            return { recursive: true, value: formatCharacterBook(context.character) };
+    const characterValue = characterCardMacroValue(
+        key,
+        context.character,
+        context.messages,
+    );
 
+    if (characterValue) {
+        return characterValue;
+    }
+
+    switch (key) {
         // Persona fields
         case "user":
         case "persona_name":
@@ -171,6 +199,48 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
             return { value: "" };
         default:
             return pluginMacroValue(key, context);
+    }
+}
+
+function characterCardMacroValue(
+    key: string,
+    character: SmileyCharacter,
+    messages: Message[] = [],
+    includeFirstMessageFallback = true,
+): MacroValue | undefined {
+    switch (key) {
+        case "char":
+            return { recursive: true, value: character.data.name };
+        case "char_description":
+            return { recursive: true, value: character.data.description };
+        case "char_personality":
+        case "personality":
+            return { recursive: true, value: character.data.personality };
+        case "tagline":
+            return { recursive: true, value: getCharacterTagline(character) };
+        case "scenario":
+            return { recursive: true, value: character.data.scenario };
+        case "char_first_message":
+            return character.data.first_mes
+                ? { recursive: true, value: character.data.first_mes }
+                : includeFirstMessageFallback
+                  ? { value: firstCharacterMessage(messages) }
+                  : undefined;
+        case "char_message_examples":
+        case "message_examples":
+        case "mes_example":
+            return { recursive: true, value: character.data.mes_example };
+        case "char_system_prompt":
+        case "system_prompt":
+            return { recursive: true, value: character.data.system_prompt };
+        case "char_post_history_instructions":
+        case "post_history_instructions":
+            return { recursive: true, value: character.data.post_history_instructions };
+        case "character_book":
+        case "char_lore":
+            return { recursive: true, value: formatCharacterBook(character) };
+        default:
+            return undefined;
     }
 }
 

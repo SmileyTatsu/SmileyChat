@@ -1,5 +1,6 @@
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { getMessageContent } from "#frontend/lib/messages";
+import { resolveCharacterCardMacros } from "#frontend/lib/presets/macros";
 import type { ChatSession, Message, SmileyCharacter } from "#frontend/types";
 
 export function selectGenerationCharacter({
@@ -178,7 +179,15 @@ export function promptCharacterForGeneration({
     );
     const orderedCharacters = (sourceChat.members ?? [])
         .slice()
-        .sort((left, right) => left.order - right.order)
+        .sort((left, right) => {
+            const leftIsActive = left.characterId === activeSpeaker.id;
+            const rightIsActive = right.characterId === activeSpeaker.id;
+
+            if (leftIsActive && !rightIsActive) return -1;
+            if (!leftIsActive && rightIsActive) return 1;
+
+            return left.order - right.order;
+        })
         .map((member) =>
             groupCharacters.find((character) => character.id === member.characterId),
         )
@@ -192,44 +201,20 @@ export function promptCharacterForGeneration({
         ...activeSpeaker,
         data: {
             ...activeSpeaker.data,
-            description: joinCharacterField(
+            // Character preset slots are separate, so every joined member block
+            // belongs in one field. Keeping the remaining card fields empty
+            // prevents descriptions, personalities, and instructions from being
+            // regrouped by field during preset compilation.
+            description: joinCharacterCards(
                 orderedCharacters,
                 sourceChat.group?.joinPrefix,
-                "Description",
-                (item) => item.data.description,
+                sourceChat.group?.scenarioOverride,
             ),
-            personality: joinCharacterField(
-                orderedCharacters,
-                sourceChat.group?.joinPrefix,
-                "Personality",
-                (item) => item.data.personality,
-            ),
-            scenario:
-                sourceChat.group?.scenarioOverride ||
-                joinCharacterField(
-                    orderedCharacters,
-                    sourceChat.group?.joinPrefix,
-                    "Scenario",
-                    (item) => item.data.scenario,
-                ),
+            personality: "",
+            scenario: sourceChat.group?.scenarioOverride || "",
             mes_example: activeSpeaker.data.mes_example,
-            system_prompt: [
-                `This is a group chat. The active speaker for the next reply is ${activeSpeaker.data.name}.`,
-                joinCharacterField(
-                    orderedCharacters,
-                    sourceChat.group?.joinPrefix,
-                    "System prompt",
-                    (item) => item.data.system_prompt,
-                ),
-            ]
-                .filter(Boolean)
-                .join("\n\n"),
-            post_history_instructions: [
-                activeSpeaker.data.post_history_instructions,
-                groupInstructionSections(orderedCharacters),
-            ]
-                .filter((part) => part.trim())
-                .join("\n\n"),
+            system_prompt: `This is a group chat. The active speaker for the next reply is ${activeSpeaker.data.name}.`,
+            post_history_instructions: "",
         },
     };
 }
@@ -248,41 +233,38 @@ function escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function joinCharacterField(
+function joinCharacterCards(
     characters: SmileyCharacter[],
     prefixTemplate: string | undefined,
-    fieldName: string,
-    valueForCharacter: (character: SmileyCharacter) => string,
+    scenarioOverride: string | undefined,
 ) {
     const safePrefixTemplate = prefixTemplate ?? "{{char}}:";
 
     return characters
         .map((item) => {
-            const value = valueForCharacter(item).trim();
-
-            if (!value) {
-                return "";
-            }
-
             const prefix = safePrefixTemplate.replace(/\{\{char\}\}/g, item.data.name);
+            const sections = [
+                cardSection("Description", item.data.description, item),
+                cardSection("Personality", item.data.personality, item),
+                scenarioOverride ? "" : cardSection("Scenario", item.data.scenario, item),
+                cardSection("System prompt", item.data.system_prompt, item),
+                cardSection(
+                    "Post-history instructions",
+                    item.data.post_history_instructions,
+                    item,
+                ),
+            ].filter(Boolean);
 
-            return [prefix, `${fieldName}:\n${value}`].filter(Boolean).join("\n");
+            return sections.length
+                ? [prefix, sections.join("\n\n")].filter(Boolean).join("\n")
+                : "";
         })
         .filter(Boolean)
         .join("\n\n");
 }
 
-function groupInstructionSections(characters: SmileyCharacter[]) {
-    return characters
-        .map((character) => {
-            const value = character.data.post_history_instructions.trim();
+function cardSection(label: string, value: string, character: SmileyCharacter) {
+    const resolvedValue = resolveCharacterCardMacros(value, character).trim();
 
-            if (!value) {
-                return "";
-            }
-
-            return `Post-history instructions for ${character.data.name}:\n${value}`;
-        })
-        .filter(Boolean)
-        .join("\n\n");
+    return resolvedValue ? `${label}:\n${resolvedValue}` : "";
 }
