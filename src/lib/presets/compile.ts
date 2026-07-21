@@ -284,54 +284,78 @@ function injectConversationMessages(
         );
     }
 
+    const placements = createInjectionPlacements(promptMessages, injectedPrompts);
     const output: AnchoredPromptMessage[] = [];
 
     for (let index = 0; index < promptMessages.length; index += 1) {
-        for (const injectedPrompt of injectedPrompts) {
-            if (
-                injectedPrompt.prompt.injectionPosition === "before" &&
-                injectionTargetIndex(
-                    promptMessages,
-                    injectedPrompt.prompt.injectionDepth,
-                ) === index
-            ) {
-                output.push(
-                    toAnchoredPromptMessage(
-                        injectedPrompt.prompt,
-                        injectedPrompt.content,
-                    ),
-                );
-            }
+        for (const injectedPrompt of placements[index].before) {
+            output.push(
+                toAnchoredPromptMessage(injectedPrompt.prompt, injectedPrompt.content),
+            );
         }
 
         output.push(
             ...toAnchoredHistoryMessages(promptMessages[index], context, historyPromptId),
         );
 
-        for (const injectedPrompt of injectedPrompts) {
-            if (
-                injectedPrompt.prompt.injectionPosition === "after" &&
-                injectionTargetIndex(
-                    promptMessages,
-                    injectedPrompt.prompt.injectionDepth,
-                ) === index
-            ) {
-                output.push(
-                    toAnchoredPromptMessage(
-                        injectedPrompt.prompt,
-                        injectedPrompt.content,
-                    ),
-                );
-            }
+        for (const injectedPrompt of placements[index].after) {
+            output.push(
+                toAnchoredPromptMessage(injectedPrompt.prompt, injectedPrompt.content),
+            );
         }
     }
 
     return output;
 }
 
-function injectionTargetIndex(messages: Message[], depth: number) {
-    const safeDepth = Number.isFinite(depth) ? Math.max(0, Math.floor(depth)) : 0;
-    return Math.max(0, messages.length - 1 - safeDepth);
+type InjectedPresetPrompt = {
+    prompt: PresetPrompt;
+    content: string;
+    order: number;
+    requestedDepth: number;
+};
+
+function createInjectionPlacements(
+    messages: Message[],
+    injectedPrompts: Array<{ prompt: PresetPrompt; content: string }>,
+) {
+    const placements = messages.map(() => ({
+        before: [] as InjectedPresetPrompt[],
+        after: [] as InjectedPresetPrompt[],
+    }));
+
+    injectedPrompts.forEach((injectedPrompt, order) => {
+        const requestedDepth = normalizedInjectionDepth(
+            injectedPrompt.prompt.injectionDepth,
+        );
+        const targetIndex = Math.max(0, messages.length - 1 - requestedDepth);
+        const placement = placements[targetIndex];
+        const positionedPrompt = { ...injectedPrompt, order, requestedDepth };
+
+        if (injectedPrompt.prompt.injectionPosition === "before") {
+            placement.before.push(positionedPrompt);
+        } else {
+            placement.after.push(positionedPrompt);
+        }
+    });
+
+    for (const placement of placements) {
+        placement.before.sort(compareInjectedPresetPrompts);
+        placement.after.sort(compareInjectedPresetPrompts);
+    }
+
+    return placements;
+}
+
+function normalizedInjectionDepth(depth: number) {
+    return Number.isFinite(depth) ? Math.max(0, Math.floor(depth)) : 0;
+}
+
+function compareInjectedPresetPrompts(
+    first: InjectedPresetPrompt,
+    second: InjectedPresetPrompt,
+) {
+    return second.requestedDepth - first.requestedDepth || first.order - second.order;
 }
 
 function toPromptMessage(prompt: PresetPrompt, content: string): ChatGenerationMessage {

@@ -223,6 +223,125 @@ describe("compilePresetMessages", () => {
             }),
         ]);
     });
+
+    test("orders overflow injections by requested depth without crossing before and after", () => {
+        const preset = presetWithPrompts([
+            injectedPrompt("before-latest", "before", 0),
+            injectedPrompt("after-latest", "after", 0),
+            injectedPrompt("after-deep-first", "after", 4),
+            injectedPrompt("after-deep-second", "after", 4),
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+
+        expect(
+            textContents(
+                compilePresetMessages(
+                    preset,
+                    context({ messages: [message("m1", "user", "Hello")] }),
+                ),
+            ),
+        ).toEqual([
+            "before-latest",
+            "Hello",
+            "after-deep-first",
+            "after-deep-second",
+            "after-latest",
+        ]);
+    });
+
+    test("preserves prompt order for equal-depth injected prompts", () => {
+        const preset = presetWithPrompts([
+            injectedPrompt("after-first", "after", 1),
+            injectedPrompt("after-second", "after", 1),
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+
+        expect(
+            textContents(
+                compilePresetMessages(
+                    preset,
+                    context({
+                        messages: [
+                            message("m1", "user", "First"),
+                            message("m2", "character", "Second"),
+                        ],
+                    }),
+                ),
+            ),
+        ).toEqual(["First", "after-first", "after-second", "Second"]);
+    });
+
+    test("places in-range injections around their target message", () => {
+        const preset = presetWithPrompts([
+            injectedPrompt("before", "before", 1),
+            injectedPrompt("after", "after", 1),
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+
+        expect(
+            textContents(
+                compilePresetMessages(
+                    preset,
+                    context({
+                        messages: [
+                            message("m1", "user", "First"),
+                            message("m2", "character", "Second"),
+                        ],
+                    }),
+                ),
+            ),
+        ).toEqual(["before", "First", "after", "Second"]);
+    });
+
+    test("keeps injected prompt order when history is empty", () => {
+        const preset = presetWithPrompts([
+            injectedPrompt("first", "after", 4),
+            injectedPrompt("second", "before", 0),
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+
+        expect(textContents(compilePresetMessages(preset, context()))).toEqual([
+            "first",
+            "second",
+        ]);
+    });
+
+    test("keeps expanded tool protocol messages together as one depth unit", () => {
+        const preset = presetWithPrompts([
+            injectedPrompt("after-tool-turn", "after", 0),
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const toolTurn = {
+            ...message("m1", "character", "The lookup is complete."),
+            swipes: [
+                {
+                    id: "m1-swipe",
+                    content: "The lookup is complete.",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    toolActivities: [
+                        {
+                            call: {
+                                id: "call-1",
+                                name: "lookup",
+                                argumentsText: "{}",
+                            },
+                            result: {
+                                toolCallId: "call-1",
+                                name: "lookup",
+                                content: "Found it",
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        expect(
+            textContents(
+                compilePresetMessages(preset, context({ messages: [toolTurn] })),
+            ),
+        ).toEqual(["Found it", "The lookup is complete.", "after-tool-turn"]);
+    });
 });
 
 function context(overrides: { messages?: Message[] } = {}) {
@@ -279,6 +398,18 @@ function prompt(id: string, title: string, content: string): PresetPrompt {
         injectionPosition: "none",
         injectionDepth: 0,
         forbidOverrides: false,
+    };
+}
+
+function injectedPrompt(
+    content: string,
+    injectionPosition: PresetPrompt["injectionPosition"],
+    injectionDepth: number,
+): PresetPrompt {
+    return {
+        ...prompt(content, content, content),
+        injectionPosition,
+        injectionDepth,
     };
 }
 
