@@ -36,6 +36,21 @@ export type AppPreferences = {
         characterPanelOpenByDefault: boolean;
         railOrder: string[];
     };
+    sillytavern: {
+        enabled: boolean;
+        basePath: string;
+        userFolder: string;
+        autoSyncOnStartup: boolean;
+        syncTargets: {
+            characters: boolean;
+            chats: boolean;
+            groupChats: boolean;
+            personas: boolean;
+            presets: boolean;
+            lorebooks: boolean;
+        };
+        lastSyncedAt: string;
+    };
 };
 
 export const defaultAppPreferences: AppPreferences = {
@@ -69,6 +84,21 @@ export const defaultAppPreferences: AppPreferences = {
         characterPanelOpenByDefault: true,
         railOrder: [],
     },
+    sillytavern: {
+        enabled: true,
+        basePath: "",
+        userFolder: "default-user",
+        autoSyncOnStartup: false,
+        syncTargets: {
+            characters: true,
+            chats: true,
+            groupChats: true,
+            personas: true,
+            presets: true,
+            lorebooks: true,
+        },
+        lastSyncedAt: "",
+    },
 };
 
 export function normalizeAppPreferences(value: unknown): AppPreferences {
@@ -76,6 +106,7 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
     const appearance = isRecord(preferences.appearance) ? preferences.appearance : {};
     const chat = isRecord(preferences.chat) ? preferences.chat : {};
     const layout = isRecord(preferences.layout) ? preferences.layout : {};
+    const sillytavern = isRecord(preferences.sillytavern) ? preferences.sillytavern : {};
 
     return {
         version: 1,
@@ -177,6 +208,38 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 defaultAppPreferences.layout.characterPanelOpenByDefault,
             ),
             railOrder: normalizeRailOrder(layout.railOrder),
+        },
+        sillytavern: {
+            enabled: booleanOrFallback(sillytavern.enabled, true),
+            basePath:
+                typeof sillytavern.basePath === "string" ? sillytavern.basePath : "",
+            userFolder:
+                typeof sillytavern.userFolder === "string"
+                    ? sillytavern.userFolder
+                    : "default-user",
+            autoSyncOnStartup: booleanOrFallback(sillytavern.autoSyncOnStartup, false),
+            syncTargets: Object.fromEntries(
+                [
+                    "characters",
+                    "chats",
+                    "groupChats",
+                    "personas",
+                    "presets",
+                    "lorebooks",
+                ].map((key) => [
+                    key,
+                    booleanOrFallback(
+                        isRecord(sillytavern.syncTargets)
+                            ? sillytavern.syncTargets[key]
+                            : undefined,
+                        true,
+                    ),
+                ]),
+            ) as AppPreferences["sillytavern"]["syncTargets"],
+            lastSyncedAt:
+                typeof sillytavern.lastSyncedAt === "string"
+                    ? sillytavern.lastSyncedAt
+                    : "",
         },
     };
 }

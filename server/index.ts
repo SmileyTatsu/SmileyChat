@@ -101,6 +101,7 @@ import {
 } from "./settings";
 import { serveStatic } from "./static";
 import { ensureUserData } from "./user-data";
+import { scanSillyTavern, syncSillyTavern } from "./sillytavern-migration";
 import {
     callMcpTool,
     closeAll,
@@ -492,6 +493,18 @@ const createServer = () =>
                         await readJsonBody(request),
                     );
                     return json({ ok: true, preferences });
+                }),
+            },
+
+            "/api/sillytavern/scan": {
+                POST: api(async (request) =>
+                    json(await scanSillyTavern(await readJsonBody(request))),
+                ),
+            },
+            "/api/sillytavern/sync": {
+                POST: api(async (request, routeServer) => {
+                    routeServer.timeout(request, 120);
+                    return json(await syncSillyTavern(await readJsonBody(request)));
                 }),
             },
 

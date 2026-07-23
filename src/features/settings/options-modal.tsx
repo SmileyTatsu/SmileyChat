@@ -7,6 +7,7 @@ import {
     Minimize2,
     Puzzle,
     Settings,
+    RefreshCw,
     SlidersHorizontal,
     Users,
     X,
@@ -40,6 +41,7 @@ import { LorebooksSettings } from "./lorebooks-settings";
 import { PersonasSettings } from "./personas/personas-settings";
 import { PluginsSettings } from "./plugins-settings";
 import { PresetSettings } from "./preset-settings";
+import { SillyTavernSyncSettings } from "./sillytavern-sync-settings";
 
 type OptionsModalProps = {
     connectionLoadError?: string;
@@ -82,6 +84,7 @@ const settingsCategories = [
     { id: "personas", label: "Personas", icon: Users },
     { id: "plugins", label: "Plugins", icon: Puzzle },
     { id: "settings", label: "Settings", icon: Settings },
+    { id: "sillytavern", label: "SillyTavern Sync", icon: RefreshCw },
 ] satisfies Array<{
     id: SettingsCategory;
     label: string;
@@ -366,6 +369,12 @@ export function OptionsModal({
                                 loadError={preferencesLoadError}
                                 preferences={preferences}
                                 saveStatus={preferencesSaveStatus}
+                                onPreferencesChange={onPreferencesChange}
+                            />
+                        )}
+                        {activeCategory === "sillytavern" && (
+                            <SillyTavernSyncSettings
+                                preferences={preferences}
                                 onPreferencesChange={onPreferencesChange}
                             />
                         )}
