@@ -80,10 +80,16 @@ export function SillyTavernSyncSettings({ preferences, onPreferencesChange }: Pr
                 overwriteExisting: false,
             });
             update({ lastSyncedAt: new Date().toISOString() });
+            const total = Object.values(result.imported).reduce(
+                (sum: number, count: any) => sum + count,
+                0,
+            );
             setStatus(
                 result.errors?.length
-                    ? `Completed with notes: ${result.errors.join(" ")}`
-                    : `Imported ${Object.values(result.imported).reduce((sum: number, count: any) => sum + count, 0)} items.`,
+                    ? `Completed with errors: ${result.errors.join(" ")}`
+                    : result.warnings?.length
+                      ? `Imported ${total} items. ${result.warnings.length} empty or unsupported chat file(s) skipped.`
+                      : `Imported ${total} items.`,
             );
         } catch (error) {
             setStatus(error instanceof Error ? error.message : "Sync failed.");

@@ -19,11 +19,14 @@ import {
     characterFolderName,
 } from "./character-file-paths";
 import { writeCharacterWithBasePath } from "./character-store";
-import { writeChatById } from "./chat-store";
+import { readChatById, readChatSummaryCollection, writeChatById } from "./chat-store";
 import { createLorebook } from "./lorebook-store";
 import { writePersonaAvatarAssetBytes } from "./persona-images";
 import { readPersonaSummaryCollection, writePersonaById } from "./persona-store";
-import { readCharacterSummaryCollection } from "./character-store";
+import {
+    readCharacterCollection,
+    readCharacterSummaryCollection,
+} from "./character-store";
 import { readPresetCollection, writePresetCollection } from "./settings";
 
 export type SillyTavernTargets = {
@@ -88,7 +91,9 @@ export async function syncSillyTavern(value: unknown) {
     const overwrite = request.overwriteExisting === true;
     const imported = zeroCounts();
     const errors: string[] = [];
+    const warnings: string[] = [];
     const characterIds = new Map<string, string>();
+    await seedCharacterIds(characterIds);
     try {
         if (targets.characters)
             imported.characters = await importCharacters(
@@ -101,7 +106,12 @@ export async function syncSillyTavern(value: unknown) {
     }
     try {
         if (targets.chats)
-            imported.chats = await importChats(scan.userFolder, overwrite, characterIds);
+            imported.chats = await importChats(
+                scan.userFolder,
+                overwrite,
+                characterIds,
+                warnings,
+            );
     } catch (e) {
         errors.push(`Character chats: ${message(e)}`);
     }
@@ -133,7 +143,7 @@ export async function syncSillyTavern(value: unknown) {
     } catch (e) {
         errors.push(`Lorebooks: ${message(e)}`);
     }
-    return { success: errors.length === 0, imported, errors };
+    return { success: errors.length === 0, imported, errors, warnings };
 }
 
 async function importCharacters(
@@ -180,28 +190,86 @@ async function importCharacters(
     return imported;
 }
 
-async function importChats(root: string, overwrite: boolean, ids: Map<string, string>) {
+async function importChats(
+    root: string,
+    overwrite: boolean,
+    ids: Map<string, string>,
+    warnings: string[],
+) {
     let imported = 0;
+    const existingChats = await readChatSummaryCollection();
     for (const file of await files(join(root, "chats"), [".jsonl"])) {
         const folder = basename(resolve(file, "..")).toLowerCase();
         const characterId = ids.get(folder) || ids.get(folder.replace(/\.card$/, ""));
         if (!characterId) continue;
-        const chat = importSillyTavernChat({
-            raw: await Bun.file(file).text(),
-            characterId,
-            sourceFileName: basename(file),
-        });
-        if (
-            !overwrite &&
-            (await Bun.file(
-                join((await import("./paths")).chatSessionsDir, `${chat.id}.json`),
-            ).exists())
-        )
-            continue;
-        await writeChatById(chat.id, chat);
-        imported++;
+        try {
+            const chat = importSillyTavernChat({
+                raw: await Bun.file(file).text(),
+                characterId,
+                sourceFileName: basename(file),
+            });
+            chat.id = `chat-st-${sourceHash(relative(join(root, "chats"), file))}`;
+            if (
+                !overwrite &&
+                (await Bun.file(
+                    join((await import("./paths")).chatSessionsDir, `${chat.id}.json`),
+                ).exists())
+            )
+                continue;
+            if (
+                !overwrite &&
+                (await hasLegacyEquivalentChat(
+                    chat,
+                    existingChats.chats.map((existing) => existing.id),
+                ))
+            ) {
+                continue;
+            }
+            await writeChatById(chat.id, chat);
+            imported++;
+        } catch (error) {
+            warnings.push(
+                `Skipped empty or unsupported chat: ${relative(join(root, "chats"), file)} (${message(error)})`,
+            );
+        }
     }
     return imported;
+}
+
+async function hasLegacyEquivalentChat(
+    chat: Awaited<ReturnType<typeof importSillyTavernChat>>,
+    chatIds: string[],
+) {
+    const first = chat.messages[0];
+    const firstContent = first?.swipes[first.activeSwipeIndex]?.content;
+    if (!first || !firstContent) return false;
+
+    for (const chatId of chatIds) {
+        const existing = await readChatById(chatId);
+        const existingFirst = existing?.messages[0];
+        if (
+            existing?.characterId === chat.characterId &&
+            existingFirst?.createdAt === first.createdAt &&
+            existingFirst.swipes[existingFirst.activeSwipeIndex]?.content === firstContent
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+async function seedCharacterIds(ids: Map<string, string>) {
+    const collection = await readCharacterCollection();
+
+    for (const character of collection.characters) {
+        const source = character.importedFrom?.sourceFileName;
+        if (!source) continue;
+        ids.set(
+            source.replace(/\.card\.png$|\.png$|\.json$/i, "").toLowerCase(),
+            character.id,
+        );
+    }
 }
 
 async function importGroupChats(
@@ -390,4 +458,11 @@ function zeroCounts(): Record<keyof SillyTavernTargets, number> {
 }
 function message(error: unknown) {
     return error instanceof Error ? error.message : "Unknown migration error.";
+}
+
+function sourceHash(value: string) {
+    return new Bun.CryptoHasher("sha256")
+        .update(value.toLowerCase())
+        .digest("hex")
+        .slice(0, 20);
 }
