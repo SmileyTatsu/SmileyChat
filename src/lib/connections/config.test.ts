@@ -1,7 +1,94 @@
 import { describe, expect, test } from "bun:test";
-import { normalizeConnectionSettings, sanitizeConnectionSettings } from "./config";
+import {
+    createConnectionProfile,
+    normalizeConnectionSettings,
+    sanitizeConnectionSettings,
+    switchProfileProvider,
+} from "./config";
 
 describe("connection config normalization", () => {
+    test("keeps shared profile settings when switching to Anthropic", () => {
+        const profile = createConnectionProfile("openai-compatible", "Local OpenAI", {
+            apiKey: "secret-key",
+            baseUrl: "http://localhost:11434/v1",
+            maxCompletionTokens: 2048,
+            model: { source: "custom", id: "my-local-model" },
+            reasoning: { enabled: true, effort: "high" },
+        });
+        profile.contextTokenBudget = 64000;
+
+        const switched = switchProfileProvider(profile, "anthropic");
+
+        expect(switched).toMatchObject({
+            id: profile.id,
+            name: "Local OpenAI",
+            provider: "anthropic",
+            contextTokenBudget: 64000,
+            config: {
+                apiKey: "secret-key",
+                baseUrl: "http://localhost:11434/v1",
+                maxTokens: 2048,
+                model: { source: "custom", id: "my-local-model" },
+                thinking: { mode: "adaptive", effort: "high" },
+            },
+        });
+    });
+
+    test("uses the target official base URL when the previous URL was its default", () => {
+        const profile = createConnectionProfile("openai-compatible", "OpenAI", {
+            baseUrl: "https://api.openai.com/v1/",
+        });
+
+        const switched = switchProfileProvider(profile, "google-ai");
+
+        expect(switched.config).toMatchObject({
+            baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+        });
+    });
+
+    test("retains a custom base URL across OpenRouter's fixed endpoint", () => {
+        const profile = createConnectionProfile("openai-compatible", "Local", {
+            baseUrl: "http://localhost:11434/v1",
+        });
+
+        const openRouterProfile = switchProfileProvider(profile, "openrouter");
+        const switched = switchProfileProvider(openRouterProfile, "anthropic");
+
+        expect(openRouterProfile).toMatchObject({
+            provider: "openrouter",
+            preservedBaseUrl: "http://localhost:11434/v1",
+        });
+        expect(openRouterProfile.config).not.toHaveProperty("baseUrl");
+        expect(switched.config).toMatchObject({
+            baseUrl: "http://localhost:11434/v1",
+        });
+    });
+
+    test("maps output token limits between native provider config names", () => {
+        const googleProfile = createConnectionProfile("google-ai", "Google", {
+            maxOutputTokens: 1536,
+        });
+        const xaiProfile = switchProfileProvider(googleProfile, "xai");
+        const anthropicProfile = switchProfileProvider(xaiProfile, "anthropic");
+        const novelAIProfile = switchProfileProvider(anthropicProfile, "novelai");
+
+        expect(xaiProfile.config).toMatchObject({ maxCompletionTokens: 1536 });
+        expect(anthropicProfile.config).toMatchObject({ maxTokens: 1536 });
+        expect(novelAIProfile.config).toMatchObject({ maxOutputTokens: 1536 });
+    });
+
+    test("retains custom model IDs for native providers that support them", () => {
+        const profile = createConnectionProfile("xai", "xAI", {
+            model: { source: "custom", id: "grok-local-experimental" },
+        });
+
+        const switched = switchProfileProvider(profile, "google-ai");
+
+        expect(switched.config).toMatchObject({
+            model: { source: "custom", id: "grok-local-experimental" },
+        });
+    });
+
     test("preserves a valid cached OpenAI-compatible model catalog", () => {
         const settings = normalizeConnectionSettings({
             version: 1,

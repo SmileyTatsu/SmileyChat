@@ -10,6 +10,7 @@ import type { AnthropicConnectionConfig } from "./anthropic/types";
 import { defaultGoogleAIConfig, normalizeGoogleAIConfig } from "./google-ai/config";
 import type { GoogleAIConnectionConfig } from "./google-ai/types";
 import { defaultNovelAIConfig, normalizeNovelAIConfig } from "./novelai/config";
+import { novelAITextBaseUrl } from "./novelai/constants";
 import type { NovelAIConnectionConfig } from "./novelai/types";
 import {
     defaultOpenAICompatibleConfig,
@@ -35,6 +36,8 @@ export type OpenAICompatibleConnectionProfile = {
     name: string;
     provider: "openai-compatible";
     contextTokenBudget: number;
+    /** Retains a custom endpoint while using a provider with a fixed URL. */
+    preservedBaseUrl?: string;
     config: OpenAICompatibleConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -45,6 +48,7 @@ export type OpenRouterConnectionProfile = {
     name: string;
     provider: "openrouter";
     contextTokenBudget: number;
+    preservedBaseUrl?: string;
     config: OpenRouterConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -55,6 +59,7 @@ export type GoogleAIConnectionProfile = {
     name: string;
     provider: "google-ai";
     contextTokenBudget: number;
+    preservedBaseUrl?: string;
     config: GoogleAIConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -65,6 +70,7 @@ export type AnthropicConnectionProfile = {
     name: string;
     provider: "anthropic";
     contextTokenBudget: number;
+    preservedBaseUrl?: string;
     config: AnthropicConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -75,6 +81,7 @@ export type NovelAIConnectionProfile = {
     name: string;
     provider: "novelai";
     contextTokenBudget: number;
+    preservedBaseUrl?: string;
     config: NovelAIConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -85,6 +92,7 @@ export type XAIConnectionProfile = {
     name: string;
     provider: "xai";
     contextTokenBudget: number;
+    preservedBaseUrl?: string;
     config: XAIConnectionConfig;
     createdAt: string;
     updatedAt: string;
@@ -98,6 +106,7 @@ export type PluginConnectionProfile = {
         "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai"
     >;
     contextTokenBudget: number;
+    preservedBaseUrl?: string;
     config: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
@@ -340,6 +349,54 @@ export function createConnectionProfile(
     };
 }
 
+/**
+ * Changes a profile's provider without discarding settings that have an
+ * equivalent meaning across connection adapters. The profile identity and
+ * context budget intentionally remain profile-level state.
+ */
+export function switchProfileProvider(
+    currentProfile: ConnectionProfile,
+    nextProviderId: ConnectionProviderId,
+    pluginDefaultConfig?: Record<string, unknown>,
+): ConnectionProfile {
+    const currentConfig = currentProfile.config as Record<string, unknown>;
+    const targetConfig = defaultConfigForProvider(nextProviderId, pluginDefaultConfig);
+    const apiKey = stringOrUndefined(currentConfig.apiKey);
+    const maxOutputTokens = extractMaxOutputTokens(currentConfig);
+    const customBaseUrl = providerSupportsBaseUrl(currentProfile.provider)
+        ? hasCustomBaseUrl(currentProfile.provider, currentConfig)
+            ? stringOrUndefined(currentConfig.baseUrl)
+            : undefined
+        : currentProfile.preservedBaseUrl;
+    const customModel = extractCustomModel(currentConfig);
+    const reasoningEffort = extractReasoningEffort(currentConfig);
+
+    const transferredConfig: Record<string, unknown> = {
+        ...targetConfig,
+        ...(apiKey ? { apiKey } : {}),
+        ...(customBaseUrl && providerSupportsBaseUrl(nextProviderId)
+            ? { baseUrl: customBaseUrl }
+            : {}),
+        ...modelTransferForProvider(nextProviderId, customModel),
+        ...outputTokenTransferForProvider(nextProviderId, maxOutputTokens),
+        ...reasoningTransferForProvider(nextProviderId, reasoningEffort),
+    };
+
+    const { preservedBaseUrl: _preservedBaseUrl, ...profile } = currentProfile;
+
+    return {
+        ...profile,
+        provider: nextProviderId,
+        contextTokenBudget: currentProfile.contextTokenBudget,
+        ...(customBaseUrl ? { preservedBaseUrl: customBaseUrl } : {}),
+        config: normalizeConfigForProvider(
+            nextProviderId,
+            transferredConfig,
+        ) as ConnectionProfile["config"],
+        updatedAt: new Date().toISOString(),
+    } as ConnectionProfile;
+}
+
 export function getActiveConnectionProfile(settings: ConnectionSettings) {
     return (
         settings.profiles.find((profile) => profile.id === settings.activeProfileId) ??
@@ -415,12 +472,14 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
     }
 
     const now = new Date().toISOString();
+    const preservedBaseUrl = stringOrUndefined(profile.preservedBaseUrl);
 
     return {
         id: stringOrFallback(profile.id, createConnectionProfileId()),
         name: stringOrFallback(profile.name, "Untitled connection"),
         provider,
         contextTokenBudget: normalizeContextTokenBudget(profile.contextTokenBudget),
+        ...(preservedBaseUrl ? { preservedBaseUrl } : {}),
         config:
             provider === "openai-compatible"
                 ? normalizeOpenAICompatibleConfig(profile.config)
@@ -478,6 +537,174 @@ function normalizeProvider(value: unknown): ConnectionProviderId | undefined {
 
 function normalizePluginConfig(value: unknown): Record<string, unknown> {
     return isRecord(value) ? { ...value, apiKey: stringOrUndefined(value.apiKey) } : {};
+}
+
+function defaultConfigForProvider(
+    provider: ConnectionProviderId,
+    pluginDefaultConfig?: Record<string, unknown>,
+): Record<string, unknown> {
+    if (provider === "openai-compatible") return { ...defaultOpenAICompatibleConfig };
+    if (provider === "openrouter") return { ...defaultOpenRouterConfig };
+    if (provider === "google-ai") return { ...defaultGoogleAIConfig };
+    if (provider === "anthropic") return { ...defaultAnthropicConfig };
+    if (provider === "novelai") return { ...defaultNovelAIConfig };
+    if (provider === "xai") return { ...defaultXAIConfig };
+
+    return { ...pluginDefaultConfig };
+}
+
+function normalizeConfigForProvider(
+    provider: ConnectionProviderId,
+    config: Record<string, unknown>,
+): Record<string, unknown> {
+    if (provider === "openai-compatible") return normalizeOpenAICompatibleConfig(config);
+    if (provider === "openrouter") return normalizeOpenRouterConfig(config);
+    if (provider === "google-ai") return normalizeGoogleAIConfig(config);
+    if (provider === "anthropic") return normalizeAnthropicConfig(config);
+    if (provider === "novelai") return normalizeNovelAIConfig(config);
+    if (provider === "xai") return normalizeXAIConfig(config);
+
+    return normalizePluginConfig(config);
+}
+
+function extractMaxOutputTokens(config: Record<string, unknown>) {
+    const value =
+        config.maxCompletionTokens ?? config.maxOutputTokens ?? config.maxTokens;
+
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function extractCustomModel(config: Record<string, unknown>) {
+    if (!isRecord(config.model) || config.model.source !== "custom") {
+        return undefined;
+    }
+
+    const id = stringOrUndefined(config.model.id);
+    return id ? { source: "custom" as const, id } : undefined;
+}
+
+function extractReasoningEffort(config: Record<string, unknown>) {
+    const reasoning = isRecord(config.reasoning) ? config.reasoning : {};
+    const thinking = isRecord(config.thinking) ? config.thinking : {};
+    const effort = reasoning.effort ?? thinking.effort ?? thinking.thinkingLevel;
+
+    return effort === "none" ||
+        effort === "minimal" ||
+        effort === "low" ||
+        effort === "medium" ||
+        effort === "high" ||
+        effort === "xhigh" ||
+        effort === "max"
+        ? effort
+        : undefined;
+}
+
+function hasCustomBaseUrl(
+    provider: ConnectionProviderId,
+    config: Record<string, unknown>,
+) {
+    const baseUrl = stringOrUndefined(config.baseUrl);
+
+    return Boolean(
+        baseUrl && normalizeBaseUrl(baseUrl) !== defaultBaseUrlForProvider(provider),
+    );
+}
+
+function defaultBaseUrlForProvider(provider: ConnectionProviderId) {
+    if (provider === "openai-compatible") {
+        return normalizeBaseUrl(defaultOpenAICompatibleConfig.baseUrl);
+    }
+    if (provider === "google-ai") return normalizeBaseUrl(defaultGoogleAIConfig.baseUrl);
+    if (provider === "anthropic") return normalizeBaseUrl(defaultAnthropicConfig.baseUrl);
+    if (provider === "novelai") return normalizeBaseUrl(novelAITextBaseUrl);
+    if (provider === "xai") return normalizeBaseUrl(defaultXAIConfig.baseUrl);
+
+    return undefined;
+}
+
+function normalizeBaseUrl(value: string) {
+    return value.trim().replace(/\/+$/, "").toLowerCase();
+}
+
+function providerSupportsBaseUrl(provider: ConnectionProviderId) {
+    return (
+        provider === "openai-compatible" ||
+        provider === "google-ai" ||
+        provider === "anthropic" ||
+        provider === "novelai" ||
+        provider === "xai" ||
+        !isNativeProvider(provider)
+    );
+}
+
+function isNativeProvider(provider: ConnectionProviderId) {
+    return (
+        provider === "openai-compatible" ||
+        provider === "openrouter" ||
+        provider === "google-ai" ||
+        provider === "anthropic" ||
+        provider === "novelai" ||
+        provider === "xai"
+    );
+}
+
+function modelTransferForProvider(
+    provider: ConnectionProviderId,
+    customModel: { source: "custom"; id: string } | undefined,
+) {
+    if (!customModel || provider === "openrouter") return {};
+    return { model: customModel };
+}
+
+function outputTokenTransferForProvider(
+    provider: ConnectionProviderId,
+    maxOutputTokens: number | undefined,
+) {
+    if (maxOutputTokens === undefined) return {};
+    if (provider === "google-ai" || provider === "novelai") {
+        return { maxOutputTokens };
+    }
+    if (provider === "anthropic") return { maxTokens: maxOutputTokens };
+    if (
+        provider === "openai-compatible" ||
+        provider === "openrouter" ||
+        provider === "xai"
+    ) {
+        return { maxCompletionTokens: maxOutputTokens };
+    }
+
+    return { maxOutputTokens };
+}
+
+function reasoningTransferForProvider(
+    provider: ConnectionProviderId,
+    effort: ReturnType<typeof extractReasoningEffort>,
+) {
+    if (!effort) return {};
+    if (provider === "openai-compatible") {
+        return { reasoning: { enabled: true, effort } };
+    }
+    if (provider === "openrouter") return { reasoning: { effort } };
+    if (provider === "google-ai") {
+        const thinkingLevel = effort === "xhigh" || effort === "max" ? "high" : effort;
+        return ["minimal", "low", "medium", "high"].includes(thinkingLevel)
+            ? { thinking: { mode: "level", thinkingLevel } }
+            : {};
+    }
+    if (provider === "anthropic") {
+        const anthropicEffort = effort === "low" ? "medium" : effort;
+        return ["medium", "high", "xhigh", "max"].includes(anthropicEffort)
+            ? { thinking: { mode: "adaptive", effort: anthropicEffort } }
+            : {};
+    }
+    if (provider === "xai") {
+        const xaiEffort = effort === "xhigh" || effort === "max" ? "high" : effort;
+        return ["low", "medium", "high"].includes(xaiEffort)
+            ? { reasoning: { enabled: true, effort: xaiEffort } }
+            : {};
+    }
+
+    return {};
 }
 
 function createConnectionProfileId() {

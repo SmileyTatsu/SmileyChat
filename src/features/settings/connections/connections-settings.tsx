@@ -19,6 +19,7 @@ import {
     isXAIProfile,
     sanitizeConnectionSecrets,
     sanitizeConnectionSettings,
+    switchProfileProvider,
     type ConnectionProfile,
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
@@ -767,35 +768,17 @@ export function ConnectionsSettings({
         }
 
         const provider = getPluginConnectionProvider(providerId);
-        const config =
-            providerId === "openai-compatible" ||
-            providerId === "openrouter" ||
-            providerId === "google-ai" ||
-            providerId === "anthropic" ||
-            providerId === "novelai" ||
-            providerId === "xai"
-                ? undefined
-                : (provider?.defaultConfig ?? {});
-        const nextProfile = createConnectionProfile(
+        const nextProfile = switchProfileProvider(
+            activeProfile,
             providerId,
-            providerId === "openrouter"
-                ? "OpenRouter"
-                : providerId === "google-ai"
-                  ? "Google AI"
-                  : providerId === "anthropic"
-                    ? "Anthropic"
-                    : providerId === "novelai"
-                      ? "NovelAI"
-                      : providerId === "xai"
-                        ? "xAI"
-                        : (provider?.label ?? "OpenAI compatible"),
-            config,
+            provider?.defaultConfig,
         );
 
         onSettingsChange(
             updateProfile(settings, activeProfile.id, {
                 provider: nextProfile.provider,
                 config: nextProfile.config,
+                preservedBaseUrl: nextProfile.preservedBaseUrl,
             }),
         );
         setStatusMessage("Changed provider. Saving automatically.");
