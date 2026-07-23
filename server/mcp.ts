@@ -184,6 +184,37 @@ async function records(settings: McpSettings): Promise<McpServerRecord[]> {
     });
 }
 
+export function resolveStdioCommand(commandParts: string[]): {
+    command: string;
+    args: string[];
+} {
+    if (!commandParts || !commandParts.length) return { command: "", args: [] };
+
+    let command = commandParts[0]!;
+    const args = commandParts.slice(1);
+    const lowerCmd = command.toLowerCase();
+
+    if (lowerCmd === "npx" || lowerCmd === "npx.cmd") {
+        const hasNpx =
+            typeof Bun !== "undefined" && typeof Bun.which === "function"
+                ? Boolean(Bun.which("npx"))
+                : true;
+        if (!hasNpx) {
+            command = "bunx";
+        }
+    } else if (lowerCmd === "node" || lowerCmd === "node.exe") {
+        const hasNode =
+            typeof Bun !== "undefined" && typeof Bun.which === "function"
+                ? Boolean(Bun.which("node"))
+                : true;
+        if (!hasNode) {
+            command = "bun";
+        }
+    }
+
+    return { command, args };
+}
+
 async function connect(server: McpServerConfig, secrets: Record<string, string>) {
     const existing = connections.get(server.id);
     if (existing) return existing;
@@ -195,11 +226,12 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
             (entry): entry is [string, string] => typeof entry[1] === "string",
         ),
     );
+    const resolved = resolveStdioCommand(server.command ?? []);
     const transport =
         server.transport === "stdio"
             ? new ManagedStdioClientTransport({
-                  command: server.command![0]!,
-                  args: server.command!.slice(1),
+                  command: resolved.command,
+                  args: resolved.args,
                   env: { ...env, ...secrets },
                   stderr: "pipe",
               })

@@ -232,8 +232,9 @@ function McpSettings({ api }: { api: SmileyPluginApi }) {
     return (
         <section className="mcp-settings">
             <div className="mcp-note">
-                Local stdio commands and remote Streamable HTTP tools. Header and
-                environment values are stored separately as secrets.
+                Local stdio commands (such as <code>bunx</code> or <code>npx</code>) and
+                remote Streamable HTTP tools. Header and environment values are stored
+                separately as secrets.
             </div>
 
             <section className="mcp-settings-group">
