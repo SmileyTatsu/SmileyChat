@@ -91,6 +91,12 @@ export function useCharacterChats({
         await chatLibrary.activateChatForCharacter(result.character);
     }
 
+    async function refreshImportedData() {
+        const result = await characterLibrary.loadCharacterCollection();
+        if (!result) return;
+        await chatLibrary.loadChatCollection(result.character);
+    }
+
     async function loadInitialChatState() {
         const result = await characterLibrary.loadCharacterCollectionStrict();
         const chatResult = await chatLibrary.loadInitialChatState(result.character);
@@ -262,6 +268,7 @@ export function useCharacterChats({
         importCharacterFiles: importExport.importCharacterFiles,
         importChatFile: importExport.importChatFile,
         loadCharacterCollection,
+        refreshImportedData,
         loadInitialChatState,
         pendingCharacterId,
         prepareCharacterAvatarUpload,

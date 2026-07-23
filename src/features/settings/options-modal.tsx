@@ -65,6 +65,7 @@ type OptionsModalProps = {
     onSetActivePersona: (personaId: string) => void;
     onPreferencesChange: (preferences: AppPreferences) => void;
     onPresetCollectionChange: (collection: PresetCollection) => void;
+    onSillyTavernSyncComplete: () => Promise<void>;
     persona: SmileyPersona;
     personaCollection: PersonaSummaryCollection;
     personaLoadError?: string;
@@ -116,6 +117,7 @@ export function OptionsModal({
     onSetActivePersona,
     onPreferencesChange,
     onPresetCollectionChange,
+    onSillyTavernSyncComplete,
     persona,
     personaCollection,
     personaLoadError,
@@ -376,6 +378,7 @@ export function OptionsModal({
                             <SillyTavernSyncSettings
                                 preferences={preferences}
                                 onPreferencesChange={onPreferencesChange}
+                                onSyncComplete={onSillyTavernSyncComplete}
                             />
                         )}
                     </div>

@@ -197,6 +197,7 @@ export function App() {
         importCharacterFiles,
         importChatFile,
         loadCharacterCollection,
+        refreshImportedData,
         loadInitialChatState,
         pendingCharacterId,
         patchCharacter,
@@ -614,6 +615,15 @@ export function App() {
         } catch (error) {
             setLorebookLoadError(messageFromError(error, "Failed to load LoreBooks."));
         }
+    }
+
+    async function refreshSillyTavernSyncData() {
+        await refreshImportedData();
+        await Promise.all([
+            loadPersonaCollection(),
+            loadPresetCollection(),
+            loadLorebookCollection(),
+        ]);
     }
 
     async function loadPreferences({
@@ -1164,6 +1174,7 @@ export function App() {
                 onSetActivePersona={handleOptionsSetActivePersona}
                 onPreferencesChange={handleOptionsPreferencesChange}
                 onPresetCollectionChange={setPresetCollection}
+                onSillyTavernSyncComplete={refreshSillyTavernSyncData}
                 presetCollection={presetCollection}
                 presetLoadError={presetLoadError}
                 userStatus={userStatus}

@@ -6,6 +6,7 @@ import { localApiFetch } from "#frontend/lib/api/client";
 type Props = {
     preferences: AppPreferences;
     onPreferencesChange: (preferences: AppPreferences) => void;
+    onSyncComplete: () => Promise<void>;
 };
 type Counts = {
     characters: number;
@@ -24,7 +25,11 @@ const labels: Record<keyof Counts, string> = {
     lorebooks: "Lorebooks / WorldInfo",
 };
 
-export function SillyTavernSyncSettings({ preferences, onPreferencesChange }: Props) {
+export function SillyTavernSyncSettings({
+    preferences,
+    onPreferencesChange,
+    onSyncComplete,
+}: Props) {
     const [availableUsers, setAvailableUsers] = useState<string[]>([]);
     const [counts, setCounts] = useState<Counts>();
     const [status, setStatus] = useState("");
@@ -80,6 +85,7 @@ export function SillyTavernSyncSettings({ preferences, onPreferencesChange }: Pr
                 overwriteExisting: false,
             });
             update({ lastSyncedAt: new Date().toISOString() });
+            await onSyncComplete();
             const total = Object.values(result.imported).reduce(
                 (sum: number, count: any) => sum + count,
                 0,
