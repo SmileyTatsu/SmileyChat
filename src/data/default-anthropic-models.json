@@ -1,73 +1,61 @@
 [
     {
-        "id": "claude-5",
-        "label": "Claude 5",
+        "id": "claude-fable",
+        "label": "Claude Fable",
         "models": [
             {
                 "id": "claude-fable-5",
                 "label": "Claude Fable 5"
-            },
-            {
-                "id": "claude-sonnet-5",
-                "label": "Claude Sonnet 5"
             }
         ]
     },
     {
-        "id": "claude-4.8",
-        "label": "Claude 4.8",
+        "id": "claude-opus",
+        "label": "Claude Opus",
         "models": [
             {
                 "id": "claude-opus-4-8",
                 "label": "Claude Opus 4.8"
-            }
-        ]
-    },
-    {
-        "id": "claude-4.7",
-        "label": "Claude 4.7",
-        "models": [
+            },
             {
                 "id": "claude-opus-4-7",
                 "label": "Claude Opus 4.7"
-            }
-        ]
-    },
-    {
-        "id": "claude-4.6",
-        "label": "Claude 4.6",
-        "models": [
+            },
             {
                 "id": "claude-opus-4-6",
                 "label": "Claude Opus 4.6"
             },
             {
-                "id": "claude-sonnet-4-6",
-                "label": "Claude Sonnet 4.6"
+                "id": "claude-opus-4-5-20251101",
+                "label": "Claude Opus 4.5"
             }
         ]
     },
     {
-        "id": "claude-4.5",
-        "label": "Claude 4.5",
+        "id": "claude-sonnet",
+        "label": "Claude Sonnet",
         "models": [
             {
-                "id": "claude-opus-4-5",
-                "label": "Claude Opus 4.5"
+                "id": "claude-sonnet-5",
+                "label": "Claude Sonnet 5"
             },
+            {
+                "id": "claude-sonnet-4-6",
+                "label": "Claude Sonnet 4.6"
+            },
+            {
+                "id": "claude-sonnet-4-5-20250929",
+                "label": "Claude Sonnet 4.5"
+            }
+        ]
+    },
+    {
+        "id": "claude-haiku",
+        "label": "Claude Haiku",
+        "models": [
             {
                 "id": "claude-haiku-4-5-20251001",
                 "label": "Claude Haiku 4.5"
-            }
-        ]
-    },
-    {
-        "id": "claude-4.1",
-        "label": "Claude 4.1",
-        "models": [
-            {
-                "id": "claude-opus-4-1",
-                "label": "Claude Opus 4.1"
             }
         ]
     }
