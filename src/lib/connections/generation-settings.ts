@@ -28,7 +28,8 @@ export function filterOpenRouterGenerationParameters(
     }
 
     if (!supportedParameters?.length) {
-        return generation;
+        const { streaming: _streaming, ...providerParameters } = generation;
+        return Object.keys(providerParameters).length ? providerParameters : undefined;
     }
 
     const supported = new Set(supportedParameters);

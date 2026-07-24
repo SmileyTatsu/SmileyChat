@@ -67,6 +67,7 @@ type PresetSettingsProps = {
     mode: ChatMode;
     onCollectionChange: (collection: PresetCollection) => void;
     persona: SmileyPersona;
+    streamingFallback: boolean;
     userStatus: UserStatus;
 };
 
@@ -82,6 +83,7 @@ export function PresetSettings({
     mode,
     onCollectionChange,
     persona,
+    streamingFallback,
     userStatus,
 }: PresetSettingsProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -633,6 +635,7 @@ export function PresetSettings({
                     {activeView === "generation" && (
                         <PresetGenerationEditor
                             generation={activePreset.generation}
+                            streamingFallback={streamingFallback}
                             warnings={generationWarnings}
                             onChange={updateGeneration}
                         />
@@ -664,12 +667,14 @@ export function PresetSettings({
 
 type PresetGenerationEditorProps = {
     generation: PresetGenerationSettings | undefined;
+    streamingFallback: boolean;
     warnings: string[];
     onChange: (generation: PresetGenerationSettings) => void;
 };
 
 function PresetGenerationEditor({
     generation,
+    streamingFallback,
     warnings,
     onChange,
 }: PresetGenerationEditorProps) {
@@ -717,6 +722,18 @@ function PresetGenerationEditor({
         onChange(next);
     }
 
+    function updateStreaming(value: string) {
+        const next = { ...settings };
+
+        if (value === "default") {
+            delete next.streaming;
+        } else {
+            next.streaming = value === "enabled";
+        }
+
+        onChange(next);
+    }
+
     return (
         <section className="preset-generation-panel" aria-label="Generation settings">
             <div className="preset-section-header">
@@ -740,6 +757,30 @@ function PresetGenerationEditor({
                 </div>
             )}
             <div className="preset-generation-grid">
+                <label>
+                    Stream responses
+                    <select
+                        value={
+                            settings.streaming === undefined
+                                ? "default"
+                                : settings.streaming
+                                  ? "enabled"
+                                  : "disabled"
+                        }
+                        onChange={(event) =>
+                            updateStreaming(
+                                (event.currentTarget as HTMLSelectElement).value,
+                            )
+                        }
+                    >
+                        <option value="default">
+                            Use global default (
+                            {streamingFallback ? "enabled" : "disabled"})
+                        </option>
+                        <option value="enabled">Enabled</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                </label>
                 <GenerationNumberField
                     label="Temperature"
                     min={0}

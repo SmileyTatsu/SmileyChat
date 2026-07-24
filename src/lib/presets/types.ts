@@ -48,6 +48,7 @@ export type PresetGenerationSettings = {
     repetitionPenalty?: number;
     seed?: number;
     stopSequences?: string[];
+    streaming?: boolean;
     temperature?: number;
     topA?: number;
     topK?: number;

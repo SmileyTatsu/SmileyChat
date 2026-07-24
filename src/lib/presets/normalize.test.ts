@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { resolvePresetStreaming } from "./generation";
 import { importSillyTavernPreset, normalizePreset } from "./normalize";
 
 describe("preset normalization", () => {
@@ -44,6 +45,34 @@ describe("preset normalization", () => {
         });
     });
 
+    test("normalizes explicit streaming generation overrides", () => {
+        const enabled = normalizePreset({
+            id: "preset-enabled",
+            title: "Enabled",
+            generation: { streaming: true },
+        });
+        const disabled = normalizePreset({
+            id: "preset-disabled",
+            title: "Disabled",
+            generation: { streaming: false },
+        });
+        const invalid = normalizePreset({
+            id: "preset-invalid",
+            title: "Invalid",
+            generation: { streaming: "yes" },
+        });
+
+        expect(enabled.generation).toEqual({ streaming: true });
+        expect(disabled.generation).toEqual({ streaming: false });
+        expect(invalid.generation).toBeUndefined();
+    });
+
+    test("resolves streaming preset overrides before the legacy fallback", () => {
+        expect(resolvePresetStreaming({ streaming: true }, false)).toBeTrue();
+        expect(resolvePresetStreaming({ streaming: false }, true)).toBeFalse();
+        expect(resolvePresetStreaming(undefined, true)).toBeTrue();
+    });
+
     test("imports SillyTavern sampler fields but ignores max token fields", () => {
         const { preset, summary } = importSillyTavernPreset(
             {
@@ -74,6 +103,22 @@ describe("preset normalization", () => {
         });
         expect(summary.importedGenerationFields).toEqual(["temperature", "top_p"]);
         expect(summary.ignoredFields).toContain("openai_max_tokens");
+    });
+
+    test("imports SillyTavern streaming fields and prefers stream_openai", () => {
+        const { preset, summary } = importSillyTavernPreset(
+            {
+                name: "Imported",
+                prompts: [],
+                stream: false,
+                stream_openai: true,
+            },
+            "Imported",
+        );
+
+        expect(preset.generation).toEqual({ streaming: true });
+        expect(summary.importedGenerationFields).toEqual(["stream", "stream_openai"]);
+        expect(summary.ignoredFields).not.toContain("stream_openai");
     });
 
     test("imports the real SillyTavern character prompt order before dummy orders", () => {

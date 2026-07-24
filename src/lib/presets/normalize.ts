@@ -29,7 +29,6 @@ const ignoredSillyTavernFields = [
     "openai_max_context",
     "openai_max_tokens",
     "max_context_unlocked",
-    "stream_openai",
     "reasoning_effort",
     "n",
     "enable_web_search",

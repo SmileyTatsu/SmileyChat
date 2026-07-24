@@ -255,13 +255,6 @@ export function GeneralSettings({
                 </SettingField>
 
                 <ToggleRow
-                    checked={preferences.chat.streaming}
-                    description="Show model replies as they arrive from supported providers."
-                    label="Stream responses"
-                    onChange={(streaming) => updateChat({ streaming })}
-                />
-
-                <ToggleRow
                     checked={preferences.chat.showThoughtProcess}
                     description="Show the combined thought and tool activity panel on model replies."
                     label="Show thought process"

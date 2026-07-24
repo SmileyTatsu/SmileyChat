@@ -113,7 +113,7 @@ When non-image files are attached, xAI uploads them with `purpose=assistants` an
 
 ## Streaming
 
-OpenAI-compatible, OpenRouter, Google AI, Anthropic, NovelAI, and xAI adapters support streaming over SSE. Streaming is enabled by default through the app-level preference `preferences.chat.streaming` and can be disabled in Options > Settings.
+OpenAI-compatible, OpenRouter, Google AI, Anthropic, NovelAI, and xAI adapters support streaming over SSE. Configure streaming in the active preset's Generation settings. Presets without an explicit setting use the legacy `preferences.chat.streaming` value as their fallback.
 
 Streaming is intentionally not a per-provider setting.
 

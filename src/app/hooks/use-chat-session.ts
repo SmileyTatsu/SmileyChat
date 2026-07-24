@@ -21,6 +21,7 @@ import {
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
+import { resolvePresetStreaming } from "#frontend/lib/presets/generation";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
     ChatMode,
@@ -138,6 +139,13 @@ export function useChatSession({
     });
 
     latestChatRef.current = latestChatValue(latestChatRef.current, chat);
+
+    const streamGeneration = resolvePresetStreaming(
+        presetCollection.presets.find(
+            (preset) => preset.id === presetCollection.activePresetId,
+        )?.generation,
+        preferences.chat.streaming,
+    );
 
     useEffect(() => {
         setChatError("");
@@ -260,10 +268,6 @@ export function useChatSession({
         if (userMessage) {
             updateChatMessages(nextMessages, sourceChat);
         }
-        const streamGeneration = shouldStreamGeneration(
-            preferences.chat.streaming,
-            connectionSettings,
-        );
         const streamingReply = streamGeneration
             ? createCharacterMessage(
                   generationCharacter.data.name,
@@ -490,11 +494,6 @@ export function useChatSession({
             });
 
         setChatError("");
-        const streamGeneration = shouldStreamGeneration(
-            preferences.chat.streaming,
-            connectionSettings,
-        );
-
         beginChatPending(chatId, messageId);
         const abortController = beginGenerationController(chatId, {
             swipeMessageId: streamGeneration ? messageId : undefined,
@@ -657,10 +656,6 @@ export function useChatSession({
                 messages: sourceChat.messages.slice(0, -1),
                 sourceChat,
             });
-        const streamGeneration = shouldStreamGeneration(
-            preferences.chat.streaming,
-            connectionSettings,
-        );
         const priorActivities = activeSwipe.toolActivities ?? [];
         const priorTimeline = activeSwipe.timeline ?? [];
         const chatId = sourceChat.id;
@@ -754,7 +749,7 @@ export function useChatSession({
                     sourceChat,
                 }),
                 sourceChat,
-                stream: preferences.chat.streaming,
+                stream: streamGeneration,
                 trigger: "send",
             },
         );
@@ -1082,11 +1077,4 @@ function latestChatValue(
     }
 
     return next.updatedAt >= current.updatedAt ? next : current;
-}
-
-function shouldStreamGeneration(
-    enabled: boolean,
-    _connectionSettings: ConnectionSettings,
-) {
-    return enabled;
 }

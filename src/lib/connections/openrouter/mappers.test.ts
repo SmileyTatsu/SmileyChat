@@ -91,4 +91,23 @@ describe("OpenRouter connection mappers", () => {
         expect(body.min_p).toBeUndefined();
         expect(body.frequency_penalty).toBeUndefined();
     });
+
+    test("does not pass preset streaming overrides as provider parameters", () => {
+        const body = createOpenRouterChatCompletionBody(
+            {
+                generation: { streaming: false },
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+                stream: true,
+            },
+            {
+                maxCompletionTokens: 250,
+                model: { source: "api", id: "openai/gpt-5.5" },
+                providerPreferences: {},
+            },
+        );
+
+        expect(body.stream).toBeTrue();
+        expect(body).not.toHaveProperty("streaming");
+    });
 });

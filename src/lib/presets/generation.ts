@@ -19,6 +19,8 @@ export const sillyTavernGenerationFieldMap = {
     stop: "stopSequences",
     stop_sequence: "stopSequences",
     stop_sequences: "stopSequences",
+    stream: "streaming",
+    stream_openai: "streaming",
     temperature: "temperature",
     top_a: "topA",
     top_k: "topK",
@@ -35,6 +37,7 @@ export function normalizePresetGenerationSettings(
     const source = value;
     const output: PresetGenerationSettings = {};
 
+    assignBoolean(output, "streaming", source.streaming);
     assignNumber(output, "temperature", source.temperature, 0, 2);
     assignNumber(output, "topP", source.topP, 0, 1);
     assignInteger(output, "topK", source.topK, 0);
@@ -51,6 +54,13 @@ export function normalizePresetGenerationSettings(
     }
 
     return Object.keys(output).length ? output : undefined;
+}
+
+export function resolvePresetStreaming(
+    generation: PresetGenerationSettings | undefined,
+    fallback: boolean,
+) {
+    return typeof generation?.streaming === "boolean" ? generation.streaming : fallback;
 }
 
 export function normalizeSillyTavernGenerationSettings(value: unknown): {
@@ -80,7 +90,20 @@ export function normalizeSillyTavernGenerationSettings(value: unknown): {
     };
 }
 
-type NumberGenerationSetting = Exclude<keyof PresetGenerationSettings, "stopSequences">;
+type NumberGenerationSetting = Exclude<
+    keyof PresetGenerationSettings,
+    "stopSequences" | "streaming"
+>;
+
+function assignBoolean(
+    output: PresetGenerationSettings,
+    key: "streaming",
+    value: unknown,
+) {
+    if (typeof value === "boolean") {
+        output[key] = value;
+    }
+}
 
 function assignNumber(
     output: PresetGenerationSettings,

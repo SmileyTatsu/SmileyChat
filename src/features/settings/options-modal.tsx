@@ -338,6 +338,7 @@ export function OptionsModal({
                                 mode={mode}
                                 onCollectionChange={onPresetCollectionChange}
                                 persona={persona}
+                                streamingFallback={preferences.chat.streaming}
                                 userStatus={userStatus}
                             />
                         )}
