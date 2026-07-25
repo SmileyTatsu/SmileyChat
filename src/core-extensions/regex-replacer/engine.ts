@@ -3,6 +3,9 @@ import type { Message, MessageRole } from "#frontend/types";
 
 import { getRegexSettings, type RegexRule } from "./settings";
 
+const REGEX_CACHE_LIMIT = 256;
+const compiledRegexCache = new Map<string, RegExp>();
+
 export type RegexTarget = keyof RegexRule["targets"];
 export type RegexRunOptions = {
     depth?: number;
@@ -31,7 +34,10 @@ export function runRegexPass(text: string, options: RegexRunOptions): string {
 
         try {
             const pattern = options.macroResolver?.(rule.pattern) ?? rule.pattern;
-            const regex = new RegExp(pattern, rule.flags);
+            const regex = getCompiledRegex(pattern, rule.flags);
+            // A cached global or sticky RegExp can retain state between passes.
+            // Resetting it preserves the behavior of compiling a new instance here.
+            regex.lastIndex = 0;
             return current.replace(regex, (...args: unknown[]) =>
                 replacementForMatch(args, rule),
             );
@@ -40,6 +46,20 @@ export function runRegexPass(text: string, options: RegexRunOptions): string {
             return current;
         }
     }, text);
+}
+
+function getCompiledRegex(pattern: string, flags: string) {
+    const key = `${flags}\u0000${pattern}`;
+    const cached = compiledRegexCache.get(key);
+    if (cached) return cached;
+
+    const regex = new RegExp(pattern, flags);
+    if (compiledRegexCache.size >= REGEX_CACHE_LIMIT) {
+        compiledRegexCache.clear();
+    }
+
+    compiledRegexCache.set(key, regex);
+    return regex;
 }
 
 export function appliesToDestination(
