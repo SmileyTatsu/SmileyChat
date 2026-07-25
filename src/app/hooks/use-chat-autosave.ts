@@ -139,6 +139,11 @@ export function useChatAutosave({
 
         const queue = createLatestSaveQueue<ChatSession, SaveResult>({
             save: (chat) => saveChat(chat),
+            onIdle: () => {
+                if (saveQueuesRef.current.get(chatId) === queue) {
+                    saveQueuesRef.current.delete(chatId);
+                }
+            },
             onSaved: (_chat, result) => {
                 if (
                     shouldApplySavedChatSummary(

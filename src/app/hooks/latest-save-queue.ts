@@ -6,6 +6,7 @@ export type LatestSaveQueue<T> = {
 
 type LatestSaveQueueOptions<T, Result> = {
     onError?: (error: unknown) => void;
+    onIdle?: () => void;
     onSaved?: (value: T, result: Result) => void;
     save: (value: T) => Promise<Result>;
 };
@@ -27,6 +28,7 @@ export function createLatestSaveQueue<T, Result>(
         if (!drainPromise) {
             drainPromise = drain().finally(() => {
                 drainPromise = undefined;
+                options.onIdle?.();
             });
         }
 

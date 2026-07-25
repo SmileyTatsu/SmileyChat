@@ -34,6 +34,21 @@ describe("createLatestSaveQueue", () => {
         expect(writes).toEqual(["first", "third"]);
         expect(queue.getLatestPendingValue()).toBeUndefined();
     });
+
+    test("notifies when its active save drain has finished", async () => {
+        let idleCount = 0;
+        const queue = createLatestSaveQueue<string, void>({
+            save: async () => undefined,
+            onIdle: () => {
+                idleCount += 1;
+            },
+        });
+
+        await queue.enqueue("first");
+        await queue.enqueue("second");
+
+        expect(idleCount).toBe(2);
+    });
 });
 
 function deferred<T>() {
