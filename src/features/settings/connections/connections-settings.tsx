@@ -992,24 +992,13 @@ export function ConnectionsSettings({
                                     : getModelMaxContextLimit(activeProfile)
                             }
                             value={
-                                activeProfile.overrideModelContext
-                                    ? activeProfile.contextTokenBudget
-                                    : getEffectiveContextTokenBudget(activeProfile)
-                                          .tokenBudget
+                                getEffectiveContextTokenBudget(activeProfile).tokenBudget
                             }
                             onChange={(nextBudget) => {
                                 updateActiveProfileContextTokenBudget(nextBudget);
                             }}
                         />
-                        <label className="setting-row preference-toggle-row connection-unlocked-context-toggle">
-                            <span>
-                                <strong>Unlocked Context</strong>
-                                <small>
-                                    {activeProfile.overrideModelContext
-                                        ? "Unlocked mode active (slider max expanded to 2,000,000 tokens)."
-                                        : "Unlocks the context limit slider up to 2,000,000 tokens."}
-                                </small>
-                            </span>
+                        <label className="connection-unlocked-context-toggle">
                             <input
                                 checked={activeProfile.overrideModelContext}
                                 type="checkbox"
@@ -1019,6 +1008,7 @@ export function ConnectionsSettings({
                                     )
                                 }
                             />
+                            <span>Unlocked Context</span>
                         </label>
                     </section>
 
@@ -1177,26 +1167,30 @@ function ContextTokenLimitControl({
 }) {
     const normalizedValue = Math.min(max, normalizeContextTokenBudget(value));
     const step = max > 100000 ? 8192 : 1024;
+    const maxSteps = Math.max(1, Math.ceil(max / step));
+
+    const currentStepIndex =
+        normalizedValue >= max
+            ? maxSteps
+            : Math.min(maxSteps, Math.round(normalizedValue / step));
 
     return (
         <div className="connection-context-limit-control">
             <input
-                max={max}
-                min={minContextTokenBudget}
-                step={step}
+                max={maxSteps}
+                min={0}
+                step={1}
                 type="range"
-                value={normalizedValue}
-                onInput={(event) =>
-                    onChange(
-                        Math.min(
-                            max,
-                            normalizeContextTokenBudget(
-                                (event.currentTarget as HTMLInputElement).valueAsNumber,
-                                normalizedValue,
-                            ),
-                        ),
-                    )
-                }
+                value={currentStepIndex}
+                onInput={(event) => {
+                    const stepIdx = (event.currentTarget as HTMLInputElement)
+                        .valueAsNumber;
+                    const nextValue =
+                        stepIdx >= maxSteps
+                            ? max
+                            : Math.min(max, Math.round(stepIdx * step));
+                    onChange(nextValue);
+                }}
             />
             <input
                 max={max}

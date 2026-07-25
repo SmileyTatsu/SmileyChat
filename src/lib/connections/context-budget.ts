@@ -52,25 +52,28 @@ export function getModelMaxContextLimit(profile: ConnectionProfile | undefined):
 export function getEffectiveContextTokenBudget(
     profile: ConnectionProfile | undefined,
 ): EffectiveContextTokenBudget {
+    const rawBudget = normalizeContextTokenBudget(profile?.contextTokenBudget);
+
     if (profile?.overrideModelContext) {
         return {
             source: "custom",
-            tokenBudget: normalizeContextTokenBudget(profile.contextTokenBudget),
+            tokenBudget: rawBudget,
         };
     }
 
-    const model = getSelectedModel(profile);
-    if (model?.source !== "custom" && model?.id) {
-        const contextTokenLimit = getLocalModelContextTokenLimit(
-            profile?.provider,
-            model.id,
-        );
-        if (contextTokenLimit !== undefined) {
-            return { source: "local-model", tokenBudget: contextTokenLimit };
-        }
-    }
+    const modelMax = getModelMaxContextLimit(profile);
+    const tokenBudget = Math.min(modelMax, rawBudget);
 
-    return { source: "fallback", tokenBudget: maxContextTokenBudget };
+    const model = getSelectedModel(profile);
+    const isLocalModel =
+        model?.source !== "custom" &&
+        model?.id !== undefined &&
+        getLocalModelContextTokenLimit(profile?.provider, model.id) !== undefined;
+
+    return {
+        source: isLocalModel ? "local-model" : "fallback",
+        tokenBudget,
+    };
 }
 
 function getSelectedModel(profile: ConnectionProfile | undefined) {
