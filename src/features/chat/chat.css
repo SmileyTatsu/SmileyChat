@@ -203,28 +203,10 @@
     min-height: 0;
     overflow: auto;
     outline: none;
-    padding: 18px 0;
 }
 
-.message-list-sentinel {
-    height: 1px;
-}
-
-.load-earlier-messages {
-    display: block;
-    min-height: 34px;
-    border: 1px solid #303440;
-    border-radius: 8px;
-    background: #1b1e25;
-    color: #cdd5eb;
-    margin: 0 auto 12px;
-    padding: 0 12px;
-}
-
-.load-earlier-messages:hover {
-    border-color: #465065;
-    background: #242833;
-    color: #ececf1;
+.message-list-spacer {
+    height: 18px;
 }
 
 .jump-to-bottom-button {

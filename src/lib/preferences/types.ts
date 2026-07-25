@@ -26,7 +26,6 @@ export type AppPreferences = {
         enterToSend: boolean;
         autoScroll: boolean;
         defaultMode: ChatMode;
-        initialMessageCount: number;
         streaming: boolean;
         showThoughtProcess: boolean;
         showToolActivity: boolean;
@@ -74,7 +73,6 @@ export const defaultAppPreferences: AppPreferences = {
         enterToSend: true,
         autoScroll: true,
         defaultMode: "chat",
-        initialMessageCount: 50,
         streaming: true,
         showThoughtProcess: true,
         showToolActivity: true,
@@ -176,12 +174,6 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             defaultMode: normalizeChatMode(
                 chat.defaultMode,
                 defaultAppPreferences.chat.defaultMode,
-            ),
-            initialMessageCount: numberInRange(
-                chat.initialMessageCount,
-                defaultAppPreferences.chat.initialMessageCount,
-                20,
-                300,
             ),
             streaming: booleanOrFallback(
                 chat.streaming,

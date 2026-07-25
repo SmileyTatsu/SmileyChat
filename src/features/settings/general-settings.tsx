@@ -242,18 +242,6 @@ export function GeneralSettings({
                     onChange={(autoScroll) => updateChat({ autoScroll })}
                 />
 
-                <SettingField label="Initial messages">
-                    <NumberInput
-                        min={20}
-                        max={300}
-                        step={10}
-                        value={preferences.chat.initialMessageCount}
-                        onChange={(initialMessageCount) =>
-                            updateChat({ initialMessageCount })
-                        }
-                    />
-                </SettingField>
-
                 <ToggleRow
                     checked={preferences.chat.showThoughtProcess}
                     description="Show the combined thought and tool activity panel on model replies."

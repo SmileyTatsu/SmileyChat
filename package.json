@@ -21,7 +21,8 @@
         "adm-zip": "^0.5.17",
         "clsx": "^2.1.1",
         "lucide-preact": "^1.21.0",
-        "preact": "^10.29.2"
+        "preact": "^10.29.2",
+        "react-virtuoso": "^4.18.11"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.3.1",

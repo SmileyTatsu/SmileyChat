@@ -1,13 +1,7 @@
 import { AlertTriangle, ArrowDown, Trash2 } from "lucide-preact";
 import { memo } from "preact/compat";
-import {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "preact/hooks";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
 import { getMessageContent } from "#frontend/lib/messages";
@@ -31,7 +25,6 @@ type MessageListProps = {
     chatId: string;
     defaultCharacterDialogueColor?: string;
     errorMessage?: string;
-    initialMessageCount: number;
     isTyping?: boolean;
     messages: Message[];
     mode: ChatMode;
@@ -41,7 +34,6 @@ type MessageListProps = {
     timeFormat: TimeFormat;
     messageFormatting: MessageFormattingOptions;
     pendingSwipeMessageId?: string;
-    resetKey: string;
     showRpCharacterImages: boolean;
     showThoughtProcess: boolean;
     showToolActivity: boolean;
@@ -67,13 +59,11 @@ export const MessageList = memo(function MessageList({
     chatId,
     defaultCharacterDialogueColor,
     errorMessage,
-    initialMessageCount,
     isTyping,
     messages,
     mode,
     canForkMessages,
     pendingSwipeMessageId,
-    resetKey,
     showRpCharacterImages,
     showThoughtProcess,
     showToolActivity,
@@ -92,17 +82,10 @@ export const MessageList = memo(function MessageList({
     onRemoveAllAttachments,
     getPluginSnapshot,
 }: MessageListProps) {
-    const listRef = useRef<HTMLDivElement>(null);
+    const virtuosoRef = useRef<VirtuosoHandle>(null);
     const openMenuRef = useRef<HTMLDivElement>(null);
-    const topSentinelRef = useRef<HTMLDivElement>(null);
-    const previousScrollHeightRef = useRef<number | undefined>(undefined);
-    const isLoadingEarlierRef = useRef(false);
-    const needsInitialBottomScrollRef = useRef(true);
+    const pendingAutoScrollFrameRef = useRef<number>();
     const shouldAutoScrollRef = useRef(true);
-    const wasStreamingRef = useRef(false);
-    const [visibleCount, setVisibleCount] = useState(() =>
-        normalizeMessageWindowSize(initialMessageCount),
-    );
     const [showJumpToBottom, setShowJumpToBottom] = useState(false);
     const [openMenuMessageId, setOpenMenuMessageId] = useState("");
     const [messageMenuPlacement, setMessageMenuPlacement] = useState<"above" | "below">(
@@ -148,38 +131,18 @@ export const MessageList = memo(function MessageList({
             }),
         [messages, showToolActivity],
     );
-    const lastMessage = displayMessages[displayMessages.length - 1];
     const isStreamActive = Boolean(isTyping || pendingSwipeMessageId);
     const keyboardSwipeTarget = useMemo(
         () => findKeyboardSwipeTarget(displayMessages),
         [displayMessages],
     );
-    const lastActiveSwipe = lastMessage
-        ? (lastMessage.swipes[lastMessage.activeSwipeIndex] ?? lastMessage.swipes[0])
-        : undefined;
-    const scrollVersion = [
-        displayMessages.length,
-        lastMessage?.id ?? "",
-        lastMessage?.activeSwipeIndex ?? "",
-        lastActiveSwipe?.id ?? "",
-        lastActiveSwipe?.content.length ?? 0,
-        lastActiveSwipe?.reasoning?.length ?? 0,
-    ].join(":");
-
     useEffect(() => {
-        const streamJustStarted = isStreamActive && !wasStreamingRef.current;
-        wasStreamingRef.current = isStreamActive;
-
-        const list = listRef.current;
-        if (!list || !autoScroll || !shouldAutoScrollRef.current) {
-            return;
-        }
-
-        list.scrollTo({
-            top: list.scrollHeight,
-            behavior: isStreamActive && !streamJustStarted ? "auto" : "smooth",
-        });
-    }, [autoScroll, errorMessage, isStreamActive, scrollVersion]);
+        return () => {
+            if (pendingAutoScrollFrameRef.current !== undefined) {
+                cancelAnimationFrame(pendingAutoScrollFrameRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (!openMenuMessageId) {
@@ -211,15 +174,9 @@ export const MessageList = memo(function MessageList({
         };
     }, [openMenuMessageId]);
 
-    const updateAutoScrollPreference = useCallback(() => {
-        const list = listRef.current;
-        if (!list) {
-            return;
-        }
-
-        const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
-        shouldAutoScrollRef.current = distanceFromBottom < AUTO_SCROLL_BOTTOM_THRESHOLD;
-        setShowJumpToBottom(distanceFromBottom >= AUTO_SCROLL_BOTTOM_THRESHOLD);
+    const updateAutoScrollPreference = useCallback((isAtBottom: boolean) => {
+        shouldAutoScrollRef.current = isAtBottom;
+        setShowJumpToBottom(!isAtBottom);
     }, []);
 
     const handleListKeyDown = useCallback(
@@ -235,7 +192,7 @@ export const MessageList = memo(function MessageList({
                 event.ctrlKey ||
                 event.metaKey ||
                 event.shiftKey ||
-                isInteractiveKeyboardTarget(event.target, listRef.current)
+                isInteractiveKeyboardTarget(event.target, null)
             ) {
                 return;
             }
@@ -292,7 +249,7 @@ export const MessageList = memo(function MessageList({
                 return;
             }
 
-            const list = listRef.current;
+            const list = trigger.closest(".message-list-shell");
             const listRect = list?.getBoundingClientRect();
             const triggerRect = trigger.getBoundingClientRect();
             const estimatedMenuHeight = 178 + pluginMessageActions.length * 32;
@@ -401,111 +358,48 @@ export const MessageList = memo(function MessageList({
         setAttachmentRemovalCandidate(undefined);
     }
 
-    const visibleMessages = displayMessages.slice(-visibleCount);
-    const hasEarlierMessages = visibleCount < displayMessages.length;
-
-    useEffect(() => {
-        needsInitialBottomScrollRef.current = true;
-        shouldAutoScrollRef.current = true;
-        setShowJumpToBottom(false);
-        setVisibleCount(normalizeMessageWindowSize(initialMessageCount));
-    }, [initialMessageCount, resetKey]);
-
-    useEffect(() => {
-        const list = listRef.current;
-        const topSentinel = topSentinelRef.current;
-
-        if (!list || !topSentinel || !hasEarlierMessages) {
-            return;
-        }
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry?.isIntersecting && !needsInitialBottomScrollRef.current) {
-                    loadEarlierMessages();
-                }
-            },
-            {
-                root: list,
-                rootMargin: "140px 0px 0px 0px",
-                threshold: 0,
-            },
-        );
-
-        observer.observe(topSentinel);
-
-        return () => observer.disconnect();
-    }, [hasEarlierMessages, displayMessages.length, visibleCount]);
-
-    useLayoutEffect(() => {
-        const list = listRef.current;
-        const previousScrollHeight = previousScrollHeightRef.current;
-
-        if (!list) {
-            return;
-        }
-
-        if (previousScrollHeight !== undefined && isLoadingEarlierRef.current) {
-            list.scrollTop += list.scrollHeight - previousScrollHeight;
-            previousScrollHeightRef.current = undefined;
-            isLoadingEarlierRef.current = false;
-            return;
-        }
-
-        if (needsInitialBottomScrollRef.current) {
-            snapToBottom(list);
-            needsInitialBottomScrollRef.current = false;
-            shouldAutoScrollRef.current = true;
-            setShowJumpToBottom(false);
-        }
-    }, [visibleCount, displayMessages.length]);
-
-    useLayoutEffect(() => {
-        const list = listRef.current;
-
-        if (!list || !autoScroll || !shouldAutoScrollRef.current) {
-            return;
-        }
-
-        snapToBottom(list);
-    }, [autoScroll, mode, showRpCharacterImages]);
-
     const scrollToBottomIfNeeded = useEventCallback(() => {
-        const list = listRef.current;
-
-        if (!list || !autoScroll || !shouldAutoScrollRef.current) {
+        if (!autoScroll || !shouldAutoScrollRef.current) {
             return;
         }
 
-        list.scrollTo({ top: list.scrollHeight, behavior: "auto" });
+        if (pendingAutoScrollFrameRef.current !== undefined) {
+            return;
+        }
+
+        pendingAutoScrollFrameRef.current = requestAnimationFrame(() => {
+            pendingAutoScrollFrameRef.current = undefined;
+            virtuosoRef.current?.autoscrollToBottom();
+        });
     });
 
     return (
         <div className="message-list-shell">
-            <div
+            <Virtuoso
                 className="message-list"
-                ref={listRef}
+                ref={virtuosoRef}
                 aria-label="Chat messages"
                 aria-live="polite"
                 tabIndex={0}
                 onKeyDown={handleListKeyDown}
-                onScroll={updateAutoScrollPreference}
-            >
-                <div
-                    className="message-list-sentinel"
-                    ref={topSentinelRef}
-                    aria-hidden="true"
-                />
-                {hasEarlierMessages && (
-                    <button
-                        className="load-earlier-messages"
-                        type="button"
-                        onClick={loadEarlierMessages}
-                    >
-                        Load earlier messages
-                    </button>
-                )}
-                {visibleMessages.map((message) => {
+                atBottomStateChange={updateAutoScrollPreference}
+                atBottomThreshold={AUTO_SCROLL_BOTTOM_THRESHOLD}
+                alignToBottom
+                computeItemKey={(_, message) => message.id}
+                data={displayMessages}
+                followOutput={() =>
+                    autoScroll && shouldAutoScrollRef.current
+                        ? isStreamActive
+                            ? "auto"
+                            : "smooth"
+                        : false
+                }
+                initialTopMostItemIndex={{
+                    index: Math.max(0, displayMessages.length - 1),
+                    align: "end",
+                }}
+                increaseViewportBy={{ top: 500, bottom: 800 }}
+                itemContent={(_, message) => {
                     const isEditing = editingMessageId === message.id;
                     const isMenuOpen = openMenuMessageId === message.id;
 
@@ -561,14 +455,26 @@ export const MessageList = memo(function MessageList({
                             onToggleMenu={toggleMessageMenu}
                         />
                     );
-                })}
-
-                {isTyping && (
-                    <TypingIndicator characterName={characterName} mode={mode} />
-                )}
-                {copyError && <p className="chat-error">{copyError}</p>}
-                {errorMessage && <p className="chat-error">{errorMessage}</p>}
-            </div>
+                }}
+                components={{
+                    Header: () => (
+                        <div className="message-list-spacer" aria-hidden="true" />
+                    ),
+                    Footer: () => (
+                        <>
+                            {isTyping && (
+                                <TypingIndicator
+                                    characterName={characterName}
+                                    mode={mode}
+                                />
+                            )}
+                            {copyError && <p className="chat-error">{copyError}</p>}
+                            {errorMessage && <p className="chat-error">{errorMessage}</p>}
+                            <div className="message-list-spacer" aria-hidden="true" />
+                        </>
+                    ),
+                }}
+            />
             {showJumpToBottom && (
                 <button
                     className="jump-to-bottom-button"
@@ -687,57 +593,17 @@ export const MessageList = memo(function MessageList({
         </div>
     );
 
-    function loadEarlierMessages() {
-        if (!hasEarlierMessages) {
-            return;
-        }
-
-        const list = listRef.current;
-
-        if (list) {
-            previousScrollHeightRef.current = list.scrollHeight;
-            isLoadingEarlierRef.current = true;
-        }
-
-        setVisibleCount((current) =>
-            Math.min(displayMessages.length, current + LOAD_EARLIER_BATCH_SIZE),
-        );
-    }
-
     function scrollToBottom() {
-        const list = listRef.current;
-
-        if (!list) {
-            return;
-        }
-
         shouldAutoScrollRef.current = true;
         setShowJumpToBottom(false);
-        list.scrollTo({
-            top: list.scrollHeight,
+        virtuosoRef.current?.scrollToIndex({
+            index: "LAST",
             behavior: "smooth",
         });
     }
 });
 
-const LOAD_EARLIER_BATCH_SIZE = 50;
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 80;
-
-function snapToBottom(list: HTMLDivElement) {
-    list.scrollTop = list.scrollHeight;
-
-    requestAnimationFrame(() => {
-        list.scrollTop = list.scrollHeight;
-    });
-}
-
-function normalizeMessageWindowSize(value: number) {
-    if (!Number.isFinite(value)) {
-        return LOAD_EARLIER_BATCH_SIZE;
-    }
-
-    return Math.max(1, Math.round(value));
-}
 
 function isInteractiveKeyboardTarget(
     target: EventTarget | null,
