@@ -16,6 +16,7 @@ describe("connection config normalization", () => {
             reasoning: { enabled: true, effort: "high" },
         });
         profile.contextTokenBudget = 64000;
+        profile.overrideModelContext = true;
 
         const switched = switchProfileProvider(profile, "anthropic");
 
@@ -24,6 +25,7 @@ describe("connection config normalization", () => {
             name: "Local OpenAI",
             provider: "anthropic",
             contextTokenBudget: 64000,
+            overrideModelContext: true,
             config: {
                 apiKey: "secret-key",
                 baseUrl: "http://localhost:11434/v1",
@@ -125,7 +127,7 @@ describe("connection config normalization", () => {
                     id: "profile-openai",
                     name: "OpenAI",
                     provider: "openai-compatible",
-                    contextTokenBudget: 250000,
+                    contextTokenBudget: 2_500_000,
                     config: {
                         baseUrl: "https://api.openai.com/v1",
                         model: {
@@ -139,7 +141,25 @@ describe("connection config normalization", () => {
             ],
         });
 
-        expect(settings.profiles[0]?.contextTokenBudget).toBe(200000);
+        expect(settings.profiles[0]?.contextTokenBudget).toBe(2_000_000);
+    });
+
+    test("migrates profiles without a context override to automatic model limits", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-openai",
+            profiles: [
+                {
+                    id: "profile-openai",
+                    name: "OpenAI",
+                    provider: "openai-compatible",
+                    contextTokenBudget: 64000,
+                    config: { model: { source: "default", id: "gpt-4o" } },
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.overrideModelContext).toBe(false);
     });
 
     test("normalizes valid Google AI thinking config", () => {

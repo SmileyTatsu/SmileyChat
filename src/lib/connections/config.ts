@@ -36,6 +36,7 @@ export type OpenAICompatibleConnectionProfile = {
     name: string;
     provider: "openai-compatible";
     contextTokenBudget: number;
+    overrideModelContext: boolean;
     /** Retains a custom endpoint while using a provider with a fixed URL. */
     preservedBaseUrl?: string;
     config: OpenAICompatibleConnectionConfig;
@@ -48,6 +49,7 @@ export type OpenRouterConnectionProfile = {
     name: string;
     provider: "openrouter";
     contextTokenBudget: number;
+    overrideModelContext: boolean;
     preservedBaseUrl?: string;
     config: OpenRouterConnectionConfig;
     createdAt: string;
@@ -59,6 +61,7 @@ export type GoogleAIConnectionProfile = {
     name: string;
     provider: "google-ai";
     contextTokenBudget: number;
+    overrideModelContext: boolean;
     preservedBaseUrl?: string;
     config: GoogleAIConnectionConfig;
     createdAt: string;
@@ -70,6 +73,7 @@ export type AnthropicConnectionProfile = {
     name: string;
     provider: "anthropic";
     contextTokenBudget: number;
+    overrideModelContext: boolean;
     preservedBaseUrl?: string;
     config: AnthropicConnectionConfig;
     createdAt: string;
@@ -81,6 +85,7 @@ export type NovelAIConnectionProfile = {
     name: string;
     provider: "novelai";
     contextTokenBudget: number;
+    overrideModelContext: boolean;
     preservedBaseUrl?: string;
     config: NovelAIConnectionConfig;
     createdAt: string;
@@ -92,6 +97,7 @@ export type XAIConnectionProfile = {
     name: string;
     provider: "xai";
     contextTokenBudget: number;
+    overrideModelContext: boolean;
     preservedBaseUrl?: string;
     config: XAIConnectionConfig;
     createdAt: string;
@@ -106,6 +112,7 @@ export type PluginConnectionProfile = {
         "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai"
     >;
     contextTokenBudget: number;
+    overrideModelContext: boolean;
     preservedBaseUrl?: string;
     config: Record<string, unknown>;
     createdAt: string;
@@ -157,6 +164,7 @@ export const defaultConnectionSettings: ConnectionSettings = {
             name: "OpenAI",
             provider: "openai-compatible",
             contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
             config: defaultOpenAICompatibleConfig,
             createdAt: "2026-01-01T00:00:00.000Z",
             updatedAt: "2026-01-01T00:00:00.000Z",
@@ -270,6 +278,7 @@ export function createConnectionProfile(
             name,
             provider,
             contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
             config: normalizeOpenRouterConfig(defaultConfig ?? defaultOpenRouterConfig),
             createdAt: now,
             updatedAt: now,
@@ -282,6 +291,7 @@ export function createConnectionProfile(
             name,
             provider,
             contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
             config: normalizeGoogleAIConfig(defaultConfig ?? defaultGoogleAIConfig),
             createdAt: now,
             updatedAt: now,
@@ -294,6 +304,7 @@ export function createConnectionProfile(
             name,
             provider,
             contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
             config: normalizeAnthropicConfig(defaultConfig ?? defaultAnthropicConfig),
             createdAt: now,
             updatedAt: now,
@@ -306,6 +317,7 @@ export function createConnectionProfile(
             name,
             provider,
             contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
             config: normalizeNovelAIConfig(defaultConfig ?? defaultNovelAIConfig),
             createdAt: now,
             updatedAt: now,
@@ -318,6 +330,7 @@ export function createConnectionProfile(
             name,
             provider,
             contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
             config: normalizeXAIConfig(defaultConfig ?? defaultXAIConfig),
             createdAt: now,
             updatedAt: now,
@@ -330,6 +343,7 @@ export function createConnectionProfile(
             name,
             provider,
             contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
             config: defaultConfig ?? {},
             createdAt: now,
             updatedAt: now,
@@ -341,6 +355,7 @@ export function createConnectionProfile(
         name,
         provider,
         contextTokenBudget: defaultContextTokenBudget,
+        overrideModelContext: false,
         config: normalizeOpenAICompatibleConfig(
             defaultConfig ?? defaultOpenAICompatibleConfig,
         ),
@@ -388,6 +403,7 @@ export function switchProfileProvider(
         ...profile,
         provider: nextProviderId,
         contextTokenBudget: currentProfile.contextTokenBudget,
+        overrideModelContext: currentProfile.overrideModelContext,
         ...(customBaseUrl ? { preservedBaseUrl: customBaseUrl } : {}),
         config: normalizeConfigForProvider(
             nextProviderId,
@@ -479,6 +495,7 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
         name: stringOrFallback(profile.name, "Untitled connection"),
         provider,
         contextTokenBudget: normalizeContextTokenBudget(profile.contextTokenBudget),
+        overrideModelContext: profile.overrideModelContext === true,
         ...(preservedBaseUrl ? { preservedBaseUrl } : {}),
         config:
             provider === "openai-compatible"

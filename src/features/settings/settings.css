@@ -1236,8 +1236,77 @@
 
 .connection-context-limit-field {
     display: grid;
-    gap: 6px;
+    gap: 8px;
     width: 100%;
+}
+
+.connection-field-label {
+    display: grid;
+    gap: 2px;
+    color: #e5e7ee;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.connection-field-label small {
+    color: #9ea4b3;
+    font-size: 0.78rem;
+    font-weight: 400;
+}
+
+.connection-unlocked-context-toggle {
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 4px;
+    padding: 10px 14px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #15181e;
+    cursor: pointer;
+    box-sizing: border-box;
+    width: 100%;
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.connection-unlocked-context-toggle:hover {
+    border-color: #3f4556;
+    background: #1a1e27;
+}
+
+.connection-unlocked-context-toggle > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.connection-unlocked-context-toggle strong {
+    color: #e5e7ee;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.connection-unlocked-context-toggle small {
+    color: #9ea4b3;
+    font-size: 0.78rem;
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+.connection-unlocked-context-toggle input[type="checkbox"] {
+    justify-self: end;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+    cursor: pointer;
 }
 
 .preset-editor {

@@ -41,6 +41,7 @@ import {
 } from "#frontend/lib/connections/config";
 import { materializeChatGenerationMessageAttachments } from "#frontend/lib/connections/images";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
+import { getEffectiveContextTokenBudget } from "#frontend/lib/connections/context-budget";
 import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
 import {
     defaultAppPreferences,
@@ -57,10 +58,6 @@ import type {
 
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
-import {
-    defaultContextTokenBudget,
-    normalizeContextTokenBudget,
-} from "#frontend/lib/presets/context-budget-constants";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type { DebugGenerationPayload } from "./hooks/use-prompt-generation";
@@ -783,10 +780,7 @@ export function App() {
               )
             : getActiveConnectionProfile(connectionSettings);
 
-        return normalizeContextTokenBudget(
-            profile?.contextTokenBudget,
-            defaultContextTokenBudget,
-        );
+        return getEffectiveContextTokenBudget(profile).tokenBudget;
     }
 
     function openPersonasSettings() {

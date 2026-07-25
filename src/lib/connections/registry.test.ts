@@ -14,6 +14,7 @@ describe("connection registry", () => {
             name: "OpenAI compatible",
             provider: "openai-compatible",
             contextTokenBudget: 8192,
+            overrideModelContext: false,
             config: {
                 baseUrl: "https://example.test/v1",
                 maxCompletionTokens: 1024,
@@ -51,6 +52,7 @@ describe("connection registry", () => {
             name: "xAI",
             provider: "xai",
             contextTokenBudget: 8192,
+            overrideModelContext: false,
             config: {
                 baseUrl: "https://api.x.ai/v1",
                 maxCompletionTokens: 1024,

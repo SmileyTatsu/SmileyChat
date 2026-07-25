@@ -24,6 +24,10 @@ import {
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
 import {
+    getEffectiveContextTokenBudget,
+    getModelMaxContextLimit,
+} from "#frontend/lib/connections/context-budget";
+import {
     createAnthropicConnection,
     createAnthropicMessagesUrl,
 } from "#frontend/lib/connections/anthropic/adapter";
@@ -723,6 +727,16 @@ export function ConnectionsSettings({
         );
     }
 
+    function updateActiveProfileContextOverride(overrideModelContext: boolean) {
+        if (!activeProfile) {
+            return;
+        }
+
+        onSettingsChange(
+            updateProfile(settings, activeProfile.id, { overrideModelContext }),
+        );
+    }
+
     function addProfile() {
         const profile = createConnectionProfile(
             "openai-compatible",
@@ -959,13 +973,54 @@ export function ConnectionsSettings({
                         </label>
                     </div>
 
-                    <label className="connection-context-limit-field">
-                        Context token limit
+                    <section
+                        className="connection-context-limit-field"
+                        aria-labelledby="context-limit-heading"
+                    >
+                        <div className="connection-field-label">
+                            <span id="context-limit-heading">Context token limit</span>
+                            <small>
+                                {activeProfile.overrideModelContext
+                                    ? "Unlocked mode enabled (up to 2,000,000 tokens)."
+                                    : `Standard model limit (${getModelMaxContextLimit(activeProfile).toLocaleString()} tokens).`}
+                            </small>
+                        </div>
                         <ContextTokenLimitControl
-                            value={activeProfile.contextTokenBudget}
-                            onChange={updateActiveProfileContextTokenBudget}
+                            max={
+                                activeProfile.overrideModelContext
+                                    ? maxContextTokenBudget
+                                    : getModelMaxContextLimit(activeProfile)
+                            }
+                            value={
+                                activeProfile.overrideModelContext
+                                    ? activeProfile.contextTokenBudget
+                                    : getEffectiveContextTokenBudget(activeProfile)
+                                          .tokenBudget
+                            }
+                            onChange={(nextBudget) => {
+                                updateActiveProfileContextTokenBudget(nextBudget);
+                            }}
                         />
-                    </label>
+                        <label className="setting-row preference-toggle-row connection-unlocked-context-toggle">
+                            <span>
+                                <strong>Unlocked Context</strong>
+                                <small>
+                                    {activeProfile.overrideModelContext
+                                        ? "Unlocked mode active (slider max expanded to 2,000,000 tokens)."
+                                        : "Unlocks the context limit slider up to 2,000,000 tokens."}
+                                </small>
+                            </span>
+                            <input
+                                checked={activeProfile.overrideModelContext}
+                                type="checkbox"
+                                onChange={(event) =>
+                                    updateActiveProfileContextOverride(
+                                        (event.currentTarget as HTMLInputElement).checked,
+                                    )
+                                }
+                            />
+                        </label>
+                    </section>
 
                     {isOpenAICompatibleProfile(activeProfile) ? (
                         <OpenAICompatibleConnection
@@ -1112,42 +1167,48 @@ function updateProfileConfig(
 }
 
 function ContextTokenLimitControl({
+    max = maxContextTokenBudget,
     value,
     onChange,
 }: {
+    max?: number;
     value: number;
     onChange: (value: number) => void;
 }) {
-    const normalizedValue = normalizeContextTokenBudget(value);
+    const normalizedValue = Math.min(max, normalizeContextTokenBudget(value));
+    const step = max > 100000 ? 8192 : 1024;
 
     return (
         <div className="connection-context-limit-control">
             <input
-                max={maxContextTokenBudgetRangeValue}
+                max={max}
                 min={minContextTokenBudget}
-                step={contextTokenBudgetRangeStep}
+                step={step}
                 type="range"
-                value={contextTokenBudgetToRangeValue(normalizedValue)}
+                value={normalizedValue}
                 onInput={(event) =>
                     onChange(
-                        normalizeContextTokenBudget(
-                            (event.currentTarget as HTMLInputElement).valueAsNumber,
-                            normalizedValue,
+                        Math.min(
+                            max,
+                            normalizeContextTokenBudget(
+                                (event.currentTarget as HTMLInputElement).valueAsNumber,
+                                normalizedValue,
+                            ),
                         ),
                     )
                 }
             />
             <input
-                max={maxContextTokenBudget}
+                max={max}
                 min={minContextTokenBudget}
                 step={1}
                 type="number"
                 value={normalizedValue}
                 onBlur={(event) => {
                     const input = event.currentTarget as HTMLInputElement;
-                    const nextValue = normalizeContextTokenBudget(
-                        input.valueAsNumber,
-                        normalizedValue,
+                    const nextValue = Math.min(
+                        max,
+                        normalizeContextTokenBudget(input.valueAsNumber, normalizedValue),
                     );
 
                     input.value = String(nextValue);
@@ -1158,7 +1219,7 @@ function ContextTokenLimitControl({
                         .valueAsNumber;
 
                     if (Number.isFinite(nextValue)) {
-                        onChange(nextValue);
+                        onChange(Math.min(max, nextValue));
                     }
                 }}
             />

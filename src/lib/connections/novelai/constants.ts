@@ -1,9 +1,8 @@
-export const novelAIDefaultModels = [
-    { id: "xialong-v1", label: "Xiaolong" },
-    { id: "glm-4-6", label: "GLM 4.6" },
-    { id: "llama-3-erato-v1", label: "Erato" },
-    { id: "kayra-v1", label: "Kayra" },
-] as const;
+import defaultNovelAIModelCategories from "#frontend/data/default-novelai-models.json";
+
+export const novelAIDefaultModels = defaultNovelAIModelCategories.flatMap(
+    (category) => category.models,
+);
 
 export const novelAITextBaseUrl = "https://text.novelai.net";
 export const novelAITextGenerationMaxOutputTokens = 250;

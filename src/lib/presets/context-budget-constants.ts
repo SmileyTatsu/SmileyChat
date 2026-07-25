@@ -1,7 +1,9 @@
 export const defaultContextTokenBudget = 16000;
-export const maxContextTokenBudget = 200000;
+export const maxContextTokenBudget = 2_000_000;
 export const minContextTokenBudget = 0;
-export const contextTokenBudgetRangeStep = 1024;
+// A coarse slider keeps very large context windows practical to adjust; the
+// adjacent number input remains available for exact values.
+export const contextTokenBudgetRangeStep = 8192;
 export const maxContextTokenBudgetRangeValue =
     Math.ceil(maxContextTokenBudget / contextTokenBudgetRangeStep) *
     contextTokenBudgetRangeStep;

@@ -31,6 +31,7 @@ type DefaultModelCategory = {
     models: Array<{
         id: string;
         label: string;
+        contextTokenLimit?: number;
     }>;
 };
 

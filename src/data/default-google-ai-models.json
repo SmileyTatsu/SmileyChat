@@ -5,7 +5,8 @@
         "models": [
             {
                 "id": "gemini-3.6-flash",
-                "label": "gemini-3.6-flash"
+                "label": "gemini-3.6-flash",
+                "contextTokenLimit": 1000000
             }
         ]
     },
@@ -15,11 +16,13 @@
         "models": [
             {
                 "id": "gemini-3.5-flash",
-                "label": "gemini-3.5-flash"
+                "label": "gemini-3.5-flash",
+                "contextTokenLimit": 1000000
             },
             {
                 "id": "gemini-3.5-flash-lite",
-                "label": "gemini-3.5-flash-lite"
+                "label": "gemini-3.5-flash-lite",
+                "contextTokenLimit": 1000000
             }
         ]
     },
@@ -29,15 +32,18 @@
         "models": [
             {
                 "id": "gemini-3.1-pro-preview",
-                "label": "gemini-3.1-pro-preview"
+                "label": "gemini-3.1-pro-preview",
+                "contextTokenLimit": 1000000
             },
             {
                 "id": "gemini-3.1-flash-lite",
-                "label": "gemini-3.1-flash-lite"
+                "label": "gemini-3.1-flash-lite",
+                "contextTokenLimit": 1000000
             },
             {
                 "id": "gemini-3.1-flash-lite-preview",
-                "label": "gemini-3.1-flash-lite-preview"
+                "label": "gemini-3.1-flash-lite-preview",
+                "contextTokenLimit": 1000000
             }
         ]
     },
@@ -47,7 +53,8 @@
         "models": [
             {
                 "id": "gemini-3-flash-preview",
-                "label": "gemini-3-flash-preview"
+                "label": "gemini-3-flash-preview",
+                "contextTokenLimit": 1000000
             }
         ]
     }

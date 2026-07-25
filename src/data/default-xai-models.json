@@ -5,15 +5,18 @@
         "models": [
             {
                 "id": "grok-4.5",
-                "label": "Grok 4.5"
+                "label": "Grok 4.5",
+                "contextTokenLimit": 2000000
             },
             {
                 "id": "grok-4.5-latest",
-                "label": "Grok 4.5 Latest"
+                "label": "Grok 4.5 Latest",
+                "contextTokenLimit": 2000000
             },
             {
                 "id": "grok-latest",
-                "label": "Grok Latest"
+                "label": "Grok Latest",
+                "contextTokenLimit": 2000000
             }
         ]
     }

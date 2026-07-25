@@ -36,10 +36,7 @@ import {
 } from "#frontend/lib/plugins/registry";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { compilePresetMessages } from "#frontend/lib/presets/compile";
-import {
-    defaultContextTokenBudget,
-    normalizeContextTokenBudget,
-} from "#frontend/lib/presets/context-budget-constants";
+import { getEffectiveContextTokenBudget } from "#frontend/lib/connections/context-budget";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import {
@@ -110,10 +107,7 @@ export function usePromptGeneration({
         const profile = profileId
             ? connectionSettings.profiles.find((item) => item.id === profileId)
             : getActiveConnectionProfile(connectionSettings);
-        return normalizeContextTokenBudget(
-            profile?.contextTokenBudget,
-            defaultContextTokenBudget,
-        );
+        return getEffectiveContextTokenBudget(profile).tokenBudget;
     }
 
     function groupPromptContext(sourceChat: ChatSession | undefined) {
