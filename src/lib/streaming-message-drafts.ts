@@ -90,6 +90,7 @@ export function clearStreamingMessageDraft(messageId: string) {
     }
 
     draftSignal.value = undefined;
+    streamingMessageDraftSignals.delete(messageId);
 }
 
 export function hasStreamingMessageDraftValue(draft: StreamingMessageDraft | undefined) {
