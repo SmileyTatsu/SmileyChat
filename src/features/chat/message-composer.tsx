@@ -7,7 +7,7 @@ import {
     X,
 } from "lucide-preact";
 import { memo } from "preact/compat";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
 import { createId } from "#frontend/lib/common/ids";
@@ -78,6 +78,7 @@ export const MessageComposer = memo(function MessageComposer({
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const resizeFrameRef = useRef<number>();
 
     const [draft, setDraft] = useState("");
     const [registryRevision, setRegistryRevision] = useState(0);
@@ -96,16 +97,31 @@ export const MessageComposer = memo(function MessageComposer({
         [],
     );
 
-    useLayoutEffect(() => {
-        const composer = composerRef.current;
-        if (!composer) return;
+    useEffect(() => {
+        if (resizeFrameRef.current !== undefined) {
+            cancelAnimationFrame(resizeFrameRef.current);
+        }
 
-        const maxHeight = 200;
-        composer.style.height = "auto";
+        resizeFrameRef.current = requestAnimationFrame(() => {
+            resizeFrameRef.current = undefined;
 
-        const nextHeight = Math.min(composer.scrollHeight, maxHeight);
-        composer.style.height = `${nextHeight}px`;
-        composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
+            const composer = composerRef.current;
+            if (!composer) return;
+
+            const maxHeight = 200;
+            composer.style.height = "auto";
+
+            const contentHeight = composer.scrollHeight;
+            composer.style.height = `${Math.min(contentHeight, maxHeight)}px`;
+            composer.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+        });
+
+        return () => {
+            if (resizeFrameRef.current !== undefined) {
+                cancelAnimationFrame(resizeFrameRef.current);
+                resizeFrameRef.current = undefined;
+            }
+        };
     }, [draft]);
 
     useEffect(() => {
