@@ -16,6 +16,18 @@ const streamingMessageDraftSignals = new Map<
     string,
     Signal<StreamingMessageDraft | undefined>
 >();
+const pendingStreamingDraftUpdates = new Map<
+    string,
+    {
+        patch: StreamingMessageDraft;
+        timeout: ReturnType<typeof setTimeout>;
+    }
+>();
+
+// Keep streamed text responsive without repeatedly parsing a growing response for
+// every SSE chunk. Thirty updates per second remains visually smooth while giving
+// lower-powered devices time to paint and handle input.
+const STREAMING_DRAFT_UPDATE_INTERVAL_MS = 33;
 
 export function setStreamingMessageContent(
     messageId: string,
@@ -71,6 +83,18 @@ export function getStreamingMessageDraft(messageId: string) {
     return streamingMessageDraftSignals.get(messageId)?.peek();
 }
 
+export function flushStreamingMessageDraft(messageId: string) {
+    const pendingUpdate = pendingStreamingDraftUpdates.get(messageId);
+
+    if (!pendingUpdate) {
+        return;
+    }
+
+    clearTimeout(pendingUpdate.timeout);
+    pendingStreamingDraftUpdates.delete(messageId);
+    commitStreamingMessageDraft(messageId, pendingUpdate.patch);
+}
+
 export function findStreamingMessageDraftSignal(messageId: string) {
     return streamingMessageDraftSignals.get(messageId);
 }
@@ -93,6 +117,13 @@ export function getStreamingMessageDraftSignal(messageId: string) {
 }
 
 export function clearStreamingMessageDraft(messageId: string) {
+    const pendingUpdate = pendingStreamingDraftUpdates.get(messageId);
+
+    if (pendingUpdate) {
+        clearTimeout(pendingUpdate.timeout);
+        pendingStreamingDraftUpdates.delete(messageId);
+    }
+
     const draftSignal = streamingMessageDraftSignals.get(messageId);
 
     if (!draftSignal) {
@@ -149,6 +180,31 @@ export function applyStreamingMessageDraft(
 }
 
 function setStreamingMessageDraft(messageId: string, patch: StreamingMessageDraft) {
+    const pendingUpdate = pendingStreamingDraftUpdates.get(messageId);
+
+    if (pendingUpdate) {
+        pendingUpdate.patch = {
+            ...pendingUpdate.patch,
+            ...patch,
+        };
+        return;
+    }
+
+    const timeout = setTimeout(() => {
+        const scheduledUpdate = pendingStreamingDraftUpdates.get(messageId);
+
+        if (!scheduledUpdate) {
+            return;
+        }
+
+        pendingStreamingDraftUpdates.delete(messageId);
+        commitStreamingMessageDraft(messageId, scheduledUpdate.patch);
+    }, STREAMING_DRAFT_UPDATE_INTERVAL_MS);
+
+    pendingStreamingDraftUpdates.set(messageId, { patch, timeout });
+}
+
+function commitStreamingMessageDraft(messageId: string, patch: StreamingMessageDraft) {
     const draftSignal = getStreamingMessageDraftSignal(messageId);
 
     draftSignal.value = {

@@ -9,6 +9,7 @@ import {
 } from "#frontend/lib/messages";
 import {
     clearStreamingMessageDraft,
+    flushStreamingMessageDraft,
     getStreamingMessageDraft,
     hasStreamingMessageDraftValue,
     type StreamingMessageDraft,
@@ -389,6 +390,7 @@ export function useMessageOperations({
             return false;
         }
 
+        flushStreamingMessageDraft(messageId);
         const draft = getStreamingMessageDraft(messageId);
 
         if (!hasStreamingMessageDraftValue(draft)) {
