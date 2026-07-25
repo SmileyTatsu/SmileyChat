@@ -4,6 +4,7 @@ import {
     applyMessageDisplayMiddlewares,
     closePluginModal,
     createPluginApi,
+    getInputMiddlewares,
     getMessageUpdateMiddlewares,
     getOutputMiddlewares,
     getPluginCharacterDetailsSections,
@@ -20,6 +21,7 @@ import {
 import type {
     PluginAppSnapshot,
     PluginManifest,
+    ChatInputMiddleware,
     MessageUpdateMiddleware,
     PluginNetworkApi,
     PluginStorageApi,
@@ -182,6 +184,21 @@ describe("plugin registry runtime isolation", () => {
 
         setPluginEnabledState(pluginId, false);
         expect(getMessageUpdateMiddlewares()).not.toContain(middleware);
+    });
+
+    test("function middleware registration replaces a plugin's prior registration", () => {
+        const pluginId = uniqueId("input-middleware");
+        const api = pluginApi(pluginId, ["chat:input"]);
+        const first: ChatInputMiddleware = (content) => content;
+        const second: ChatInputMiddleware = (content) => `${content}!`;
+
+        api.chat.registerInputMiddleware(first);
+        api.chat.registerInputMiddleware(second);
+
+        const registered = getInputMiddlewares().filter(
+            (middleware) => middleware === first || middleware === second,
+        );
+        expect(registered).toEqual([second]);
     });
 
     test("tool discovery preserves plugin-owned group metadata before availability filtering", () => {

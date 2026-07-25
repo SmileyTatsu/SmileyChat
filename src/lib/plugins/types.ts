@@ -495,7 +495,7 @@ export type SmileyPluginApi = {
         registerComposerOption(option: PluginComposerOption): void;
         registerHeaderAction(action: PluginHeaderAction): void;
         openModal(modal: PluginModal): () => void;
-        addStyles(cssText: string): void;
+        addStyles(cssText: string): () => void;
         setComposerState(state: PluginComposerStatePatch): void;
     };
     chat: {

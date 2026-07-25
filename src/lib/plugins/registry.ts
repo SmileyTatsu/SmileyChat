@@ -86,6 +86,7 @@ const listeners = new Set<Listener>();
 const snapshotListeners = new Set<OwnedSnapshotListener>();
 const eventListeners = new Map<string, Set<OwnedEventListener>>();
 const pluginDisposers = new Map<string, () => void>();
+const pluginStyles = new Map<string, Map<string, HTMLStyleElement>>();
 const characterPresenceOverrides = new Map<string, PluginCharacterPresenceStatus>();
 const composerStateOverrides = new Map<string, PluginComposerStatePatch>();
 
@@ -252,6 +253,7 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedMapValues(pluginTools, pluginId);
     characterPresenceOverrides.delete(pluginId);
     composerStateOverrides.delete(pluginId);
+    pluginStyles.delete(pluginId);
 
     for (const listenersForEvent of eventListeners.values()) {
         for (const item of [...listenersForEvent]) {
@@ -648,24 +650,26 @@ export function createPluginApi(
             },
             registerMessageDisplayMiddleware(middleware) {
                 requireDeclaredPluginPermission(manifest, "chat:display");
-                messageDisplayMiddlewares.push({
+                upsertOwnedPluginItem(messageDisplayMiddlewares, manifest.id, {
                     pluginId: manifest.id,
                     value: middleware,
                 });
             },
             registerMessageAction(action) {
                 requireDeclaredPluginPermission(manifest, "ui:message-actions");
-                messageActions.push({
+                const actionId = pluginScopedId(manifest.id, action.id);
+                upsertOwnedItem(messageActions, manifest.id, actionId, {
                     pluginId: manifest.id,
-                    value: { ...action, id: pluginScopedId(manifest.id, action.id) },
+                    value: { ...action, id: actionId },
                 });
                 notifyRegistryChanged();
             },
             registerComposerAction(action) {
                 requireDeclaredPluginPermission(manifest, "ui:composer");
-                composerActions.push({
+                const actionId = pluginScopedId(manifest.id, action.id);
+                upsertOwnedItem(composerActions, manifest.id, actionId, {
                     pluginId: manifest.id,
-                    value: { ...action, id: pluginScopedId(manifest.id, action.id) },
+                    value: { ...action, id: actionId },
                 });
                 notifyRegistryChanged();
             },
@@ -713,10 +717,21 @@ export function createPluginApi(
             },
             addStyles(cssText) {
                 requireDeclaredPluginPermission(manifest, "ui:styles");
+                const styles = pluginStyles.get(manifest.id) ?? new Map();
+                const existing = styles.get(cssText);
+
+                if (existing) {
+                    return () => removePluginStyle(manifest.id, cssText, existing);
+                }
+
                 const style = document.createElement("style");
                 style.dataset.pluginId = manifest.id;
                 style.textContent = cssText;
                 document.head.append(style);
+                styles.set(cssText, style);
+                pluginStyles.set(manifest.id, styles);
+
+                return () => removePluginStyle(manifest.id, cssText, style);
             },
             setComposerState(state) {
                 requireDeclaredPluginPermission(manifest, "ui:composer-state");
@@ -740,27 +755,36 @@ export function createPluginApi(
         chat: {
             registerInputMiddleware(middleware) {
                 requireDeclaredPluginPermission(manifest, "chat:input");
-                inputMiddlewares.push({ pluginId: manifest.id, value: middleware });
+                upsertOwnedPluginItem(inputMiddlewares, manifest.id, {
+                    pluginId: manifest.id,
+                    value: middleware,
+                });
             },
             registerPromptContextMiddleware(middleware) {
                 requireDeclaredPluginPermission(manifest, "chat:prompt-context");
-                promptContextMiddlewares.push({
+                upsertOwnedPluginItem(promptContextMiddlewares, manifest.id, {
                     pluginId: manifest.id,
                     value: middleware,
                 });
             },
             registerPromptInjector(injector) {
                 requireDeclaredPluginPermission(manifest, "chat:prompt-inject");
-                promptInjectors.push({ pluginId: manifest.id, value: injector });
+                upsertOwnedPluginItem(promptInjectors, manifest.id, {
+                    pluginId: manifest.id,
+                    value: injector,
+                });
             },
             registerPromptMiddleware(middleware) {
                 requireDeclaredPluginPermission(manifest, "chat:prompt");
-                promptMiddlewares.push({ pluginId: manifest.id, value: middleware });
+                upsertOwnedPluginItem(promptMiddlewares, manifest.id, {
+                    pluginId: manifest.id,
+                    value: middleware,
+                });
             },
             registerOutputMiddleware(middleware) {
                 requireDeclaredPluginPermission(manifest, "chat:output");
                 if (typeof middleware === "function") {
-                    outputMiddlewares.push({
+                    upsertOwnedPluginItem(outputMiddlewares, manifest.id, {
                         pluginId: manifest.id,
                         value: {
                             id: createId("output-middleware"),
@@ -781,7 +805,7 @@ export function createPluginApi(
             },
             registerMessageUpdateMiddleware(middleware) {
                 requireDeclaredPluginPermission(manifest, "chat:message-update");
-                messageUpdateMiddlewares.push({
+                upsertOwnedPluginItem(messageUpdateMiddlewares, manifest.id, {
                     pluginId: manifest.id,
                     value: middleware,
                 });
@@ -1118,6 +1142,19 @@ function removeOwnedItems<T>(items: Array<Owned<T>>, pluginId: string) {
     }
 }
 
+function removePluginStyle(pluginId: string, cssText: string, style: HTMLStyleElement) {
+    const styles = pluginStyles.get(pluginId);
+
+    if (styles?.get(cssText) === style) {
+        styles.delete(cssText);
+    }
+    style.remove();
+
+    if (styles?.size === 0) {
+        pluginStyles.delete(pluginId);
+    }
+}
+
 function upsertOwnedItem<T extends { id: string }>(
     items: Array<Owned<T>>,
     pluginId: string,
@@ -1127,6 +1164,20 @@ function upsertOwnedItem<T extends { id: string }>(
     const index = items.findIndex(
         (current) => current.pluginId === pluginId && current.value.id === itemId,
     );
+
+    if (index >= 0) {
+        items[index] = item;
+    } else {
+        items.push(item);
+    }
+}
+
+function upsertOwnedPluginItem<T>(
+    items: Array<Owned<T>>,
+    pluginId: string,
+    item: Owned<T>,
+) {
+    const index = items.findIndex((current) => current.pluginId === pluginId);
 
     if (index >= 0) {
         items[index] = item;
