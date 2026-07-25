@@ -22,6 +22,7 @@ type RunOptions = {
 type SummaryCacheListener = () => void;
 
 const summaryCache = new Map<string, ChatSummaryState>();
+const maxCachedSummaries = 25;
 const cacheListeners = new Set<SummaryCacheListener>();
 const inFlightChatIds = new Set<string>();
 const daemonTimers = new Map<string, number>();
@@ -64,6 +65,7 @@ export async function getChatSummaryState(api: SmileyPluginApi, chatId: string) 
     const cached = summaryCache.get(chatId);
 
     if (cached) {
+        cacheSummaryState(chatId, cached);
         return cached;
     }
 
@@ -73,7 +75,7 @@ export async function getChatSummaryState(api: SmileyPluginApi, chatId: string) 
             .catch(() => defaultSummaryState(chatId)),
         chatId,
     );
-    summaryCache.set(chatId, state);
+    cacheSummaryState(chatId, state);
     return state;
 }
 
@@ -83,7 +85,7 @@ export async function saveChatSummaryState(
     state: ChatSummaryState,
 ) {
     const normalized = normalizeChatSummaryState(state, chatId);
-    summaryCache.set(chatId, normalized);
+    cacheSummaryState(chatId, normalized);
     await api.storage.setJson(summaryStorageKey(chatId), normalized);
     notifySummaryCacheChanged();
     return normalized;
@@ -91,7 +93,7 @@ export async function saveChatSummaryState(
 
 export async function clearChatSummaryState(api: SmileyPluginApi, chatId: string) {
     const state = defaultSummaryState(chatId);
-    summaryCache.set(chatId, state);
+    cacheSummaryState(chatId, state);
     await api.storage.setJson(summaryStorageKey(chatId), state);
     notifySummaryCacheChanged();
     return state;
@@ -412,5 +414,21 @@ function limitText(text: string, maxCharacters: number) {
 function notifySummaryCacheChanged() {
     for (const listener of cacheListeners) {
         listener();
+    }
+}
+
+function cacheSummaryState(chatId: string, state: ChatSummaryState) {
+    // Map iteration order gives us a compact LRU: reinserting marks a summary
+    // as recently used, and the oldest entry is evicted once the cache is full.
+    summaryCache.delete(chatId);
+    summaryCache.set(chatId, state);
+
+    while (summaryCache.size > maxCachedSummaries) {
+        const oldestChatId = summaryCache.keys().next().value;
+        if (oldestChatId === undefined) {
+            return;
+        }
+
+        summaryCache.delete(oldestChatId);
     }
 }
