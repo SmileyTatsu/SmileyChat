@@ -34,7 +34,7 @@ import type {
 import {
     applyStreamingMessageDraft,
     getStreamingMessageDraft,
-    getStreamingMessageDraftSignal,
+    findStreamingMessageDraftSignal,
 } from "#frontend/lib/streaming-message-drafts";
 import type { ChatMode, Message, MessageToolActivity } from "#frontend/types";
 import type { TimeFormat } from "#frontend/lib/preferences/types";
@@ -556,7 +556,7 @@ function MessageLiveContent({
     onRemoveAttachment,
     onVisibleContentChange,
 }: MessageLiveContentProps) {
-    const streamingDraft = getStreamingMessageDraftSignal(message.id).value;
+    const streamingDraft = findStreamingMessageDraftSignal(message.id)?.value;
     const renderedMessage = applyStreamingMessageDraft(message, streamingDraft);
     const content = getMessageContent(renderedMessage);
     const attachments = getMessageAttachments(renderedMessage);

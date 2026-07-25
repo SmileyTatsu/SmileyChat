@@ -17,6 +17,7 @@ import {
     setStreamingGeneratedImageCount,
     setStreamingMessageContent,
     setStreamingMessageTimeline,
+    startStreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
@@ -286,6 +287,7 @@ export function useChatSession({
 
         try {
             if (streamingReply) {
+                startStreamingMessageDraft(streamingReply.id);
                 updateChatMessages(
                     [...pendingChat.messages, streamingReply],
                     currentOrSourceChat(pendingChat),
@@ -503,6 +505,7 @@ export function useChatSession({
 
         try {
             if (streamGeneration) {
+                startStreamingMessageDraft(messageId);
                 appendEmptySwipe(messageId, sourceChat);
             }
 
@@ -668,6 +671,9 @@ export function useChatSession({
         });
 
         try {
+            if (streamGeneration) {
+                startStreamingMessageDraft(messageId);
+            }
             const result = await generateWithPreset(
                 sourceChat.messages,
                 generationCharacter,

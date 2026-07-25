@@ -68,7 +68,17 @@ export function setStreamingGeneratedImageCount(messageId: string, count: number
 }
 
 export function getStreamingMessageDraft(messageId: string) {
-    return getStreamingMessageDraftSignal(messageId).peek();
+    return streamingMessageDraftSignals.get(messageId)?.peek();
+}
+
+export function findStreamingMessageDraftSignal(messageId: string) {
+    return streamingMessageDraftSignals.get(messageId);
+}
+
+// Create the signal before rendering a new streaming message so its view can
+// subscribe without creating signals for every historical message.
+export function startStreamingMessageDraft(messageId: string) {
+    return getStreamingMessageDraftSignal(messageId);
 }
 
 export function getStreamingMessageDraftSignal(messageId: string) {
