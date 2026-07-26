@@ -115,4 +115,6 @@ export type ChatIndex = {
     version: 1;
     activeChatIdsByCharacter: Record<string, string>;
     chatIds: string[];
+    /** Compact metadata used to populate the chat rail without reading sessions. */
+    summaries: ChatSummary[];
 };
