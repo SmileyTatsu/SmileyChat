@@ -100,6 +100,7 @@ import {
 } from "./ui-state";
 
 const CONNECTION_SETTINGS_SAVE_DEBOUNCE_MS = 400;
+const PREFERENCES_SAVE_DEBOUNCE_MS = 400;
 type StartupStatus = "loading" | "ready" | "error";
 
 export function App() {
@@ -144,12 +145,17 @@ export function App() {
     const latestConnectionSettingsRef = useRef<ConnectionSettings>(
         defaultConnectionSettings,
     );
+    const latestPreferencesRef = useRef<AppPreferences>(defaultAppPreferences);
     const connectionSettingsLoadedRef = useRef(false);
     const connectionSecretsAccessibleRef = useRef(false);
+    const preferencesLoadedRef = useRef(false);
     const backgroundLoadsStartedRef = useRef(false);
     const queuedConnectionSettingsSaveRef = useRef<ConnectionSettings | undefined>();
     const connectionSettingsSaveInFlightRef = useRef(false);
     const connectionSettingsSaveTimerRef = useRef<number | undefined>();
+    const queuedPreferencesSaveRef = useRef<AppPreferences | undefined>();
+    const preferencesSaveInFlightRef = useRef(false);
+    const preferencesSaveTimerRef = useRef<number | undefined>();
     const {
         applySavedPersona,
         createPersona,
@@ -282,6 +288,10 @@ export function App() {
     }, [connectionSettings]);
 
     useEffect(() => {
+        latestPreferencesRef.current = preferences;
+    }, [preferences]);
+
+    useEffect(() => {
         connectionSettingsLoadedRef.current = connectionSettingsLoaded;
     }, [connectionSettingsLoaded]);
 
@@ -299,6 +309,26 @@ export function App() {
 
         return () => {
             window.removeEventListener("pagehide", flushConnectionSettingsBeforeUnload);
+        };
+    }, []);
+
+    useEffect(() => {
+        function flushPreferencesBeforeUnload() {
+            if (
+                !preferencesLoadedRef.current ||
+                (!queuedPreferencesSaveRef.current && !preferencesSaveInFlightRef.current)
+            ) {
+                return;
+            }
+
+            clearPreferencesSaveTimer();
+            persistPreferencesWithKeepAlive(latestPreferencesRef.current);
+        }
+
+        window.addEventListener("pagehide", flushPreferencesBeforeUnload);
+
+        return () => {
+            window.removeEventListener("pagehide", flushPreferencesBeforeUnload);
         };
     }, []);
 
@@ -631,6 +661,8 @@ export function App() {
         try {
             const loadedPreferences = normalizeAppPreferences(await loadAppPreferences());
             setPreferences(loadedPreferences);
+            latestPreferencesRef.current = loadedPreferences;
+            preferencesLoadedRef.current = true;
 
             if (applyStartupLayout) {
                 setMode(loadedPreferences.chat.defaultMode);
@@ -649,6 +681,8 @@ export function App() {
     async function loadStartupPreferences() {
         const loadedPreferences = normalizeAppPreferences(await loadAppPreferences());
         setPreferences(loadedPreferences);
+        latestPreferencesRef.current = loadedPreferences;
+        preferencesLoadedRef.current = true;
         setMode(loadedPreferences.chat.defaultMode);
         desktopCharacterOpen.value = loadedPreferences.layout.characterPanelOpenByDefault;
         mobileCharacterOpen.value = false;
@@ -691,16 +725,77 @@ export function App() {
     function updatePreferences(nextPreferences: AppPreferences) {
         const normalizedPreferences = normalizeAppPreferences(nextPreferences);
         setPreferences(normalizedPreferences);
+        latestPreferencesRef.current = normalizedPreferences;
         setPreferencesSaveStatus("Saving...");
-        void saveAppPreferences(normalizedPreferences)
-            .then((response) => {
-                const savedPreferences = normalizeAppPreferences(response.preferences);
-                setPreferences(savedPreferences);
-                setPreferencesSaveStatus("Saved.");
-            })
-            .catch((error) => {
-                setPreferencesSaveStatus(messageFromError(error));
-            });
+        queuePreferencesSave(normalizedPreferences);
+    }
+
+    function queuePreferencesSave(preferencesToSave: AppPreferences) {
+        queuedPreferencesSaveRef.current = preferencesToSave;
+
+        if (preferencesSaveInFlightRef.current) {
+            return;
+        }
+
+        clearPreferencesSaveTimer();
+        preferencesSaveTimerRef.current = window.setTimeout(() => {
+            preferencesSaveTimerRef.current = undefined;
+            void flushQueuedPreferencesSave();
+        }, PREFERENCES_SAVE_DEBOUNCE_MS);
+    }
+
+    function clearPreferencesSaveTimer() {
+        if (preferencesSaveTimerRef.current === undefined) {
+            return;
+        }
+
+        window.clearTimeout(preferencesSaveTimerRef.current);
+        preferencesSaveTimerRef.current = undefined;
+    }
+
+    async function flushQueuedPreferencesSave() {
+        if (preferencesSaveInFlightRef.current) {
+            return;
+        }
+
+        preferencesSaveInFlightRef.current = true;
+
+        try {
+            while (queuedPreferencesSaveRef.current) {
+                const preferencesToSave = queuedPreferencesSaveRef.current;
+                queuedPreferencesSaveRef.current = undefined;
+
+                try {
+                    const response = await saveAppPreferences(preferencesToSave);
+                    const savedPreferences = normalizeAppPreferences(
+                        response.preferences,
+                    );
+
+                    if (latestPreferencesRef.current === preferencesToSave) {
+                        latestPreferencesRef.current = savedPreferences;
+                        setPreferences(savedPreferences);
+                        setPreferencesSaveStatus("Saved.");
+                    }
+                } catch (error) {
+                    if (latestPreferencesRef.current === preferencesToSave) {
+                        setPreferencesSaveStatus(messageFromError(error));
+                    }
+                }
+            }
+        } finally {
+            preferencesSaveInFlightRef.current = false;
+        }
+    }
+
+    function persistPreferencesWithKeepAlive(preferencesToSave: AppPreferences) {
+        void localApiFetch("/api/preferences", {
+            body: JSON.stringify(preferencesToSave),
+            headers: { "Content-Type": "application/json" },
+            keepalive: true,
+            method: "PUT",
+        }).catch((error) => {
+            console.warn("Could not persist preferences before unload:", error);
+        });
     }
 
     const groupWorkspaces = useMemo(
