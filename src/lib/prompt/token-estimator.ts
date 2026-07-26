@@ -9,7 +9,6 @@ import {
 import type { PromptInjection } from "./types";
 
 const bytesPerToken = 3.35;
-const textEncoder = new TextEncoder();
 
 export type TokenEstimator = {
     estimateGenerationMessage(message: ChatGenerationMessage): number;
@@ -30,7 +29,37 @@ export function estimateText(value: string) {
         return 0;
     }
 
-    return Math.ceil(textEncoder.encode(value).length / bytesPerToken);
+    return Math.ceil(utf8ByteLength(value) / bytesPerToken);
+}
+
+/**
+ * Matches TextEncoder's UTF-8 output length without allocating a Uint8Array.
+ * Unpaired UTF-16 surrogates are encoded as U+FFFD, which is three bytes.
+ */
+function utf8ByteLength(value: string) {
+    let byteLength = 0;
+
+    for (let index = 0; index < value.length; index += 1) {
+        const codeUnit = value.charCodeAt(index);
+        if (codeUnit <= 0x7f) {
+            byteLength += 1;
+        } else if (codeUnit <= 0x7ff) {
+            byteLength += 2;
+        } else if (
+            codeUnit >= 0xd800 &&
+            codeUnit <= 0xdbff &&
+            index + 1 < value.length &&
+            value.charCodeAt(index + 1) >= 0xdc00 &&
+            value.charCodeAt(index + 1) <= 0xdfff
+        ) {
+            byteLength += 4;
+            index += 1;
+        } else {
+            byteLength += 3;
+        }
+    }
+
+    return byteLength;
 }
 
 export function estimateMessage(message: Message) {
