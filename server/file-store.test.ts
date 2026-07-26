@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { readEntitiesFromIds } from "./file-store";
+import {
+    readEntitiesFromIds,
+    readFileBackedIndex,
+    writeFileBackedIndex,
+} from "./file-store";
 
 describe("file-backed collection reads", () => {
     test("limits concurrent entity reads while preserving index order", async () => {
@@ -18,5 +25,42 @@ describe("file-backed collection reads", () => {
 
         expect(peakReads).toBeLessThanOrEqual(8);
         expect(entities).toEqual(ids.filter((id) => id !== "entity-7"));
+    });
+
+    test("reuses one immutable snapshot for cached index reads", async () => {
+        const directory = await mkdtemp(join(tmpdir(), "smileychat-file-store-"));
+        const indexPath = join(directory, "index.json");
+
+        try {
+            await writeFileBackedIndex(indexPath, {
+                ids: ["one"],
+                metadata: { source: "test" },
+            });
+            const options = {
+                indexPath,
+                normalizeIndex: (value: unknown) =>
+                    value as {
+                        ids: string[];
+                        metadata: { source: string };
+                    },
+                repairIndex: async (index: {
+                    ids: string[];
+                    metadata: { source: string };
+                }) => index,
+                rebuildIndex: async () => ({
+                    ids: [],
+                    metadata: { source: "rebuilt" },
+                }),
+            };
+
+            const first = await readFileBackedIndex(options);
+            const second = await readFileBackedIndex(options);
+
+            expect(second).toBe(first);
+            expect(Object.isFrozen(first)).toBe(true);
+            expect(Object.isFrozen(first.metadata)).toBe(true);
+        } finally {
+            await rm(directory, { recursive: true, force: true });
+        }
     });
 });

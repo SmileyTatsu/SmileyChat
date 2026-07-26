@@ -50,13 +50,13 @@ export async function readFileBackedIndex<TIndex>({
         const cached = fileBackedIndexCache.get(indexPath);
 
         if (cached?.lastModified === existingFile.mtimeMs) {
-            return cloneIndex(cached.index) as TIndex;
+            return cached.index as TIndex;
         }
 
         const pendingRead = fileBackedIndexReads.get(indexPath);
 
         if (pendingRead) {
-            return cloneIndex(await pendingRead) as TIndex;
+            return (await pendingRead) as TIndex;
         }
 
         const read = readAndRepairExistingIndex({
@@ -70,7 +70,7 @@ export async function readFileBackedIndex<TIndex>({
         fileBackedIndexReads.set(indexPath, read);
 
         try {
-            return cloneIndex(await read) as TIndex;
+            return (await read) as TIndex;
         } finally {
             if (fileBackedIndexReads.get(indexPath) === read) {
                 fileBackedIndexReads.delete(indexPath);
@@ -81,7 +81,7 @@ export async function readFileBackedIndex<TIndex>({
     const pendingRead = fileBackedIndexReads.get(indexPath);
 
     if (pendingRead) {
-        return cloneIndex(await pendingRead) as TIndex;
+        return (await pendingRead) as TIndex;
     }
 
     const read = rebuildIndex();
@@ -90,15 +90,16 @@ export async function readFileBackedIndex<TIndex>({
     try {
         const index = await read;
         const latestFile = await fileStat(indexPath);
+        const cachedIndex = cacheIndex(index);
 
         if (latestFile) {
             fileBackedIndexCache.set(indexPath, {
                 lastModified: latestFile.mtimeMs,
-                index: cloneIndex(index),
+                index: cachedIndex,
             });
         }
 
-        return cloneIndex(index);
+        return cachedIndex;
     } finally {
         if (fileBackedIndexReads.get(indexPath) === read) {
             fileBackedIndexReads.delete(indexPath);
@@ -121,27 +122,29 @@ async function readAndRepairExistingIndex<TIndex>({
     try {
         const index = await repairIndex(normalizeIndex(await Bun.file(indexPath).json()));
         const latestFile = await fileStat(indexPath);
+        const cachedIndex = cacheIndex(index);
 
         fileBackedIndexCache.set(indexPath, {
             lastModified: latestFile?.mtimeMs ?? lastModified,
-            index: cloneIndex(index),
+            index: cachedIndex,
         });
 
-        return index;
+        return cachedIndex;
     } catch {
         const index = await rebuildInvalidIndex();
         const latestFile = await fileStat(indexPath);
+        const cachedIndex = cacheIndex(index);
 
         if (latestFile) {
             fileBackedIndexCache.set(indexPath, {
                 lastModified: latestFile.mtimeMs,
-                index: cloneIndex(index),
+                index: cachedIndex,
             });
         } else {
             fileBackedIndexCache.delete(indexPath);
         }
 
-        return index;
+        return cachedIndex;
     }
 }
 
@@ -153,8 +156,22 @@ async function fileStat(pathname: string) {
     }
 }
 
-function cloneIndex<TIndex>(index: TIndex): TIndex {
-    return structuredClone(index);
+function cacheIndex<TIndex>(index: TIndex): TIndex {
+    return deepFreeze(structuredClone(index));
+}
+
+function deepFreeze<TValue>(value: TValue): TValue {
+    if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+        return value;
+    }
+
+    Object.freeze(value);
+
+    for (const child of Object.values(value)) {
+        deepFreeze(child);
+    }
+
+    return value;
 }
 
 export async function readExistingIdsInOrder(
