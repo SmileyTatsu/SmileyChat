@@ -35,6 +35,7 @@ type CachedFileBackedIndex = {
 
 const fileBackedIndexCache = new Map<string, CachedFileBackedIndex>();
 const fileBackedIndexReads = new Map<string, Promise<unknown>>();
+const collectionReadConcurrency = 8;
 
 export async function readFileBackedIndex<TIndex>({
     indexPath,
@@ -160,11 +161,13 @@ export async function readExistingIdsInOrder(
     ids: string[],
     filePathForId: (id: string) => string,
 ) {
-    const results = await Promise.all(
-        ids.map(async (id) => ({
+    const results = await mapWithConcurrency(
+        ids,
+        collectionReadConcurrency,
+        async (id) => ({
             id,
             exists: await Bun.file(filePathForId(id)).exists(),
-        })),
+        }),
     );
 
     return results.filter((result) => result.exists).map((result) => result.id);
@@ -174,8 +177,30 @@ export async function readEntitiesFromIds<TEntity>(
     ids: string[],
     readById: (id: string) => Promise<TEntity | undefined>,
 ): Promise<TEntity[]> {
-    const entities = await Promise.all(ids.map((id) => readById(id)));
+    const entities = await mapWithConcurrency(ids, collectionReadConcurrency, readById);
     return entities.filter(isDefined);
+}
+
+async function mapWithConcurrency<TInput, TOutput>(
+    values: TInput[],
+    concurrency: number,
+    mapper: (value: TInput) => Promise<TOutput>,
+): Promise<TOutput[]> {
+    const results = new Array<TOutput>(values.length);
+    let nextIndex = 0;
+    const workerCount = Math.min(concurrency, values.length);
+
+    await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+            while (nextIndex < values.length) {
+                const index = nextIndex;
+                nextIndex += 1;
+                results[index] = await mapper(values[index]);
+            }
+        }),
+    );
+
+    return results;
 }
 
 function isDefined<TValue>(value: TValue | undefined): value is TValue {
