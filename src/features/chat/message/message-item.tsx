@@ -204,7 +204,7 @@ export const MessageItem = memo(function MessageItem({
 
         const contentHeight = textarea.scrollHeight;
         const targetHeight = Math.min(Math.max(contentHeight, minHeight), maxHeight);
-        
+
         textarea.style.height = `${targetHeight}px`;
         textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
     }, [editingDraft, isEditing]);
@@ -635,6 +635,7 @@ function MessageLiveContent({
     return (
         <>
             <ThoughtProcess
+                onVisibleContentChange={onVisibleContentChange}
                 show={showThoughtProcess}
                 showToolActivity={showToolActivity}
                 timeline={timeline}
@@ -663,10 +664,12 @@ function MessageLiveContent({
 }
 
 function ThoughtProcess({
+    onVisibleContentChange,
     show,
     showToolActivity,
     timeline,
 }: {
+    onVisibleContentChange: () => void;
     show: boolean;
     showToolActivity: boolean;
     timeline: ReturnType<typeof getMessageTimeline>;
@@ -689,6 +692,7 @@ function ThoughtProcess({
             open={hasRunningTool || isOpen}
             onToggle={(event) => {
                 if (!hasRunningTool) setIsOpen(event.currentTarget.open);
+                onVisibleContentChange();
             }}
         >
             <summary>Thought Process</summary>

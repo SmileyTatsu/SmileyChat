@@ -663,7 +663,8 @@ export const MessageList = memo(function MessageList({
         setShowJumpToBottom(false);
         virtuosoRef.current?.scrollToIndex({
             index: "LAST",
-            behavior: "smooth",
+            align: "end",
+            behavior: isStreamActive ? "auto" : "smooth",
         });
     }
 });
