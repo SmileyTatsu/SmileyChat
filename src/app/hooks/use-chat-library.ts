@@ -800,7 +800,10 @@ export function useChatLibrary({
         const chatLoadRequestId = beginChatLoad(chatId);
 
         try {
-            await flushPendingChatAutosaveWithoutStateUpdate();
+            // The outgoing chat is already represented by an immutable snapshot in the
+            // save queue. Let that queue persist in the background so navigation is not
+            // held behind disk I/O; pagehide and destructive flows still flush explicitly.
+            void flushPendingChatAutosaveWithoutStateUpdate();
 
             if (requestId !== chatSelectRequestIdRef.current) {
                 finishChatLoad(chatLoadRequestId);
