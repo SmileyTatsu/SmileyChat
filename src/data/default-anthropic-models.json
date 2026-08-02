@@ -15,6 +15,11 @@
         "label": "Claude Opus",
         "models": [
             {
+                "id": "claude-opus-5",
+                "label": "Claude Opus 5",
+                "contextTokenLimit": 1000000
+            },
+            {
                 "id": "claude-opus-4-8",
                 "label": "Claude Opus 4.8",
                 "contextTokenLimit": 1000000

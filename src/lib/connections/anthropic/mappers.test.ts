@@ -60,7 +60,7 @@ describe("Anthropic connection mappers", () => {
             {
                 baseUrl: "https://api.anthropic.com/v1",
                 maxTokens: 250,
-                model: { source: "default", id: "claude-sonnet-4-6" },
+                model: { source: "default", id: "claude-opus-4-6" },
             },
         );
 
@@ -102,6 +102,108 @@ describe("Anthropic connection mappers", () => {
             type: "adaptive",
             display: "summarized",
         });
+    });
+
+    test("allows temperature 1.0 and top_p >= 0.99 for backwards compatibility on post-Opus 4.6 models", () => {
+        const temp1Body = createAnthropicMessageBody(
+            {
+                generation: {
+                    temperature: 1.0,
+                    topK: 40,
+                    topP: 0.99,
+                },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-opus-4-7" },
+            },
+        );
+
+        expect(temp1Body.temperature).toBe(1.0);
+        expect(temp1Body.top_k).toBeUndefined();
+        expect(temp1Body.top_p).toBeUndefined();
+
+        const topPBody = createAnthropicMessageBody(
+            {
+                generation: {
+                    topP: 0.99,
+                    topK: 20,
+                },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-opus-4-7" },
+            },
+        );
+
+        expect(topPBody.temperature).toBeUndefined();
+        expect(topPBody.top_k).toBeUndefined();
+        expect(topPBody.top_p).toBe(0.99);
+    });
+
+    test("correctly identifies all post-Opus 4.6 models (Sonnet 5, Fable 5, Opus 5, Sonnet 4.6, Opus 4.8)", () => {
+        const postOpus46Models = [
+            "claude-opus-5",
+            "claude-sonnet-5",
+            "claude-fable-5",
+            "claude-opus-4-8",
+            "claude-opus-4-7",
+            "claude-sonnet-4-6",
+        ];
+
+        for (const modelId of postOpus46Models) {
+            const body = createAnthropicMessageBody(
+                {
+                    generation: {
+                        temperature: 0.7,
+                        topK: 40,
+                        topP: 0.9,
+                    },
+                    promptMessages: [{ role: "user", content: "Hello" }],
+                    messages: [],
+                },
+                {
+                    baseUrl: "https://api.anthropic.com/v1",
+                    model: { source: "default", id: modelId },
+                },
+            );
+
+            expect(body.temperature).toBeUndefined();
+            expect(body.top_k).toBeUndefined();
+            expect(body.top_p).toBeUndefined();
+        }
+
+        const olderModels = [
+            "claude-opus-4-6",
+            "claude-opus-4-5-20251101",
+            "claude-haiku-4-5-20251001",
+            "claude-sonnet-4-5-20250929",
+            "claude-opus-4-1-20250805",
+        ];
+
+        for (const modelId of olderModels) {
+            const body = createAnthropicMessageBody(
+                {
+                    generation: {
+                        temperature: 0.7,
+                        topK: 40,
+                    },
+                    promptMessages: [{ role: "user", content: "Hello" }],
+                    messages: [],
+                },
+                {
+                    baseUrl: "https://api.anthropic.com/v1",
+                    model: { source: "default", id: modelId },
+                },
+            );
+
+            expect(body.temperature).toBe(0.7);
+            expect(body.top_k).toBe(40);
+        }
     });
 
     test("sends top_p when temperature is unset", () => {

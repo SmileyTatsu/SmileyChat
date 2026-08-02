@@ -970,15 +970,18 @@ function collectGenerationWarnings(
             ? String(profile.config.model.id ?? "")
             : "";
 
-        if (
-            isClaudeOpus47OrLaterModel(modelId) &&
-            (generation.temperature !== undefined ||
-                generation.topP !== undefined ||
-                generation.topK !== undefined)
-        ) {
-            warnings.push(
-                "Claude Opus 4.7 and later reject non-default temperature, Top P, and Top K. SmileyChat will omit them.",
-            );
+        if (isClaudeOpus47OrLaterModel(modelId)) {
+            const hasInvalidTemp =
+                generation.temperature !== undefined && generation.temperature !== 1.0;
+            const hasInvalidTopK = generation.topK !== undefined;
+            const hasInvalidTopP =
+                generation.topP !== undefined && generation.topP < 0.99;
+
+            if (hasInvalidTemp || hasInvalidTopK || hasInvalidTopP) {
+                warnings.push(
+                    "Models released after Claude Opus 4.6 do not support top_k, temperature (except 1.0), or top_p (except >= 0.99). Incompatible values will be omitted.",
+                );
+            }
         } else if (
             generation.temperature !== undefined &&
             generation.topP !== undefined

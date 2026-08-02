@@ -7,8 +7,31 @@ export function stopSequencesForGeneration(
     return stopSequences.length ? stopSequences : undefined;
 }
 
+export function isPostOpus46AnthropicModel(modelId: string) {
+    if (!modelId) {
+        return false;
+    }
+
+    // Major version 5 or higher (e.g. claude-opus-5, claude-sonnet-5, claude-fable-5)
+    if (/(?:^|[\/-])claude-[a-z]+-(?:[5-9]|\d{2,})(?:\b|-)/i.test(modelId)) {
+        return true;
+    }
+
+    // Major version 4, minor version 7 or higher (e.g. claude-opus-4-7, claude-opus-4-8)
+    if (/(?:^|[\/-])claude-[a-z]+-4-(?:[7-9]|\d{2,})(?:\b|-)/i.test(modelId)) {
+        return true;
+    }
+
+    // Version 4.6 for non-opus families released after Opus 4.6 (e.g. claude-sonnet-4-6, claude-fable-4-6, claude-haiku-4-6)
+    if (/(?:^|[\/-])claude-(?!opus\b)[a-z]+-4-6(?:\b|-)/i.test(modelId)) {
+        return true;
+    }
+
+    return false;
+}
+
 export function isClaudeOpus47OrLaterModel(modelId: string) {
-    return /^claude-opus-4-(?:[7-9]|\d{2,})(?:\b|-)/i.test(modelId);
+    return isPostOpus46AnthropicModel(modelId);
 }
 
 export function isClaudeOpus41Model(modelId: string) {

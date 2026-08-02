@@ -39,7 +39,6 @@ export function createAnthropicMessageBody(
             .filter((message) => hasVisibleContent(message.content)),
     );
     const maxTokens = config.maxTokens ?? defaultOutputTokenLimit;
-    const isOpus47OrLater = isClaudeOpus47OrLaterModel(config.model.id);
     const thinking = cleanAnthropicThinkingConfig(
         config.thinking,
         maxTokens,
@@ -62,7 +61,7 @@ export function createAnthropicMessageBody(
         ...(stopSequencesForGeneration(request.generation)
             ? { stop_sequences: stopSequencesForGeneration(request.generation) }
             : {}),
-        ...(!isOpus47OrLater ? sampling : {}),
+        ...sampling,
         ...(thinking ? { thinking } : {}),
         ...(request.tools?.length
             ? {
@@ -196,12 +195,28 @@ function cleanAnthropicSamplingConfig(
     generation: ChatGenerationRequest["generation"],
     modelId: string,
 ): Pick<AnthropicCreateMessageRequest, "temperature" | "top_k" | "top_p"> {
-    if (!generation || isClaudeOpus47OrLaterModel(modelId)) {
+    if (!generation) {
         return {};
     }
 
     const output: Pick<AnthropicCreateMessageRequest, "temperature" | "top_k" | "top_p"> =
         {};
+
+    if (isClaudeOpus47OrLaterModel(modelId)) {
+        if (generation.temperature === 1.0) {
+            output.temperature = 1.0;
+        }
+
+        if (
+            typeof generation.topP === "number" &&
+            generation.topP >= 0.99 &&
+            output.temperature === undefined
+        ) {
+            output.top_p = generation.topP;
+        }
+
+        return output;
+    }
 
     if (typeof generation.temperature === "number") {
         output.temperature = Math.min(1, generation.temperature);

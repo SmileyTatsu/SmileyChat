@@ -256,8 +256,8 @@ export function AnthropicConnection({
                     </select>
                 </label>
                 <p className="field-hint">
-                    Manual token budgets are rejected by Claude Opus 4.7. Use adaptive
-                    thinking for current Opus and Sonnet models.
+                    Manual token budgets are rejected by models released after Claude Opus
+                    4.6. Use adaptive thinking for newer models.
                 </p>
             </div>
             <ConnectionActions disabled={disabled} onTest={onTest} />
