@@ -44,6 +44,7 @@ type MessageListProps = {
     onEditMessage: (messageId: string, content: string) => void;
     onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
+    onCreateUserSwipe: (messageId: string) => boolean;
     onContinueGeneration: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
@@ -76,6 +77,7 @@ export const MessageList = memo(function MessageList({
     onEditMessage,
     onForkMessage,
     onNextSwipe,
+    onCreateUserSwipe,
     onContinueGeneration,
     onPreviousSwipe,
     onRemoveAttachment,
@@ -92,6 +94,7 @@ export const MessageList = memo(function MessageList({
         "below",
     );
     const [editingMessageId, setEditingMessageId] = useState("");
+    const [creatingUserSwipeMessageId, setCreatingUserSwipeMessageId] = useState("");
 
     const [registryRevision, setRegistryRevision] = useState(0);
     const [copyError, setCopyError] = useState("");
@@ -231,6 +234,7 @@ export const MessageList = memo(function MessageList({
 
     const startEditing = useCallback((messageId: string) => {
         setEditingMessageId(messageId);
+        setCreatingUserSwipeMessageId("");
         setOpenMenuMessageId("");
     }, []);
 
@@ -239,8 +243,25 @@ export const MessageList = memo(function MessageList({
     }, []);
 
     const cancelEdit = useCallback(() => {
+        if (creatingUserSwipeMessageId) {
+            onDeleteMessageSwipe(creatingUserSwipeMessageId);
+        }
         setEditingMessageId("");
-    }, []);
+        setCreatingUserSwipeMessageId("");
+    }, [creatingUserSwipeMessageId, onDeleteMessageSwipe]);
+
+    const createUserSwipe = useCallback(
+        (messageId: string) => {
+            if (!onCreateUserSwipe(messageId)) {
+                return;
+            }
+
+            setEditingMessageId(messageId);
+            setCreatingUserSwipeMessageId(messageId);
+            setOpenMenuMessageId("");
+        },
+        [onCreateUserSwipe],
+    );
 
     const toggleMessageMenu = useCallback(
         (messageId: string, trigger: HTMLButtonElement, isCurrentlyOpen: boolean) => {
@@ -278,6 +299,7 @@ export const MessageList = memo(function MessageList({
 
             onEditMessage(messageId, content);
             setEditingMessageId("");
+            setCreatingUserSwipeMessageId("");
         },
         [onEditMessage],
     );
@@ -445,6 +467,7 @@ export const MessageList = memo(function MessageList({
                             onDeleteMessage={requestDeleteMessage}
                             onForkMessage={onForkMessage}
                             onNextSwipe={onNextSwipe}
+                            onCreateUserSwipe={createUserSwipe}
                             onContinueGeneration={onContinueGeneration}
                             onPreviousSwipe={onPreviousSwipe}
                             onRemoveAttachment={requestRemoveAttachment}

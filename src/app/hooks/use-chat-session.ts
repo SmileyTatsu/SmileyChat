@@ -629,6 +629,30 @@ export function useChatSession({
         }
     }
 
+    function createUserSwipe(messageId: string) {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat || isChatPending(sourceChat.id)) {
+            return false;
+        }
+
+        const targetMessage = sourceChat.messages.find(
+            (message) => message.id === messageId,
+        );
+
+        if (
+            !targetMessage ||
+            targetMessage.role !== "user" ||
+            targetMessage.metadata?.canGenerateSwipe === false ||
+            targetMessage.activeSwipeIndex !== targetMessage.swipes.length - 1
+        ) {
+            return false;
+        }
+
+        appendEmptySwipe(messageId, sourceChat);
+        return true;
+    }
+
     async function continueGeneration(messageId: string) {
         const sourceChat = latestChatRef.current;
         const lastMessage = sourceChat?.messages[sourceChat.messages.length - 1];
@@ -1011,6 +1035,7 @@ export function useChatSession({
     return {
         chatError,
         continueGeneration,
+        createUserSwipe,
         deleteMessage,
         editMessage,
         getDebugPayload,

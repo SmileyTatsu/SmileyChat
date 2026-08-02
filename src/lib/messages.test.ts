@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+    appendMessageSwipe,
     createUserMessage,
     getMessageAttachments,
+    removeActiveMessageSwipe,
     updateActiveSwipeAttachments,
 } from "./messages";
 import type { ChatAttachment, SmileyPersona } from "../types";
@@ -49,5 +51,47 @@ describe("updateActiveSwipeAttachments", () => {
 
         expect(getMessageAttachments(updated)).toEqual([]);
         expect(updated.swipes[0]).not.toHaveProperty("attachments");
+    });
+});
+
+describe("appendMessageSwipe", () => {
+    test("creates a clean user swipe without changing the original attachments", () => {
+        const message = createUserMessage("first version", persona, [noteAttachment]);
+        const updated = appendMessageSwipe(message, "second version");
+
+        expect(updated.activeSwipeIndex).toBe(1);
+        expect(updated.swipes).toHaveLength(2);
+        expect(updated.swipes[0]).toMatchObject({
+            content: "first version",
+            attachments: [noteAttachment],
+        });
+        expect(updated.swipes[1]).toMatchObject({ content: "second version" });
+        expect(updated.swipes[1]).not.toHaveProperty("attachments");
+    });
+
+    test("keeps adjacent conversation messages intact when one user message gains a swipe", () => {
+        const first = createUserMessage("first version", persona);
+        const following = createUserMessage("later message", persona);
+        const messages = [first, following];
+        const updatedMessages = messages.map((message) =>
+            message.id === first.id
+                ? appendMessageSwipe(message, "second version")
+                : message,
+        );
+
+        expect(updatedMessages[0]?.swipes).toHaveLength(2);
+        expect(updatedMessages[1]).toBe(following);
+        expect(updatedMessages[1]?.swipes[0]?.content).toBe("later message");
+    });
+
+    test("removes a provisional empty swipe and restores the prior active swipe", () => {
+        const message = createUserMessage("first version", persona, [noteAttachment]);
+        const withProvisionalSwipe = appendMessageSwipe(message, "");
+        const cancelled = removeActiveMessageSwipe(withProvisionalSwipe);
+
+        expect(cancelled.activeSwipeIndex).toBe(0);
+        expect(cancelled.swipes).toHaveLength(1);
+        expect(getMessageAttachments(cancelled)).toEqual([noteAttachment]);
+        expect(cancelled.swipes[0]?.content).toBe("first version");
     });
 });

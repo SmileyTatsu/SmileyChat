@@ -1,6 +1,7 @@
 import {
     appendMessageSwipe,
     createInjectedMessage,
+    removeActiveMessageSwipe,
     updateActiveSwipeAttachments,
     updateActiveSwipeContent,
     updateActiveSwipeReasoning,
@@ -366,18 +367,7 @@ export function useMessageOperations({
                     return message;
                 }
 
-                const swipes = message.swipes.filter(
-                    (_swipe, index) => index !== message.activeSwipeIndex,
-                );
-
-                return {
-                    ...message,
-                    activeSwipeIndex: Math.max(
-                        0,
-                        Math.min(message.activeSwipeIndex - 1, swipes.length - 1),
-                    ),
-                    swipes,
-                };
+                return removeActiveMessageSwipe(message);
             }),
             sourceChat,
             "update",

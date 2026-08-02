@@ -77,6 +77,7 @@ export type MessageItemProps = {
     onDeleteMessage: (message: Message) => void;
     onForkMessage: (messageId: string) => void;
     onNextSwipe: (messageId: string) => void;
+    onCreateUserSwipe: (messageId: string) => void;
     onContinueGeneration: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
@@ -121,6 +122,7 @@ export const MessageItem = memo(function MessageItem({
     onDeleteMessage,
     onForkMessage,
     onNextSwipe,
+    onCreateUserSwipe,
     onContinueGeneration,
     onPreviousSwipe,
     onRemoveAttachment,
@@ -139,13 +141,24 @@ export const MessageItem = memo(function MessageItem({
     const toolActivities = activeSwipe?.toolActivities;
 
     const canPagePrevious = message.activeSwipeIndex > 0;
+    const canUseUserSwipes =
+        message.role === "user" && message.metadata?.canGenerateSwipe !== false;
     const canPageForward =
-        message.role === "character" && message.metadata?.canGenerateSwipe !== false;
+        canUseUserSwipes ||
+        (message.role === "character" && message.metadata?.canGenerateSwipe !== false);
 
     const showSwipeControls =
-        message.role === "character" &&
-        message.metadata?.canGenerateSwipe !== false &&
-        isLastMessage;
+        canUseUserSwipes ||
+        (message.role === "character" &&
+            message.metadata?.canGenerateSwipe !== false &&
+            isLastMessage);
+    const isLastSwipe = message.activeSwipeIndex === message.swipes.length - 1;
+    const nextSwipeLabel =
+        canUseUserSwipes && isLastSwipe
+            ? "New swipe"
+            : message.role === "character" && isLastSwipe
+              ? "Generate next swipe"
+              : "Next swipe";
     const showRpMessageAvatar = mode === "rp" && showRpCharacterImages;
 
     const avatar =
@@ -196,7 +209,7 @@ export const MessageItem = memo(function MessageItem({
                                 type="button"
                                 title="Previous swipe (Left Arrow)"
                                 aria-label="Previous swipe"
-                                disabled={!canPagePrevious || isPendingSwipe}
+                                disabled={!canPagePrevious || isPendingSwipe || isEditing}
                                 onClick={() => onPreviousSwipe(message.id)}
                             >
                                 <ChevronLeft size={16} />
@@ -208,18 +221,14 @@ export const MessageItem = memo(function MessageItem({
 
                             <button
                                 type="button"
-                                aria-label={
-                                    message.activeSwipeIndex < message.swipes.length - 1
-                                        ? "Next swipe"
-                                        : "Generate next swipe"
+                                aria-label={nextSwipeLabel}
+                                disabled={!canPageForward || isPendingSwipe || isEditing}
+                                onClick={() =>
+                                    canUseUserSwipes && isLastSwipe
+                                        ? onCreateUserSwipe(message.id)
+                                        : onNextSwipe(message.id)
                                 }
-                                disabled={!canPageForward || isPendingSwipe}
-                                onClick={() => onNextSwipe(message.id)}
-                                title={
-                                    message.activeSwipeIndex < message.swipes.length - 1
-                                        ? "Next swipe (Right Arrow)"
-                                        : "Generate next swipe (Right Arrow)"
-                                }
+                                title={nextSwipeLabel}
                             >
                                 <ChevronRight size={16} />
                             </button>
@@ -516,6 +525,7 @@ function areMessageItemPropsEqual(
         previous.onDeleteMessage === next.onDeleteMessage &&
         previous.onForkMessage === next.onForkMessage &&
         previous.onNextSwipe === next.onNextSwipe &&
+        previous.onCreateUserSwipe === next.onCreateUserSwipe &&
         previous.onContinueGeneration === next.onContinueGeneration &&
         previous.onPreviousSwipe === next.onPreviousSwipe &&
         previous.onRemoveAttachment === next.onRemoveAttachment &&

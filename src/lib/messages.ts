@@ -411,6 +411,25 @@ export function appendMessageSwipe(
     };
 }
 
+export function removeActiveMessageSwipe(message: Message): Message {
+    if (message.swipes.length <= 1) {
+        return message;
+    }
+
+    const swipes = message.swipes.filter(
+        (_swipe, index) => index !== message.activeSwipeIndex,
+    );
+
+    return {
+        ...message,
+        activeSwipeIndex: Math.max(
+            0,
+            Math.min(message.activeSwipeIndex - 1, swipes.length - 1),
+        ),
+        swipes,
+    };
+}
+
 function createMessage(
     role: Message["role"],
     author: string,

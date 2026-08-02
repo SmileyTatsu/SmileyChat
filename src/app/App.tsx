@@ -428,6 +428,9 @@ export function App() {
     const handleNextSwipe = useCallback((messageId: string) => {
         void latestChatSessionForPluginsRef.current.nextSwipe(messageId);
     }, []);
+    const handleCreateUserSwipe = useCallback((messageId: string) => {
+        return latestChatSessionForPluginsRef.current.createUserSwipe(messageId);
+    }, []);
     const handleContinueGeneration = useCallback((messageId: string) => {
         void latestChatSessionForPluginsRef.current.continueGeneration(messageId);
     }, []);
@@ -1187,6 +1190,7 @@ export function App() {
                 onRemoveAllAttachments={handleRemoveAllAttachments}
                 onModeChange={handleModeChange}
                 onNextSwipe={handleNextSwipe}
+                onCreateUserSwipe={handleCreateUserSwipe}
                 onContinueGeneration={handleContinueGeneration}
                 onPreviousSwipe={handlePreviousSwipe}
                 onSendMessage={handleSendMessage}

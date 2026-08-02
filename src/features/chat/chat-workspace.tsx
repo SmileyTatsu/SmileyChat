@@ -78,6 +78,7 @@ type ChatWorkspaceProps = {
     onForkMessage: (messageId: string) => void;
     onModeChange: (mode: ChatMode) => void;
     onNextSwipe: (messageId: string) => void;
+    onCreateUserSwipe: (messageId: string) => boolean;
     onContinueGeneration: (messageId: string) => void;
     onPreviousSwipe: (messageId: string) => void;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
@@ -116,6 +117,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     onForkMessage,
     onModeChange,
     onNextSwipe,
+    onCreateUserSwipe,
     onContinueGeneration,
     onPreviousSwipe,
     onRemoveAttachment,
@@ -211,6 +213,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     onEditMessage={onEditMessage}
                     onForkMessage={onForkMessage}
                     onNextSwipe={onNextSwipe}
+                    onCreateUserSwipe={onCreateUserSwipe}
                     onContinueGeneration={onContinueGeneration}
                     onPreviousSwipe={onPreviousSwipe}
                     onRemoveAttachment={onRemoveAttachment}
