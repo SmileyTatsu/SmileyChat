@@ -15,7 +15,6 @@ import { createServerGenerationConnection } from "#frontend/lib/connections/serv
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
-    ToolActivity,
     ToolCall,
     ToolResult,
 } from "#frontend/lib/connections/types";
@@ -289,16 +288,35 @@ export function usePromptGeneration({
         maxIterations = 8,
     ) {
         let promptMessages = request.promptMessages ?? [];
-        const activities: ToolActivity[] = [];
+        const activities: MessageToolActivity[] = [];
         const timeline: SwipeTimelineEntry[] = [];
 
         const emitTimeline = () => onTimeline?.([...timeline]);
         const generateTurn = async () => {
+            const turnStartedAt = Date.now();
             let streamedReasoning = "";
             let thoughtEntry:
                 | Extract<SwipeTimelineEntry, { type: "thought" }>
                 | undefined;
-            const appendThought = (content: string, details?: unknown) => {
+            const finalizeThought = () => {
+                if (
+                    thoughtEntry?.startedAt === undefined ||
+                    thoughtEntry.durationMs !== undefined
+                ) {
+                    return;
+                }
+
+                thoughtEntry.durationMs = Math.max(
+                    0,
+                    Date.now() - thoughtEntry.startedAt,
+                );
+                emitTimeline();
+            };
+            const appendThought = (
+                content: string,
+                details?: unknown,
+                startedAt = Date.now(),
+            ) => {
                 if (!content) return;
 
                 if (!thoughtEntry) {
@@ -306,6 +324,7 @@ export function usePromptGeneration({
                         id: `thought-${timeline.length + 1}`,
                         type: "thought",
                         content: "",
+                        startedAt,
                     };
                     timeline.push(thoughtEntry);
                 }
@@ -314,32 +333,48 @@ export function usePromptGeneration({
                 if (details !== undefined) thoughtEntry.details = details;
                 emitTimeline();
             };
-            const result = await connection.generate({
-                ...request,
-                promptMessages,
-                onReasoningToken: (token) => {
-                    streamedReasoning += token;
-                    appendThought(token);
-                    request.onReasoningToken?.(token);
-                },
-            });
+            let result: Awaited<ReturnType<typeof connection.generate>>;
+            try {
+                result = await connection.generate({
+                    ...request,
+                    promptMessages,
+                    onReasoningToken: (token) => {
+                        streamedReasoning += token;
+                        appendThought(token);
+                        request.onReasoningToken?.(token);
+                    },
+                    onToken: (token) => {
+                        // Provider streams often keep the request open while the
+                        // visible answer arrives. Thought timing ends as soon as
+                        // that answer starts, rather than at stream completion.
+                        if (token) finalizeThought();
+                        request.onToken?.(token);
+                    },
+                });
 
-            if (result.reasoning && result.reasoning !== streamedReasoning) {
-                if (thoughtEntry) {
-                    thoughtEntry.content = result.reasoning;
-                    if (result.reasoningDetails !== undefined) {
-                        thoughtEntry.details = result.reasoningDetails;
+                if (result.reasoning && result.reasoning !== streamedReasoning) {
+                    if (thoughtEntry) {
+                        thoughtEntry.content = result.reasoning;
+                        if (result.reasoningDetails !== undefined) {
+                            thoughtEntry.details = result.reasoningDetails;
+                        }
+                        emitTimeline();
+                    } else {
+                        appendThought(
+                            result.reasoning,
+                            result.reasoningDetails,
+                            turnStartedAt,
+                        );
                     }
+                } else if (thoughtEntry && result.reasoningDetails !== undefined) {
+                    thoughtEntry.details = result.reasoningDetails;
                     emitTimeline();
-                } else {
-                    appendThought(result.reasoning, result.reasoningDetails);
                 }
-            } else if (thoughtEntry && result.reasoningDetails !== undefined) {
-                thoughtEntry.details = result.reasoningDetails;
-                emitTimeline();
-            }
 
-            return result;
+                return result;
+            } finally {
+                finalizeThought();
+            }
         };
 
         let result = initialToolCalls?.length
@@ -376,6 +411,7 @@ export function usePromptGeneration({
                         content: "Running…",
                     },
                     status: "running",
+                    startedAt: Date.now(),
                 };
                 const timelineEntry: SwipeTimelineEntry = {
                     id: call.id,
@@ -392,8 +428,17 @@ export function usePromptGeneration({
                     allowedTools,
                 );
                 toolResults.push(toolResult);
-                activities.push({ call, result: toolResult });
-                timelineEntry.activity = { call, result: toolResult };
+                const durationMs = Math.max(
+                    0,
+                    Date.now() - (pendingActivity.startedAt ?? Date.now()),
+                );
+                timelineEntry.activity = {
+                    call,
+                    result: toolResult,
+                    startedAt: pendingActivity.startedAt,
+                    durationMs,
+                };
+                activities.push(timelineEntry.activity);
                 emitTimeline();
                 onToolActivities?.([...activities]);
             }

@@ -54,6 +54,10 @@ export type MessageToolActivity = {
     result: MessageToolResult;
     /** Present only while the tool call is still in flight. */
     status?: "running";
+    /** Epoch time recorded when this tool activity begins. */
+    startedAt?: number;
+    /** Total time spent running this tool activity, in milliseconds. */
+    durationMs?: number;
 };
 
 export type SwipeTimelineEntry =
@@ -62,6 +66,10 @@ export type SwipeTimelineEntry =
           type: "thought";
           content: string;
           details?: unknown;
+          /** Epoch time recorded when this reasoning segment begins. */
+          startedAt?: number;
+          /** Total time spent producing this reasoning segment, in milliseconds. */
+          durationMs?: number;
       }
     | {
           id: string;

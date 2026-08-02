@@ -105,6 +105,78 @@ describe("metadata preservation", () => {
         ]);
     });
 
+    test("preserves valid message timeline timing and removes invalid values", () => {
+        const chat = normalizeChat({
+            id: "chat-1",
+            characterId: "char-1",
+            defaultTitle: "Chat",
+            mode: "chat",
+            messages: [
+                {
+                    id: "message-1",
+                    author: "Assistant",
+                    role: "character",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    activeSwipeIndex: 0,
+                    swipes: [
+                        {
+                            id: "swipe-1",
+                            content: "Done.",
+                            createdAt: "2026-01-01T00:00:00.000Z",
+                            timeline: [
+                                {
+                                    id: "thought-1",
+                                    type: "thought",
+                                    content: "Checking.",
+                                    startedAt: 1_000,
+                                    durationMs: 250,
+                                },
+                                {
+                                    id: "tool-1",
+                                    type: "tool",
+                                    activity: {
+                                        call: {
+                                            id: "tool-1",
+                                            name: "weather",
+                                            argumentsText: "{}",
+                                        },
+                                        result: {
+                                            toolCallId: "tool-1",
+                                            name: "weather",
+                                            content: "Sunny",
+                                        },
+                                        startedAt: -1,
+                                        durationMs: Number.NaN,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+        });
+
+        expect(chat?.messages[0]?.swipes[0]?.timeline).toEqual([
+            {
+                id: "thought-1",
+                type: "thought",
+                content: "Checking.",
+                startedAt: 1_000,
+                durationMs: 250,
+            },
+            {
+                id: "tool-1",
+                type: "tool",
+                activity: {
+                    call: { id: "tool-1", name: "weather", argumentsText: "{}" },
+                    result: { toolCallId: "tool-1", name: "weather", content: "Sunny" },
+                },
+            },
+        ]);
+    });
+
     test("preserves character metadata", () => {
         const character = normalizeCharacter({
             id: "char-1",

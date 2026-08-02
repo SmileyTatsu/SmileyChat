@@ -584,6 +584,7 @@
     color: #b0b8cc;
     user-select: none;
     font-weight: 500;
+    font-variant-numeric: tabular-nums;
     transition:
         background-color 150ms ease,
         color 150ms ease;

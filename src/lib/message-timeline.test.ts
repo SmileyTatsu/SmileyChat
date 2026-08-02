@@ -96,4 +96,48 @@ describe("message thought timelines", () => {
             { id: "tool-1", type: "tool", activity: completedTool },
         ]);
     });
+
+    test("preserves timing metadata while merging a streaming timeline", () => {
+        const message: Message = {
+            id: "message-1",
+            author: "Assistant",
+            role: "character",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            activeSwipeIndex: 0,
+            swipes: [
+                { id: "swipe-1", content: "", createdAt: "2026-01-01T00:00:00.000Z" },
+            ],
+        };
+        const rendered = applyStreamingMessageDraft(message, {
+            timeline: [
+                {
+                    id: "thought-1",
+                    type: "thought",
+                    content: "Checking.",
+                    startedAt: 1_000,
+                    durationMs: 250,
+                },
+                {
+                    id: "tool-1",
+                    type: "tool",
+                    activity: { ...completedTool, startedAt: 1_300, durationMs: 1_400 },
+                },
+            ],
+        });
+
+        expect(getMessageTimeline(rendered)).toEqual([
+            {
+                id: "thought-1",
+                type: "thought",
+                content: "Checking.",
+                startedAt: 1_000,
+                durationMs: 250,
+            },
+            {
+                id: "tool-1",
+                type: "tool",
+                activity: { ...completedTool, startedAt: 1_300, durationMs: 1_400 },
+            },
+        ]);
+    });
 });

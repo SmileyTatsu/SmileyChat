@@ -16,6 +16,7 @@ import { memo } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { cn } from "#frontend/lib/common/style";
+import { formatDuration } from "#frontend/lib/time";
 import { getPluginTool } from "#frontend/lib/plugins/registry";
 import {
     getMessageAttachments,
@@ -46,6 +47,8 @@ import {
     PluginRenderSurface,
     pluginIdFromScopedId,
 } from "../../plugins/plugin-error-boundary";
+
+const LIVE_DURATION_UPDATE_INTERVAL_MS = 100;
 
 export type MessageItemProps = {
     characterAvatarPath?: string;
@@ -480,7 +483,13 @@ export const MessageItem = memo(function MessageItem({
     );
 }, areMessageItemPropsEqual);
 
-function ToolActivityMessage({ activity }: { activity: MessageToolActivity }) {
+function ToolActivityMessage({
+    activity,
+    now,
+}: {
+    activity: MessageToolActivity;
+    now?: number;
+}) {
     if (!activity) {
         return null;
     }
@@ -491,11 +500,13 @@ function ToolActivityMessage({ activity }: { activity: MessageToolActivity }) {
         activity.call.displayName ||
         getPluginTool(activity.call.name)?.displayName ||
         activity.call.name;
+    const duration = formatActivityDuration(activity, now);
+    const durationSuffix = duration ? ` (${duration})` : "";
     const title = isRunning
-        ? `Running tool: ${toolName}`
+        ? `Running tool: ${toolName}${durationSuffix}`
         : isError
-          ? `Tool failed: ${toolName}`
-          : `Tool used: ${toolName}`;
+          ? `Tool failed: ${toolName}${durationSuffix}`
+          : `Tool used: ${toolName}${durationSuffix}`;
 
     return (
         <details
@@ -528,6 +539,15 @@ function ToolActivityMessage({ activity }: { activity: MessageToolActivity }) {
             )}
         </details>
     );
+}
+
+function formatActivityDuration(activity: MessageToolActivity, now = Date.now()) {
+    const durationMs =
+        activity.status === "running" && activity.startedAt !== undefined
+            ? Math.max(0, now - activity.startedAt)
+            : activity.durationMs;
+
+    return durationMs === undefined ? undefined : formatDuration(durationMs);
 }
 
 function areMessageItemPropsEqual(
@@ -678,13 +698,49 @@ function ThoughtProcess({
     const hasRunningTool = entries.some(
         (entry) => entry.type === "tool" && entry.activity.status === "running",
     );
+    const hasRunningEntry = entries.some((entry) => {
+        const timedEntry = entry.type === "thought" ? entry : entry.activity;
+        return timedEntry.startedAt !== undefined && timedEntry.durationMs === undefined;
+    });
     const [isOpen, setIsOpen] = useState(false);
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+        if (!hasRunningEntry) return;
+
+        setNow(Date.now());
+        const interval = window.setInterval(
+            () => setNow(Date.now()),
+            LIVE_DURATION_UPDATE_INTERVAL_MS,
+        );
+        return () => window.clearInterval(interval);
+    }, [hasRunningEntry]);
 
     useEffect(() => {
         if (hasRunningTool) setIsOpen(true);
     }, [hasRunningTool]);
 
     if (!show || !entries.length) return null;
+
+    const timedEntries = entries.filter((entry) =>
+        entry.type === "thought"
+            ? entry.durationMs !== undefined || entry.startedAt !== undefined
+            : entry.activity.durationMs !== undefined ||
+              entry.activity.startedAt !== undefined,
+    );
+    const totalDurationMs = timedEntries.reduce((total, entry) => {
+        const startedAt =
+            entry.type === "thought" ? entry.startedAt : entry.activity.startedAt;
+        const durationMs =
+            entry.type === "thought" ? entry.durationMs : entry.activity.durationMs;
+        return (
+            total +
+            (durationMs ?? (startedAt === undefined ? 0 : Math.max(0, now - startedAt)))
+        );
+    }, 0);
+    const summary = timedEntries.length
+        ? `Thought Process (${formatDuration(totalDurationMs)})`
+        : "Thought Process";
 
     return (
         <details
@@ -695,7 +751,7 @@ function ThoughtProcess({
                 onVisibleContentChange();
             }}
         >
-            <summary>Thought Process</summary>
+            <summary>{summary}</summary>
             <div className="thought-process-timeline">
                 {entries.map((entry) =>
                     entry.type === "thought" ? (
@@ -703,7 +759,11 @@ function ThoughtProcess({
                             {entry.content}
                         </p>
                     ) : (
-                        <ToolActivityMessage key={entry.id} activity={entry.activity} />
+                        <ToolActivityMessage
+                            key={entry.id}
+                            activity={entry.activity}
+                            now={now}
+                        />
                     ),
                 )}
             </div>

@@ -375,6 +375,12 @@ function normalizeMessageToolActivities(value: unknown): MessageToolActivity[] {
                 call,
                 result,
                 ...(item.status === "running" ? { status: "running" as const } : {}),
+                ...(normalizeDurationValue(item.startedAt) !== undefined
+                    ? { startedAt: normalizeDurationValue(item.startedAt) }
+                    : {}),
+                ...(normalizeDurationValue(item.durationMs) !== undefined
+                    ? { durationMs: normalizeDurationValue(item.durationMs) }
+                    : {}),
             };
         })
         .filter((item): item is MessageToolActivity => Boolean(item));
@@ -465,6 +471,12 @@ function normalizeSwipeTimeline(value: unknown): NonNullable<MessageSwipe["timel
                     type: "thought" as const,
                     content,
                     ...("details" in item ? { details: item.details } : {}),
+                    ...(normalizeDurationValue(item.startedAt) !== undefined
+                        ? { startedAt: normalizeDurationValue(item.startedAt) }
+                        : {}),
+                    ...(normalizeDurationValue(item.durationMs) !== undefined
+                        ? { durationMs: normalizeDurationValue(item.durationMs) }
+                        : {}),
                 };
             }
 
@@ -485,6 +497,12 @@ function normalizeSwipeTimeline(value: unknown): NonNullable<MessageSwipe["timel
         .filter((item): item is NonNullable<MessageSwipe["timeline"]>[number] =>
             Boolean(item),
         );
+}
+
+function normalizeDurationValue(value: unknown): number | undefined {
+    return typeof value === "number" && Number.isFinite(value) && value >= 0
+        ? value
+        : undefined;
 }
 
 function normalizePendingToolContinuation(
