@@ -2,13 +2,15 @@ import { describe, expect, test } from "bun:test";
 
 import type { ChatSession } from "#frontend/types";
 
+import { chatToSummary } from "#frontend/lib/chats/normalize";
+
 import { chatSaveResponse } from "./chat-save-response";
 import { shouldPreserveExistingChat } from "./chat-store";
 
 describe("chat save acknowledgement", () => {
     test("returns only a summary for the persisted chat", () => {
         const chat = createChat("2026-07-15T12:00:00.000Z", "Saved content");
-        const response = chatSaveResponse(chat);
+        const response = chatSaveResponse(chatToSummary(chat));
 
         expect(response).toEqual({
             ok: true,
@@ -28,11 +30,26 @@ describe("chat save acknowledgement", () => {
     });
 
     test("preserves a newer stored chat over a stale incoming save", () => {
-        const stored = createChat("2026-07-15T12:01:00.000Z", "Newer content");
+        const stored = chatToSummary(
+            createChat("2026-07-15T12:01:00.000Z", "Newer content"),
+        );
         const incoming = createChat("2026-07-15T12:00:00.000Z", "Stale content");
 
         expect(shouldPreserveExistingChat(stored, incoming)).toBe(true);
-        expect(shouldPreserveExistingChat(incoming, stored)).toBe(false);
+        expect(
+            shouldPreserveExistingChat(
+                chatToSummary(incoming),
+                createChat("2026-07-15T12:01:00.000Z", "Newer content"),
+            ),
+        ).toBe(false);
+    });
+
+    test("acknowledges the stored summary when a stale save is rejected", () => {
+        const stored = chatToSummary(
+            createChat("2026-07-15T12:01:00.000Z", "Newer content"),
+        );
+
+        expect(chatSaveResponse(stored)).toEqual({ ok: true, summary: stored });
     });
 });
 

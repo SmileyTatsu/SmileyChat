@@ -173,15 +173,15 @@ async function writeChatByIdUnlocked(chatId: string, value: unknown) {
         throw new BadRequestError("Invalid chat.");
     }
 
-    const existingChat = await readChatById(chatId);
     const chat = sanitizeChatAttachmentUrls(normalizedChat);
-    if (existingChat && shouldPreserveExistingChat(existingChat, chat)) {
-        return existingChat;
+    const index = await readChatIndex();
+    const existingSummary = index.summaries.find((summary) => summary.id === chatId);
+    if (existingSummary && shouldPreserveExistingChat(existingSummary, chat)) {
+        return existingSummary;
     }
 
     await writeJsonAtomic(chatFilePath(chat.id), chat);
 
-    const index = await readChatIndex();
     const chatIds = index.chatIds.includes(chat.id)
         ? moveChatIdToFront(index.chatIds, chat.id)
         : [chat.id, ...index.chatIds];
@@ -199,7 +199,7 @@ async function writeChatByIdUnlocked(chatId: string, value: unknown) {
         summaries: replaceChatSummary(index.summaries, chatToSummary(chat)),
     });
 
-    return chat;
+    return chatToSummary(chat);
 }
 
 export async function patchChatMetadataById(chatId: string, value: unknown) {
@@ -226,7 +226,7 @@ export async function patchChatMetadataById(chatId: string, value: unknown) {
 }
 
 export function shouldPreserveExistingChat(
-    existingChat: ChatSession | undefined,
+    existingChat: ChatSummary | undefined,
     incomingChat: ChatSession,
 ) {
     return (
