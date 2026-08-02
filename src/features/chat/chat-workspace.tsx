@@ -59,6 +59,7 @@ type ChatWorkspaceProps = {
     groupMembers?: ChatGroupMember[];
     errorMessage?: string;
     isLoading?: boolean;
+    chatLoadRequestId?: number;
     isSending?: boolean;
     uploadingAttachmentCount?: number;
     messages: Message[];
@@ -80,6 +81,7 @@ type ChatWorkspaceProps = {
     onNextSwipe: (messageId: string) => void;
     onCreateUserSwipe: (messageId: string) => boolean;
     onContinueGeneration: (messageId: string) => void;
+    onChatContentReady: (chatId: string, requestId: number) => void;
     onPreviousSwipe: (messageId: string) => void;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onRemoveAllAttachments: (messageId: string) => void;
@@ -103,6 +105,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     groupMembers,
     errorMessage,
     isLoading,
+    chatLoadRequestId = 0,
     isSending,
     uploadingAttachmentCount,
     messages,
@@ -119,6 +122,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     onNextSwipe,
     onCreateUserSwipe,
     onContinueGeneration,
+    onChatContentReady,
     onPreviousSwipe,
     onRemoveAttachment,
     onRemoveAllAttachments,
@@ -174,9 +178,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                 onToggleSidebar={onToggleSidebar}
                 onToggleCharacter={onToggleCharacter}
             />
-            {isLoading ? (
-                <ChatLoadingState />
-            ) : emptyState ? (
+            {emptyState ? (
                 <div className="chat-empty-state">
                     <div>
                         <h2>{emptyState.title}</h2>
@@ -200,6 +202,8 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     mode={mode}
                     autoScroll={preferences.chat.autoScroll}
                     pendingSwipeMessageId={pendingSwipeMessageId}
+                    chatLoadRequestId={chatLoadRequestId}
+                    isInert={Boolean(isLoading)}
                     showRpCharacterImages={preferences.appearance.showRpCharacterImages}
                     showThoughtProcess={preferences.chat.showThoughtProcess}
                     showTimestamps={preferences.appearance.showTimestamps}
@@ -215,16 +219,18 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     onNextSwipe={onNextSwipe}
                     onCreateUserSwipe={onCreateUserSwipe}
                     onContinueGeneration={onContinueGeneration}
+                    onInitialContentRendered={onChatContentReady}
                     onPreviousSwipe={onPreviousSwipe}
                     onRemoveAttachment={onRemoveAttachment}
                     onRemoveAllAttachments={onRemoveAllAttachments}
                     getPluginSnapshot={getPluginSnapshot}
                 />
             )}
-            {!emptyState && !isLoading && (
+            {!emptyState && (
                 <MessageComposer
                     characterName={characterName}
                     disabled={
+                        isLoading ||
                         pluginComposerState?.disabled ||
                         isSending ||
                         Boolean(uploadingAttachmentCount) ||
@@ -241,6 +247,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     pluginSnapshot={pluginSnapshot}
                 />
             )}
+            {isLoading && <ChatLoadingState />}
         </section>
     );
 });

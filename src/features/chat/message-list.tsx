@@ -23,9 +23,11 @@ type MessageListProps = {
     characterDialogueColors: Readonly<Record<string, string | null>>;
     characterName: string;
     chatId: string;
+    chatLoadRequestId?: number;
     defaultCharacterDialogueColor?: string;
     errorMessage?: string;
     isTyping?: boolean;
+    isInert?: boolean;
     messages: Message[];
     mode: ChatMode;
     canForkMessages: boolean;
@@ -46,6 +48,7 @@ type MessageListProps = {
     onNextSwipe: (messageId: string) => void;
     onCreateUserSwipe: (messageId: string) => boolean;
     onContinueGeneration: (messageId: string) => void;
+    onInitialContentRendered: (chatId: string, requestId: number) => void;
     onPreviousSwipe: (messageId: string) => void;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onRemoveAllAttachments: (messageId: string) => void;
@@ -58,9 +61,11 @@ export const MessageList = memo(function MessageList({
     characterDialogueColors,
     characterName,
     chatId,
+    chatLoadRequestId = 0,
     defaultCharacterDialogueColor,
     errorMessage,
     isTyping,
+    isInert,
     messages,
     mode,
     canForkMessages,
@@ -79,6 +84,7 @@ export const MessageList = memo(function MessageList({
     onNextSwipe,
     onCreateUserSwipe,
     onContinueGeneration,
+    onInitialContentRendered,
     onPreviousSwipe,
     onRemoveAttachment,
     onRemoveAllAttachments,
@@ -87,6 +93,9 @@ export const MessageList = memo(function MessageList({
     const virtuosoRef = useRef<VirtuosoHandle>(null);
     const openMenuRef = useRef<HTMLDivElement>(null);
     const pendingAutoScrollFrameRef = useRef<number>();
+    const contentReadyFrameRef = useRef<number>();
+    const contentReadyPaintFrameRef = useRef<number>();
+    const contentReadyKeyRef = useRef("");
     const shouldAutoScrollRef = useRef(true);
     const [showJumpToBottom, setShowJumpToBottom] = useState(false);
     const [openMenuMessageId, setOpenMenuMessageId] = useState("");
@@ -144,8 +153,36 @@ export const MessageList = memo(function MessageList({
             if (pendingAutoScrollFrameRef.current !== undefined) {
                 cancelAnimationFrame(pendingAutoScrollFrameRef.current);
             }
+            if (contentReadyFrameRef.current !== undefined) {
+                cancelAnimationFrame(contentReadyFrameRef.current);
+            }
+            if (contentReadyPaintFrameRef.current !== undefined) {
+                cancelAnimationFrame(contentReadyPaintFrameRef.current);
+            }
         };
     }, []);
+
+    const reportInitialContentRendered = useCallback(() => {
+        if (!chatLoadRequestId) return;
+
+        const readyKey = `${chatId}:${chatLoadRequestId}`;
+        if (contentReadyKeyRef.current === readyKey) return;
+        contentReadyKeyRef.current = readyKey;
+
+        contentReadyFrameRef.current = requestAnimationFrame(() => {
+            contentReadyFrameRef.current = undefined;
+            contentReadyPaintFrameRef.current = requestAnimationFrame(() => {
+                contentReadyPaintFrameRef.current = undefined;
+                onInitialContentRendered(chatId, chatLoadRequestId);
+            });
+        });
+    }, [chatId, chatLoadRequestId, onInitialContentRendered]);
+
+    useEffect(() => {
+        if (displayMessages.length === 0) {
+            reportInitialContentRendered();
+        }
+    }, [displayMessages.length, reportInitialContentRendered]);
 
     useEffect(() => {
         if (!openMenuMessageId) {
@@ -396,7 +433,7 @@ export const MessageList = memo(function MessageList({
     });
 
     return (
-        <div className="message-list-shell">
+        <div className="message-list-shell" inert={isInert}>
             <Virtuoso
                 className="message-list"
                 ref={virtuosoRef}
@@ -478,6 +515,11 @@ export const MessageList = memo(function MessageList({
                             onToggleMenu={toggleMessageMenu}
                         />
                     );
+                }}
+                itemsRendered={(items) => {
+                    if (items.length > 0) {
+                        reportInitialContentRendered();
+                    }
                 }}
                 components={{
                     Header: () => (

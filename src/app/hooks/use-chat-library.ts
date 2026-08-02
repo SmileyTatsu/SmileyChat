@@ -44,6 +44,12 @@ import type {
 import type { ChatMetadataPatch } from "#frontend/lib/api/client";
 
 import { useChatAutosave } from "./use-chat-autosave";
+import {
+    cancelChatLoad,
+    completeChatLoad as completePendingChatLoad,
+    setChatLoadTarget as setPendingChatLoadTarget,
+    type PendingChatLoad,
+} from "./chat-load-coordinator";
 
 type UseChatLibraryOptions = {
     activeCharacterId: string;
@@ -76,21 +82,28 @@ export function useChatLibrary({
     const [activeChat, setActiveChatState] = useState<ChatSession | undefined>();
     const [groupCharacters, setGroupCharactersState] = useState<SmileyCharacter[]>([]);
     const [chatLoadError, setChatLoadError] = useState("");
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const [pendingChatLoad, setPendingChatLoad] = useState<PendingChatLoad>();
     const latestChatRef = useRef(activeChat);
     const latestChatSummariesRef = useRef(chatSummaries);
     const latestGroupCharactersRef = useRef(groupCharacters);
     const chatSelectRequestIdRef = useRef(0);
+    const chatLoadRequestIdRef = useRef(0);
+    const chatSessionCacheRef = useRef(new Map<string, ChatSession>());
+    const pendingChatIndexSaveRef = useRef<ChatSummaryCollection>();
+    const isSavingChatIndexRef = useRef(false);
     const groupWorkspaceUpdateTimersRef = useRef(new Map<string, number>());
     const groupWorkspaceUpdateRevisionsRef = useRef(new Map<string, number>());
-    const { flushPendingChatAutosaveWithoutStateUpdate, persistChat, queueChatSave } =
-        useChatAutosave({
-            latestChatRef,
-            latestChatSummariesRef,
-            setActiveChat,
-            setChatLoadError,
-            updateChatSummary,
-        });
+    const {
+        flushPendingChatAutosaveWithoutStateUpdate,
+        persistChat: persistChatToDisk,
+        queueChatSave: queueChatSaveToDisk,
+    } = useChatAutosave({
+        latestChatRef,
+        latestChatSummariesRef,
+        setActiveChat,
+        setChatLoadError,
+        updateChatSummary,
+    });
 
     latestChatRef.current = activeChat;
     latestChatSummariesRef.current = chatSummaries;
@@ -103,8 +116,107 @@ export function useChatLibrary({
     }
 
     function setActiveChat(nextChat: ChatSession | undefined) {
+        if (nextChat) {
+            cacheChat(nextChat);
+        }
         setActiveChatState(nextChat);
         latestChatRef.current = nextChat;
+    }
+
+    function cacheChat(chat: ChatSession) {
+        const cache = chatSessionCacheRef.current;
+        cache.delete(chat.id);
+        cache.set(chat.id, chat);
+
+        while (cache.size > 5) {
+            const oldestId = cache.keys().next().value;
+            if (!oldestId) break;
+            cache.delete(oldestId);
+        }
+    }
+
+    function invalidateCachedChat(chatId: string) {
+        chatSessionCacheRef.current.delete(chatId);
+    }
+
+    async function loadNormalizedChat(chatId: string) {
+        const cached = chatSessionCacheRef.current.get(chatId);
+
+        if (cached) {
+            cacheChat(cached);
+            return cached;
+        }
+
+        const loaded = normalizeChat(await loadChat(chatId));
+        if (loaded) cacheChat(loaded);
+        return loaded;
+    }
+
+    function queueChatSave(nextChat: ChatSession) {
+        cacheChat(nextChat);
+        queueChatSaveToDisk(nextChat);
+    }
+
+    async function persistChat(nextChat: ChatSession, updateState = true) {
+        cacheChat(nextChat);
+        await persistChatToDisk(nextChat, updateState);
+    }
+
+    function beginChatLoad(chatId?: string) {
+        const requestId = chatLoadRequestIdRef.current + 1;
+        chatLoadRequestIdRef.current = requestId;
+        setPendingChatLoad({ requestId, ...(chatId ? { chatId } : {}) });
+        return requestId;
+    }
+
+    function setChatLoadTarget(requestId: number, chatId: string) {
+        setPendingChatLoad((current) =>
+            setPendingChatLoadTarget(current, requestId, chatId),
+        );
+    }
+
+    function finishChatLoad(requestId: number) {
+        setPendingChatLoad((current) => cancelChatLoad(current, requestId));
+    }
+
+    function completeChatLoad(chatId: string, requestId: number) {
+        setPendingChatLoad((current) =>
+            completePendingChatLoad(current, requestId, chatId),
+        );
+    }
+
+    function queueChatIndexSave(summaries: ChatSummaryCollection) {
+        pendingChatIndexSaveRef.current = summaries;
+
+        if (isSavingChatIndexRef.current) return;
+
+        isSavingChatIndexRef.current = true;
+        void flushChatIndexSaveQueue();
+    }
+
+    async function flushChatIndexSaveQueue() {
+        try {
+            while (pendingChatIndexSaveRef.current) {
+                const summaries = pendingChatIndexSaveRef.current;
+                pendingChatIndexSaveRef.current = undefined;
+                const result = (await saveChatIndex(summaries)) as {
+                    chats?: ChatSummaryCollection;
+                };
+
+                if (result.chats && !pendingChatIndexSaveRef.current) {
+                    setChatSummaries(result.chats);
+                }
+            }
+            setChatLoadError("");
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+        } finally {
+            isSavingChatIndexRef.current = false;
+            if (pendingChatIndexSaveRef.current) {
+                isSavingChatIndexRef.current = true;
+                void flushChatIndexSaveQueue();
+            }
+        }
     }
 
     function setGroupCharacters(nextCharacters: SmileyCharacter[]) {
@@ -149,6 +261,7 @@ export function useChatLibrary({
     async function activateChatForCharacter(
         sourceCharacter: SmileyCharacter,
         sourceSummaries?: ChatSummaryCollection,
+        chatLoadRequestId?: number,
     ) {
         const summaries = sourceSummaries
             ? normalizeChatSummaryCollection(sourceSummaries)
@@ -169,17 +282,18 @@ export function useChatLibrary({
             setGroupCharacters([]);
             setMode(defaultNewChatMode);
             setChatLoadError("");
+            if (chatLoadRequestId) finishChatLoad(chatLoadRequestId);
             return undefined;
         }
 
-        const loadedChat = normalizeChat(await loadChat(activeChatId));
+        const loadedChat = await loadNormalizedChat(activeChatId);
 
         if (!loadedChat) {
             const fallbackChatId = characterChats.find(
                 (chat) => chat.id !== activeChatId,
             )?.id;
             const fallbackChat = fallbackChatId
-                ? normalizeChat(await loadChat(fallbackChatId))
+                ? await loadNormalizedChat(fallbackChatId)
                 : undefined;
 
             if (!fallbackChat) {
@@ -187,6 +301,7 @@ export function useChatLibrary({
                 setGroupCharacters([]);
                 setMode(defaultNewChatMode);
                 setChatLoadError("");
+                if (chatLoadRequestId) finishChatLoad(chatLoadRequestId);
                 return undefined;
             }
 
@@ -194,6 +309,7 @@ export function useChatLibrary({
             await activateGroupCharactersForChat(fallbackChat);
             setMode(fallbackChat.mode);
             setChatLoadError("");
+            if (chatLoadRequestId) setChatLoadTarget(chatLoadRequestId, fallbackChat.id);
             return fallbackChat;
         }
 
@@ -201,6 +317,7 @@ export function useChatLibrary({
         await activateGroupCharactersForChat(loadedChat);
         setMode(loadedChat.mode);
         setChatLoadError("");
+        if (chatLoadRequestId) setChatLoadTarget(chatLoadRequestId, loadedChat.id);
         return loadedChat;
     }
 
@@ -285,7 +402,7 @@ export function useChatLibrary({
         revision: number,
     ) {
         try {
-            const workspace = normalizeChat(await loadChat(workspaceId));
+            const workspace = await loadNormalizedChat(workspaceId);
 
             if (
                 groupWorkspaceUpdateRevisionsRef.current.get(workspaceId) !== revision ||
@@ -490,7 +607,7 @@ export function useChatLibrary({
         }
 
         try {
-            let workspace = normalizeChat(await loadChat(workspaceId));
+            let workspace = await loadNormalizedChat(workspaceId);
             if (!workspace || !isGroupWorkspace(workspace)) {
                 throw new Error("Group workspace not found.");
             }
@@ -680,19 +797,22 @@ export function useChatLibrary({
     async function selectChat(chatId: string) {
         const requestId = chatSelectRequestIdRef.current + 1;
         chatSelectRequestIdRef.current = requestId;
-        setIsChatLoading(true);
+        const chatLoadRequestId = beginChatLoad(chatId);
 
         try {
             await flushPendingChatAutosaveWithoutStateUpdate();
 
-            const rawChat = await loadChat(chatId);
-            await yieldToBrowser();
-
             if (requestId !== chatSelectRequestIdRef.current) {
+                finishChatLoad(chatLoadRequestId);
                 return undefined;
             }
 
-            let loadedChat = normalizeChat(rawChat);
+            let loadedChat = await loadNormalizedChat(chatId);
+
+            if (requestId !== chatSelectRequestIdRef.current) {
+                finishChatLoad(chatLoadRequestId);
+                return undefined;
+            }
 
             if (!loadedChat) {
                 throw new Error("Invalid chat.");
@@ -703,6 +823,7 @@ export function useChatLibrary({
             setActiveChat(loadedChat);
             await activateGroupCharactersForChat(loadedChat);
             setMode(loadedChat.mode);
+            setChatLoadTarget(chatLoadRequestId, loadedChat.id);
 
             const nextSummaries = normalizeChatSummaryCollection({
                 ...latestChatSummariesRef.current,
@@ -716,23 +837,16 @@ export function useChatLibrary({
 
             setChatSummaries(nextSummaries);
 
-            const result = (await saveChatIndex(nextSummaries)) as {
-                chats?: ChatSummaryCollection;
-            };
-
-            if (result.chats) {
-                setChatSummaries(result.chats);
-            }
+            queueChatIndexSave(nextSummaries);
 
             setChatLoadError("");
             return loadedChat;
         } catch (error) {
-            setChatLoadError(messageFromError(error));
-            return undefined;
-        } finally {
             if (requestId === chatSelectRequestIdRef.current) {
-                setIsChatLoading(false);
+                setChatLoadError(messageFromError(error));
             }
+            finishChatLoad(chatLoadRequestId);
+            return undefined;
         }
     }
 
@@ -740,7 +854,7 @@ export function useChatLibrary({
         const metadata = getSmileyGroupMetadata(chat);
         if (!metadata || metadata.role !== "conversation") return chat;
 
-        const workspace = normalizeChat(await loadChat(metadata.groupId));
+        const workspace = await loadNormalizedChat(metadata.groupId);
         if (!workspace || !isGroupWorkspace(workspace)) return chat;
 
         return {
@@ -758,7 +872,7 @@ export function useChatLibrary({
             const currentChat =
                 latestChatRef.current?.id === chatId
                     ? latestChatRef.current
-                    : normalizeChat(await loadChat(chatId));
+                    : await loadNormalizedChat(chatId);
 
             if (!currentChat) {
                 throw new Error("Chat not found.");
@@ -791,6 +905,18 @@ export function useChatLibrary({
                         : {}),
                     updatedAt: result.summary.updatedAt,
                 });
+            } else {
+                const cached = chatSessionCacheRef.current.get(chatId);
+                if (cached) {
+                    cacheChat({
+                        ...cached,
+                        ...patch,
+                        ...(patch.metadata
+                            ? { metadata: { ...cached.metadata, ...patch.metadata } }
+                            : {}),
+                        updatedAt: result.summary.updatedAt,
+                    });
+                }
             }
             updateChatSummary(result.summary);
             setChatLoadError("");
@@ -807,7 +933,7 @@ export function useChatLibrary({
             const currentChat =
                 latestChatRef.current?.id === chatId
                     ? latestChatRef.current
-                    : normalizeChat(await loadChat(chatId));
+                    : await loadNormalizedChat(chatId);
 
             if (!currentChat || !isGroupChat(currentChat)) {
                 throw new Error("Group chat not found.");
@@ -915,6 +1041,7 @@ export function useChatLibrary({
             const result = (await deleteChatRequest(chatId)) as {
                 chats?: ChatSummaryCollection;
             };
+            invalidateCachedChat(chatId);
             const summaries = normalizeChatSummaryCollection(result.chats);
 
             setChatSummaries(summaries);
@@ -954,7 +1081,7 @@ export function useChatLibrary({
                     )?.id;
 
                 if (nextChatId) {
-                    const nextChat = normalizeChat(await loadChat(nextChatId));
+                    const nextChat = await loadNormalizedChat(nextChatId);
 
                     if (nextChat) {
                         setActiveChat(nextChat);
@@ -985,6 +1112,7 @@ export function useChatLibrary({
         try {
             for (const id of ids) {
                 await deleteChatRequest(id);
+                invalidateCachedChat(id);
             }
             const summaries = normalizeChatSummaryCollection(await loadChatSummaries());
             setChatSummaries(summaries);
@@ -1096,7 +1224,8 @@ export function useChatLibrary({
         flushPendingChatAutosaveWithoutStateUpdate,
         forkChatAtMessage,
         groupCharacters,
-        isChatLoading,
+        isChatLoading: Boolean(pendingChatLoad),
+        chatLoadRequestId: pendingChatLoad?.requestId ?? 0,
         latestChatRef,
         latestChatSummariesRef,
         latestGroupCharactersRef,
@@ -1107,19 +1236,15 @@ export function useChatLibrary({
         queueChatSave,
         renameChat,
         selectChat,
+        beginChatLoad,
+        completeChatLoad,
+        finishChatLoad,
         setActiveChat,
         setChatLoadError,
-        setChatLoading: setIsChatLoading,
         setChatSummaries,
         setGroupCharacters,
         startNewChat,
         updateActiveGroupChat,
         updateChatSummary,
     };
-}
-
-function yieldToBrowser() {
-    return new Promise<void>((resolve) => {
-        window.setTimeout(resolve, 0);
-    });
 }

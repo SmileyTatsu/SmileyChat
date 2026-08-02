@@ -188,6 +188,8 @@ export function App() {
         chatImportStatus,
         chatImportStatusFading,
         isChatLoading,
+        chatLoadRequestId,
+        completeChatLoad,
         chatLoadError,
         createCharacter,
         createGroupChat,
@@ -1169,6 +1171,7 @@ export function App() {
                 groupMembers={activeChatIsGroup ? activeChat?.members : undefined}
                 errorMessage={chatSession.chatError}
                 isLoading={isChatLoading}
+                chatLoadRequestId={chatLoadRequestId}
                 isSending={chatSession.isSending}
                 uploadingAttachmentCount={chatSession.uploadingAttachmentCount}
                 messages={chatSession.messages}
@@ -1192,6 +1195,7 @@ export function App() {
                 onNextSwipe={handleNextSwipe}
                 onCreateUserSwipe={handleCreateUserSwipe}
                 onContinueGeneration={handleContinueGeneration}
+                onChatContentReady={completeChatLoad}
                 onPreviousSwipe={handlePreviousSwipe}
                 onSendMessage={handleSendMessage}
                 onToggleSidebar={toggleSidebar}

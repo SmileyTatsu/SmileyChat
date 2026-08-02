@@ -128,7 +128,7 @@ export function useCharacterChats({
         const requestId = characterSelectRequestIdRef.current + 1;
         characterSelectRequestIdRef.current = requestId;
         setPendingCharacterId(characterId);
-        chatLibrary.setChatLoading(true);
+        const chatLoadRequestId = chatLibrary.beginChatLoad();
 
         importExport.beginChatImportStatusFade();
 
@@ -149,18 +149,24 @@ export function useCharacterChats({
                 await chatLibrary.activateChatForCharacter(
                     nextCharacter,
                     chatLibrary.latestChatSummariesRef.current,
+                    chatLoadRequestId,
                 );
+            } else {
+                chatLibrary.finishChatLoad(chatLoadRequestId);
             }
         } catch (error) {
             if (requestId === characterSelectRequestIdRef.current) {
                 const message = messageFromError(error);
                 characterLibrary.setCharacterLoadError(message);
                 chatLibrary.setChatLoadError(message);
+                chatLibrary.finishChatLoad(chatLoadRequestId);
             }
         } finally {
             if (requestId === characterSelectRequestIdRef.current) {
                 setPendingCharacterId("");
-                chatLibrary.setChatLoading(false);
+                if (!chatLibrary.latestChatRef.current) {
+                    chatLibrary.finishChatLoad(chatLoadRequestId);
+                }
             }
         }
     }
@@ -256,6 +262,8 @@ export function useCharacterChats({
         chatImportStatus: importExport.chatImportStatus,
         chatImportStatusFading: importExport.chatImportStatusFading,
         isChatLoading: chatLibrary.isChatLoading,
+        chatLoadRequestId: chatLibrary.chatLoadRequestId,
+        completeChatLoad: chatLibrary.completeChatLoad,
         chatLoadError: chatLibrary.chatLoadError,
         createCharacter,
         createGroupChat,

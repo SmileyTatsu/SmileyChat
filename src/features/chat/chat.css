@@ -274,6 +274,11 @@
 
 .chat-loading-state {
     position: relative;
+    z-index: 10;
+    grid-column: 1;
+    grid-row: 2 / -1;
+    background: #111318;
+    pointer-events: auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
