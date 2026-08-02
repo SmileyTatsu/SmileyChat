@@ -133,6 +133,7 @@ export const MessageItem = memo(function MessageItem({
     onVisibleContentChange,
 }: MessageItemProps) {
     const wasEditingRef = useRef(false);
+    const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [editingDraft, setEditingDraft] = useState("");
     const content = getMessageContent(message);
     const attachments = getMessageAttachments(message);
@@ -178,9 +179,45 @@ export const MessageItem = memo(function MessageItem({
         if (isEditing && !wasEditingRef.current) {
             setEditingDraft(content);
         }
-
-        wasEditingRef.current = isEditing;
     }, [content, isEditing]);
+
+    useLayoutEffect(() => {
+        if (!isEditing) {
+            wasEditingRef.current = false;
+            return;
+        }
+
+        const textarea = editTextareaRef.current;
+        if (!textarea) return;
+
+        if (!wasEditingRef.current) {
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }
+
+        wasEditingRef.current = true;
+
+        const minHeight = 64;
+        const maxHeight = 320;
+
+        textarea.style.height = "auto";
+
+        const contentHeight = textarea.scrollHeight;
+        const targetHeight = Math.min(Math.max(contentHeight, minHeight), maxHeight);
+        
+        textarea.style.height = `${targetHeight}px`;
+        textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+    }, [editingDraft, isEditing]);
+
+    function handleEditKeyDown(event: KeyboardEvent) {
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            onSaveEdit(message.id, editingDraft);
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            onCancelEdit();
+        }
+    }
 
     return (
         <article
@@ -377,10 +414,12 @@ export const MessageItem = memo(function MessageItem({
                 {isEditing && (
                     <div className="message-edit-panel">
                         <textarea
+                            ref={editTextareaRef}
                             value={editingDraft}
                             onInput={(event) => {
                                 setEditingDraft(event.currentTarget.value);
                             }}
+                            onKeyDown={handleEditKeyDown}
                         />
 
                         <div className="message-edit-actions">

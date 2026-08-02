@@ -1009,7 +1009,8 @@
 }
 
 .message-edit-panel textarea {
-    min-height: 94px;
+    min-height: 64px;
+    max-height: 320px;
     resize: vertical;
     border: 1px solid #3a4050;
     border-radius: 8px;
@@ -1018,6 +1019,7 @@
     font-family: var(--chat-font-family);
     padding: 10px 11px;
     line-height: 1.5;
+    box-sizing: border-box;
 }
 
 .message-edit-actions {
