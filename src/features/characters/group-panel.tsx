@@ -106,15 +106,13 @@ export function GroupPanel({
     }
 
     function setTitle(title: string) {
-        const trimmedTitle = title.trim();
-
         onChange({
             ...chat,
             group: {
                 ...group,
-                title: trimmedTitle || undefined,
+                title: title || undefined,
             },
-            title: trimmedTitle || undefined,
+            title: title || undefined,
             defaultTitle,
             updatedAt: new Date().toISOString(),
         });
@@ -527,7 +525,7 @@ export function GroupPanel({
                                             updateGroup({
                                                 ...group,
                                                 scenarioOverride:
-                                                    event.currentTarget.value.trim() ||
+                                                    event.currentTarget.value ||
                                                     undefined,
                                             })
                                         }

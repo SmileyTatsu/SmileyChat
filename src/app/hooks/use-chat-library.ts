@@ -81,6 +81,8 @@ export function useChatLibrary({
     const latestChatSummariesRef = useRef(chatSummaries);
     const latestGroupCharactersRef = useRef(groupCharacters);
     const chatSelectRequestIdRef = useRef(0);
+    const groupWorkspaceUpdateTimersRef = useRef(new Map<string, number>());
+    const groupWorkspaceUpdateRevisionsRef = useRef(new Map<string, number>());
     const { flushPendingChatAutosaveWithoutStateUpdate, persistChat, queueChatSave } =
         useChatAutosave({
             latestChatRef,
@@ -228,6 +230,81 @@ export function useChatLibrary({
         return characters.filter((item) =>
             members.some((member) => member.characterId === item.id),
         );
+    }
+
+    function hasMatchingGroupCharacterIds(
+        chat: ChatSession | undefined,
+        characters: SmileyCharacter[],
+    ) {
+        const members = chat?.members ?? [];
+
+        return (
+            members.length === characters.length &&
+            members.every((member, index) => member.characterId === characters[index]?.id)
+        );
+    }
+
+    function hasMatchingGroupMemberIds(
+        left: ChatSession | undefined,
+        right: ChatSession,
+    ) {
+        const leftMembers = left?.members ?? [];
+        const rightMembers = right.members ?? [];
+
+        return (
+            leftMembers.length === rightMembers.length &&
+            leftMembers.every(
+                (member, index) =>
+                    member.characterId === rightMembers[index]?.characterId,
+            )
+        );
+    }
+
+    function queueGroupWorkspaceUpdate(workspaceId: string, sourceChat: ChatSession) {
+        const revision =
+            (groupWorkspaceUpdateRevisionsRef.current.get(workspaceId) ?? 0) + 1;
+        groupWorkspaceUpdateRevisionsRef.current.set(workspaceId, revision);
+
+        const existingTimer = groupWorkspaceUpdateTimersRef.current.get(workspaceId);
+        if (existingTimer !== undefined) {
+            window.clearTimeout(existingTimer);
+        }
+
+        groupWorkspaceUpdateTimersRef.current.set(
+            workspaceId,
+            window.setTimeout(() => {
+                groupWorkspaceUpdateTimersRef.current.delete(workspaceId);
+                void updateGroupWorkspace(workspaceId, sourceChat, revision);
+            }, 450),
+        );
+    }
+
+    async function updateGroupWorkspace(
+        workspaceId: string,
+        sourceChat: ChatSession,
+        revision: number,
+    ) {
+        try {
+            const workspace = normalizeChat(await loadChat(workspaceId));
+
+            if (
+                groupWorkspaceUpdateRevisionsRef.current.get(workspaceId) !== revision ||
+                !workspace ||
+                !isGroupWorkspace(workspace)
+            ) {
+                return;
+            }
+
+            queueChatSave({
+                ...workspace,
+                characterId: sourceChat.characterId,
+                members: sourceChat.members,
+                group: sourceChat.group,
+                updatedAt: new Date().toISOString(),
+            });
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+        }
     }
 
     function syncGroupMemberMetadata(
@@ -938,32 +1015,35 @@ export function useChatLibrary({
         });
     }
 
-    async function updateActiveGroupChat(nextChat: ChatSession) {
+    function updateActiveGroupChat(nextChat: ChatSession) {
         const groupMetadata = getSmileyGroupMetadata(nextChat);
         if (groupMetadata?.role === "conversation") {
-            const workspace = normalizeChat(await loadChat(groupMetadata.groupId));
-            if (workspace && isGroupWorkspace(workspace)) {
-                await persistChat({
-                    ...workspace,
-                    characterId: nextChat.characterId,
-                    members: nextChat.members,
-                    group: nextChat.group,
-                    updatedAt: new Date().toISOString(),
-                });
-            }
+            queueGroupWorkspaceUpdate(groupMetadata.groupId, nextChat);
         }
         queueChatSave(nextChat);
 
-        if (!isGroupChat(nextChat)) {
+        if (
+            !isGroupChat(nextChat) ||
+            hasMatchingGroupCharacterIds(nextChat, latestGroupCharactersRef.current)
+        ) {
             return;
         }
 
-        const characters = await fetchGroupCharacters(nextChat);
-        setGroupCharacters(characters);
+        void fetchGroupCharacters(nextChat)
+            .then((characters) => {
+                if (!hasMatchingGroupMemberIds(latestChatRef.current, nextChat)) {
+                    return;
+                }
 
-        if (characters[0]) {
-            onDisplayCharacterChange(characters[0]);
-        }
+                setGroupCharacters(characters);
+
+                if (characters[0]) {
+                    onDisplayCharacterChange(characters[0]);
+                }
+            })
+            .catch((error) => {
+                setChatLoadError(messageFromError(error));
+            });
     }
 
     function clearChatState() {
