@@ -321,13 +321,23 @@ export function useChatLibrary({
         return loadedChat;
     }
 
-    async function activateGroupCharactersForChat(chat: ChatSession | undefined) {
+    async function activateGroupCharactersForChat(
+        chat: ChatSession | undefined,
+        canApply: () => boolean = () => true,
+    ) {
         if (!chat || !isGroupChat(chat)) {
-            setGroupCharacters([]);
+            if (canApply()) {
+                setGroupCharacters([]);
+            }
             return [];
         }
 
         const characters = await fetchGroupCharacters(chat);
+
+        if (!canApply()) {
+            return [];
+        }
+
         setGroupCharacters(characters);
         syncGroupMemberMetadata(chat, characters);
 
@@ -821,12 +831,10 @@ export function useChatLibrary({
                 throw new Error("Invalid chat.");
             }
 
-            loadedChat = await hydrateGroupConversation(loadedChat);
-
             setActiveChat(loadedChat);
-            await activateGroupCharactersForChat(loadedChat);
             setMode(loadedChat.mode);
             setChatLoadTarget(chatLoadRequestId, loadedChat.id);
+            hydrateGroupDetailsAfterChatSelection(loadedChat, requestId);
 
             const nextSummaries = normalizeChatSummaryCollection({
                 ...latestChatSummariesRef.current,
@@ -866,6 +874,37 @@ export function useChatLibrary({
             members: workspace.members,
             group: workspace.group,
         };
+    }
+
+    function hydrateGroupDetailsAfterChatSelection(chat: ChatSession, requestId: number) {
+        void (async () => {
+            // Conversation files carry a member snapshot, so the transcript can render
+            // immediately while the canonical workspace and full character cards load.
+            const hydratedChat = await hydrateGroupConversation(chat);
+
+            if (!isCurrentChatSelection(hydratedChat.id, requestId)) {
+                return;
+            }
+
+            if (hydratedChat !== chat) {
+                setActiveChat(hydratedChat);
+            }
+
+            await activateGroupCharactersForChat(hydratedChat, () =>
+                isCurrentChatSelection(hydratedChat.id, requestId),
+            );
+        })().catch((error) => {
+            if (isCurrentChatSelection(chat.id, requestId)) {
+                setChatLoadError(messageFromError(error));
+            }
+        });
+    }
+
+    function isCurrentChatSelection(chatId: string, requestId: number) {
+        return (
+            chatSelectRequestIdRef.current === requestId &&
+            latestChatRef.current?.id === chatId
+        );
     }
 
     async function renameChat(chatId: string, title: string) {
