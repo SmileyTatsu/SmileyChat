@@ -12,7 +12,7 @@ describe("Anthropic connection adapter", () => {
         globalThis.fetch = (async () =>
             new Response(
                 [
-                    'data: {"type":"message_start","message":{"type":"message","role":"assistant","model":"claude-test","content":[]}}',
+                    'data: {"type":"message_start","message":{"type":"message","role":"assistant","model":"claude-test","content":[],"usage":{"cache_creation_input_tokens":20,"cache_read_input_tokens":40}}}',
                     "",
                     'data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}',
                     "",
@@ -75,9 +75,39 @@ describe("Anthropic connection adapter", () => {
                 stopReason: "end_turn",
                 usage: {
                     output_tokens: 15,
+                    cache_creation_input_tokens: 20,
+                    cache_read_input_tokens: 40,
                 },
                 visibleText: "answer",
             },
+        });
+    });
+
+    test("sends configured automatic prompt caching in the Messages request", async () => {
+        let requestBody: unknown;
+        globalThis.fetch = (async (_input, init) => {
+            requestBody = JSON.parse(String(init?.body));
+            return new Response(
+                JSON.stringify({
+                    model: "claude-test",
+                    content: [{ type: "text", text: "Cached response" }],
+                }),
+                { status: 200 },
+            );
+        }) as typeof fetch;
+        const adapter = createAnthropicConnection({
+            baseUrl: "https://api.anthropic.com/v1",
+            model: { source: "default", id: "claude-test" },
+            promptCaching: { mode: "auto", ttl: "1h" },
+        });
+
+        await adapter.generate({
+            messages: [],
+            promptMessages: [{ role: "user", content: "Hello" }],
+        });
+
+        expect(requestBody).toMatchObject({
+            cache_control: { type: "ephemeral", ttl: "1h" },
         });
     });
 });

@@ -297,6 +297,61 @@ describe("connection config normalization", () => {
         expect(settings.profiles[0]?.config).not.toHaveProperty("thinking");
     });
 
+    test("normalizes Anthropic prompt caching and defaults legacy profiles to off", () => {
+        const baseProfile = {
+            id: "profile-anthropic",
+            name: "Anthropic",
+            provider: "anthropic",
+            config: {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-sonnet-4-6" },
+            },
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+        };
+        const legacy = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: baseProfile.id,
+            profiles: [baseProfile],
+        });
+        const valid = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: baseProfile.id,
+            profiles: [
+                {
+                    ...baseProfile,
+                    config: {
+                        ...baseProfile.config,
+                        promptCaching: { mode: "auto", ttl: "1h" },
+                    },
+                },
+            ],
+        });
+        const invalid = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: baseProfile.id,
+            profiles: [
+                {
+                    ...baseProfile,
+                    config: {
+                        ...baseProfile.config,
+                        promptCaching: { mode: "auto", ttl: "forever" },
+                    },
+                },
+            ],
+        });
+
+        expect(legacy.profiles[0]?.config).toMatchObject({
+            promptCaching: { mode: "off" },
+        });
+        expect(valid.profiles[0]?.config).toMatchObject({
+            promptCaching: { mode: "auto", ttl: "1h" },
+        });
+        expect(invalid.profiles[0]?.config).toMatchObject({
+            promptCaching: { mode: "auto", ttl: "5m" },
+        });
+    });
+
     test("normalizes NovelAI profiles", () => {
         const settings = normalizeConnectionSettings({
             version: 1,

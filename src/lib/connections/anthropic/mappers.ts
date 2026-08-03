@@ -45,6 +45,13 @@ export function createAnthropicMessageBody(
         config.model.id,
     );
     const sampling = cleanAnthropicSamplingConfig(request.generation, config.model.id);
+    const cacheControl =
+        config.promptCaching?.mode === "auto"
+            ? {
+                  type: "ephemeral" as const,
+                  ...(config.promptCaching.ttl === "1h" ? { ttl: "1h" as const } : {}),
+              }
+            : undefined;
 
     if (messages.length === 0) {
         throw new Error(
@@ -58,6 +65,7 @@ export function createAnthropicMessageBody(
         ...(systemText ? { system: systemText } : {}),
         messages,
         stream: request.stream === true,
+        ...(cacheControl ? { cache_control: cacheControl } : {}),
         ...(stopSequencesForGeneration(request.generation)
             ? { stop_sequences: stopSequencesForGeneration(request.generation) }
             : {}),

@@ -4,7 +4,11 @@ import { isRecord } from "../../common/guards";
 import { stringOrUndefined } from "../config-utils";
 import { defaultOutputTokenLimit, normalizeOutputTokenLimit } from "../output-tokens";
 
-import type { AnthropicConnectionConfig, AnthropicThinkingConfig } from "./types";
+import type {
+    AnthropicConnectionConfig,
+    AnthropicPromptCachingConfig,
+    AnthropicThinkingConfig,
+} from "./types";
 
 export const defaultAnthropicConfig: AnthropicConnectionConfig = {
     baseUrl: "https://api.anthropic.com/v1",
@@ -16,6 +20,9 @@ export const defaultAnthropicConfig: AnthropicConnectionConfig = {
     thinking: {
         mode: "off",
     },
+    promptCaching: {
+        mode: "off",
+    },
 };
 
 export function normalizeAnthropicConfig(value: unknown): AnthropicConnectionConfig {
@@ -24,6 +31,7 @@ export function normalizeAnthropicConfig(value: unknown): AnthropicConnectionCon
     const modelSource =
         model.source === "api" || model.source === "custom" ? model.source : "default";
     const thinking = normalizeAnthropicThinkingConfig(config.thinking);
+    const promptCaching = normalizeAnthropicPromptCachingConfig(config.promptCaching);
 
     return {
         baseUrl:
@@ -37,7 +45,23 @@ export function normalizeAnthropicConfig(value: unknown): AnthropicConnectionCon
             id: typeof model.id === "string" ? model.id : defaultAnthropicConfig.model.id,
         },
         ...(thinking ? { thinking } : {}),
+        promptCaching,
     };
+}
+
+export function normalizeAnthropicPromptCachingConfig(
+    value: unknown,
+): AnthropicPromptCachingConfig {
+    const promptCaching = isRecord(value) ? value : {};
+
+    if (promptCaching.mode === "auto") {
+        return {
+            mode: "auto",
+            ttl: promptCaching.ttl === "1h" ? "1h" : "5m",
+        };
+    }
+
+    return { mode: "off" };
 }
 
 function normalizeAnthropicThinkingConfig(

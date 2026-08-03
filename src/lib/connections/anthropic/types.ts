@@ -7,6 +7,7 @@ export type AnthropicConnectionConfig = {
     maxTokens?: number;
     model: AnthropicModelSelection;
     thinking?: AnthropicThinkingConfig;
+    promptCaching?: AnthropicPromptCachingConfig;
 };
 
 export type AnthropicRuntimeConfig = AnthropicConnectionConfig;
@@ -38,6 +39,15 @@ export type AnthropicThinkingConfig =
           mode: "enabled";
           budgetTokens?: number;
           display?: "summarized" | "omitted";
+      };
+
+export type AnthropicPromptCachingConfig =
+    | {
+          mode: "off";
+      }
+    | {
+          mode: "auto";
+          ttl: "5m" | "1h";
       };
 
 export type AnthropicContentBlock =
@@ -106,6 +116,10 @@ export type AnthropicCreateMessageRequest = {
     max_tokens: number;
     messages: AnthropicMessage[];
     stream?: boolean;
+    cache_control?: {
+        type: "ephemeral";
+        ttl?: "1h";
+    };
     stop_sequences?: string[];
     system?: string;
     temperature?: number;
@@ -143,6 +157,8 @@ export type AnthropicCreateMessageResponse = {
 export type AnthropicUsage = {
     input_tokens?: number;
     output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
 };
 
 export type AnthropicReasoningDetails = {

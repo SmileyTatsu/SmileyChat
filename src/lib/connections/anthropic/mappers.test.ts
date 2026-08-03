@@ -45,6 +45,36 @@ describe("Anthropic connection mappers", () => {
         expect(body.max_tokens).toBe(250);
     });
 
+    test("maps automatic prompt caching TTLs", () => {
+        const request = {
+            promptMessages: [{ role: "user" as const, content: "Hello" }],
+            messages: [],
+        };
+        const baseConfig = {
+            baseUrl: "https://api.anthropic.com/v1",
+            model: { source: "default" as const, id: "claude-sonnet-4-6" },
+        };
+
+        expect(
+            createAnthropicMessageBody(request, {
+                ...baseConfig,
+                promptCaching: { mode: "off" },
+            }).cache_control,
+        ).toBeUndefined();
+        expect(
+            createAnthropicMessageBody(request, {
+                ...baseConfig,
+                promptCaching: { mode: "auto", ttl: "5m" },
+            }).cache_control,
+        ).toEqual({ type: "ephemeral" });
+        expect(
+            createAnthropicMessageBody(request, {
+                ...baseConfig,
+                promptCaching: { mode: "auto", ttl: "1h" },
+            }).cache_control,
+        ).toEqual({ type: "ephemeral", ttl: "1h" });
+    });
+
     test("maps Anthropic sampler settings and sends only temperature when top_p is also set", () => {
         const body = createAnthropicMessageBody(
             {
@@ -461,6 +491,8 @@ describe("Anthropic connection mappers", () => {
             usage: {
                 input_tokens: 12,
                 output_tokens: 34,
+                cache_creation_input_tokens: 56,
+                cache_read_input_tokens: 78,
             },
         });
 
@@ -483,6 +515,8 @@ describe("Anthropic connection mappers", () => {
                 usage: {
                     input_tokens: 12,
                     output_tokens: 34,
+                    cache_creation_input_tokens: 56,
+                    cache_read_input_tokens: 78,
                 },
                 visibleText: "Final answer.",
             },

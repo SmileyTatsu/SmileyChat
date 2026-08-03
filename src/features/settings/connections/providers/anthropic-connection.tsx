@@ -2,6 +2,7 @@ import defaultModelCategories from "#frontend/data/default-anthropic-models.json
 import type {
     AnthropicConnectionConfig,
     AnthropicModel,
+    AnthropicPromptCachingConfig,
     AnthropicThinkingConfig,
 } from "#frontend/lib/connections/anthropic/types";
 
@@ -24,6 +25,7 @@ type AnthropicConnectionProps = {
 };
 
 type ThinkingMode = AnthropicThinkingConfig["mode"];
+type PromptCachingMode = AnthropicPromptCachingConfig["mode"];
 
 export function AnthropicConnection({
     config,
@@ -36,9 +38,22 @@ export function AnthropicConnection({
     onTest,
 }: AnthropicConnectionProps) {
     const thinking = config.thinking ?? { mode: "off" as const };
+    const promptCaching = config.promptCaching ?? { mode: "off" as const };
 
     function updateConfig(nextConfig: Partial<AnthropicConnectionConfig>) {
         onChange({ ...config, ...nextConfig });
+    }
+
+    function updatePromptCachingMode(mode: PromptCachingMode) {
+        updateConfig({
+            promptCaching:
+                mode === "auto"
+                    ? {
+                          mode,
+                          ttl: promptCaching.mode === "auto" ? promptCaching.ttl : "5m",
+                      }
+                    : { mode },
+        });
     }
 
     function updateThinkingMode(mode: ThinkingMode) {
@@ -159,6 +174,54 @@ export function AnthropicConnection({
                     </div>
                 </dl>
             )}
+            <div className="connection-card">
+                <h4>Prompt Caching</h4>
+                <label>
+                    Mode
+                    <select
+                        value={
+                            promptCaching.mode === "auto"
+                                ? `auto-${promptCaching.ttl}`
+                                : "off"
+                        }
+                        disabled={disabled}
+                        onInput={(event) => {
+                            const value = (event.currentTarget as HTMLSelectElement)
+                                .value;
+
+                            if (value === "auto-1h") {
+                                updateConfig({
+                                    promptCaching: { mode: "auto", ttl: "1h" },
+                                });
+                            } else if (value === "auto-5m") {
+                                updateConfig({
+                                    promptCaching: { mode: "auto", ttl: "5m" },
+                                });
+                            } else {
+                                updatePromptCachingMode("off");
+                            }
+                        }}
+                    >
+                        <option value="off">Off</option>
+                        <option value="auto-5m">Automatic (5-minute TTL)</option>
+                        <option value="auto-1h">
+                            Automatic (1-hour TTL; higher cache-write cost)
+                        </option>
+                    </select>
+                </label>
+                <p className="field-hint">
+                    Cache long, repeated prompt prefixes and conversation history
+                    automatically. Short prompts may not be cached. The 1-hour TTL has a
+                    higher cache-write price than the 5-minute TTL.{" "}
+                    <a
+                        href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching#pricing"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        View Anthropic prompt-caching pricing.
+                    </a>
+                </p>
+            </div>
             <div className="connection-card">
                 <h4>Thinking</h4>
                 <label>
