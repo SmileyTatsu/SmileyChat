@@ -1,4 +1,5 @@
 import defaultModelCategories from "#frontend/data/default-anthropic-models.json";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 import type {
     AnthropicConnectionConfig,
     AnthropicModel,
@@ -136,23 +137,12 @@ export function AnthropicConnection({
             />
             <label>
                 Max tokens
-                <input
-                    type="number"
+                <DeferredNumberInput
                     min={0}
                     step={1}
                     value={config.maxTokens ?? 1000}
-                    onInput={(event) =>
-                        updateConfig({
-                            maxTokens: Math.max(
-                                0,
-                                Math.floor(
-                                    Number(
-                                        (event.currentTarget as HTMLInputElement).value,
-                                    ) || 0,
-                                ),
-                            ),
-                        })
-                    }
+                    integer
+                    onCommit={(maxTokens) => updateConfig({ maxTokens })}
                 />
             </label>
             {selectedModel && (
@@ -268,8 +258,7 @@ export function AnthropicConnection({
                     </label>
                     <label>
                         Budget tokens
-                        <input
-                            type="number"
+                        <DeferredNumberInput
                             min={1}
                             step={1}
                             value={
@@ -278,18 +267,9 @@ export function AnthropicConnection({
                                     : 512
                             }
                             disabled={thinking.mode !== "enabled"}
-                            onInput={(event) =>
-                                updateEnabledThinking({
-                                    budgetTokens: Math.max(
-                                        1,
-                                        Math.floor(
-                                            Number(
-                                                (event.currentTarget as HTMLInputElement)
-                                                    .value,
-                                            ) || 1,
-                                        ),
-                                    ),
-                                })
+                            integer
+                            onCommit={(budgetTokens) =>
+                                updateEnabledThinking({ budgetTokens })
                             }
                         />
                     </label>

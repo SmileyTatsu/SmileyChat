@@ -1,4 +1,5 @@
 import { useState } from "preact/hooks";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 
 import {
     formatOpenRouterSlugList,
@@ -221,22 +222,13 @@ export function OpenRouterConnection({
             )}
             <label>
                 Max completion tokens
-                <input
-                    type="number"
+                <DeferredNumberInput
                     min={16}
                     step={1}
                     value={config.maxCompletionTokens ?? 1000}
-                    onInput={(event) =>
-                        updateConfig({
-                            maxCompletionTokens: Math.max(
-                                16,
-                                Math.floor(
-                                    Number(
-                                        (event.currentTarget as HTMLInputElement).value,
-                                    ) || 16,
-                                ),
-                            ),
-                        })
+                    integer
+                    onCommit={(maxCompletionTokens) =>
+                        updateConfig({ maxCompletionTokens })
                     }
                 />
             </label>
@@ -415,25 +407,14 @@ export function OpenRouterConnection({
                     </label>
                     <label>
                         Max tokens
-                        <input
-                            type="number"
+                        <DeferredNumberInput
                             min={1}
                             step={1}
                             value={reasoning?.max_tokens ?? 1024}
                             disabled={reasoningStrategy !== "max-tokens"}
-                            onInput={(event) =>
-                                updateReasoningPatch({
-                                    effort: undefined,
-                                    max_tokens: Math.max(
-                                        1,
-                                        Math.floor(
-                                            Number(
-                                                (event.currentTarget as HTMLInputElement)
-                                                    .value,
-                                            ) || 1,
-                                        ),
-                                    ),
-                                })
+                            integer
+                            onCommit={(max_tokens) =>
+                                updateReasoningPatch({ effort: undefined, max_tokens })
                             }
                         />
                     </label>

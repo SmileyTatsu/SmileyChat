@@ -1,4 +1,5 @@
 import defaultModelCategories from "#frontend/data/default-openai-models.json";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 import type {
     OpenAICompatibleConnectionConfig,
     OpenAICompatibleModel,
@@ -95,22 +96,13 @@ export function OpenAICompatibleConnection({
             />
             <label>
                 Max completion tokens
-                <input
-                    type="number"
+                <DeferredNumberInput
                     min={16}
                     step={1}
                     value={config.maxCompletionTokens ?? 1000}
-                    onInput={(event) =>
-                        updateConfig({
-                            maxCompletionTokens: Math.max(
-                                16,
-                                Math.floor(
-                                    Number(
-                                        (event.currentTarget as HTMLInputElement).value,
-                                    ) || 16,
-                                ),
-                            ),
-                        })
+                    integer
+                    onCommit={(maxCompletionTokens) =>
+                        updateConfig({ maxCompletionTokens })
                     }
                 />
             </label>

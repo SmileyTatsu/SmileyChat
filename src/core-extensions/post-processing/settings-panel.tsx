@@ -3,6 +3,7 @@ import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 
 import type { PluginAppSnapshot, SmileyPluginApi } from "#frontend/lib/plugins/types";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 
 import { getPostProcessingSettings, savePostProcessingSettings } from "./controller";
 import {
@@ -153,15 +154,13 @@ export function PostProcessingSettingsPanel({ api, snapshot }: SettingsPanelProp
                     onChange={(showDiff) => void updateGlobal({ showDiff })}
                 />
                 <Field label="Minimum characters">
-                    <input
+                    <DeferredNumberInput
                         min={0}
                         max={100000}
-                        type="number"
                         value={settings.minChars}
-                        onInput={(event) =>
-                            void updateGlobal({
-                                minChars: Number(event.currentTarget.value),
-                            })
+                        integer
+                        onCommit={(minChars) =>
+                            void updateGlobal({ minChars: minChars ?? settings.minChars })
                         }
                     />
                 </Field>
@@ -354,15 +353,16 @@ function PassEditor({
                     </small>
                 </Field>
                 <Field label="Context messages">
-                    <input
+                    <DeferredNumberInput
                         autoComplete="off"
                         min={-1}
                         max={100000}
-                        type="number"
                         value={pass.contextMessageLimit}
-                        onInput={(event) =>
+                        integer
+                        onCommit={(contextMessageLimit) =>
                             onChange({
-                                contextMessageLimit: Number(event.currentTarget.value),
+                                contextMessageLimit:
+                                    contextMessageLimit ?? pass.contextMessageLimit,
                             })
                         }
                     />

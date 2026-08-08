@@ -7,6 +7,7 @@ import {
     saveConnectionSettings,
 } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 import {
     createConnectionProfile,
     extractConnectionSecrets,
@@ -1192,30 +1193,15 @@ function ContextTokenLimitControl({
                     onChange(nextValue);
                 }}
             />
-            <input
+            <DeferredNumberInput
                 max={max}
                 min={minContextTokenBudget}
                 step={1}
-                type="number"
                 value={normalizedValue}
-                onBlur={(event) => {
-                    const input = event.currentTarget as HTMLInputElement;
-                    const nextValue = Math.min(
-                        max,
-                        normalizeContextTokenBudget(input.valueAsNumber, normalizedValue),
-                    );
-
-                    input.value = String(nextValue);
-                    onChange(nextValue);
-                }}
-                onInput={(event) => {
-                    const nextValue = (event.currentTarget as HTMLInputElement)
-                        .valueAsNumber;
-
-                    if (Number.isFinite(nextValue)) {
-                        onChange(Math.min(max, nextValue));
-                    }
-                }}
+                integer
+                onCommit={(nextValue) =>
+                    onChange(normalizeContextTokenBudget(nextValue, normalizedValue))
+                }
             />
         </div>
     );

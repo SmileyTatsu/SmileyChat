@@ -167,7 +167,7 @@ export function OptionsModal({
     function handleModalKeyDown(event: KeyboardEvent) {
         if (event.key === "Escape") {
             event.preventDefault();
-            onClose();
+            handleClose();
             return;
         }
 
@@ -219,8 +219,13 @@ export function OptionsModal({
         setIsSettingsModalExpanded((expanded) => !expanded);
     }
 
+    function handleClose() {
+        (document.activeElement as HTMLElement | null)?.blur();
+        onClose();
+    }
+
     return (
-        <div className="modal-backdrop" role="presentation" onClick={onClose}>
+        <div className="modal-backdrop" role="presentation" onClick={handleClose}>
             <section
                 className={`settings-modal ${isSettingsModalExpanded ? "expanded" : ""}`}
                 ref={modalRef}
@@ -259,7 +264,7 @@ export function OptionsModal({
                             type="button"
                             title="Close"
                             aria-label="Close options"
-                            onClick={onClose}
+                            onClick={handleClose}
                         >
                             <X size={18} aria-hidden="true" />
                         </button>

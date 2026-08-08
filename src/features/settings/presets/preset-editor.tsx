@@ -3,6 +3,7 @@ import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 
 import { cn } from "#frontend/lib/common/style";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 import type {
     PresetInjectionPosition,
     PresetPrompt,
@@ -266,18 +267,18 @@ export function PresetEditor({
                                 </label>
                                 <label>
                                     Depth
-                                    <input
+                                    <DeferredNumberInput
                                         disabled={
                                             selectedPrompt.injectionPosition === "none"
                                         }
                                         min={0}
-                                        type="number"
                                         value={selectedPrompt.injectionDepth}
-                                        onInput={(event) =>
+                                        integer
+                                        onCommit={(injectionDepth) =>
                                             onUpdatePrompt(selectedPrompt.id, {
-                                                injectionDepth: Number(
-                                                    event.currentTarget.value,
-                                                ),
+                                                injectionDepth:
+                                                    injectionDepth ??
+                                                    selectedPrompt.injectionDepth,
                                             })
                                         }
                                     />

@@ -7,7 +7,7 @@ import type {
     MessageDensity,
     TimeFormat,
 } from "#frontend/lib/preferences/types";
-import { clampInteger } from "#frontend/lib/common/math";
+import { DeferredNumberInput } from "./deferred-number-input";
 import { formatShortTime } from "#frontend/lib/common/time";
 import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
 import type { ChatMode } from "#frontend/types";
@@ -432,27 +432,14 @@ function NumberInput({
     onChange: (value: number) => void;
 }) {
     return (
-        <input
+        <DeferredNumberInput
             className="settings-number-input"
-            type="number"
             min={min}
             max={max}
             step={step}
             value={value}
-            onBlur={(event) => {
-                const input = event.currentTarget as HTMLInputElement;
-                const nextValue = clampInteger(input.valueAsNumber, min, max);
-
-                input.value = String(nextValue);
-                onChange(nextValue);
-            }}
-            onChange={(event) => {
-                const nextValue = (event.currentTarget as HTMLInputElement).valueAsNumber;
-
-                if (Number.isFinite(nextValue)) {
-                    onChange(clampInteger(nextValue, min, max));
-                }
-            }}
+            integer
+            onCommit={(nextValue) => onChange(nextValue ?? value)}
         />
     );
 }

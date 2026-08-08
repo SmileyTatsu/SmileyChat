@@ -1,4 +1,5 @@
 import defaultModelCategories from "#frontend/data/default-google-ai-models.json";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 import type {
     GoogleAIConnectionConfig,
     GoogleAIModel,
@@ -73,23 +74,12 @@ export function GoogleAIConnection({
             />
             <label>
                 Max output tokens
-                <input
-                    type="number"
+                <DeferredNumberInput
                     min={1}
                     step={1}
                     value={config.maxOutputTokens ?? 1000}
-                    onInput={(event) =>
-                        updateConfig({
-                            maxOutputTokens: Math.max(
-                                1,
-                                Math.floor(
-                                    Number(
-                                        (event.currentTarget as HTMLInputElement).value,
-                                    ) || 1,
-                                ),
-                            ),
-                        })
-                    }
+                    integer
+                    onCommit={(maxOutputTokens) => updateConfig({ maxOutputTokens })}
                 />
             </label>
             <fieldset className="connection-fieldset">
@@ -143,23 +133,14 @@ export function GoogleAIConnection({
                 </label>
                 <label>
                     Thinking budget
-                    <input
-                        type="number"
+                    <DeferredNumberInput
                         step="1"
                         value={config.thinking?.thinkingBudget ?? -1}
                         disabled={(config.thinking?.mode ?? "auto") !== "budget"}
-                        onInput={(event) => {
-                            const value = Number(
-                                (event.currentTarget as HTMLInputElement).value,
-                            );
-                            updateThinking({
-                                thinkingBudget:
-                                    Number.isInteger(value) &&
-                                    (value === -1 || value >= 0)
-                                        ? value
-                                        : undefined,
-                            });
-                        }}
+                        integer
+                        optional
+                        min={-1}
+                        onCommit={(thinkingBudget) => updateThinking({ thinkingBudget })}
                     />
                 </label>
             </fieldset>

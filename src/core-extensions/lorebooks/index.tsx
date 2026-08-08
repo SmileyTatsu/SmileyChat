@@ -12,6 +12,7 @@ import {
     updateLorebookEntry,
 } from "#frontend/lib/api/client";
 import { createId } from "#frontend/lib/common/ids";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 import type {
     Lorebook,
     LorebookEntry,
@@ -782,19 +783,15 @@ function EntryEditor({
                                     })
                                 }
                             />
-                            <input
-                                type="number"
+                            <DeferredNumberInput
                                 min={0}
                                 max={100}
                                 value={entry.probability}
                                 disabled={!entry.useProbability}
-                                onInput={(event) =>
+                                integer
+                                onCommit={(probability) =>
                                     onChange({
-                                        probability: numericValue(
-                                            event.currentTarget as HTMLInputElement,
-                                            0,
-                                            100,
-                                        ),
+                                        probability: probability ?? entry.probability,
                                     })
                                 }
                             />
@@ -911,13 +908,11 @@ function NumberField({
     return (
         <label className="lbm-field">
             <span>{label}</span>
-            <input
-                type="number"
+            <DeferredNumberInput
                 min={min}
                 value={value}
-                onInput={(event) =>
-                    onChange(numericValue(event.currentTarget as HTMLInputElement, min))
-                }
+                integer
+                onCommit={(nextValue) => onChange(nextValue ?? value)}
             />
         </label>
     );

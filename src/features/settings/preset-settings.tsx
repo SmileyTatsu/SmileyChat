@@ -44,6 +44,7 @@ import type {
     SmileyPersona,
     UserStatus,
 } from "#frontend/types";
+import { DeferredNumberInput } from "./deferred-number-input";
 
 import {
     PresetConfirmDialog,
@@ -888,14 +889,15 @@ function GenerationNumberField({
     return (
         <label>
             {label}
-            <input
+            <DeferredNumberInput
                 max={max}
                 min={min}
                 step={step}
-                type="number"
-                value={value ?? ""}
-                onInput={(event) =>
-                    onInput((event.currentTarget as HTMLInputElement).value)
+                value={value}
+                optional
+                integer={step === 1}
+                onCommit={(nextValue) =>
+                    onInput(nextValue === undefined ? "" : String(nextValue))
                 }
             />
         </label>

@@ -2,6 +2,7 @@ import {
     defaultNovelAIBaseUrlForModel,
     novelAIDefaultModels,
 } from "#frontend/lib/connections/novelai/constants";
+import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 import type { NovelAIConnectionConfig } from "#frontend/lib/connections/novelai/types";
 
 import { ApiKeyField, BaseUrlField, ConnectionActions } from "./shared-fields";
@@ -96,23 +97,12 @@ export function NovelAIConnection({
             </label>
             <label>
                 Max output tokens
-                <input
+                <DeferredNumberInput
                     min={1}
                     step={1}
-                    type="number"
                     value={config.maxOutputTokens ?? 1000}
-                    onInput={(event) =>
-                        updateConfig({
-                            maxOutputTokens: Math.max(
-                                1,
-                                Math.floor(
-                                    Number(
-                                        (event.currentTarget as HTMLInputElement).value,
-                                    ) || 1,
-                                ),
-                            ),
-                        })
-                    }
+                    integer
+                    onCommit={(maxOutputTokens) => updateConfig({ maxOutputTokens })}
                 />
             </label>
             <details>
