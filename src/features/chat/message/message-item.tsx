@@ -136,6 +136,8 @@ export const MessageItem = memo(function MessageItem({
     onVisibleContentChange,
 }: MessageItemProps) {
     const wasEditingRef = useRef(false);
+    const shouldFocusEditRef = useRef(false);
+    const hasPreparedEditDraftRef = useRef(false);
     const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [editingDraft, setEditingDraft] = useState("");
     const content = getMessageContent(message);
@@ -178,27 +180,35 @@ export const MessageItem = memo(function MessageItem({
                   path: message.authorAvatarPath,
                   alt: "User Persona Avatar",
               };
-    useEffect(() => {
-        if (isEditing && !wasEditingRef.current) {
-            setEditingDraft(content);
+    useLayoutEffect(() => {
+        if (!isEditing) {
+            wasEditingRef.current = false;
+            shouldFocusEditRef.current = false;
+            hasPreparedEditDraftRef.current = false;
+            return;
+        }
+
+        if (!wasEditingRef.current) {
+            wasEditingRef.current = true;
+            shouldFocusEditRef.current = true;
+            if (!hasPreparedEditDraftRef.current) {
+                setEditingDraft(content);
+            }
+            hasPreparedEditDraftRef.current = false;
         }
     }, [content, isEditing]);
 
     useLayoutEffect(() => {
-        if (!isEditing) {
-            wasEditingRef.current = false;
-            return;
-        }
+        if (!isEditing) return;
 
         const textarea = editTextareaRef.current;
         if (!textarea) return;
 
-        if (!wasEditingRef.current) {
+        if (shouldFocusEditRef.current && editingDraft === content) {
             textarea.focus();
             textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            shouldFocusEditRef.current = false;
         }
-
-        wasEditingRef.current = true;
 
         const minHeight = 64;
         const maxHeight = 320;
@@ -210,7 +220,7 @@ export const MessageItem = memo(function MessageItem({
 
         textarea.style.height = `${targetHeight}px`;
         textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
-    }, [editingDraft, isEditing]);
+    }, [content, editingDraft, isEditing]);
 
     function handleEditKeyDown(event: KeyboardEvent) {
         if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
@@ -302,6 +312,7 @@ export const MessageItem = memo(function MessageItem({
                                         const latestMessage =
                                             getMessageWithLatestStreamingDraft(message);
 
+                                        hasPreparedEditDraftRef.current = true;
                                         setEditingDraft(getMessageContent(latestMessage));
                                         onStartEditing(message.id);
                                     }}
