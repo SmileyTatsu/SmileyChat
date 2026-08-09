@@ -1,9 +1,8 @@
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-preact";
-import type { JSX } from "preact";
-import { useState } from "preact/hooks";
 
 import { cn } from "#frontend/lib/common/style";
 import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
+import { useSortableList } from "#frontend/features/sidebar/hooks/use-sortable-list";
 import type {
     PresetInjectionPosition,
     PresetPrompt,
@@ -43,57 +42,15 @@ export function PresetEditor({
     onUpdateOrderEntry,
     onUpdatePrompt,
 }: PresetEditorProps) {
-    const [draggedPromptId, setDraggedPromptId] = useState("");
-    const [dropTargetPromptId, setDropTargetPromptId] = useState("");
-
-    function clearDragState() {
-        setDraggedPromptId("");
-        setDropTargetPromptId("");
-    }
-
-    function handleDragStart(
-        event: JSX.TargetedDragEvent<HTMLButtonElement>,
-        promptId: string,
-    ) {
-        setDraggedPromptId(promptId);
-        event.dataTransfer?.setData("text/plain", promptId);
-
-        if (event.dataTransfer) {
-            event.dataTransfer.effectAllowed = "move";
-        }
-    }
-
-    function handleDragOver(
-        event: JSX.TargetedDragEvent<HTMLDivElement>,
-        promptId: string,
-    ) {
-        if (!draggedPromptId || draggedPromptId === promptId) {
-            return;
-        }
-
-        event.preventDefault();
-        setDropTargetPromptId(promptId);
-
-        if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = "move";
-        }
-    }
-
-    function handleDrop(
-        event: JSX.TargetedDragEvent<HTMLDivElement>,
-        targetPromptId: string,
-    ) {
-        event.preventDefault();
-
-        const sourcePromptId =
-            draggedPromptId || event.dataTransfer?.getData("text/plain") || "";
-
-        if (sourcePromptId && sourcePromptId !== targetPromptId) {
-            onReorderPrompt(sourcePromptId, targetPromptId);
-        }
-
-        clearDragState();
-    }
+    const { containerRef: promptListRef } = useSortableList({
+        ignoreSelector:
+            "input, button:not(.prompt-drag-handle), select, textarea, label, a, [data-sortable-ignore]",
+        onReorder: (oldIndex, newIndex) => {
+            const source = orderedPrompts[oldIndex]?.prompt.id;
+            const target = orderedPrompts[newIndex]?.prompt.id;
+            if (source && target) onReorderPrompt(source, target);
+        },
+    });
 
     return (
         <div className="preset-editor">
@@ -106,31 +63,20 @@ export function PresetEditor({
                     </button>
                 </div>
 
-                <div className="prompt-list">
+                <div className="prompt-list" ref={promptListRef}>
                     {orderedPrompts.map(({ entry, prompt }, index) => (
                         <div
                             className={cn("prompt-row", {
                                 active: selectedPromptId === prompt.id,
-                                dragging: draggedPromptId === prompt.id,
-                                "drop-target": dropTargetPromptId === prompt.id,
                             })}
                             key={prompt.id}
-                            onDragLeave={() => {
-                                if (dropTargetPromptId === prompt.id) {
-                                    setDropTargetPromptId("");
-                                }
-                            }}
-                            onDragOver={(event) => handleDragOver(event, prompt.id)}
-                            onDrop={(event) => handleDrop(event, prompt.id)}
+                            data-sortable-index={index}
                         >
                             <button
                                 aria-label={`Drag ${prompt.title} to reorder`}
                                 className="prompt-drag-handle"
-                                draggable
                                 title="Drag to reorder"
                                 type="button"
-                                onDragEnd={clearDragState}
-                                onDragStart={(event) => handleDragStart(event, prompt.id)}
                             >
                                 <GripVertical size={16} />
                             </button>
@@ -156,6 +102,7 @@ export function PresetEditor({
 
                             <span className="prompt-move-buttons">
                                 <button
+                                    className="sortable-keyboard-control"
                                     aria-label="Move prompt up"
                                     type="button"
                                     onClick={(event) => {
@@ -166,6 +113,7 @@ export function PresetEditor({
                                     <ArrowUp size={14} />
                                 </button>
                                 <button
+                                    className="sortable-keyboard-control"
                                     aria-label="Move prompt down"
                                     type="button"
                                     onClick={(event) => {

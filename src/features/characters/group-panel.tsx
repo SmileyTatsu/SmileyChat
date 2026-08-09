@@ -33,6 +33,7 @@ import { CountedTextarea } from "./counted-textarea";
 import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
 import { GroupAvatar } from "../chat/group-avatar";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
+import { useSortableList } from "../sidebar/hooks/use-sortable-list";
 
 type GroupPanelProps = {
     characters: CharacterSummary[];
@@ -81,6 +82,16 @@ export function GroupPanel({
     const group = useMemo(() => normalizedGroup(chat.group), [chat.group]);
     const defaultTitle = useMemo(() => defaultGroupTitle(members), [members]);
     const contextIdBase = `group-context-${chat.id}`;
+
+    const { containerRef: memberListRef } = useSortableList({
+        onReorder: (oldIndex, newIndex) => {
+            if (oldIndex === newIndex) return;
+            const nextMembers = [...members];
+            const [member] = nextMembers.splice(oldIndex, 1);
+            nextMembers.splice(newIndex, 0, member);
+            updateMembers(nextMembers);
+        },
+    });
 
     function updateGroup(nextGroup: ChatGroup) {
         onChange({
@@ -535,11 +546,15 @@ export function GroupPanel({
 
                                 <section className="group-panel-section">
                                     <h3>Current members</h3>
-                                    <div className="group-member-list">
+                                    <div
+                                        className="group-member-list"
+                                        ref={memberListRef}
+                                    >
                                         {members.map((member, index) => (
                                             <div
                                                 className="group-member-row"
                                                 key={member.characterId}
+                                                data-sortable-index={index}
                                             >
                                                 <img
                                                     className="avatar image-avatar"
@@ -560,8 +575,9 @@ export function GroupPanel({
                                                     </small>
                                                 </span>
                                                 <button
+                                                    className="sortable-keyboard-control"
                                                     type="button"
-                                                    title="Move up"
+                                                    aria-label={`Move ${member.name} up`}
                                                     disabled={index === 0}
                                                     onClick={() =>
                                                         moveMember(member.characterId, -1)
@@ -570,8 +586,9 @@ export function GroupPanel({
                                                     <ChevronUp size={15} />
                                                 </button>
                                                 <button
+                                                    className="sortable-keyboard-control"
                                                     type="button"
-                                                    title="Move down"
+                                                    aria-label={`Move ${member.name} down`}
                                                     disabled={
                                                         index === members.length - 1
                                                     }

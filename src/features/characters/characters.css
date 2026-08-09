@@ -946,13 +946,23 @@
 
 .group-member-row {
     display: grid;
-    grid-template-columns: 34px minmax(0, 1fr) repeat(5, 32px);
+    grid-template-columns: 34px minmax(0, 1fr) repeat(3, 32px);
     align-items: center;
     gap: 8px;
     border: 1px solid #303440;
     border-radius: 8px;
     background: #171a21;
     padding: 8px;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: box-shadow 180ms ease;
+}
+
+.group-member-row.dragging {
+    cursor: grabbing;
+    touch-action: none;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
 }
 
 .group-member-row .avatar {
@@ -1027,6 +1037,32 @@
 
 .group-member-row .danger-button {
     color: #ffb4bd;
+}
+
+.sortable-keyboard-control {
+    position: absolute;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.sortable-keyboard-control:focus-visible {
+    position: static;
+    width: 32px !important;
+    height: 32px !important;
+    margin: 0;
+    clip: auto;
+    clip-path: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .group-member-row {
+        transition: none;
+    }
 }
 
 .group-panel .secondary-button {

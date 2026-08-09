@@ -1,6 +1,5 @@
 import {
     AlertTriangle,
-    ArrowUpDown,
     Download,
     FileInput,
     ImageOff,
@@ -120,7 +119,6 @@ function CharacterRailAvatar({
     index,
     isActive,
     isPending,
-    isReordering,
     onSelectCharacter,
     onOpenCharacterMenu,
 }: {
@@ -128,7 +126,6 @@ function CharacterRailAvatar({
     index: number;
     isActive: boolean;
     isPending: boolean;
-    isReordering: boolean;
     onSelectCharacter: (id: string) => void;
     onOpenCharacterMenu: (event: MouseEvent, character: RailCharacter) => void;
 }) {
@@ -136,23 +133,15 @@ function CharacterRailAvatar({
         <button
             className={`character-rail-avatar ${isActive ? "active" : ""} ${
                 isPending ? "pending" : ""
-            } ${isReordering ? "reordering" : ""}`}
+            }`}
             type="button"
             title={character.name}
             data-sortable-index={index}
             aria-label={character.name}
             aria-current={isActive ? "true" : undefined}
             aria-busy={isPending ? "true" : undefined}
-            onClick={() => {
-                if (!isReordering) onSelectCharacter(character.id);
-            }}
-            onContextMenu={(event) => {
-                if (!isReordering) {
-                    onOpenCharacterMenu(event, character);
-                } else {
-                    event.preventDefault();
-                }
-            }}
+            onClick={() => onSelectCharacter(character.id)}
+            onContextMenu={(event) => onOpenCharacterMenu(event, character)}
         >
             <span className="character-rail-avatar-visual" aria-hidden="true">
                 {character.groupChat ? (
@@ -166,7 +155,7 @@ function CharacterRailAvatar({
                         members={character.groupChat.members ?? []}
                     />
                 ) : character.avatar ? (
-                    <img src={character.avatar.path} alt="" />
+                    <img src={character.avatar.path} alt="" draggable={false} />
                 ) : (
                     <span>{character.name.trim().charAt(0) || "?"}</span>
                 )}
@@ -197,13 +186,12 @@ function CharacterRail({
     onReorderCharacters,
     onSelectCharacter,
 }: CharacterRailProps) {
-    const [isReordering, setIsReordering] = useState(false);
     const activeRowCharacterId = pendingCharacterId || activeCharacterId;
     const favorites = characters.filter((c) => c.isFavorite);
     const regular = characters.filter((c) => !c.isFavorite);
 
     const { containerRef: favoritesContainerRef } = useSortableList({
-        disabled: !isReordering,
+        ignoreSelector: "[data-sortable-ignore]",
         onReorder: (oldIndex, newIndex) => {
             if (oldIndex === newIndex) return;
             const nextFavorites = [...favorites];
@@ -214,7 +202,7 @@ function CharacterRail({
     });
 
     const { containerRef: regularContainerRef } = useSortableList({
-        disabled: !isReordering,
+        ignoreSelector: "[data-sortable-ignore]",
         onReorder: (oldIndex, newIndex) => {
             if (oldIndex === newIndex) return;
             const nextRegular = [...regular];
@@ -247,7 +235,6 @@ function CharacterRail({
                                 index={index}
                                 isActive={character.id === activeRowCharacterId}
                                 isPending={character.id === pendingCharacterId}
-                                isReordering={isReordering}
                                 onSelectCharacter={onSelectCharacter}
                                 onOpenCharacterMenu={onOpenCharacterMenu}
                             />
@@ -266,7 +253,6 @@ function CharacterRail({
                                 index={index}
                                 isActive={character.id === activeRowCharacterId}
                                 isPending={character.id === pendingCharacterId}
-                                isReordering={isReordering}
                                 onSelectCharacter={onSelectCharacter}
                                 onOpenCharacterMenu={onOpenCharacterMenu}
                             />
@@ -279,15 +265,6 @@ function CharacterRail({
                 ) : null}
             </div>
             <div className="character-rail-actions">
-                <button
-                    className={`character-rail-action ${isReordering ? "active" : ""}`}
-                    type="button"
-                    title={isReordering ? "Done reordering" : "Reorder characters"}
-                    aria-label="Reorder characters"
-                    onClick={() => setIsReordering(!isReordering)}
-                >
-                    <ArrowUpDown size={19} />
-                </button>
                 <button
                     className="character-rail-action"
                     type="button"
@@ -617,6 +594,51 @@ export function Sidebar({
         );
         return [...ordered, ...remaining];
     }, [characters, groupChats, railOrder]);
+
+    function saveRailOrder(items: RailCharacter[]) {
+        onReorderRail?.(items.map((item) => item.id));
+        onReorderCharacters(items.filter((item) => !item.groupChat));
+    }
+
+    function moveRailItem(
+        character: RailCharacter,
+        destination: "top" | "up" | "down" | "bottom",
+    ) {
+        const section = railCharacters.filter(
+            (item) => item.isFavorite === character.isFavorite,
+        );
+        const index = section.findIndex((item) => item.id === character.id);
+        if (index < 0) return;
+        const nextIndex =
+            destination === "top"
+                ? 0
+                : destination === "bottom"
+                  ? section.length - 1
+                  : index + (destination === "up" ? -1 : 1);
+        if (nextIndex < 0 || nextIndex >= section.length || nextIndex === index) return;
+        const nextSection = [...section];
+        const [moved] = nextSection.splice(index, 1);
+        nextSection.splice(nextIndex, 0, moved);
+        const favorites = character.isFavorite
+            ? nextSection
+            : railCharacters.filter((item) => item.isFavorite);
+        const regular = character.isFavorite
+            ? railCharacters.filter((item) => !item.isFavorite)
+            : nextSection;
+        saveRailOrder([...favorites, ...regular]);
+        setContextMenu(undefined);
+    }
+
+    const railMenuIndex = contextMenu
+        ? railCharacters
+              .filter((item) => item.isFavorite === contextMenu.character.isFavorite)
+              .findIndex((item) => item.id === contextMenu.character.id)
+        : -1;
+    const railMenuLength = contextMenu
+        ? railCharacters.filter(
+              (item) => item.isFavorite === contextMenu.character.isFavorite,
+          ).length
+        : 0;
     const selectedRailId = activeGroupId || activeCharacterId;
     const contextualChats = useMemo(
         () =>
@@ -932,6 +954,55 @@ export function Sidebar({
                         }}
                         onClick={(event) => event.stopPropagation()}
                     >
+                        <div
+                            className="context-submenu"
+                            role="group"
+                            aria-label="Reorder"
+                        >
+                            <span>Reorder</span>
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={railMenuIndex <= 0}
+                                onClick={() => moveRailItem(contextMenu.character, "top")}
+                            >
+                                Move to top
+                            </button>
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={railMenuIndex <= 0}
+                                onClick={() => moveRailItem(contextMenu.character, "up")}
+                            >
+                                Move up
+                            </button>
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={
+                                    railMenuIndex < 0 ||
+                                    railMenuIndex >= railMenuLength - 1
+                                }
+                                onClick={() =>
+                                    moveRailItem(contextMenu.character, "down")
+                                }
+                            >
+                                Move down
+                            </button>
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={
+                                    railMenuIndex < 0 ||
+                                    railMenuIndex >= railMenuLength - 1
+                                }
+                                onClick={() =>
+                                    moveRailItem(contextMenu.character, "bottom")
+                                }
+                            >
+                                Move to bottom
+                            </button>
+                        </div>
                         {contextMenu.character.groupChat ? (
                             <>
                                 <button

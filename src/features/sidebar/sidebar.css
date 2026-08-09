@@ -138,9 +138,14 @@
         transform 0.18s ease;
 }
 
-.character-rail-avatar.reordering {
+.character-rail-avatar {
     cursor: grab;
+    --sortable-drag-scale: 1.08;
+    /* The browser decides whether it owns a touch gesture on pointerdown. The
+       sorter manually forwards pre-hold movement to the roster scroll host,
+       which leaves long-press reordering available on touch screens. */
     touch-action: none;
+    -webkit-touch-callout: none;
     user-select: none;
     -webkit-user-select: none;
 }
@@ -154,23 +159,17 @@
     border-radius: inherit;
 }
 
-.character-rail-avatar.reordering:not(.dragging) .character-rail-avatar-visual {
-    animation: reorder-jiggle 0.4s infinite ease-in-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .character-rail-avatar.reordering .character-rail-avatar-visual {
-        animation: none;
-    }
-}
-
-.character-rail-avatar.reordering.dragging {
+.character-rail-avatar.dragging {
+    cursor: grabbing;
+    touch-action: none;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
     z-index: 100;
 }
 
-.character-rail-avatar.reordering:active {
-    cursor: grabbing;
+@media (prefers-reduced-motion: reduce) {
+    .character-rail-avatar {
+        transition: none;
+    }
 }
 
 .character-rail-avatar::before {
@@ -214,6 +213,7 @@
     border-radius: inherit;
     object-fit: cover;
     object-position: center;
+    -webkit-user-drag: none;
 }
 
 .character-rail-avatar-visual .character-rail-group-avatar {
