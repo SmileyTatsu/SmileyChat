@@ -173,6 +173,30 @@ describe("smiley chat formatter", () => {
             `Use a\\*b${privateUseCharacter} and *outside*`,
         );
     });
+
+    test("renders pipe-style spoilers when spoiler rendering is enabled", () => {
+        setFormatterSettings(defaultFormatterSettings);
+
+        const nodes = renderFormatted(api, "A ||secret|| remains hidden.", {
+            highlightQuotes: false,
+            italicizeMessages: true,
+        });
+
+        expect(findNodeByClass(nodes, "scf-spoiler")).toBeTruthy();
+        expect(textFromNode(nodes[0])).toBe("A secret remains hidden.");
+    });
+
+    test("leaves pipe-style spoiler content visible when spoilers are disabled", () => {
+        setFormatterSettings({ ...defaultFormatterSettings, spoilers: false });
+
+        const nodes = renderFormatted(api, "A ||secret|| remains visible.", {
+            highlightQuotes: false,
+            italicizeMessages: true,
+        });
+
+        expect(findNodeByClass(nodes, "scf-spoiler")).toBeUndefined();
+        expect(textFromNode(nodes[0])).toBe("A secret remains visible.");
+    });
 });
 
 function findNodeByClass(nodes: FormatterNode[], className: string): VNode | undefined {

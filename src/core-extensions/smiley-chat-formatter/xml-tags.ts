@@ -1,6 +1,7 @@
 import { FormatterApi, FormatterNode, withInlineLineBreaks } from "./nodes";
 import { safeColor, safeSize } from "./safety";
 import { getFormatterSettings } from "./settings";
+import { renderSpoiler } from "./spoiler";
 
 type TagFrame = {
     name: string;
@@ -234,27 +235,7 @@ function renderTag(
         return api.ui.h("span", { className: "scf-quote" }, renderedChildren);
 
     if (name === "spoiler") {
-        if (!getFormatterSettings().spoilers) {
-            return renderedChildren;
-        }
-
-        return api.ui.h(
-            "span",
-            {
-                "aria-expanded": "false",
-                className: "scf-spoiler",
-                role: "button",
-                tabIndex: 0,
-                onClick: revealSpoiler,
-                onKeyDown: (event: KeyboardEvent) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        revealSpoiler(event);
-                    }
-                },
-            },
-            renderedChildren,
-        );
+        return renderSpoiler(api, renderedChildren);
     }
 
     if (name === "font") {
@@ -291,15 +272,4 @@ function renderTag(
     }
 
     return renderedChildren;
-}
-
-function revealSpoiler(event: Event) {
-    const target = event.currentTarget;
-
-    if (!(target instanceof HTMLElement)) {
-        return;
-    }
-
-    target.classList.add("is-revealed");
-    target.setAttribute("aria-expanded", "true");
 }

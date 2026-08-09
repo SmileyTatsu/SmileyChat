@@ -16,6 +16,10 @@ import { memo } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { cn } from "#frontend/lib/common/style";
+import {
+    getTextFormattingHotkeyResult,
+    restoreTextareaSelection,
+} from "#frontend/lib/message-formatting/input-formatting";
 import { formatDuration } from "#frontend/lib/time";
 import { getPluginTool } from "#frontend/lib/plugins/registry";
 import {
@@ -223,10 +227,27 @@ export const MessageItem = memo(function MessageItem({
     }, [content, editingDraft, isEditing]);
 
     function handleEditKeyDown(event: KeyboardEvent) {
-        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        const textarea = event.currentTarget as HTMLTextAreaElement;
+        const formatting = !event.isComposing
+            ? getTextFormattingHotkeyResult(event, {
+                  value: textarea.value,
+                  selectionStart: textarea.selectionStart,
+                  selectionEnd: textarea.selectionEnd,
+              })
+            : undefined;
+
+        if (formatting) {
+            event.preventDefault();
+            setEditingDraft(formatting.value);
+            restoreTextareaSelection(textarea, formatting);
+        } else if (
+            !event.isComposing &&
+            event.key === "Enter" &&
+            (event.ctrlKey || event.metaKey)
+        ) {
             event.preventDefault();
             onSaveEdit(message.id, editingDraft);
-        } else if (event.key === "Escape") {
+        } else if (!event.isComposing && event.key === "Escape") {
             event.preventDefault();
             onCancelEdit();
         }

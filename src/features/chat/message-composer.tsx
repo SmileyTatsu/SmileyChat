@@ -12,6 +12,10 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
 import { createId } from "#frontend/lib/common/ids";
 import {
+    getTextFormattingHotkeyResult,
+    restoreTextareaSelection,
+} from "#frontend/lib/message-formatting/input-formatting";
+import {
     isSafeInlineImageFile,
     validateChatAttachmentFiles,
 } from "#frontend/lib/chat-attachment-limits";
@@ -148,7 +152,24 @@ export const MessageComposer = memo(function MessageComposer({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-        if (event.key !== "Enter" || disabled) {
+        const textarea = event.currentTarget as HTMLTextAreaElement;
+        const formatting =
+            !disabled && !event.isComposing
+                ? getTextFormattingHotkeyResult(event, {
+                      value: textarea.value,
+                      selectionStart: textarea.selectionStart,
+                      selectionEnd: textarea.selectionEnd,
+                  })
+                : undefined;
+
+        if (formatting) {
+            event.preventDefault();
+            setDraft(formatting.value);
+            restoreTextareaSelection(textarea, formatting);
+            return;
+        }
+
+        if (event.key !== "Enter" || disabled || event.isComposing) {
             return;
         }
 

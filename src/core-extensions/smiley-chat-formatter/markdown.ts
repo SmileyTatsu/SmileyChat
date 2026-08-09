@@ -3,6 +3,7 @@ import type { ComponentChild } from "preact";
 import { FormatterApi, FormatterNode, withInlineLineBreaks } from "./nodes";
 import { safeImageUrl, safeUrl } from "./safety";
 import { getFormatterSettings } from "./settings";
+import { renderSpoiler } from "./spoiler";
 
 type InlineRenderer = (content: string) => FormatterNode[];
 type ListMatch = {
@@ -13,7 +14,7 @@ type ListMatch = {
 };
 
 const markdownTokenPattern =
-    /(`[^`\n]+`|\*\*\*[\s\S]+?\*\*\*|___[\s\S]+?___|\*\*[^*\n]+?\*\*|__[^_\n]+?__|~~[^~\n]+?~~|\*[^*\n]+?\*|_[^_\n]+?_|!\[[^\]\n]*\]\([^) \n]+(?:\s+"[^"\n]{0,120}")?\)|\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]{0,120}")?\))/g;
+    /(`[^`\n]+`|\*\*\*[\s\S]+?\*\*\*|___[\s\S]+?___|\*\*[^*\n]+?\*\*|__[^_\n]+?__|\|\|[^|\n]+?\|\||~~[^~\n]+?~~|\*[^*\n]+?\*|_[^_\n]+?_|!\[[^\]\n]*\]\([^) \n]+(?:\s+"[^"\n]{0,120}")?\)|\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]{0,120}")?\))/g;
 const escapableMarkdownCharacters = "\\!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 
 export function renderMarkdownBlocks(
@@ -566,6 +567,10 @@ function renderMarkdownToken(
 
     if (token.startsWith("~~") && token.endsWith("~~")) {
         return api.ui.h("s", null, renderInlineContent(token.slice(2, -2)));
+    }
+
+    if (token.startsWith("||") && token.endsWith("||")) {
+        return renderSpoiler(api, renderInlineContent(token.slice(2, -2)));
     }
 
     if (
