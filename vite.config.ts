@@ -24,7 +24,8 @@ export default defineConfig(function ({ mode }) {
             },
         },
         build: {
-            chunkSizeWarningLimit: 1000,
+            // Tokenizers go brrrrrrrrrrrrrrrr
+            chunkSizeWarningLimit: 2500,
         },
     };
 });

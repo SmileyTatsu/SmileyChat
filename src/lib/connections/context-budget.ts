@@ -22,6 +22,8 @@ type LocalModelCategory = {
 export type EffectiveContextTokenBudget = {
     source: "custom" | "local-model" | "fallback";
     tokenBudget: number;
+    totalTokenLimit: number;
+    reservedOutputTokens: number;
 };
 
 const localCatalogs: Partial<
@@ -55,14 +57,18 @@ export function getEffectiveContextTokenBudget(
     const rawBudget = normalizeContextTokenBudget(profile?.contextTokenBudget);
 
     if (profile?.overrideModelContext) {
+        const reservedOutputTokens = getReservedOutputTokens(profile);
         return {
             source: "custom",
-            tokenBudget: rawBudget,
+            totalTokenLimit: rawBudget,
+            reservedOutputTokens,
+            tokenBudget: Math.max(0, rawBudget - reservedOutputTokens),
         };
     }
 
     const modelMax = getModelMaxContextLimit(profile);
     const tokenBudget = Math.min(modelMax, rawBudget);
+    const reservedOutputTokens = getReservedOutputTokens(profile);
 
     const model = getSelectedModel(profile);
     const isLocalModel =
@@ -72,8 +78,32 @@ export function getEffectiveContextTokenBudget(
 
     return {
         source: isLocalModel ? "local-model" : "fallback",
-        tokenBudget,
+        totalTokenLimit: tokenBudget,
+        reservedOutputTokens,
+        tokenBudget: Math.max(0, tokenBudget - reservedOutputTokens),
     };
+}
+
+function getReservedOutputTokens(profile: ConnectionProfile | undefined) {
+    if (!profile) return 0;
+    const config = profile.config as Record<string, unknown>;
+    const configured =
+        config.maxCompletionTokens ?? config.maxOutputTokens ?? config.maxTokens;
+    const outputTokens =
+        typeof configured === "number" && Number.isFinite(configured)
+            ? Math.max(0, Math.floor(configured))
+            : 1000;
+    const thinking = config.thinking;
+    const thinkingTokens =
+        thinking &&
+        typeof thinking === "object" &&
+        "mode" in thinking &&
+        thinking.mode === "enabled" &&
+        "budgetTokens" in thinking &&
+        typeof thinking.budgetTokens === "number"
+            ? Math.max(0, Math.floor(thinking.budgetTokens))
+            : 0;
+    return outputTokens + thinkingTokens;
 }
 
 function getSelectedModel(profile: ConnectionProfile | undefined) {

@@ -75,6 +75,7 @@ import {
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
 import { PluginRenderSurface } from "#frontend/features/plugins/plugin-error-boundary";
+import { tokenizerAlgorithms, type TokenizerSelection } from "#frontend/lib/tokenizer";
 
 import { GoogleAIConnection } from "./providers/google-ai-connection";
 import { AnthropicConnection } from "./providers/anthropic-connection";
@@ -738,6 +739,11 @@ export function ConnectionsSettings({
         );
     }
 
+    function updateActiveProfileTokenizer(tokenizer: TokenizerSelection) {
+        if (!activeProfile) return;
+        onSettingsChange(updateProfile(settings, activeProfile.id, { tokenizer }));
+    }
+
     function addProfile() {
         const profile = createConnectionProfile(
             "openai-compatible",
@@ -984,6 +990,7 @@ export function ConnectionsSettings({
                                 {activeProfile.overrideModelContext
                                     ? "Unlocked mode enabled (up to 2,000,000 tokens)."
                                     : `Standard model limit (${getModelMaxContextLimit(activeProfile).toLocaleString()} tokens).`}
+                                {` ${getEffectiveContextTokenBudget(activeProfile).reservedOutputTokens.toLocaleString()} tokens are reserved for output.`}
                             </small>
                         </div>
                         <ContextTokenLimitControl
@@ -993,7 +1000,8 @@ export function ConnectionsSettings({
                                     : getModelMaxContextLimit(activeProfile)
                             }
                             value={
-                                getEffectiveContextTokenBudget(activeProfile).tokenBudget
+                                getEffectiveContextTokenBudget(activeProfile)
+                                    .totalTokenLimit
                             }
                             onChange={(nextBudget) => {
                                 updateActiveProfileContextTokenBudget(nextBudget);
@@ -1010,6 +1018,44 @@ export function ConnectionsSettings({
                                 }
                             />
                             <span>Unlocked Context</span>
+                        </label>
+                        <label className="connection-tokenizer-select">
+                            <span>Tokenizer</span>
+                            <select
+                                value={
+                                    activeProfile.tokenizer?.mode === "manual"
+                                        ? activeProfile.tokenizer.algorithm
+                                        : "auto"
+                                }
+                                onInput={(event) => {
+                                    const algorithm = (
+                                        event.currentTarget as HTMLSelectElement
+                                    ).value;
+                                    updateActiveProfileTokenizer(
+                                        algorithm === "auto"
+                                            ? { mode: "auto" }
+                                            : {
+                                                  mode: "manual",
+                                                  algorithm: algorithm as Exclude<
+                                                      (typeof tokenizerAlgorithms)[number],
+                                                      "auto"
+                                                  >,
+                                              },
+                                    );
+                                }}
+                            >
+                                <option value="auto">Auto-detect from model</option>
+                                {tokenizerAlgorithms
+                                    .filter((algorithm) => algorithm !== "auto")
+                                    .map((algorithm) => (
+                                        <option key={algorithm} value={algorithm}>
+                                            {algorithm}
+                                        </option>
+                                    ))}
+                            </select>
+                            <small>
+                                Unsupported local tokenizers use a conservative estimate.
+                            </small>
                         </label>
                     </section>
 

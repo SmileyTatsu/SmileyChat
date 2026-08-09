@@ -11,6 +11,7 @@ import type { ChatGenerationMessage } from "../connections/types";
 import type { Lorebook } from "../lorebooks/types";
 import type { AppPreferences } from "../preferences/types";
 import type { SmileyPreset } from "../presets/types";
+import type { TokenCountContext } from "../tokenizer";
 
 export type PromptGenerationTrigger =
     | "send"
@@ -58,6 +59,7 @@ export type PromptBuildContext = {
     preferences: AppPreferences;
     preset: SmileyPreset | undefined;
     tokenBudget: number;
+    tokenContext?: TokenCountContext;
     userStatus: UserStatus;
 };
 

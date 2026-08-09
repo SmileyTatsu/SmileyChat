@@ -2,8 +2,8 @@ import { selectHistoryMessagesForBudget } from "../prompt/history-budget";
 import { estimateChatGenerationMessages } from "../prompt/token-estimator";
 import { compilePresetMessages } from "./compile";
 import type { SmileyPreset } from "./types";
-
-const contextEstimatePaddingTokens = 1024;
+import { providerTokenPolicy } from "../connections/token-policy";
+import type { TokenCountContext } from "../tokenizer";
 
 type PresetContextInput = Parameters<typeof compilePresetMessages>[1];
 
@@ -12,22 +12,30 @@ export function preparePresetContextForBudget({
     context,
     preset,
     tokenBudget,
+    tokenContext,
 }: {
     context: PresetContextInput;
     preset: SmileyPreset | undefined;
     tokenBudget: number;
+    tokenContext?: TokenCountContext;
 }) {
     const staticPromptMessages = compilePresetMessages(preset, {
         ...context,
         messages: [],
     });
-    const staticPromptTokens = estimateChatGenerationMessages(staticPromptMessages);
+    const staticPromptTokens = estimateChatGenerationMessages(
+        staticPromptMessages,
+        tokenContext,
+    );
     const historyMessages = selectHistoryMessagesForBudget({
         messages: context.messages,
         availableHistoryTokens: Math.max(
             0,
-            tokenBudget - staticPromptTokens - contextEstimatePaddingTokens,
+            tokenBudget -
+                staticPromptTokens -
+                providerTokenPolicy(tokenContext).safetyMargin,
         ),
+        tokenContext,
     });
     const promptMessages = compilePresetMessages(preset, {
         ...context,

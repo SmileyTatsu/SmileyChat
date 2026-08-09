@@ -44,6 +44,10 @@ import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import { getEffectiveContextTokenBudget } from "#frontend/lib/connections/context-budget";
 import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
 import {
+    setActiveTokenCountContext,
+    tokenizerContextForProfile,
+} from "#frontend/lib/tokenizer";
+import {
     defaultAppPreferences,
     normalizeAppPreferences,
     type AppPreferences,
@@ -287,6 +291,13 @@ export function App() {
 
     useEffect(() => {
         latestConnectionSettingsRef.current = connectionSettings;
+    }, [connectionSettings]);
+
+    useEffect(() => {
+        const profile = getActiveConnectionProfile(connectionSettings);
+        setActiveTokenCountContext(
+            profile ? tokenizerContextForProfile(profile) : undefined,
+        );
     }, [connectionSettings]);
 
     useEffect(() => {

@@ -7,8 +7,8 @@ import {
     getMessageReasoning,
 } from "../messages";
 import type { PromptInjection } from "./types";
-
-const bytesPerToken = 3.35;
+import { estimateTextForContext, type TokenCountContext } from "../tokenizer";
+import { providerTokenPolicy } from "../connections/token-policy";
 
 export type TokenEstimator = {
     estimateGenerationMessage(message: ChatGenerationMessage): number;
@@ -24,104 +24,88 @@ export const defaultTokenEstimator: TokenEstimator = {
     estimateText,
 };
 
-export function estimateText(value: string) {
-    if (!value) {
-        return 0;
-    }
-
-    return Math.ceil(utf8ByteLength(value) / bytesPerToken);
+export function estimateText(value: string, context?: TokenCountContext) {
+    return estimateTextForContext(value, context).tokens;
 }
 
-/**
- * Matches TextEncoder's UTF-8 output length without allocating a Uint8Array.
- * Unpaired UTF-16 surrogates are encoded as U+FFFD, which is three bytes.
- */
-function utf8ByteLength(value: string) {
-    let byteLength = 0;
-
-    for (let index = 0; index < value.length; index += 1) {
-        const codeUnit = value.charCodeAt(index);
-        if (codeUnit <= 0x7f) {
-            byteLength += 1;
-        } else if (codeUnit <= 0x7ff) {
-            byteLength += 2;
-        } else if (
-            codeUnit >= 0xd800 &&
-            codeUnit <= 0xdbff &&
-            index + 1 < value.length &&
-            value.charCodeAt(index + 1) >= 0xdc00 &&
-            value.charCodeAt(index + 1) <= 0xdfff
-        ) {
-            byteLength += 4;
-            index += 1;
-        } else {
-            byteLength += 3;
-        }
-    }
-
-    return byteLength;
-}
-
-export function estimateMessage(message: Message) {
+export function estimateMessage(message: Message, context?: TokenCountContext) {
     return (
         6 +
-        estimateText(message.author) +
-        estimateText(getMessageContent(message)) +
-        estimateText(getMessageReasoning(message)) +
-        estimateMessageToolTokens(message) +
+        estimateText(message.author, context) +
+        estimateText(getMessageContent(message), context) +
+        estimateText(getMessageReasoning(message), context) +
+        estimateMessageToolTokens(message, context) +
         getMessageAttachments(message).length * 1024
     );
 }
 
-export function estimateGenerationMessage(message: ChatGenerationMessage) {
+export function estimateGenerationMessage(
+    message: ChatGenerationMessage,
+    context?: TokenCountContext,
+) {
     return (
-        4 +
-        estimateText(message.role) +
-        estimateContentTokens(message.content) +
-        estimateGenerationToolTokens(message)
+        providerTokenPolicy(context).messageOverhead +
+        estimateText(message.role, context) +
+        estimateContentTokens(message.content, context) +
+        estimateGenerationToolTokens(message, context)
     );
 }
 
-export function estimatePromptInjection(injection: PromptInjection) {
+export function estimatePromptInjection(
+    injection: PromptInjection,
+    context?: TokenCountContext,
+) {
     return injection.tokenBudgetBehavior === "ignore-budget"
         ? 0
-        : 4 + estimateText(injection.role) + estimateText(injection.content);
+        : providerTokenPolicy(context).messageOverhead +
+              estimateText(injection.role, context) +
+              estimateText(injection.content, context);
 }
 
-export function estimateChatGenerationMessages(messages: ChatGenerationMessage[]) {
+export function estimateChatGenerationMessages(
+    messages: ChatGenerationMessage[],
+    context?: TokenCountContext,
+) {
     return messages.reduce(
-        (total, message) => total + estimateGenerationMessage(message),
+        (total, message) => total + estimateGenerationMessage(message, context),
         0,
     );
 }
 
-function estimateContentTokens(content: ChatGenerationMessage["content"]) {
+function estimateContentTokens(
+    content: ChatGenerationMessage["content"],
+    context?: TokenCountContext,
+) {
     if (typeof content === "string") {
-        return estimateText(content);
+        return estimateText(content, context);
     }
 
     return content.reduce((total, part) => {
         if (part.type === "text") {
-            return total + estimateText(part.text);
+            return total + estimateText(part.text, context);
         }
 
         if (part.type === "image_url") {
-            return total + 1024 + estimateText(part.image_url.url);
+            return total + 1024 + estimateText(part.image_url.url, context);
         }
 
-        return total + estimateFilePartTokens(part.file);
+        return total + estimateFilePartTokens(part.file, context);
     }, 0);
 }
 
-function estimateFilePartTokens(file: {
-    file_data?: string;
-    filename?: string;
-    mime_type?: string;
-    size_bytes?: number;
-    url?: string;
-}) {
+function estimateFilePartTokens(
+    file: {
+        file_data?: string;
+        filename?: string;
+        mime_type?: string;
+        size_bytes?: number;
+        url?: string;
+    },
+    context?: TokenCountContext,
+) {
     const metadataTokens = estimateText(
         [file.filename, file.mime_type, file.url].filter(Boolean).join(" "),
+        context,
     );
 
     if (typeof file.size_bytes === "number" && file.size_bytes > 0) {
@@ -138,38 +122,41 @@ function estimateFilePartTokens(file: {
     return 1024 + metadataTokens;
 }
 
-function estimateMessageToolTokens(message: Message) {
+function estimateMessageToolTokens(message: Message, context?: TokenCountContext) {
     return (
         (message.toolCalls ?? []).reduce(
             (total, call) =>
                 total +
-                estimateText(call.id) +
-                estimateText(call.name) +
-                estimateText(call.argumentsText),
+                estimateText(call.id, context) +
+                estimateText(call.name, context) +
+                estimateText(call.argumentsText, context),
             0,
         ) +
         (message.toolResult
-            ? estimateText(message.toolResult.toolCallId) +
-              estimateText(message.toolResult.name) +
-              estimateText(message.toolResult.content)
+            ? estimateText(message.toolResult.toolCallId, context) +
+              estimateText(message.toolResult.name, context) +
+              estimateText(message.toolResult.content, context)
             : 0)
     );
 }
 
-function estimateGenerationToolTokens(message: ChatGenerationMessage) {
+function estimateGenerationToolTokens(
+    message: ChatGenerationMessage,
+    context?: TokenCountContext,
+) {
     return (
         (message.toolCalls ?? []).reduce(
             (total, call) =>
                 total +
-                estimateText(call.id) +
-                estimateText(call.name) +
-                estimateText(call.argumentsText),
+                estimateText(call.id, context) +
+                estimateText(call.name, context) +
+                estimateText(call.argumentsText, context),
             0,
         ) +
         (message.toolResult
-            ? estimateText(message.toolResult.toolCallId) +
-              estimateText(message.toolResult.name) +
-              estimateText(message.toolResult.content)
+            ? estimateText(message.toolResult.toolCallId, context) +
+              estimateText(message.toolResult.name, context) +
+              estimateText(message.toolResult.content, context)
             : 0)
     );
 }

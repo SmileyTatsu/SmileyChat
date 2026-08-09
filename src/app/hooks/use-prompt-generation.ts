@@ -36,6 +36,11 @@ import {
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { compilePresetMessages } from "#frontend/lib/presets/compile";
 import { getEffectiveContextTokenBudget } from "#frontend/lib/connections/context-budget";
+import {
+    preloadTokenizer,
+    tokenizerContextForProfile,
+    type TokenCountContext,
+} from "#frontend/lib/tokenizer";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import {
@@ -75,6 +80,7 @@ type UsePromptGenerationOptions = {
 export type DebugGenerationPayload = {
     request: ChatGenerationRequest;
     payload: unknown;
+    tokenContext?: TokenCountContext;
 };
 
 export type PendingToolContinuation = {
@@ -102,10 +108,14 @@ export function usePromptGeneration({
             ),
         [presetCollection],
     );
+    function profileForGeneration(settings: ConnectionSettings, profileId?: string) {
+        return profileId
+            ? settings.profiles.find((item) => item.id === profileId)
+            : getActiveConnectionProfile(settings);
+    }
+
     function contextTokenBudgetForProfile(profileId?: string) {
-        const profile = profileId
-            ? connectionSettings.profiles.find((item) => item.id === profileId)
-            : getActiveConnectionProfile(connectionSettings);
+        const profile = profileForGeneration(connectionSettings, profileId);
         return getEffectiveContextTokenBudget(profile).tokenBudget;
     }
 
@@ -628,7 +638,12 @@ export function usePromptGeneration({
 
         const payload = await connection.buildPayload(request);
 
-        return { request, payload };
+        const profile = getActiveConnectionProfile(sourceConnectionSettings);
+        return {
+            request,
+            payload,
+            ...(profile ? { tokenContext: tokenizerContextForProfile(profile) } : {}),
+        };
     }
 
     async function buildGenerationRequest(
@@ -652,6 +667,16 @@ export function usePromptGeneration({
         const contextTokenBudget = contextTokenBudgetForProfile(
             options.continuation?.profileId,
         );
+        const tokenProfile = profileForGeneration(
+            connectionSettings,
+            options.continuation?.profileId,
+        );
+        const tokenContext = tokenProfile
+            ? tokenizerContextForProfile(tokenProfile)
+            : undefined;
+        if (tokenContext) {
+            await preloadTokenizer(tokenContext);
+        }
         const sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );
@@ -684,6 +709,7 @@ export function usePromptGeneration({
                 preferences,
                 preset: activePreset,
                 tokenBudget: contextTokenBudget,
+                tokenContext,
                 userStatus: sourceUserStatus,
             },
             contextMiddlewares: getPromptContextMiddlewares(),
@@ -719,7 +745,11 @@ export function usePromptGeneration({
             promptMessages,
             promptChat.id,
         );
-        assertPromptMessagesWithinBudget(localPromptMessages, contextTokenBudget);
+        assertPromptMessagesWithinBudget(
+            localPromptMessages,
+            contextTokenBudget,
+            tokenContext,
+        );
         const materializedPromptMessages =
             await materializeChatGenerationMessageAttachments(localPromptMessages);
 

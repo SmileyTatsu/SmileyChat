@@ -27,8 +27,7 @@ import type {
     PromptInjection,
     PromptInjector,
 } from "./types";
-
-const contextEstimatePaddingTokens = 1024;
+import { providerTokenPolicy } from "../connections/token-policy";
 
 export async function buildPromptForGeneration({
     context,
@@ -45,6 +44,7 @@ export async function buildPromptForGeneration({
     const historyMessages = selectHistoryMessagesForBudget({
         messages: processedContext.messages,
         availableHistoryTokens: budget.availableHistoryTokens,
+        tokenContext: processedContext.tokenContext,
     });
     const outlets = createPromptOutletRegistry(injections);
     const compiled = compilePresetMessagesWithMetadata(processedContext.preset, {
@@ -66,6 +66,7 @@ export async function buildPromptForGeneration({
         messages: historyMessages,
         promptItems,
         tokenBudget: processedContext.tokenBudget,
+        tokenContext: processedContext.tokenContext,
     });
 
     return {
@@ -100,13 +101,19 @@ function planPromptBudget(
         personaName: context.persona.name,
         userStatus: context.userStatus,
     }).map((item) => item.message);
-    const staticPromptTokens = estimateChatGenerationMessages(staticPromptMessages);
+    const staticPromptTokens = estimateChatGenerationMessages(
+        staticPromptMessages,
+        context.tokenContext,
+    );
     const injectionTokens = injections.reduce(
-        (total, injection) => total + estimatePromptInjection(injection),
+        (total, injection) =>
+            estimatePromptInjection(injection, context.tokenContext) + total,
         0,
     );
     const reservedTokens =
-        staticPromptTokens + injectionTokens + contextEstimatePaddingTokens;
+        staticPromptTokens +
+        injectionTokens +
+        providerTokenPolicy(context.tokenContext).safetyMargin;
 
     return {
         availableHistoryTokens: Math.max(0, context.tokenBudget - reservedTokens),
@@ -157,13 +164,17 @@ function finalizeAssembledPromptBudget({
     messages,
     promptItems,
     tokenBudget,
+    tokenContext,
 }: {
     messages: Message[];
     promptItems: AnchoredPromptMessage[];
     tokenBudget: number;
+    tokenContext?: import("../tokenizer").TokenCountContext;
 }) {
     const output = [...promptItems];
-    const itemCosts = output.map((item) => estimateGenerationMessage(item.message));
+    const itemCosts = output.map((item) =>
+        estimateGenerationMessage(item.message, tokenContext),
+    );
     const protectedHistoryId = protectedHistoryMessageId(messages);
     let tokenEstimate = itemCosts.reduce((total, cost) => total + cost, 0);
 
@@ -192,7 +203,7 @@ function finalizeAssembledPromptBudget({
 
     const promptMessages = output.map((item) => item.message);
 
-    assertPromptMessagesWithinBudget(promptMessages, tokenBudget);
+    assertPromptMessagesWithinBudget(promptMessages, tokenBudget, tokenContext);
 
     const selectedMessageIds = new Set(
         output
@@ -313,8 +324,9 @@ function isAdjacentToolProtocolPair(
 export function assertPromptMessagesWithinBudget(
     promptMessages: ChatGenerationMessage[],
     tokenBudget: number,
+    tokenContext?: import("../tokenizer").TokenCountContext,
 ) {
-    const tokenEstimate = estimateChatGenerationMessages(promptMessages);
+    const tokenEstimate = estimateChatGenerationMessages(promptMessages, tokenContext);
 
     if (tokenEstimate <= tokenBudget) {
         return;

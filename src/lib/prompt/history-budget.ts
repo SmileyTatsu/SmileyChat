@@ -1,14 +1,17 @@
 import type { Message } from "#frontend/types";
 
 import { estimateMessage } from "./token-estimator";
+import type { TokenCountContext } from "../tokenizer";
 import { getPromptEligibleMessages, isMessageIncludedInPrompt } from "./message-utils";
 
 export function selectHistoryMessagesForBudget({
     messages,
     availableHistoryTokens,
+    tokenContext,
 }: {
     messages: Message[];
     availableHistoryTokens: number;
+    tokenContext?: TokenCountContext;
 }): Message[] {
     const eligible = getPromptEligibleMessages(messages);
 
@@ -30,7 +33,7 @@ export function selectHistoryMessagesForBudget({
         const groupStart = toolProtocolGroupStart(eligible, index);
         const group = eligible.slice(groupStart, index + 1);
         const groupTokens = group.reduce(
-            (total, message) => total + estimateMessage(message),
+            (total, message) => total + estimateMessage(message, tokenContext),
             0,
         );
         const includesProtected = group.some((message) => message.id === protectedId);

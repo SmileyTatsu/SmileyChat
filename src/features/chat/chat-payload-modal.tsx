@@ -48,7 +48,12 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                 <header>
                     <div>
                         <h2 id="chat-payload-modal-title">Prompt payload</h2>
-                        <p>{promptMessages.length} compiled prompt blocks</p>
+                        <p>
+                            {promptMessages.length} compiled prompt blocks
+                            {data.tokenContext
+                                ? ` · ${data.tokenContext.modelId || "unknown model"}`
+                                : ""}
+                        </p>
                     </div>
                     <div className="chat-payload-header-actions">
                         {activeTab === "json" && (
@@ -113,6 +118,7 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                                         index={index}
                                         message={message}
                                         debugBlock={data.request.debug?.blocks[index]}
+                                        tokenContext={data.tokenContext}
                                     />
                                 ))
                             ) : (
@@ -165,10 +171,12 @@ function PromptMessageCard({
     index,
     message,
     debugBlock,
+    tokenContext,
 }: {
     index: number;
     message: ChatGenerationMessage;
     debugBlock?: PromptDebugBlock;
+    tokenContext?: import("#frontend/lib/tokenizer").TokenCountContext;
 }) {
     return (
         <article className="chat-payload-block">
@@ -183,7 +191,9 @@ function PromptMessageCard({
                     </span>
                 )}
                 <span>Block {index + 1}</span>
-                <span>{estimateGenerationMessage(message)} tokens est.</span>
+                <span>
+                    {estimateGenerationMessage(message, tokenContext)} tokens est.
+                </span>
             </header>
             <div className="chat-payload-content">{renderContent(message.content)}</div>
         </article>

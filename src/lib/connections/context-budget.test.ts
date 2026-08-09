@@ -9,9 +9,11 @@ describe("effective connection context budget", () => {
         profile.config.model = { source: "default", id: "gpt-4o" };
         profile.contextTokenBudget = 128000;
 
-        expect(getEffectiveContextTokenBudget(profile)).toEqual({
+        expect(getEffectiveContextTokenBudget(profile)).toMatchObject({
             source: "local-model",
-            tokenBudget: 128000,
+            totalTokenLimit: 128000,
+            reservedOutputTokens: 1000,
+            tokenBudget: 127000,
         });
     });
 
@@ -20,7 +22,7 @@ describe("effective connection context budget", () => {
         profile.config.model = { source: "api", id: "claude-sonnet-4-6" };
         profile.contextTokenBudget = 1_000_000;
 
-        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(1_000_000);
+        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(999_000);
     });
 
     test("uses the checked-in NovelAI limit for its selected model", () => {
@@ -28,7 +30,7 @@ describe("effective connection context budget", () => {
         profile.config.model = { source: "default", id: "llama-3-erato-v1" };
         profile.contextTokenBudget = 32768;
 
-        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(32768);
+        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(31768);
     });
 
     test("falls back to 2M for API-only and custom models", () => {
@@ -36,13 +38,15 @@ describe("effective connection context budget", () => {
         profile.config.model = { source: "api", id: "grok-private-preview" };
         profile.contextTokenBudget = 2_000_000;
 
-        expect(getEffectiveContextTokenBudget(profile)).toEqual({
+        expect(getEffectiveContextTokenBudget(profile)).toMatchObject({
             source: "fallback",
-            tokenBudget: 2_000_000,
+            totalTokenLimit: 2_000_000,
+            reservedOutputTokens: 1000,
+            tokenBudget: 1_999_000,
         });
 
         profile.config.model = { source: "custom", id: "grok-4.5" };
-        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(2_000_000);
+        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(1_999_000);
     });
 
     test("uses and caps a custom override", () => {
@@ -50,9 +54,11 @@ describe("effective connection context budget", () => {
         profile.overrideModelContext = true;
         profile.contextTokenBudget = 3_000_000;
 
-        expect(getEffectiveContextTokenBudget(profile)).toEqual({
+        expect(getEffectiveContextTokenBudget(profile)).toMatchObject({
             source: "custom",
-            tokenBudget: 2_000_000,
+            totalTokenLimit: 2_000_000,
+            reservedOutputTokens: 1000,
+            tokenBudget: 1_999_000,
         });
     });
 });

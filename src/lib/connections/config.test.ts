@@ -144,6 +144,44 @@ describe("connection config normalization", () => {
         expect(settings.profiles[0]?.contextTokenBudget).toBe(2_000_000);
     });
 
+    test("defaults legacy profiles to automatic local tokenizer selection", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-openai",
+            profiles: [
+                {
+                    id: "profile-openai",
+                    name: "OpenAI",
+                    provider: "openai-compatible",
+                    config: { model: { source: "default", id: "gpt-4o" } },
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.tokenizer).toEqual({ mode: "auto" });
+    });
+
+    test("preserves a valid per-profile manual tokenizer override", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-local",
+            profiles: [
+                {
+                    id: "profile-local",
+                    name: "Local",
+                    provider: "openai-compatible",
+                    tokenizer: { mode: "manual", algorithm: "llama3" },
+                    config: { model: { source: "custom", id: "my-model" } },
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.tokenizer).toEqual({
+            mode: "manual",
+            algorithm: "llama3",
+        });
+    });
+
     test("migrates profiles without a context override to automatic model limits", () => {
         const settings = normalizeConnectionSettings({
             version: 1,

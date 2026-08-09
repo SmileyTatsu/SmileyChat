@@ -21,6 +21,9 @@ import { defaultOpenRouterConfig, normalizeOpenRouterConfig } from "./openrouter
 import type { OpenRouterConnectionConfig } from "./openrouter/types";
 import { defaultXAIConfig, normalizeXAIConfig } from "./xai/config";
 import type { XAIConnectionConfig } from "./xai/types";
+import type { TokenizerSelection } from "../tokenizer/types";
+
+export const defaultTokenizerSelection: TokenizerSelection = { mode: "auto" };
 
 export type ConnectionProviderId =
     | "openai-compatible"
@@ -37,6 +40,7 @@ export type OpenAICompatibleConnectionProfile = {
     provider: "openai-compatible";
     contextTokenBudget: number;
     overrideModelContext: boolean;
+    tokenizer?: TokenizerSelection;
     /** Retains a custom endpoint while using a provider with a fixed URL. */
     preservedBaseUrl?: string;
     config: OpenAICompatibleConnectionConfig;
@@ -50,6 +54,7 @@ export type OpenRouterConnectionProfile = {
     provider: "openrouter";
     contextTokenBudget: number;
     overrideModelContext: boolean;
+    tokenizer?: TokenizerSelection;
     preservedBaseUrl?: string;
     config: OpenRouterConnectionConfig;
     createdAt: string;
@@ -62,6 +67,7 @@ export type GoogleAIConnectionProfile = {
     provider: "google-ai";
     contextTokenBudget: number;
     overrideModelContext: boolean;
+    tokenizer?: TokenizerSelection;
     preservedBaseUrl?: string;
     config: GoogleAIConnectionConfig;
     createdAt: string;
@@ -74,6 +80,7 @@ export type AnthropicConnectionProfile = {
     provider: "anthropic";
     contextTokenBudget: number;
     overrideModelContext: boolean;
+    tokenizer?: TokenizerSelection;
     preservedBaseUrl?: string;
     config: AnthropicConnectionConfig;
     createdAt: string;
@@ -86,6 +93,7 @@ export type NovelAIConnectionProfile = {
     provider: "novelai";
     contextTokenBudget: number;
     overrideModelContext: boolean;
+    tokenizer?: TokenizerSelection;
     preservedBaseUrl?: string;
     config: NovelAIConnectionConfig;
     createdAt: string;
@@ -98,6 +106,7 @@ export type XAIConnectionProfile = {
     provider: "xai";
     contextTokenBudget: number;
     overrideModelContext: boolean;
+    tokenizer?: TokenizerSelection;
     preservedBaseUrl?: string;
     config: XAIConnectionConfig;
     createdAt: string;
@@ -113,6 +122,7 @@ export type PluginConnectionProfile = {
     >;
     contextTokenBudget: number;
     overrideModelContext: boolean;
+    tokenizer?: TokenizerSelection;
     preservedBaseUrl?: string;
     config: Record<string, unknown>;
     createdAt: string;
@@ -165,6 +175,7 @@ export const defaultConnectionSettings: ConnectionSettings = {
             provider: "openai-compatible",
             contextTokenBudget: defaultContextTokenBudget,
             overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
             config: defaultOpenAICompatibleConfig,
             createdAt: "2026-01-01T00:00:00.000Z",
             updatedAt: "2026-01-01T00:00:00.000Z",
@@ -279,6 +290,7 @@ export function createConnectionProfile(
             provider,
             contextTokenBudget: defaultContextTokenBudget,
             overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
             config: normalizeOpenRouterConfig(defaultConfig ?? defaultOpenRouterConfig),
             createdAt: now,
             updatedAt: now,
@@ -292,6 +304,7 @@ export function createConnectionProfile(
             provider,
             contextTokenBudget: defaultContextTokenBudget,
             overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
             config: normalizeGoogleAIConfig(defaultConfig ?? defaultGoogleAIConfig),
             createdAt: now,
             updatedAt: now,
@@ -305,6 +318,7 @@ export function createConnectionProfile(
             provider,
             contextTokenBudget: defaultContextTokenBudget,
             overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
             config: normalizeAnthropicConfig(defaultConfig ?? defaultAnthropicConfig),
             createdAt: now,
             updatedAt: now,
@@ -318,6 +332,7 @@ export function createConnectionProfile(
             provider,
             contextTokenBudget: defaultContextTokenBudget,
             overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
             config: normalizeNovelAIConfig(defaultConfig ?? defaultNovelAIConfig),
             createdAt: now,
             updatedAt: now,
@@ -331,6 +346,7 @@ export function createConnectionProfile(
             provider,
             contextTokenBudget: defaultContextTokenBudget,
             overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
             config: normalizeXAIConfig(defaultConfig ?? defaultXAIConfig),
             createdAt: now,
             updatedAt: now,
@@ -344,6 +360,7 @@ export function createConnectionProfile(
             provider,
             contextTokenBudget: defaultContextTokenBudget,
             overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
             config: defaultConfig ?? {},
             createdAt: now,
             updatedAt: now,
@@ -356,6 +373,7 @@ export function createConnectionProfile(
         provider,
         contextTokenBudget: defaultContextTokenBudget,
         overrideModelContext: false,
+        tokenizer: defaultTokenizerSelection,
         config: normalizeOpenAICompatibleConfig(
             defaultConfig ?? defaultOpenAICompatibleConfig,
         ),
@@ -404,6 +422,7 @@ export function switchProfileProvider(
         provider: nextProviderId,
         contextTokenBudget: currentProfile.contextTokenBudget,
         overrideModelContext: currentProfile.overrideModelContext,
+        tokenizer: currentProfile.tokenizer ?? defaultTokenizerSelection,
         ...(customBaseUrl ? { preservedBaseUrl: customBaseUrl } : {}),
         config: normalizeConfigForProvider(
             nextProviderId,
@@ -496,6 +515,7 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
         provider,
         contextTokenBudget: normalizeContextTokenBudget(profile.contextTokenBudget),
         overrideModelContext: profile.overrideModelContext === true,
+        tokenizer: normalizeTokenizerSelection(profile.tokenizer),
         ...(preservedBaseUrl ? { preservedBaseUrl } : {}),
         config:
             provider === "openai-compatible"
@@ -554,6 +574,30 @@ function normalizeProvider(value: unknown): ConnectionProviderId | undefined {
 
 function normalizePluginConfig(value: unknown): Record<string, unknown> {
     return isRecord(value) ? { ...value, apiKey: stringOrUndefined(value.apiKey) } : {};
+}
+
+function normalizeTokenizerSelection(value: unknown): TokenizerSelection {
+    if (!isRecord(value)) return defaultTokenizerSelection;
+    const algorithm = value.algorithm;
+    const supported = new Set([
+        "o200k_base",
+        "cl100k_base",
+        "p50k_base",
+        "r50k_base",
+        "llama3",
+        "llama2",
+        "mistral",
+        "yi",
+        "gemma",
+        "deepseek",
+        "nerdstash",
+        "heuristic",
+    ]);
+    return value.mode === "manual" &&
+        typeof algorithm === "string" &&
+        supported.has(algorithm)
+        ? { mode: "manual", algorithm: algorithm as TokenizerSelection["algorithm"] }
+        : defaultTokenizerSelection;
 }
 
 function defaultConfigForProvider(
