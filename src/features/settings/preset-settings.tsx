@@ -705,12 +705,7 @@ function PresetGenerationEditor({
 
     function updateStopSequences(value: string) {
         const stopSequences = Array.from(
-            new Set(
-                value
-                    .split("\n")
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-            ),
+            new Set(value.split("\n").filter((item) => item.length > 0)),
         );
         const next = { ...settings };
 
@@ -854,18 +849,44 @@ function PresetGenerationEditor({
             </div>
             <label>
                 Stop sequences
-                <textarea
-                    className="preset-stop-sequences"
-                    placeholder="One sequence per line"
-                    value={settings.stopSequences?.join("\n") ?? ""}
-                    onInput={(event) =>
-                        updateStopSequences(
-                            (event.currentTarget as HTMLTextAreaElement).value,
-                        )
-                    }
+                <StopSequencesTextarea
+                    value={settings.stopSequences}
+                    onChange={updateStopSequences}
                 />
             </label>
         </section>
+    );
+}
+
+function StopSequencesTextarea({
+    value,
+    onChange,
+}: {
+    value: string[] | undefined;
+    onChange: (value: string) => void;
+}) {
+    const canonical = value?.join("\n") ?? "";
+    const [draft, setDraft] = useState(canonical);
+    const [focused, setFocused] = useState(false);
+
+    useEffect(() => {
+        if (!focused) {
+            setDraft(canonical);
+        }
+    }, [canonical, focused]);
+
+    return (
+        <textarea
+            className="preset-stop-sequences"
+            placeholder="One sequence per line"
+            value={draft}
+            onFocus={() => setFocused(true)}
+            onInput={(event) => setDraft(event.currentTarget.value)}
+            onBlur={() => {
+                setFocused(false);
+                onChange(draft);
+            }}
+        />
     );
 }
 

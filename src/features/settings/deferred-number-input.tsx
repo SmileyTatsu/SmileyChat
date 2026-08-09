@@ -1,6 +1,8 @@
 import type { JSX } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
+import { cn } from "#frontend/lib/common/style";
+
 type DeferredNumberInputProps = Omit<
     JSX.InputHTMLAttributes<HTMLInputElement>,
     "value" | "onInput" | "onChange" | "onBlur" | "onKeyDown" | "type"
@@ -19,6 +21,8 @@ export function DeferredNumberInput({
     optional = false,
     min,
     max,
+    className,
+    title,
     ...props
 }: DeferredNumberInputProps) {
     const canonical = value === undefined ? "" : String(value);
@@ -32,6 +36,9 @@ export function DeferredNumberInput({
             setBadInput(false);
         }
     }, [canonical, focused]);
+
+    const parsed = Number(draft);
+    const isInvalid = badInput || (draft.trim() !== "" && !Number.isFinite(parsed));
 
     function commit() {
         setFocused(false);
@@ -49,7 +56,6 @@ export function DeferredNumberInput({
             return;
         }
 
-        const parsed = Number(draft);
         if (!Number.isFinite(parsed)) {
             setDraft(canonical);
             return;
@@ -66,24 +72,34 @@ export function DeferredNumberInput({
     }
 
     return (
-        <input
-            {...props}
-            type="number"
-            min={min}
-            max={max}
-            value={draft}
-            onFocus={() => setFocused(true)}
-            onInput={(event) => {
-                setDraft(event.currentTarget.value);
-                setBadInput(event.currentTarget.validity.badInput);
-            }}
-            onBlur={commit}
-            onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    event.currentTarget.blur();
-                }
-            }}
-        />
+        <span className="deferred-number-wrap">
+            <input
+                {...props}
+                type="number"
+                min={min}
+                max={max}
+                value={draft}
+                aria-invalid={isInvalid ? "true" : undefined}
+                title={isInvalid ? "Please enter a valid number" : title}
+                className={cn(className, isInvalid && "invalid-input")}
+                onFocus={() => setFocused(true)}
+                onInput={(event) => {
+                    setDraft(event.currentTarget.value);
+                    setBadInput(event.currentTarget.validity.badInput);
+                }}
+                onBlur={commit}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        event.currentTarget.blur();
+                    }
+                }}
+            />
+            {isInvalid && (
+                <span className="deferred-number-error" role="alert">
+                    Invalid number
+                </span>
+            )}
+        </span>
     );
 }

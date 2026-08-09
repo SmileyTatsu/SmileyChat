@@ -3032,3 +3032,24 @@
     max-height: 160px;
     overflow-y: auto;
 }
+
+.invalid-input,
+input[aria-invalid="true"] {
+    border-color: #ef4444 !important;
+    outline-color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.deferred-number-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+}
+
+.deferred-number-error {
+    color: #ef4444;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-top: 3px;
+}

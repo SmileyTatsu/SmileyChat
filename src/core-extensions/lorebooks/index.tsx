@@ -880,15 +880,27 @@ function TextField({
     value: string;
     onChange: (value: string) => void;
 }) {
+    const [draft, setDraft] = useState(value);
+    const [focused, setFocused] = useState(false);
+
+    useEffect(() => {
+        if (!focused) {
+            setDraft(value);
+        }
+    }, [value, focused]);
+
     return (
         <label className="lbm-field">
             <span>{label}</span>
             <input
                 type="text"
-                value={value}
-                onInput={(event) =>
-                    onChange((event.currentTarget as HTMLInputElement).value)
-                }
+                value={draft}
+                onFocus={() => setFocused(true)}
+                onInput={(event) => setDraft(event.currentTarget.value)}
+                onBlur={() => {
+                    setFocused(false);
+                    onChange(draft);
+                }}
             />
         </label>
     );

@@ -1,7 +1,8 @@
 import { Plus, Trash2 } from "lucide-preact";
-import { useMemo, useState } from "preact/hooks";
-import type { ComponentChildren } from "preact";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import type { ComponentChildren, JSX } from "preact";
 
+import { messageFromError } from "#frontend/lib/common/errors";
 import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
 
 import {
@@ -19,6 +20,10 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
     const [settings, setSettings] = useState(getRegexSettings());
     const [testInput, setTestInput] = useState("");
     const [status, setStatus] = useState("");
+    const [profileModal, setProfileModal] = useState<{
+        type: "add" | "rename";
+        initialName: string;
+    } | null>(null);
     const testResult = useMemo(
         () => runRules(testInput, settings),
         [settings, testInput],
@@ -53,15 +58,8 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
         });
     }
 
-    async function addProfile() {
-        const name = prompt("Name the new regex profile:", "New Profile");
-        if (!name) return;
-        const newProfile = createRegexProfile(name);
-        await persist({
-            ...settings,
-            profiles: [...settings.profiles, newProfile],
-            activeProfileId: newProfile.id,
-        });
+    function addProfile() {
+        setProfileModal({ type: "add", initialName: "New Profile" });
     }
 
     async function deleteProfile() {
@@ -76,11 +74,27 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
         });
     }
 
-    async function renameProfile() {
+    function renameProfile() {
         if (!activeProfile) return;
-        const nextName = prompt("Rename regex profile:", activeProfile.name);
-        if (nextName && nextName.trim()) {
-            await updateProfile({ name: nextName.trim() });
+        setProfileModal({ type: "rename", initialName: activeProfile.name });
+    }
+
+    async function handleProfileModalSubmit(name: string) {
+        if (!profileModal) return;
+        const trimmed = name.trim();
+        if (!trimmed) {
+            throw new Error("Profile name cannot be empty.");
+        }
+
+        if (profileModal.type === "add") {
+            const newProfile = createRegexProfile(trimmed);
+            await persist({
+                ...settings,
+                profiles: [...settings.profiles, newProfile],
+                activeProfileId: newProfile.id,
+            });
+        } else if (profileModal.type === "rename" && activeProfile) {
+            await updateProfile({ name: trimmed });
         }
     }
 
@@ -231,6 +245,19 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
             <p className="rr-status wide" aria-live="polite">
                 {status}
             </p>
+
+            {profileModal && (
+                <ProfileModalDialog
+                    initialName={profileModal.initialName}
+                    title={
+                        profileModal.type === "add"
+                            ? "New regex profile"
+                            : "Rename regex profile"
+                    }
+                    onClose={() => setProfileModal(null)}
+                    onSubmit={handleProfileModalSubmit}
+                />
+            )}
         </section>
     );
 }
@@ -489,5 +516,143 @@ function Toggle({
                 onChange={(event) => onChange(event.currentTarget.checked)}
             />
         </label>
+    );
+}
+
+function ProfileModalDialog({
+    initialName,
+    title,
+    onClose,
+    onSubmit,
+}: {
+    initialName: string;
+    title: string;
+    onClose: () => void;
+    onSubmit: (name: string) => Promise<void>;
+}) {
+    const dialogRef = useRef<HTMLElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+
+    useEffect(() => {
+        const previousFocus = document.activeElement as HTMLElement | null;
+        inputRef.current?.focus();
+        inputRef.current?.select();
+
+        return () => {
+            previousFocus?.focus();
+        };
+    }, []);
+
+    function handleKeyDown(event: KeyboardEvent) {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!isSubmitting) onClose();
+            return;
+        }
+
+        if (event.key !== "Tab") return;
+
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+
+        const focusables = Array.from(
+            dialog.querySelectorAll<HTMLElement>(
+                "button:not(:disabled), input:not(:disabled)",
+            ),
+        );
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement;
+
+        if (event.shiftKey && active === first) {
+            event.preventDefault();
+            last?.focus();
+        } else if (!event.shiftKey && active === last) {
+            event.preventDefault();
+            first?.focus();
+        }
+    }
+
+    async function handleSubmit(event: JSX.TargetedSubmitEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (isSubmitting) return;
+
+        const form = event.currentTarget;
+        const input = form.elements.namedItem("profileName") as HTMLInputElement;
+        const name = input?.value ?? "";
+
+        setErrorMessage("");
+        try {
+            setIsSubmitting(true);
+            await onSubmit(name);
+            onClose();
+        } catch (error) {
+            setErrorMessage(
+                messageFromError(error, "Failed to save profile. Please try again."),
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <div
+            className="message-confirm-backdrop"
+            role="presentation"
+            onClick={isSubmitting ? undefined : onClose}
+        >
+            <section
+                className="message-confirm-dialog compact"
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label={title}
+                tabIndex={-1}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={handleKeyDown}
+            >
+                <header>
+                    <h2>{title}</h2>
+                </header>
+                <form onSubmit={(event) => void handleSubmit(event)}>
+                    <label style={{ display: "block", width: "100%" }}>
+                        <span className="sr-only">Profile name</span>
+                        <input
+                            ref={inputRef}
+                            name="profileName"
+                            autoComplete="off"
+                            aria-label="Profile name"
+                            defaultValue={initialName}
+                            disabled={isSubmitting}
+                            style={{
+                                width: "100%",
+                                marginTop: "12px",
+                                marginBottom: "16px",
+                            }}
+                        />
+                    </label>
+                    {errorMessage && (
+                        <p
+                            className="rr-error"
+                            role="alert"
+                            style={{ marginBottom: "12px" }}
+                        >
+                            {errorMessage}
+                        </p>
+                    )}
+                    <div className="message-confirm-actions">
+                        <button type="button" disabled={isSubmitting} onClick={onClose}>
+                            Cancel
+                        </button>
+                        <button className="primary" type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? "Saving..." : "Save"}
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
     );
 }

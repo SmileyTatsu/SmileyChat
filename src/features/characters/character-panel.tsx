@@ -613,15 +613,10 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         Tags
-                                        <textarea
-                                            value={character.data.tags.join("\n")}
-                                            onInput={(event) =>
-                                                updateStringList(
-                                                    "tags",
-                                                    (
-                                                        event.currentTarget as HTMLTextAreaElement
-                                                    ).value,
-                                                )
+                                        <CharacterTagsTextarea
+                                            tags={character.data.tags}
+                                            onChange={(value) =>
+                                                updateStringList("tags", value)
                                             }
                                         />
                                     </label>
@@ -715,8 +710,13 @@ export function CharacterPanel({
                                                         value={colorInputText}
                                                         placeholder="#f2c78f"
                                                         onInput={(event) => {
+                                                            setColorInputText(
+                                                                event.currentTarget.value,
+                                                            );
+                                                        }}
+                                                        onBlur={() => {
                                                             let value =
-                                                                event.currentTarget.value.trim();
+                                                                colorInputText.trim();
                                                             if (
                                                                 value.length > 0 &&
                                                                 !value.startsWith("#")
@@ -779,4 +779,34 @@ export function CharacterPanel({
 
 function createAlternateGreetingKey() {
     return createId("alternate-greeting");
+}
+
+function CharacterTagsTextarea({
+    tags,
+    onChange,
+}: {
+    tags: string[];
+    onChange: (value: string) => void;
+}) {
+    const canonical = tags.join("\n");
+    const [draft, setDraft] = useState(canonical);
+    const [focused, setFocused] = useState(false);
+
+    useEffect(() => {
+        if (!focused) {
+            setDraft(canonical);
+        }
+    }, [canonical, focused]);
+
+    return (
+        <textarea
+            value={draft}
+            onFocus={() => setFocused(true)}
+            onInput={(event) => setDraft(event.currentTarget.value)}
+            onBlur={() => {
+                setFocused(false);
+                onChange(draft);
+            }}
+        />
+    );
 }

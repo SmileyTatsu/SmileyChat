@@ -225,7 +225,7 @@ export function OptionsModal({
     }
 
     return (
-        <div className="modal-backdrop" role="presentation" onClick={handleClose}>
+        <div className="modal-backdrop" role="presentation">
             <section
                 className={`settings-modal ${isSettingsModalExpanded ? "expanded" : ""}`}
                 ref={modalRef}
