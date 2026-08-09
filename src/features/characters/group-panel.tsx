@@ -29,6 +29,7 @@ import {
     hasChatLorebooks,
     isAuthorNoteActive,
 } from "./chat-details-panel";
+import { CountedTextarea } from "./counted-textarea";
 import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
 import { GroupAvatar } from "../chat/group-avatar";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
@@ -518,7 +519,7 @@ export function GroupPanel({
 
                                 <label>
                                     Scenario override
-                                    <textarea
+                                    <CountedTextarea
                                         value={group.scenarioOverride ?? ""}
                                         placeholder="Optional shared scenario for this group."
                                         onInput={(event) =>

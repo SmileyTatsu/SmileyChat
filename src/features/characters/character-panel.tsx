@@ -25,6 +25,7 @@ import {
     hasChatLorebooks,
     isAuthorNoteActive,
 } from "./chat-details-panel";
+import { CountedTextarea } from "./counted-textarea";
 import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
 import {
     PluginCharacterDetailsSections,
@@ -356,7 +357,7 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         Description
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.description}
                                             placeholder="{{char}} is a..."
                                             onInput={(event) =>
@@ -371,7 +372,7 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         Scenario
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.scenario}
                                             placeholder="A mountain full of donuts..."
                                             onInput={(event) =>
@@ -386,7 +387,7 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         First message
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.first_mes}
                                             placeholder="Hello, I'm {{char}}!"
                                             onInput={(event) =>
@@ -482,7 +483,7 @@ export function CharacterPanel({
                                 <>
                                     <label>
                                         Greeting 1
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.first_mes}
                                             onInput={(event) =>
                                                 updateField(
@@ -503,7 +504,7 @@ export function CharacterPanel({
                                             >
                                                 <label>
                                                     Greeting {index + 2}
-                                                    <textarea
+                                                    <CountedTextarea
                                                         value={greeting}
                                                         onInput={(event) =>
                                                             updateAlternateGreeting(
@@ -542,7 +543,7 @@ export function CharacterPanel({
                                 <>
                                     <label>
                                         Short description
-                                        <textarea
+                                        <CountedTextarea
                                             value={getEditableCharacterTagline(character)}
                                             onInput={(event) =>
                                                 updateTagline(
@@ -555,7 +556,7 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         Personality
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.personality}
                                             onInput={(event) =>
                                                 updateField(
@@ -569,7 +570,7 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         Message examples
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.mes_example}
                                             onInput={(event) =>
                                                 updateField(
@@ -583,7 +584,7 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         System prompt
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.system_prompt}
                                             onInput={(event) =>
                                                 updateField(
@@ -597,7 +598,7 @@ export function CharacterPanel({
                                     </label>
                                     <label>
                                         Post-history instructions
-                                        <textarea
+                                        <CountedTextarea
                                             value={
                                                 character.data.post_history_instructions
                                             }
@@ -652,7 +653,7 @@ export function CharacterPanel({
                                     </div>
                                     <label>
                                         Creator notes
-                                        <textarea
+                                        <CountedTextarea
                                             value={character.data.creator_notes}
                                             onInput={(event) =>
                                                 updateField(
@@ -799,7 +800,7 @@ function CharacterTagsTextarea({
     }, [canonical, focused]);
 
     return (
-        <textarea
+        <CountedTextarea
             value={draft}
             onFocus={() => setFocused(true)}
             onInput={(event) => setDraft(event.currentTarget.value)}

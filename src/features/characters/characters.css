@@ -886,6 +886,21 @@
     resize: vertical;
 }
 
+.counted-textarea {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.counted-textarea .token-count {
+    justify-self: end;
+    color: #8d94a5;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    user-select: none;
+}
+
 .character-form label:nth-child(2) textarea {
     min-height: 100px;
 }

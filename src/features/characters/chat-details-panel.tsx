@@ -16,6 +16,7 @@ import {
     PluginRenderSurface,
     pluginIdFromScopedId,
 } from "../plugins/plugin-error-boundary";
+import { CountedTextarea } from "./counted-textarea";
 
 type ChatDetailsPanelProps = {
     chatMetadata?: ChatMetadata;
@@ -369,7 +370,7 @@ export function ChatDetailsPanel({
                     </label>
                 </div>
 
-                <textarea
+                <CountedTextarea
                     aria-label="Author note content"
                     placeholder="Add private instructions, scene context, or continuity notes for this chat..."
                     value={content}
