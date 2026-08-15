@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createInterface } from "node:readline/promises";
 import { characterToSummary } from "#frontend/lib/characters/normalize";
 
 import {
@@ -855,10 +856,9 @@ const createServer = () =>
 // process dies, causing EADDRINUSE on the next launch.
 await autoConnectMcpServers();
 
-// Safety net: if a previous run leaked an orphaned process still holding the
-// port (e.g. a runtime MCP connection, or a hard console close), reclaim it so
-// reopening never requires killing a process by hand.
-reclaimPort(port);
+// If a previous run leaked an orphaned process still holding the port (e.g. a
+// runtime MCP connection, or a hard console close), ask before reclaiming it.
+await reclaimPort(port);
 
 server = await startServerWithRetry(createServer);
 
@@ -875,12 +875,12 @@ if (hostname === "0.0.0.0" || hostname === "::") {
 }
 
 /**
- * Kill any process currently holding `targetPort` so startup can bind cleanly.
- * Windows-only; a no-op elsewhere. This targets orphaned children (typically a
- * leaked stdio MCP `node` process) that inherited the previous listening
- * socket handle and keep the port bound after the parent server exits.
+ * Offer to kill processes currently holding `targetPort` so startup can bind
+ * cleanly. Windows-only; a no-op elsewhere. This targets orphaned children
+ * (typically a leaked stdio MCP `node` process) that inherited the previous
+ * listening socket handle and keep the port bound after the parent server exits.
  */
-function reclaimPort(targetPort: number) {
+async function reclaimPort(targetPort: number) {
     if (process.platform !== "win32") return;
 
     try {
@@ -904,18 +904,55 @@ function reclaimPort(targetPort: number) {
         if (pids.has(String(process.pid))) pids.delete(String(process.pid));
         if (pids.size === 0) return;
 
-        for (const pid of pids) {
-            console.log(
-                `Reclaiming port ${targetPort}: killing leftover process ${pid}.`,
+        const processLabel = pids.size === 1 ? "process" : "processes";
+        const pidList = [...pids].join(", ");
+        const confirmed = await confirmPortReclaim(targetPort, pidList, processLabel);
+        if (!confirmed) {
+            throw new Error(
+                `Startup cancelled: port ${targetPort} is still in use by ${processLabel} ${pidList}.`,
             );
+        }
+
+        for (const pid of pids) {
+            console.log(`Reclaiming port ${targetPort}: stopping process ${pid}.`);
             try {
                 execFileSync("taskkill", ["/F", "/T", "/PID", pid], { stdio: "ignore" });
             } catch {
                 // Process may already be gone; ignore.
             }
         }
-    } catch {
+    } catch (error) {
+        if (
+            error instanceof Error &&
+            error.message.startsWith("Startup cancelled: port ")
+        ) {
+            throw error;
+        }
         // netstat unavailable or failed; fall back to startServerWithRetry.
+    }
+}
+
+async function confirmPortReclaim(
+    targetPort: number,
+    pidList: string,
+    processLabel: string,
+) {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+        console.error(
+            `Port ${targetPort} is in use by ${processLabel} ${pidList}. ` +
+                "No interactive terminal is available, so it will not be stopped.",
+        );
+        return false;
+    }
+
+    const prompt = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+        const answer = await prompt.question(
+            `Port ${targetPort} is in use by ${processLabel} ${pidList}. Stop ${processLabel}? (y/N) `,
+        );
+        return /^(y|yes)$/i.test(answer.trim());
+    } finally {
+        prompt.close();
     }
 }
 
