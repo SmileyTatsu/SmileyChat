@@ -27,7 +27,6 @@ import {
     getMessageContent,
     getMessageTimeline,
     getVisibleMessageTimeline,
-    isActiveSwipeError,
     getActiveSwipe,
 } from "#frontend/lib/messages";
 import type { MessageFormattingOptions } from "#frontend/lib/message-formatting/quote-highlighting";
@@ -146,7 +145,6 @@ export const MessageItem = memo(function MessageItem({
     const [editingDraft, setEditingDraft] = useState("");
     const content = getMessageContent(message);
     const attachments = getMessageAttachments(message);
-    const isFailedSwipe = isActiveSwipeError(message);
     const activeSwipe = getActiveSwipe(message);
     const toolActivities = activeSwipe?.toolActivities;
 
@@ -256,7 +254,6 @@ export const MessageItem = memo(function MessageItem({
     return (
         <article
             className={cn("message", {
-                "failed-swipe": isFailedSwipe,
                 "generating-swipe": isPendingSwipe,
                 "show-rp-message-avatar": showRpMessageAvatar,
                 "system-message": message.metadata?.displayRole === "system",

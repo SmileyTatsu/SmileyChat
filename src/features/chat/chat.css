@@ -1073,14 +1073,6 @@
     background: rgba(0, 0, 0, 0.16);
 }
 
-.message.failed-swipe {
-    background: rgba(235, 87, 87, 0.08);
-}
-
-.message.failed-swipe p {
-    color: #f2c0c0;
-}
-
 .chat .message.generating-swipe:hover {
     background: rgba(0, 0, 0, 0.2);
 }
