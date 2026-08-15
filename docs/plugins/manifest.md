@@ -54,6 +54,7 @@ Recommended labels:
 - `state:read`
 - `ui:settings`
 - `ui:sidebar`
+- `ui:character-details`
 - `ui:header`
 - `ui:modals`
 - `ui:messages`
@@ -65,11 +66,15 @@ Recommended labels:
 - `model:generate`
 - `network:fetch`
 - `chat:input`
+- `chat:display`
+- `chat:prompt-context`
+- `chat:prompt-inject`
 - `chat:prompt`
 - `chat:output`
 - `chat:message-update`
 - `presets:macros`
 - `connections:providers`
+- `tools:register`
 - `events`
 - `storage`
 

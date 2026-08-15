@@ -33,8 +33,10 @@ These permissions are currently checked:
 | `api.model.generate`, `api.model.estimateTokens`, `api.model.getContextBudget` | `model:generate`        |
 | `api.network.fetch`                                                            | `network:fetch`         |
 | `api.ui.registerSettingsPanel`                                                 | `ui:settings`           |
-| `api.ui.registerSidebarPanel`                                                  | `ui:sidebar`            |
+| `api.ui.registerSidebarPanel`, `api.ui.registerChatDetailsSection`             | `ui:sidebar`            |
+| `api.ui.registerCharacterDetailsSection`                                       | `ui:character-details`  |
 | `api.ui.registerMessageRenderer`                                               | `ui:messages`           |
+| `api.ui.registerMessageDisplayMiddleware`                                      | `chat:display`          |
 | `api.ui.registerMessageAction`                                                 | `ui:message-actions`    |
 | `api.ui.registerComposerAction`, `api.ui.registerComposerOption`               | `ui:composer`           |
 | `api.ui.setComposerState`                                                      | `ui:composer-state`     |
@@ -49,6 +51,7 @@ These permissions are currently checked:
 | `api.chat.registerMessageUpdateMiddleware`                                     | `chat:message-update`   |
 | `api.presets.registerMacro`, `api.presets.resolveMacros`                       | `presets:macros`        |
 | `api.connections.registerProvider`                                             | `connections:providers` |
+| `api.tools.registerTool`                                                       | `tools:register`        |
 | `api.events.on`, `api.events.emit`                                             | `events`                |
 
 `api.storage` is available to loaded plugins without a separate runtime permission, but `storage` is still a useful manifest label for user visibility.
@@ -85,6 +88,8 @@ Snapshot contains:
 - `persona`
 - `userStatus`
 - `connectionSettings`
+- `lorebooks`
+- `preferences`
 - `presetCollection`
 
 Treat snapshots as read-only.
@@ -414,6 +419,58 @@ api.ui.registerSidebarPanel({
 
 Requires `ui:sidebar`.
 
+## `api.ui.registerChatDetailsSection`
+
+Adds a collapsible section to the active chat details panel.
+
+```js
+api.ui.registerChatDetailsSection({
+    id: "custom-notes",
+    render: ({ snapshot, updateChatMetadata }) =>
+        api.ui.h("div", null, [
+            api.ui.h("h4", null, "Chat Notes"),
+            api.ui.h(
+                "button",
+                {
+                    type: "button",
+                    onClick: () => updateChatMetadata({ metadata: { chapter: 2 } }),
+                },
+                "Set Chapter 2",
+            ),
+        ]),
+});
+```
+
+Requires `ui:sidebar`.
+
+## `api.ui.registerCharacterDetailsSection`
+
+Adds a plugin-owned section to the Character Details modal with isolated JSON persistence in `character.data.extensions[pluginId]`.
+
+```js
+api.ui.registerCharacterDetailsSection({
+    id: "rpg-stats",
+    label: "RPG Stats",
+    render: ({ character, extension, updateExtension }) =>
+        api.ui.h("div", null, [
+            api.ui.h("label", null, [
+                "Level: ",
+                api.ui.h("input", {
+                    type: "number",
+                    value: String(extension.level ?? 1),
+                    onInput: (e) =>
+                        updateExtension({
+                            ...extension,
+                            level: Number(e.currentTarget.value),
+                        }),
+                }),
+            ]),
+        ]),
+});
+```
+
+Requires `ui:character-details`.
+
 ## `api.ui.registerMessageRenderer`
 
 Overrides message content rendering.
@@ -430,6 +487,21 @@ Higher priority renderers run first. SmileyChat currently uses the highest-prior
 The bundled Chat Formatter core extension has priority `20`, so a local plugin must use a priority above `20` to replace the default formatted message renderer.
 
 Requires `ui:messages`.
+
+## `api.ui.registerMessageDisplayMiddleware`
+
+Transforms message content for rendering only without modifying the saved message JSON or chat history.
+
+```js
+api.ui.registerMessageDisplayMiddleware((content, context) => {
+    return content.replace(
+        /\[spoiler\](.*?)\[\/spoiler\]/gi,
+        "<span class='spoiler'>$1</span>",
+    );
+});
+```
+
+Requires `chat:display`.
 
 ## `api.ui.registerMessageAction`
 
@@ -822,6 +894,29 @@ api.connections.registerProvider({
 ```
 
 Requires `connections:providers`.
+
+## `api.tools.registerTool`
+
+Registers a callable tool that can be invoked during generation or by tool calling workflows (such as Model Context Protocol or custom tool-enabled adapters). Returns a disposer function.
+
+```js
+const unregister = api.tools.registerTool({
+    name: "roll_dice",
+    description: "Rolls dice using standard notation like 2d6+3.",
+    parameters: {
+        type: "object",
+        properties: {
+            dice: { type: "string", description: "Dice notation (e.g. 1d20)" },
+        },
+        required: ["dice"],
+    },
+    run: async (args, context) => {
+        return `Rolled ${args.dice}: Result = 14`;
+    },
+});
+```
+
+Requires `tools:register`.
 
 ## `api.storage`
 

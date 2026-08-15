@@ -4,7 +4,7 @@ SmileyChat uses connection profiles to manage AI backends. You can create multip
 
 Open Options from the gear icon in the bottom-left persona bar, then choose **Connections**.
 
-## 1. Local AI Tools
+## 1. Local AI Tools (OpenAI-compatible)
 
 Use the **OpenAI-compatible** provider type for local tools that expose an OpenAI-style API.
 
@@ -14,7 +14,6 @@ Use the **OpenAI-compatible** provider type for local tools that expose an OpenA
 4. Set the **Base URL** for your tool:
     - **LM Studio:** `http://127.0.0.1:1234/v1`
     - **Ollama:** `http://127.0.0.1:11434/v1`
-    - **KoboldCpp:** `http://127.0.0.1:5001/v1`
     - **text-generation-webui:** `http://127.0.0.1:5000/v1`
 5. Click **Load Models**.
 6. Select a model from the dropdown, or enter a custom model name.
@@ -23,7 +22,20 @@ Use the **OpenAI-compatible** provider type for local tools that expose an OpenA
 
 If model loading fails but you know the model ID, enter it manually and use **Test Connection**.
 
-## 2. OpenRouter
+## 2. KoboldCPP (Native Local Generation)
+
+Use **KoboldCPP** for local generation directly against KoboldCPP's native HTTP API.
+
+1. Click **New Profile**.
+2. Choose **KoboldCPP**.
+3. Set the **Base URL** (default: `http://localhost:5001/api`).
+4. Click **Connect** to detect the currently loaded model on your KoboldCPP server.
+5. Select an **Instruct template** (`Auto`, `Llama 3`, `ChatML`, `Mistral`, `Gemma 2`, `Alpaca`, or `DeepSeek R1`).
+6. Adjust **Max output tokens** or the **Detected context length** override if desired.
+7. Click **Test Connection**.
+8. Click **Save**.
+
+## 3. OpenRouter
 
 Use **OpenRouter** when you want OpenRouter's model catalog and routing controls.
 
@@ -36,7 +48,7 @@ Use **OpenRouter** when you want OpenRouter's model catalog and routing controls
 7. Click **Test Connection**.
 8. Click **Save**.
 
-## 3. Google AI / Gemini
+## 4. Google AI / Gemini
 
 Use **Google AI** to connect directly to Gemini models.
 
@@ -49,9 +61,9 @@ Use **Google AI** to connect directly to Gemini models.
 7. Click **Test Connection**.
 8. Click **Save**.
 
-## 4. Anthropic / Claude
+## 5. Anthropic / Claude
 
-Use **Anthropic** to connect directly to Claude through Anthropic's Messages API.
+Use **Anthropic** to connect directly to Claude through Anthropic's Messages API with automatic prompt caching.
 
 1. Click **New Profile**.
 2. Choose **Anthropic**.
@@ -62,9 +74,9 @@ Use **Anthropic** to connect directly to Claude through Anthropic's Messages API
 7. Click **Test Connection**.
 8. Click **Save**.
 
-Anthropic browser calls use Anthropic's direct browser access header because SmileyChat is a local BYO-key app that calls providers directly from the frontend.
+Anthropic browser calls use Anthropic's direct browser access header because SmileyChat is a local BYO-key app that calls providers directly from the frontend. Automatic prompt caching is applied to eligible system and message blocks.
 
-## 5. NovelAI
+## 6. NovelAI
 
 Use **NovelAI** to connect directly to NovelAI's text generation models with full support for model-specific routing and artifact bans.
 
@@ -77,7 +89,7 @@ Use **NovelAI** to connect directly to NovelAI's text generation models with ful
 
 _Note: SmileyChat uses the official Chat Completions endpoint for instruct-based NovelAI models, and the AI Text Generation endpoint for raw models like Erato or Kayra to natively apply formatting rules and artifact bans. The default base URL is `text.novelai.net`, and an advanced override is supported in the panel._
 
-## 6. xAI / Grok
+## 7. xAI / Grok
 
 Use **xAI** to connect directly to Grok through the xAI API.
 
@@ -91,7 +103,7 @@ Use **xAI** to connect directly to Grok through the xAI API.
 8. Click **Test Connection**.
 9. Click **Save**.
 
-## 7. Other Cloud APIs
+## 8. Other Cloud APIs
 
 For cloud APIs that use the standard OpenAI Chat Completions format:
 

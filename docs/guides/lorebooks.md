@@ -27,7 +27,7 @@ Avoid using LoreBooks for connection settings, API keys, or one-off chat notes. 
 
 ## Import and Export
 
-SmileyChat supports importing native SmileyChat LoreBook JSON and SillyTavern World Info JSON.
+SmileyChat supports importing native SmileyChat LoreBook JSON and SillyTavern World Info JSON files directly via drag-and-drop or the import dialog. You can also sync all World Info books automatically from a local SillyTavern installation using **Settings > SillyTavern Sync**.
 
 The local API supports:
 

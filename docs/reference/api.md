@@ -81,9 +81,15 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `GET /api/presets`: Load saved preset collection, creating defaults if missing.
 - `PUT /api/presets`: Save preset collection to JSON.
 
+## SillyTavern Migration & Sync
+
+- `POST /api/sillytavern/scan`: Scan a local SillyTavern install directory for migratable assets (characters, chats, group chats, personas, presets, and lorebooks).
+- `POST /api/sillytavern/sync`: Import and synchronize selected assets from a local SillyTavern user directory.
+
 ## Core Extensions / Model Context Protocol (MCP)
 
-- `GET /api/mcp`: Read registered MCP servers.
+- `GET /api/mcp`: Read registered MCP server configurations.
+- `PUT /api/mcp`: Save registered MCP server configurations to JSON.
 - `POST /api/mcp/:serverId/connect`: Connect to a specified MCP server.
 - `POST /api/mcp/:serverId/disconnect`: Disconnect from an MCP server.
 - `POST /api/mcp/:serverId/refresh`: Refresh an MCP server connection.

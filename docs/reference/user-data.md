@@ -9,6 +9,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
 - `userData/characters/`: Contains your character library.
     - `library/`: Each character is stored in a subfolder (e.g., `luna-f987e46f`) containing a `character.json` and its `avatar.png/jpg`. This avoids filename collisions.
     - `imports/`: Drop `.png` or `.json` (Tavern/SillyTavern V1/V2/V3 format) files here. The backend will automatically normalize and import them on startup or when the import API is called.
+    - `orphaned/`: Safely holds data from deleted characters to prevent accidental loss.
     - `index.json`: Maintains the list of active characters, their order, and summaries.
 - `userData/chats/`: Chat sessions are stored here as individual JSON files.
     - `sessions/`: JSON files for each chat session.
@@ -26,7 +27,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `orphaned/`: Safely holds data from deleted LoreBooks to prevent accidental loss.
     - `index.json`: Tracks active LoreBook selection, ordering, and summaries.
 - `userData/settings/`: App configuration.
-    - `preferences.json`: Local UI preferences (dark mode, font size, etc.).
+    - `preferences.json`: Local UI preferences (dark mode, font size, streaming, SillyTavern sync settings, dialogue highlights, etc.).
     - `connections.json`: Provider URLs and generic model settings.
     - `connection-secrets.json`: **API Keys**. This is kept strictly separated so it is less likely to be accidentally exported, but it is not encrypted at rest.
     - `csrf-secret.json`: Token used to secure local API endpoints.

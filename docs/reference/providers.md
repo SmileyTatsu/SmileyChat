@@ -11,9 +11,10 @@ SmileyChat currently includes these provider adapters:
 - **OpenAI-compatible**: Local or hosted APIs that expose Chat Completions-style endpoints.
 - **OpenRouter**: OpenRouter-specific model catalog, app attribution, and provider routing controls.
 - **Google AI**: Direct browser calls to the Gemini API.
-- **Anthropic**: Direct browser calls to the Claude Messages API.
+- **Anthropic**: Direct browser calls to the Claude Messages API with automatic prompt caching.
 - **NovelAI**: Direct generation calls to NovelAI's generation API or compatible Chat Completions API.
 - **xAI**: Direct browser calls to the Grok Chat Completions API.
+- **KoboldCPP**: Direct local generation via KoboldCPP's native HTTP API with customizable instruct formatting.
 
 Chat generation and model discovery are sent through the local Bun server using a saved connection profile (via `/api/generate`). This lets remote devices use the PC's configured providers without receiving provider API keys. The server accepts only a saved profile ID; it is not a general-purpose provider proxy.
 
@@ -83,7 +84,7 @@ Browser requests include:
 - `anthropic-version: 2023-06-01`
 - `anthropic-dangerous-direct-browser-access: true`
 
-System and developer prompts are joined into the top-level Anthropic `system` field. User and assistant history is converted to Anthropic Messages API turns, and consecutive same-role turns are merged. PDF/plain-text files are uploaded to the Files API and referenced as `document` blocks.
+System and developer prompts are joined into the top-level Anthropic `system` field. User and assistant history is converted to Anthropic Messages API turns, and consecutive same-role turns are merged. PDF/plain-text files are uploaded to the Files API and referenced as `document` blocks. Automatic prompt caching (`cache_control: { type: "ephemeral" }`) is applied to eligible system and message blocks to optimize latency and token costs.
 
 ## NovelAI
 
@@ -111,9 +112,35 @@ Defaults and endpoints:
 
 When non-image files are attached, xAI uploads them with `purpose=assistants` and sends the turn through `POST {baseUrl}/responses`. The panel supports model catalog loading, a custom model ID, max completion tokens, and optional `reasoning_effort` values (`low`, `medium`, and `high`).
 
+## KoboldCPP
+
+Use the KoboldCPP provider for local generation directly against KoboldCPP's native HTTP API (`/api`).
+
+Defaults and endpoints:
+
+- Base URL: `http://localhost:5001/api`
+- Model inspect / detection: `GET {baseUrl}/v1/model` or `GET {baseUrl}/extra/version`
+- Generation: `POST {baseUrl}/v1/generate` or `POST {baseUrl}/extra/generate/stream`
+- Abort generation: `POST {baseUrl}/extra/abort`
+
+Features:
+
+- **Instruct Templates**: Automatically format prompts locally using predefined templates (`auto`, `llama3`, `chatml`, `mistral`, `gemma2`, `alpaca`, `deepseek-r1`) or preset-level instruct settings.
+- **Context Length**: Automatically inspects server context length or allows manual override.
+- **Multimodality**: Sends image attachments directly to KoboldCPP vision models.
+- **Sampling & Stopping**: Respects preset sampling settings (temperature, top-p, top-k, min-p, top-a, typical-p, tfs, repetition penalty) and injects template stop sequences.
+
+## Context Limits & Token Budgeting
+
+SmileyChat manages prompt size locally before sending generation requests:
+
+- Each connection profile defines a **Context Token Budget** used for trimming history.
+- Profiles can specify per-model context limits and manual overrides.
+- Token counting is profile-aware, using local token estimation to prevent exceeding the model's context window.
+
 ## Streaming
 
-OpenAI-compatible, OpenRouter, Google AI, Anthropic, NovelAI, and xAI adapters support streaming over SSE. Configure streaming in the active preset's Generation settings. Presets without an explicit setting use the legacy `preferences.chat.streaming` value as their fallback.
+OpenAI-compatible, OpenRouter, Google AI, Anthropic, NovelAI, xAI, and KoboldCPP adapters support streaming over SSE. Configure streaming in the active preset's Generation settings. Presets without an explicit setting use the legacy `preferences.chat.streaming` value as their fallback.
 
 Streaming is intentionally not a per-provider setting.
 

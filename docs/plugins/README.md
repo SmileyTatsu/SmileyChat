@@ -22,11 +22,11 @@ Current plugin surfaces:
 - Custom model requests, including background connection profile targeting.
 - Model token estimation and context-budget lookup for plugin-managed trimming.
 - Guarded outbound network fetch through the local server.
-- Sidebar panels, header actions, and app-hosted modals.
-- Chat input, prompt, output, and message-update middleware.
+- Sidebar panels, chat and character details sections, header actions, and app-hosted modals.
+- Chat input, prompt, output, message display, and message-update middleware.
 - Runtime character presence and direct message injection.
 - Custom preset macros.
-- Connection provider registration.
+- Connection provider and tool registration.
 - Plugin-owned JSON storage.
 
 Plugin API permissions are runtime declarations checked by most protected hooks. A plugin that calls a protected API without the matching manifest permission fails to load or fails when that API is called, but plugins are trusted local code and are not sandboxed.

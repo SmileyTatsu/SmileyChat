@@ -22,8 +22,8 @@ SmileyChat is a local-first frontend application designed for interacting with A
 ## Features
 
 - **Local Persistence**: Your data belongs to you. All characters, chats, and personas are saved locally in standard JSON files. No cloud lock-in.
-- **Provider Support**: Connect your favorite AI backends. We feature dedicated adapters for OpenAI-compatible APIs, OpenRouter, Google AI / Gemini, Anthropic / Claude, NovelAI, and xAI. Includes built-in support for response streaming.
-- **Character Cards**: Easily import Tavern-style V1, V2, and V3 JSON or PNG character cards via drag-and-drop. View and edit character details in a dedicated sidebar.
+- **Provider Support**: Connect your favorite AI backends. We feature dedicated adapters for OpenAI-compatible APIs, OpenRouter, Google AI / Gemini, Anthropic / Claude, NovelAI, xAI, and KoboldCPP (with native instruct templates). Includes built-in support for response streaming.
+- **Character Cards & SillyTavern Sync**: Easily import Tavern-style V1, V2, and V3 JSON or PNG character cards via drag-and-drop. Migrate or sync your local SillyTavern library (characters, chats, group chats, personas, presets, and lorebooks) directly from Settings. View and edit character details in a dedicated sidebar.
 - **Advanced Presets & Prompts**: Full support for custom preset formats, SillyTavern preset imports, and comprehensive macro replacement (`{{char}}`, `{{user}}`, `{{last_message}}`, etc.) to heavily customize AI behavior.
 - **Personas**: Create and manage multiple user personas. Switch between them instantly and set custom visual statuses (Online, Away, Do Not Disturb).
 - **Attachments & Multimodality**: Support for image and file attachments during chats, integrating directly with multimodal providers.

@@ -11,14 +11,14 @@ In SmileyChat, **Connections** and **Presets** do two entirely different jobs.
 
 A Preset is a set of instructions that SmileyChat sends to the AI alongside your chat. It includes:
 
-- **Generation Settings:** Things like Temperature (creativity), Max Tokens (response length), and Penalties.
-- **Prompt Structure:** The invisible rules sent to the AI (e.g., "You are roleplaying as {{char}}", "Write in extreme detail").
+- **Generation Settings:** Things like Temperature (creativity), Max Tokens (response length), Penalties, and optional per-preset Streaming overrides.
+- **Prompt Structure:** The invisible rules sent to the AI (e.g., "You are roleplaying as {{char}}", "Write in extreme detail"), ordered prompts, system prompts, and injection depth anchors.
 
-## SillyTavern Compatibility
+## SillyTavern Compatibility & Sync
 
-SmileyChat supports importing SillyTavern-style presets. If you have a favorite preset from ST, you can place it in your `userData/presets/` folder (or use the import tool if available). SmileyChat will translate the prompt structure and macros.
+SmileyChat supports importing SillyTavern-style presets. You can import preset JSON files directly into the Presets manager, or sync all presets from your local SillyTavern directory using **Settings > SillyTavern Sync**. SmileyChat translates the prompt structure and macros into its native preset shape.
 
-_Note: SmileyChat handles context length trimming based on your Connection profile's model, so some preset settings from other apps might be ignored to provide a better out-of-the-box experience._
+_Note: SmileyChat handles context length trimming based on your Connection profile's model, so context token settings from imported presets are ignored to ensure reliable local token budgeting._
 
 ## Macros
 
