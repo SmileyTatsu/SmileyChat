@@ -57,11 +57,16 @@ The installer does the following:
 6. Clones SmileyChat into `~/SmileyChat` if needed.
 7. Builds and starts SmileyChat.
 
-When the server starts, open this URL in your Android browser:
+When the server starts, SmileyChat tries to open this URL in your default
+Android browser automatically:
 
 ```text
 http://127.0.0.1:4173
 ```
+
+If Android does not foreground the browser, open the URL manually. On devices
+that restrict background launches, allowing Termux to **Display over other
+apps** in Android settings can make the browser handoff more reliable.
 
 After the first install, start or update SmileyChat with:
 
@@ -163,11 +168,16 @@ The launcher does the following:
 3. Runs `BUN_OPTIONS="--os=linux" bun run build`.
 4. Runs `BUN_OPTIONS="--os=linux" bun run start`.
 
-When the server starts, open this URL in your Android browser:
+When the server starts, SmileyChat tries to open this URL in your default
+Android browser automatically:
 
 ```text
 http://127.0.0.1:4173
 ```
+
+If Android does not foreground the browser, open the URL manually. On devices
+that restrict background launches, allowing Termux to **Display over other
+apps** in Android settings can make the browser handoff more reliable.
 
 ## Keeping the Server Alive
 

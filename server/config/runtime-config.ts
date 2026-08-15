@@ -86,6 +86,12 @@ export function getFrontendPort() {
     return parsePort(Bun.env.SMILEYCHAT_FRONTEND_PORT, DEFAULT_FRONTEND_PORT);
 }
 
+// Opening the local page is helpful for the desktop launchers. Keep it opt-out
+// for servers run under a supervisor, headless machine, or test harness.
+export function shouldOpenBrowser() {
+    return !isDisabledFlag(Bun.env.SMILEYCHAT_OPEN_BROWSER);
+}
+
 export function getCsrfTrustedOrigins() {
     return parseCsv(Bun.env.SMILEYCHAT_TRUSTED_ORIGINS);
 }

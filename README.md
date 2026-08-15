@@ -45,7 +45,7 @@ Included as bundled plugins, SmileyChat provides powerful tools right out of the
 
 ## Getting Started
 
-SmileyChat runs locally on your machine. Once started, access it in your browser (typically at `http://127.0.0.1:4173`).
+SmileyChat runs locally on your machine and opens automatically in your default browser (typically at `http://127.0.0.1:4173`). To keep a launch headless, set `SMILEYCHAT_OPEN_BROWSER=false` in `.env`.
 
 ### Windows
 
@@ -102,6 +102,9 @@ By default, SmileyChat binds to **`0.0.0.0`**, making it accessible to LAN devic
 # Interface the server binds to. 0.0.0.0 = all interfaces (default).
 # Set 127.0.0.1 to refuse every connection except loopback.
 SMILEYCHAT_HOST=0.0.0.0
+
+# Set false to stop SmileyChat opening a local browser tab on startup.
+SMILEYCHAT_OPEN_BROWSER=false
 
 # Require a username/password from every non-loopback caller.
 SMILEYCHAT_BASIC_AUTH_USER=

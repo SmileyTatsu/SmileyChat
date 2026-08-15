@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { characterToSummary } from "#frontend/lib/characters/normalize";
 
@@ -38,7 +38,7 @@ import {
 } from "./chat-store";
 import { ensureEnvFileExists, loadRuntimeEnv } from "./config/env-loader";
 import { startEnvWatcher } from "./config/env-watcher";
-import { getHost, getPort } from "./config/runtime-config";
+import { getHost, getPort, shouldOpenBrowser } from "./config/runtime-config";
 import { createCsrfToken, verifyCsrfRequest } from "./csrf";
 import { HttpError, json, readJsonBody } from "./http";
 import { generateWithSavedConnection, listSavedConnectionModels } from "./generation";
@@ -866,6 +866,11 @@ const listeningPort = server.port ?? port;
 
 console.log(`Open ${getBrowserUrl(hostname, listeningPort)} in your browser.`);
 console.log(`SmileyChat listening on ${formatListeningTarget(hostname, listeningPort)}.`);
+if (shouldOpenBrowser()) {
+    openBrowser(getBrowserUrl(hostname, listeningPort));
+} else {
+    console.log("[server] Browser launch is disabled by SMILEYCHAT_OPEN_BROWSER.");
+}
 if (hostname === "0.0.0.0" || hostname === "::") {
     console.log(
         `[server] Reachable from LAN, Tailscale, and Docker. Loopback (127.0.0.1) is always allowed; ` +
@@ -1056,6 +1061,47 @@ function getBrowserUrl(host: string, port: number) {
     }
 
     return `http://${formatUrlHost(host)}:${port}`;
+}
+
+function openBrowser(url: string) {
+    const [command, args] = getBrowserLaunchCommand(url);
+
+    try {
+        const browser = spawn(command, args, {
+            detached: true,
+            stdio: "ignore",
+        });
+        browser.unref();
+        browser.once("error", (error) => {
+            console.warn(
+                `[server] Could not open the browser automatically: ${error.message}`,
+            );
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[server] Could not open the browser automatically: ${message}`);
+    }
+}
+
+function getBrowserLaunchCommand(url: string): [string, string[]] {
+    if (process.platform === "win32") {
+        // explorer.exe accepts a URL directly, avoiding a shell-interpreted
+        // `start` command when a custom hostname is configured.
+        return ["explorer.exe", [url]];
+    }
+
+    if (process.platform === "darwin") {
+        return ["open", [url]];
+    }
+
+    if (process.env.TERMUX_VERSION || process.env.PREFIX?.includes("com.termux")) {
+        const termuxBin = process.env.PREFIX
+            ? `${process.env.PREFIX}/bin/termux-open-url`
+            : "termux-open-url";
+        return [termuxBin, [url]];
+    }
+
+    return ["xdg-open", [url]];
 }
 
 function formatHostPort(host: string, port: number) {

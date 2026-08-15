@@ -20,6 +20,18 @@ bun run start
 
 If dependency installation fails, update Bun and try again.
 
+## SmileyChat Does Not Open a Browser Tab
+
+The server normally opens `http://127.0.0.1:4173` in your default browser once
+it is ready. If you disabled that behavior for a headless launch, remove this
+setting from `.env` or set it to `true`:
+
+```env
+SMILEYCHAT_OPEN_BROWSER=true
+```
+
+You can always open the URL printed by the server yourself.
+
 ## Port 4173 Is Already in Use
 
 Another process is already using SmileyChat's default port.

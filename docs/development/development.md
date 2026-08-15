@@ -44,6 +44,9 @@ bun run build
 bun run start
 ```
 
+`bun run start` opens the local app URL in the default browser. For a headless
+server or automated workflow, set `SMILEYCHAT_OPEN_BROWSER=false` in `.env`.
+
 ## Checks
 
 Run these before shipping a meaningful change:
