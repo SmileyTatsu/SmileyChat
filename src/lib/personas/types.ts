@@ -3,6 +3,7 @@ export type SmileyPersona = {
     version: 1;
     name: string;
     description: string;
+    dialogueColor?: string;
     avatar?: {
         type: "png" | "jpeg" | "webp";
         path: string;
@@ -18,6 +19,7 @@ export type SmileyPersona = {
 export type PersonaSummary = {
     id: string;
     name: string;
+    dialogueColor?: string;
     avatar?: SmileyPersona["avatar"];
     updatedAt: string;
 };

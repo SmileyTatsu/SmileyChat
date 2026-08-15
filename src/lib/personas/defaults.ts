@@ -36,6 +36,7 @@ export function personaToSummary(persona: SmileyPersona) {
     return {
         id: persona.id,
         name: persona.name,
+        ...(persona.dialogueColor ? { dialogueColor: persona.dialogueColor } : {}),
         ...(persona.avatar ? { avatar: persona.avatar } : {}),
         updatedAt: persona.updatedAt,
     };

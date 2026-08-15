@@ -1189,6 +1189,7 @@ export function App() {
                 mode={mode}
                 preferences={preferences}
                 pendingSwipeMessageId={chatSession.pendingSwipeMessageId}
+                personas={personaSummaries.personas}
                 canForkMessages={
                     Boolean(activeChat) &&
                     !chatSession.isSending &&

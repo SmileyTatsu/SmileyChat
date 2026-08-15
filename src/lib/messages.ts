@@ -11,12 +11,15 @@ import type { ToolActivity } from "./connections/types";
 
 import { createId } from "./common/ids";
 import { getCharacterDialogueColor } from "./characters/normalize";
+import { getPersonaDialogueColor } from "./personas/normalize";
 
 export function createUserMessage(
     content: string,
     persona: SmileyPersona,
     attachments?: ChatAttachment[],
 ): Message {
+    const dialogueColor = getPersonaDialogueColor(persona);
+
     return createMessage(
         MessageRole.User,
         persona.name.trim() || "Anon",
@@ -27,6 +30,7 @@ export function createUserMessage(
         },
         undefined,
         attachments,
+        dialogueColor ? { authorDialogueColorSnapshot: dialogueColor } : undefined,
     );
 }
 
@@ -67,6 +71,8 @@ export function createInjectedMessage(
     },
 ): Message {
     if (role === MessageRole.User) {
+        const dialogueColor = getPersonaDialogueColor(options.persona);
+
         return createMessage(
             MessageRole.User,
             options.authorName?.trim() || options.persona.name.trim() || "Anon",
@@ -81,6 +87,7 @@ export function createInjectedMessage(
                 includeInPrompt: options.includeInPrompt ?? true,
                 promptRole: options.promptRole ?? "user",
                 canGenerateSwipe: false,
+                ...(dialogueColor ? { authorDialogueColorSnapshot: dialogueColor } : {}),
             }),
         );
     }

@@ -21,6 +21,7 @@ type MessageListProps = {
     autoScroll: boolean;
     characterAvatarPath?: string;
     characterDialogueColors: Readonly<Record<string, string | null>>;
+    personaDialogueColors: Readonly<Record<string, string | null>>;
     characterName: string;
     chatId: string;
     chatLoadRequestId?: number;
@@ -59,6 +60,7 @@ export const MessageList = memo(function MessageList({
     autoScroll,
     characterAvatarPath,
     characterDialogueColors,
+    personaDialogueColors,
     characterName,
     chatId,
     chatLoadRequestId = 0,
@@ -467,13 +469,20 @@ export const MessageList = memo(function MessageList({
                             key={message.id}
                             characterAvatarPath={characterAvatarPath}
                             characterDialogueColor={
-                                message.authorCharacterId &&
-                                message.authorCharacterId in characterDialogueColors
-                                    ? (characterDialogueColors[
-                                          message.authorCharacterId
-                                      ] ?? undefined)
-                                    : (message.metadata?.authorDialogueColorSnapshot ??
-                                      defaultCharacterDialogueColor)
+                                message.role === "character"
+                                    ? message.authorCharacterId &&
+                                      message.authorCharacterId in characterDialogueColors
+                                        ? (characterDialogueColors[
+                                              message.authorCharacterId
+                                          ] ?? undefined)
+                                        : (message.metadata
+                                              ?.authorDialogueColorSnapshot ??
+                                          defaultCharacterDialogueColor)
+                                    : message.authorPersonaId &&
+                                        message.authorPersonaId in personaDialogueColors
+                                      ? (personaDialogueColors[message.authorPersonaId] ??
+                                        undefined)
+                                      : undefined
                             }
                             characterName={characterName}
                             chatId={chatId}

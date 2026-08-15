@@ -2,12 +2,14 @@ import { describe, expect, test } from "bun:test";
 
 import {
     appendMessageSwipe,
+    createInjectedMessage,
     createUserMessage,
     getMessageAttachments,
     removeActiveMessageSwipe,
     updateActiveSwipeAttachments,
 } from "./messages";
 import type { ChatAttachment, SmileyPersona } from "../types";
+import { defaultCharacter } from "./characters/defaults";
 
 const persona: SmileyPersona = {
     id: "persona-1",
@@ -33,6 +35,48 @@ const imageAttachment: ChatAttachment = {
     url: "/api/chats/chat-1/attachments/image.png",
     name: "image.png",
 };
+
+describe("persona dialogue color snapshots", () => {
+    test("captures the sending persona's normalized dialogue color", () => {
+        const message = createUserMessage("hello", {
+            ...persona,
+            dialogueColor: "#28A5D5",
+        });
+
+        expect(message.metadata?.authorDialogueColorSnapshot).toBe("#28a5d5");
+    });
+
+    test("keeps different personas' dialogue colors on their respective messages", () => {
+        const first = createUserMessage("first", {
+            ...persona,
+            dialogueColor: "#d59a28",
+        });
+        const second = createUserMessage("second", {
+            ...persona,
+            id: "persona-2",
+            dialogueColor: "#28a5d5",
+        });
+
+        expect(first.metadata?.authorDialogueColorSnapshot).toBe("#d59a28");
+        expect(second.metadata?.authorDialogueColorSnapshot).toBe("#28a5d5");
+    });
+
+    test("uses no custom color when the persona has no configured color", () => {
+        const message = createUserMessage("hello", persona);
+
+        expect(message.metadata?.authorDialogueColorSnapshot).toBeUndefined();
+    });
+
+    test("captures the persona color for plugin-injected user messages", () => {
+        const message = createInjectedMessage("user", "hello", {
+            activeCharacter: defaultCharacter,
+            persona: { ...persona, dialogueColor: "#28A5D5" },
+            pluginId: "test-plugin",
+        });
+
+        expect(message.metadata?.authorDialogueColorSnapshot).toBe("#28a5d5");
+    });
+});
 
 describe("updateActiveSwipeAttachments", () => {
     test("replaces active swipe attachments", () => {

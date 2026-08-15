@@ -13,6 +13,7 @@ import type {
     ChatMode,
     Message,
     SmileyCharacter,
+    PersonaSummary,
 } from "#frontend/types";
 
 import { ChatHeader } from "./chat-header";
@@ -66,6 +67,7 @@ type ChatWorkspaceProps = {
     mode: ChatMode;
     preferences: AppPreferences;
     pendingSwipeMessageId?: string;
+    personas: PersonaSummary[];
     canForkMessages: boolean;
     emptyState?: {
         title: string;
@@ -112,6 +114,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     mode,
     preferences,
     pendingSwipeMessageId,
+    personas,
     canForkMessages,
     emptyState,
     onDeleteMessage,
@@ -151,6 +154,15 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     const defaultCharacterDialogueColor = character
         ? getCharacterDialogueColor(character)
         : undefined;
+    const personaDialogueColors = useMemo(() => {
+        const colors: Record<string, string | null> = {};
+
+        for (const item of personas) {
+            colors[item.id] = item.dialogueColor ?? null;
+        }
+
+        return colors;
+    }, [personas]);
     const workspaceClassName = [
         "chat-workspace",
         mode,
@@ -194,6 +206,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     chatId={activeChatId}
                     characterAvatarPath={characterAvatarPath}
                     characterDialogueColors={characterDialogueColors}
+                    personaDialogueColors={personaDialogueColors}
                     characterName={characterName}
                     defaultCharacterDialogueColor={defaultCharacterDialogueColor}
                     errorMessage={errorMessage}

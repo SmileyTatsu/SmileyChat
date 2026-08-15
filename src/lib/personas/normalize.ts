@@ -29,6 +29,7 @@ export function normalizePersona(value: unknown): SmileyPersona | undefined {
     const now = new Date().toISOString();
     const id = asString(value.id) || createId("persona");
     const name = asString(value.name).trim() || "Anon";
+    const dialogueColor = normalizeDialogueColor(value.dialogueColor);
     const avatar = normalizeImageAvatar(value.avatar);
     const metadata = normalizeMetadata(value.metadata);
     const timestamps = normalizeTimestamps(value, now);
@@ -38,10 +39,15 @@ export function normalizePersona(value: unknown): SmileyPersona | undefined {
         version: 1,
         name,
         description: asString(value.description),
+        ...(dialogueColor ? { dialogueColor } : {}),
         ...(avatar ? { avatar } : {}),
         ...(metadata ? { metadata } : {}),
         ...timestamps,
     };
+}
+
+export function getPersonaDialogueColor(persona: SmileyPersona) {
+    return normalizeDialogueColor(persona.dialogueColor);
 }
 
 export function normalizePersonaSummary(value: unknown): PersonaSummary | undefined {
@@ -51,6 +57,7 @@ export function normalizePersonaSummary(value: unknown): PersonaSummary | undefi
 
     const id = asString(value.id);
     const name = asString(value.name).trim();
+    const dialogueColor = normalizeDialogueColor(value.dialogueColor);
     const avatar = normalizeImageAvatar(value.avatar);
 
     if (!id || !name) {
@@ -60,6 +67,7 @@ export function normalizePersonaSummary(value: unknown): PersonaSummary | undefi
     return {
         id,
         name,
+        ...(dialogueColor ? { dialogueColor } : {}),
         ...(avatar ? { avatar } : {}),
         updatedAt: normalizeUpdatedAt(value.updatedAt),
     };
@@ -119,4 +127,9 @@ function normalizeMetadata(value: unknown): SmileyPersona["metadata"] | undefine
     }
 
     return { ...value };
+}
+
+function normalizeDialogueColor(value: unknown) {
+    const color = asString(value).trim();
+    return /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : undefined;
 }

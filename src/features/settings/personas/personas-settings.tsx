@@ -1,7 +1,8 @@
 import { ImageOff, ImagePlus, Plus, Trash2 } from "lucide-preact";
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 import { uploadPersonaAvatar } from "#frontend/lib/api/client";
+import { getPersonaDialogueColor } from "#frontend/lib/personas/normalize";
 import type { PersonaSummaryCollection, SmileyPersona } from "#frontend/types";
 
 type PersonasSettingsProps = {
@@ -31,10 +32,16 @@ export function PersonasSettings({
     const [deleteCandidateId, setDeleteCandidateId] = useState("");
     const [avatarError, setAvatarError] = useState("");
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const dialogueColor = getPersonaDialogueColor(persona);
+    const [colorInputText, setColorInputText] = useState(dialogueColor ?? "");
     const canDelete = collection.personas.length > 1;
     const deleteCandidate = collection.personas.find(
         (item) => item.id === deleteCandidateId,
     );
+
+    useEffect(() => {
+        setColorInputText(dialogueColor ?? "");
+    }, [dialogueColor]);
 
     function updatePersona(nextPersona: Partial<SmileyPersona>) {
         onPersonaChange({
@@ -210,6 +217,66 @@ export function PersonasSettings({
                             }
                         />
                     </label>
+
+                    <div className="character-dialogue-color-control">
+                        <label className="character-dialogue-color-label">
+                            Dialogue highlight color
+                            <div className="character-dialogue-color-inputs">
+                                <input
+                                    type="color"
+                                    name="persona-dialogue-highlight-color"
+                                    autoComplete="off"
+                                    aria-describedby="persona-dialogue-highlight-color-hint"
+                                    value={dialogueColor ?? "#f2c78f"}
+                                    onInput={(event) =>
+                                        updatePersona({
+                                            dialogueColor: event.currentTarget.value,
+                                        })
+                                    }
+                                />
+                                <input
+                                    type="text"
+                                    name="persona-dialogue-highlight-color-text"
+                                    autoComplete="off"
+                                    aria-label="Hex color"
+                                    value={colorInputText}
+                                    placeholder="#f2c78f"
+                                    onInput={(event) => {
+                                        setColorInputText(event.currentTarget.value);
+                                    }}
+                                    onBlur={() => {
+                                        let value = colorInputText.trim();
+                                        if (value.length > 0 && !value.startsWith("#")) {
+                                            value = "#" + value;
+                                        }
+                                        setColorInputText(value);
+                                        updatePersona({
+                                            dialogueColor: value || undefined,
+                                        });
+                                    }}
+                                />
+                            </div>
+                        </label>
+                        <div>
+                            <p
+                                className="field-hint"
+                                id="persona-dialogue-highlight-color-hint"
+                            >
+                                Used for quoted dialogue when Chat Formatter highlighting
+                                is enabled.
+                            </p>
+                            <button
+                                className="secondary-button"
+                                type="button"
+                                disabled={!dialogueColor}
+                                onClick={() =>
+                                    updatePersona({ dialogueColor: undefined })
+                                }
+                            >
+                                Use default highlight color
+                            </button>
+                        </div>
+                    </div>
 
                     <div className="field-hint">
                         Available in prompts as {"{{user}}"}, {"{{persona_name}}"},{" "}
