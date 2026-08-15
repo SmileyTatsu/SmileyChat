@@ -22,6 +22,7 @@ export function createServerGenerationConnection(profileId?: string): Connection
                 body: JSON.stringify({
                     profileId,
                     generation: request.generation,
+                    formatting: request.formatting,
                     promptMessages: request.promptMessages ?? [],
                     stream: request.stream === true,
                     tools: request.tools,

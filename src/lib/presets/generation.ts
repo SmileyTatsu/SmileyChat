@@ -15,6 +15,18 @@ export const sillyTavernGenerationFieldMap = {
     min_p: "minP",
     presence_penalty: "presencePenalty",
     repetition_penalty: "repetitionPenalty",
+    rep_pen_range: "repetitionPenaltyRange",
+    dry_multiplier: "dryMultiplier",
+    dry_base: "dryBase",
+    dry_allowed_length: "dryAllowedLength",
+    dry_penalty_last_n: "dryPenaltyLastN",
+    dry_sequence_breakers: "drySequenceBreakers",
+    xtc_threshold: "xtcThreshold",
+    xtc_probability: "xtcProbability",
+    mirostat: "mirostatMode",
+    mirostat_tau: "mirostatTau",
+    mirostat_eta: "mirostatEta",
+    sampler_order: "samplerOrder",
     seed: "seed",
     stop: "stopSequences",
     stop_sequence: "stopSequences",
@@ -25,6 +37,9 @@ export const sillyTavernGenerationFieldMap = {
     top_a: "topA",
     top_k: "topK",
     top_p: "topP",
+    typical_p: "typicalP",
+    typical: "typicalP",
+    tfs: "tfs",
 } as const;
 
 export function normalizePresetGenerationSettings(
@@ -46,6 +61,33 @@ export function normalizePresetGenerationSettings(
     assignNumber(output, "presencePenalty", source.presencePenalty, -2, 2);
     assignNumber(output, "frequencyPenalty", source.frequencyPenalty, -2, 2);
     assignNumber(output, "repetitionPenalty", source.repetitionPenalty, 0, 2);
+    assignNumber(
+        output,
+        "repetitionPenaltyRange",
+        source.repetitionPenaltyRange,
+        0,
+        32768,
+    );
+    assignNumber(output, "dryMultiplier", source.dryMultiplier, 0, 10);
+    assignNumber(output, "dryBase", source.dryBase, 1, 10);
+    assignInteger(output, "dryAllowedLength", source.dryAllowedLength, 0);
+    assignInteger(output, "dryPenaltyLastN", source.dryPenaltyLastN, 0);
+    const drySequenceBreakers = normalizeStringList(source.drySequenceBreakers);
+    if (drySequenceBreakers.length) output.drySequenceBreakers = drySequenceBreakers;
+    assignNumber(output, "xtcThreshold", source.xtcThreshold, 0, 1);
+    assignNumber(output, "xtcProbability", source.xtcProbability, 0, 1);
+    assignInteger(output, "mirostatMode", source.mirostatMode, 0);
+    assignNumber(output, "mirostatTau", source.mirostatTau, 0, 10);
+    assignNumber(output, "mirostatEta", source.mirostatEta, 0, 10);
+    assignNumber(output, "typicalP", source.typicalP, 0, 1);
+    assignNumber(output, "tfs", source.tfs, 0, 1);
+    if (
+        Array.isArray(source.samplerOrder) &&
+        source.samplerOrder.every(
+            (item) => typeof item === "number" && Number.isInteger(item),
+        )
+    )
+        output.samplerOrder = source.samplerOrder;
     assignInteger(output, "seed", source.seed);
 
     const stopSequences = normalizeStringList(source.stopSequences);
@@ -92,7 +134,7 @@ export function normalizeSillyTavernGenerationSettings(value: unknown): {
 
 type NumberGenerationSetting = Exclude<
     keyof PresetGenerationSettings,
-    "stopSequences" | "streaming"
+    "stopSequences" | "streaming" | "samplerOrder" | "drySequenceBreakers"
 >;
 
 function assignBoolean(

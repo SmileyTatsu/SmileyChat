@@ -21,6 +21,8 @@ import { defaultOpenRouterConfig, normalizeOpenRouterConfig } from "./openrouter
 import type { OpenRouterConnectionConfig } from "./openrouter/types";
 import { defaultXAIConfig, normalizeXAIConfig } from "./xai/config";
 import type { XAIConnectionConfig } from "./xai/types";
+import { defaultKoboldCPPConfig, normalizeKoboldCPPConfig } from "./koboldcpp/config";
+import type { KoboldCPPConnectionConfig } from "./koboldcpp/types";
 import type { TokenizerSelection } from "../tokenizer/types";
 
 export const defaultTokenizerSelection: TokenizerSelection = { mode: "auto" };
@@ -32,6 +34,7 @@ export type ConnectionProviderId =
     | "anthropic"
     | "novelai"
     | "xai"
+    | "koboldcpp"
     | (string & {});
 
 export type OpenAICompatibleConnectionProfile = {
@@ -112,6 +115,10 @@ export type XAIConnectionProfile = {
     createdAt: string;
     updatedAt: string;
 };
+export type KoboldCPPConnectionProfile = Omit<
+    XAIConnectionProfile,
+    "provider" | "config"
+> & { provider: "koboldcpp"; config: KoboldCPPConnectionConfig };
 
 export type PluginConnectionProfile = {
     id: string;
@@ -136,6 +143,7 @@ export type ConnectionProfile =
     | AnthropicConnectionProfile
     | NovelAIConnectionProfile
     | XAIConnectionProfile
+    | KoboldCPPConnectionProfile
     | PluginConnectionProfile;
 
 export type ConnectionSettings = {
@@ -163,6 +171,7 @@ export {
     defaultOpenAICompatibleConfig,
     defaultOpenRouterConfig,
     defaultXAIConfig,
+    defaultKoboldCPPConfig,
 };
 
 export const defaultConnectionSettings: ConnectionSettings = {
@@ -352,6 +361,19 @@ export function createConnectionProfile(
             updatedAt: now,
         };
     }
+    if (provider === "koboldcpp") {
+        return {
+            id: createConnectionProfileId(),
+            name,
+            provider,
+            contextTokenBudget: defaultContextTokenBudget,
+            overrideModelContext: false,
+            tokenizer: defaultTokenizerSelection,
+            config: normalizeKoboldCPPConfig(defaultConfig ?? defaultKoboldCPPConfig),
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
 
     if (provider !== "openai-compatible") {
         return {
@@ -474,6 +496,11 @@ export function isXAIProfile(
 ): profile is XAIConnectionProfile {
     return profile?.provider === "xai";
 }
+export function isKoboldCPPProfile(
+    profile: ConnectionProfile | undefined,
+): profile is KoboldCPPConnectionProfile {
+    return profile?.provider === "koboldcpp";
+}
 
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {
     const sourceProfiles = Array.isArray(settings.profiles) ? settings.profiles : [];
@@ -530,7 +557,9 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
                         ? normalizeNovelAIConfig(profile.config)
                         : provider === "xai"
                           ? normalizeXAIConfig(profile.config)
-                          : normalizePluginConfig(profile.config),
+                          : provider === "koboldcpp"
+                            ? normalizeKoboldCPPConfig(profile.config)
+                            : normalizePluginConfig(profile.config),
         createdAt: stringOrFallback(profile.createdAt, now),
         updatedAt: stringOrFallback(profile.updatedAt, now),
     } as ConnectionProfile;
@@ -610,6 +639,7 @@ function defaultConfigForProvider(
     if (provider === "anthropic") return { ...defaultAnthropicConfig };
     if (provider === "novelai") return { ...defaultNovelAIConfig };
     if (provider === "xai") return { ...defaultXAIConfig };
+    if (provider === "koboldcpp") return { ...defaultKoboldCPPConfig };
 
     return { ...pluginDefaultConfig };
 }
@@ -624,6 +654,7 @@ function normalizeConfigForProvider(
     if (provider === "anthropic") return normalizeAnthropicConfig(config);
     if (provider === "novelai") return normalizeNovelAIConfig(config);
     if (provider === "xai") return normalizeXAIConfig(config);
+    if (provider === "koboldcpp") return normalizeKoboldCPPConfig(config);
 
     return normalizePluginConfig(config);
 }
@@ -679,6 +710,7 @@ function defaultBaseUrlForProvider(provider: ConnectionProviderId) {
     if (provider === "anthropic") return normalizeBaseUrl(defaultAnthropicConfig.baseUrl);
     if (provider === "novelai") return normalizeBaseUrl(novelAITextBaseUrl);
     if (provider === "xai") return normalizeBaseUrl(defaultXAIConfig.baseUrl);
+    if (provider === "koboldcpp") return normalizeBaseUrl(defaultKoboldCPPConfig.baseUrl);
 
     return undefined;
 }
@@ -694,6 +726,7 @@ function providerSupportsBaseUrl(provider: ConnectionProviderId) {
         provider === "anthropic" ||
         provider === "novelai" ||
         provider === "xai" ||
+        provider === "koboldcpp" ||
         !isNativeProvider(provider)
     );
 }
@@ -705,7 +738,8 @@ function isNativeProvider(provider: ConnectionProviderId) {
         provider === "google-ai" ||
         provider === "anthropic" ||
         provider === "novelai" ||
-        provider === "xai"
+        provider === "xai" ||
+        provider === "koboldcpp"
     );
 }
 
@@ -726,6 +760,7 @@ function outputTokenTransferForProvider(
         return { maxOutputTokens };
     }
     if (provider === "anthropic") return { maxTokens: maxOutputTokens };
+    if (provider === "koboldcpp") return { maxOutputTokens };
     if (
         provider === "openai-compatible" ||
         provider === "openrouter" ||

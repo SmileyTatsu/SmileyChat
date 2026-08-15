@@ -35,17 +35,52 @@ export type SmileyPreset = {
     prompts: PresetPrompt[];
     promptOrder: PresetPromptOrderEntry[];
     generation?: PresetGenerationSettings;
+    formatting?: PresetFormattingSettings;
     metadata?: Record<string, unknown>;
     extensions?: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
 };
 
+export type PresetInstructTemplate =
+    | "auto"
+    | "none"
+    | "chatml"
+    | "llama3"
+    | "mistral"
+    | "gemma2"
+    | "alpaca"
+    | "deepseek-r1"
+    | "custom";
+
+export type PresetFormattingSettings = {
+    namesAsStopStrings?: boolean;
+    separatorsAsStopStrings?: boolean;
+    singleLineMode?: boolean;
+    alwaysAddCharacterName?: boolean;
+    exampleSeparator?: string;
+    chatStartSeparator?: string;
+    instructTemplate?: PresetInstructTemplate;
+    sequencesAsStopStrings?: boolean;
+    userPrefix?: string;
+    userSuffix?: string;
+    assistantPrefix?: string;
+    assistantSuffix?: string;
+    systemPrefix?: string;
+    systemSuffix?: string;
+};
+
 export type PresetGenerationSettings = {
+    dryAllowedLength?: number;
+    dryBase?: number;
+    dryMultiplier?: number;
+    dryPenaltyLastN?: number;
+    drySequenceBreakers?: string[];
     frequencyPenalty?: number;
     minP?: number;
     presencePenalty?: number;
     repetitionPenalty?: number;
+    repetitionPenaltyRange?: number;
     seed?: number;
     stopSequences?: string[];
     streaming?: boolean;
@@ -53,6 +88,14 @@ export type PresetGenerationSettings = {
     topA?: number;
     topK?: number;
     topP?: number;
+    typicalP?: number;
+    tfs?: number;
+    xtcProbability?: number;
+    xtcThreshold?: number;
+    mirostatMode?: number;
+    mirostatTau?: number;
+    mirostatEta?: number;
+    samplerOrder?: number[];
 };
 
 export type PresetCollection = {

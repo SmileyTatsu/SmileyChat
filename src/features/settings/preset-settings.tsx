@@ -7,6 +7,7 @@ import {
     LoaderCircle,
     Plus,
     SlidersHorizontal,
+    TextQuote,
     Trash,
     Upload,
 } from "lucide-preact";
@@ -20,11 +21,15 @@ import {
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
 import { isClaudeOpus47OrLaterModel } from "#frontend/lib/connections/generation-settings";
+import { parseInstructTemplateJson } from "#frontend/lib/instruct";
 import {
     compilePresetContext,
     compilePresetMessages,
 } from "#frontend/lib/presets/compile";
-import type { PresetGenerationSettings } from "#frontend/lib/presets/types";
+import type {
+    PresetFormattingSettings,
+    PresetGenerationSettings,
+} from "#frontend/lib/presets/types";
 import {
     createBlankPrompt,
     createPresetFromDefault,
@@ -72,7 +77,7 @@ type PresetSettingsProps = {
     userStatus: UserStatus;
 };
 
-type PresetPanelView = "editor" | "generation" | "preview";
+type PresetPanelView = "editor" | "generation" | "formatting" | "preview";
 type PresetPreviewView = "compiled" | "flat";
 
 export function PresetSettings({
@@ -276,6 +281,10 @@ export function PresetSettings({
             ...preset,
             generation: Object.keys(nextGeneration).length ? nextGeneration : undefined,
         }));
+    }
+
+    function updateFormatting(nextFormatting: PresetFormattingSettings) {
+        updateActivePreset((preset) => ({ ...preset, formatting: nextFormatting }));
     }
 
     function updateOrderEntry(promptId: string, enabled: boolean) {
@@ -532,6 +541,16 @@ export function PresetSettings({
                                 Generation
                             </button>
                             <button
+                                className={activeView === "formatting" ? "active" : ""}
+                                type="button"
+                                role="tab"
+                                aria-selected={activeView === "formatting"}
+                                onClick={() => setActiveView("formatting")}
+                            >
+                                <TextQuote size={16} />
+                                Formatting
+                            </button>
+                            <button
                                 className={activeView === "preview" ? "active" : ""}
                                 type="button"
                                 role="tab"
@@ -642,6 +661,21 @@ export function PresetSettings({
                         />
                     )}
 
+                    {activeView === "formatting" && (
+                        <PresetFormattingEditor
+                            formatting={activePreset.formatting}
+                            onChange={updateFormatting}
+                            onStatusMessage={(msg) => {
+                                setStatusMessage(msg);
+                                setRequestState("success");
+                            }}
+                            onStatusError={(msg) => {
+                                setStatusMessage(msg);
+                                setRequestState("error");
+                            }}
+                        />
+                    )}
+
                     {activeView === "preview" && (
                         <PresetPreview
                             activeView={activePreviewView}
@@ -662,6 +696,263 @@ export function PresetSettings({
                     onClose={() => setConfirmAction(undefined)}
                 />
             )}
+        </section>
+    );
+}
+
+function PresetFormattingEditor({
+    formatting,
+    onChange,
+    onStatusMessage,
+    onStatusError,
+}: {
+    formatting: PresetFormattingSettings | undefined;
+    onChange: (formatting: PresetFormattingSettings) => void;
+    onStatusMessage?: (message: string) => void;
+    onStatusError?: (error: string) => void;
+}) {
+    const instructFileInputRef = useRef<HTMLInputElement>(null);
+    const settings = formatting ?? {};
+    const update = (patch: Partial<PresetFormattingSettings>) =>
+        onChange({ ...settings, ...patch });
+    const isCustom = settings.instructTemplate === "custom";
+
+    async function handleInstructFile(file: File) {
+        try {
+            const raw = JSON.parse(await file.text()) as unknown;
+            const parsed = parseInstructTemplateJson(raw);
+            update({
+                ...parsed.formatting,
+            });
+            const templateName = parsed.name || file.name.replace(/\.json$/i, "");
+            onStatusMessage?.(`Imported instruct template "${templateName}".`);
+        } catch (error) {
+            onStatusError?.(
+                messageFromError(error, "Failed to import instruct template."),
+            );
+        } finally {
+            if (instructFileInputRef.current) {
+                instructFileInputRef.current.value = "";
+            }
+        }
+    }
+
+    const toggle = (
+        key:
+            | "namesAsStopStrings"
+            | "separatorsAsStopStrings"
+            | "singleLineMode"
+            | "alwaysAddCharacterName"
+            | "sequencesAsStopStrings",
+        label: string,
+        description?: string,
+    ) => (
+        <label className="checkbox-field" title={description}>
+            <input
+                checked={settings[key] === true}
+                type="checkbox"
+                onInput={(event) => update({ [key]: event.currentTarget.checked })}
+            />
+            <span>{label}</span>
+        </label>
+    );
+
+    return (
+        <section className="preset-formatting-panel" aria-label="Formatting settings">
+            <div className="preset-section-header">
+                <h3>Formatting</h3>
+                <button type="button" onClick={() => onChange({})}>
+                    Clear
+                </button>
+            </div>
+            <p className="field-hint">
+                Configure stop strings, anti-impersonation, and custom instruct sequences
+                for this preset.
+            </p>
+
+            <div className="preset-formatting-card">
+                <h4>Stop strings & anti-impersonation</h4>
+                <div className="preset-toggle-row">
+                    {toggle(
+                        "namesAsStopStrings",
+                        "Names as stop strings",
+                        "Prevents the character from speaking for you or other characters by adding names (e.g. {{user}}:, {{char}}:) to the stop sequences.",
+                    )}
+                    {toggle(
+                        "separatorsAsStopStrings",
+                        "Separators as stop strings",
+                        "Prevents the model from generating fake example dialogues or restarting the chat by adding separators (like ***) to stop sequences.",
+                    )}
+                    {toggle(
+                        "singleLineMode",
+                        "Generate only one line per request",
+                        "Stops generation at the first newline character, restricting responses to a single line.",
+                    )}
+                </div>
+            </div>
+
+            <div className="preset-formatting-card">
+                <h4>Dialogue formatting & delimiters</h4>
+                <div className="preset-toggle-row compact">
+                    {toggle(
+                        "alwaysAddCharacterName",
+                        "Always prefix character name to assistant turns",
+                        "Forces the character's name prefix (e.g. 'Character: ') on every assistant turn in 1-on-1 chats.",
+                    )}
+                </div>
+                <div className="preset-generation-grid">
+                    <label title="Text separator placed between example dialogue messages in the prompt.">
+                        Example dialogue separator
+                        <input
+                            value={settings.exampleSeparator ?? "***"}
+                            placeholder="***"
+                            onInput={(event) =>
+                                update({ exampleSeparator: event.currentTarget.value })
+                            }
+                        />
+                    </label>
+                    <label title="Text separator placed right before the live chat history begins in the prompt.">
+                        Chat start separator
+                        <input
+                            value={settings.chatStartSeparator ?? "***"}
+                            placeholder="***"
+                            onInput={(event) =>
+                                update({ chatStartSeparator: event.currentTarget.value })
+                            }
+                        />
+                    </label>
+                </div>
+            </div>
+
+            <div className="preset-formatting-card">
+                <div className="preset-card-header">
+                    <div className="preset-card-title-group">
+                        <h4>Instruct template</h4>
+                        <span
+                            className="preset-scope-badge"
+                            title="Applied to raw text completion endpoints like KoboldCPP or local completion backends"
+                        >
+                            Text Completion only
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => instructFileInputRef.current?.click()}
+                        title="Import instruct template JSON"
+                    >
+                        <Upload size={14} />
+                        Import template
+                    </button>
+                    <input
+                        ref={instructFileInputRef}
+                        type="file"
+                        accept=".json,application/json"
+                        style={{ display: "none" }}
+                        onChange={(event) => {
+                            const file = event.currentTarget.files?.[0];
+                            if (file) void handleInstructFile(file);
+                        }}
+                    />
+                </div>
+                <p className="field-hint">
+                    Used only for Text Completion backends (e.g. KoboldCPP or local
+                    completion endpoints). Native Chat APIs (OpenAI, Anthropic, Gemini,
+                    OpenRouter, xAI) automatically apply their model's official chat
+                    template.
+                </p>
+                <div className="preset-generation-grid">
+                    <label title="Instruct format wrapper applied to messages when using Text Completion backends (e.g. KoboldCPP).">
+                        Template format
+                        <select
+                            value={settings.instructTemplate ?? "auto"}
+                            onInput={(event) =>
+                                update({
+                                    instructTemplate: event.currentTarget
+                                        .value as PresetFormattingSettings["instructTemplate"],
+                                })
+                            }
+                        >
+                            <option value="auto">Auto (detect from model)</option>
+                            <option value="none">None / native chat</option>
+                            <option value="chatml">ChatML / Qwen</option>
+                            <option value="llama3">Llama 3</option>
+                            <option value="mistral">Mistral</option>
+                            <option value="gemma2">Gemma 2</option>
+                            <option value="alpaca">Alpaca</option>
+                            <option value="deepseek-r1">DeepSeek-R1</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </label>
+                </div>
+                <div className="preset-toggle-row compact">
+                    {toggle(
+                        "sequencesAsStopStrings",
+                        "Instruct sequences as stop strings",
+                        "Automatically adds user and assistant instruct sequence prefixes to stop sequences to prevent the model from generating both sides of the conversation.",
+                    )}
+                </div>
+                {isCustom && (
+                    <div className="preset-custom-sequences-grid">
+                        <label title="Prefix placed immediately before each user turn in raw text completion.">
+                            User prefix
+                            <input
+                                value={settings.userPrefix ?? ""}
+                                placeholder="### Instruction:"
+                                onInput={(event) =>
+                                    update({ userPrefix: event.currentTarget.value })
+                                }
+                            />
+                        </label>
+                        <label title="Suffix placed immediately after each user turn in raw text completion.">
+                            User suffix
+                            <input
+                                value={settings.userSuffix ?? ""}
+                                onInput={(event) =>
+                                    update({ userSuffix: event.currentTarget.value })
+                                }
+                            />
+                        </label>
+                        <label title="Prefix placed immediately before each assistant turn in raw text completion.">
+                            Assistant prefix
+                            <input
+                                value={settings.assistantPrefix ?? ""}
+                                placeholder="### Response:"
+                                onInput={(event) =>
+                                    update({ assistantPrefix: event.currentTarget.value })
+                                }
+                            />
+                        </label>
+                        <label title="Suffix placed immediately after each assistant turn in raw text completion.">
+                            Assistant suffix
+                            <input
+                                value={settings.assistantSuffix ?? ""}
+                                onInput={(event) =>
+                                    update({ assistantSuffix: event.currentTarget.value })
+                                }
+                            />
+                        </label>
+                        <label title="Prefix placed immediately before each system/instruction turn in raw text completion.">
+                            System prefix
+                            <input
+                                value={settings.systemPrefix ?? ""}
+                                placeholder="### System:"
+                                onInput={(event) =>
+                                    update({ systemPrefix: event.currentTarget.value })
+                                }
+                            />
+                        </label>
+                        <label title="Suffix placed immediately after each system/instruction turn in raw text completion.">
+                            System suffix
+                            <input
+                                value={settings.systemSuffix ?? ""}
+                                onInput={(event) =>
+                                    update({ systemSuffix: event.currentTarget.value })
+                                }
+                            />
+                        </label>
+                    </div>
+                )}
+            </div>
         </section>
     );
 }
@@ -730,6 +1021,17 @@ function PresetGenerationEditor({
         onChange(next);
     }
 
+    function updateSamplerOrder(value: string) {
+        const samplerOrder = value
+            .split(",")
+            .map((item) => Number(item.trim()))
+            .filter((item) => Number.isInteger(item));
+        const next = { ...settings };
+        if (samplerOrder.length) next.samplerOrder = samplerOrder;
+        else delete next.samplerOrder;
+        onChange(next);
+    }
+
     return (
         <section className="preset-generation-panel" aria-label="Generation settings">
             <div className="preset-section-header">
@@ -752,108 +1054,243 @@ function PresetGenerationEditor({
                     ))}
                 </div>
             )}
-            <div className="preset-generation-grid">
-                <label>
-                    Stream responses
-                    <select
-                        value={
-                            settings.streaming === undefined
-                                ? "default"
-                                : settings.streaming
-                                  ? "enabled"
-                                  : "disabled"
+            <div className="preset-generation-card">
+                <h4>Core sampling</h4>
+                <div className="preset-generation-grid">
+                    <label title="Stream responses in real-time token-by-token instead of waiting for the full message.">
+                        Stream responses
+                        <select
+                            value={
+                                settings.streaming === undefined
+                                    ? "default"
+                                    : settings.streaming
+                                      ? "enabled"
+                                      : "disabled"
+                            }
+                            onChange={(event) =>
+                                updateStreaming(
+                                    (event.currentTarget as HTMLSelectElement).value,
+                                )
+                            }
+                        >
+                            <option value="default">
+                                Use global default (
+                                {streamingFallback ? "enabled" : "disabled"})
+                            </option>
+                            <option value="enabled">Enabled</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </label>
+                    <GenerationNumberField
+                        label="Temperature"
+                        title="Controls randomness. Lower values are more deterministic and focused; higher values are more creative and diverse."
+                        min={0}
+                        max={2}
+                        step={0.05}
+                        value={settings.temperature}
+                        onInput={(value) => updateNumber("temperature", value)}
+                    />
+                    <GenerationNumberField
+                        label="Top P"
+                        title="Top-P (Nucleus) sampling: Considers only tokens within the top cumulative probability mass."
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={settings.topP}
+                        onInput={(value) => updateNumber("topP", value)}
+                    />
+                    <GenerationNumberField
+                        label="Top K"
+                        title="Top-K sampling: Limits the selection pool to the K most probable next tokens."
+                        min={0}
+                        step={1}
+                        value={settings.topK}
+                        onInput={(value) =>
+                            updateNumber("topK", value, { integer: true })
                         }
-                        onChange={(event) =>
-                            updateStreaming(
-                                (event.currentTarget as HTMLSelectElement).value,
-                            )
+                    />
+                    <GenerationNumberField
+                        label="Min P"
+                        title="Min-P sampling: Discards tokens whose probability is lower than Min P multiplied by the probability of the most likely token."
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={settings.minP}
+                        onInput={(value) => updateNumber("minP", value)}
+                    />
+                    <GenerationNumberField
+                        label="Top A"
+                        title="Top-A sampling: Dynamically truncates token pool based on the highest probability token squared."
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={settings.topA}
+                        onInput={(value) => updateNumber("topA", value)}
+                    />
+                    <GenerationNumberField
+                        label="Presence penalty"
+                        title="Penalizes tokens that have already appeared in the text, encouraging the introduction of new topics."
+                        min={-2}
+                        max={2}
+                        step={0.05}
+                        value={settings.presencePenalty}
+                        onInput={(value) => updateNumber("presencePenalty", value)}
+                    />
+                    <GenerationNumberField
+                        label="Frequency penalty"
+                        title="Penalizes tokens based on how often they have appeared in the text, discouraging word repetition."
+                        min={-2}
+                        max={2}
+                        step={0.05}
+                        value={settings.frequencyPenalty}
+                        onInput={(value) => updateNumber("frequencyPenalty", value)}
+                    />
+                    <GenerationNumberField
+                        label="Repetition penalty"
+                        title="Applies an exponential penalty to tokens that have already appeared in the context window."
+                        min={0}
+                        max={2}
+                        step={0.05}
+                        value={settings.repetitionPenalty}
+                        onInput={(value) => updateNumber("repetitionPenalty", value)}
+                    />
+                    <GenerationNumberField
+                        label="Seed"
+                        title="Random seed for generation. Using the same seed with identical parameters reproduces deterministic output."
+                        step={1}
+                        value={settings.seed}
+                        onInput={(value) =>
+                            updateNumber("seed", value, { integer: true })
                         }
-                    >
-                        <option value="default">
-                            Use global default (
-                            {streamingFallback ? "enabled" : "disabled"})
-                        </option>
-                        <option value="enabled">Enabled</option>
-                        <option value="disabled">Disabled</option>
-                    </select>
-                </label>
-                <GenerationNumberField
-                    label="Temperature"
-                    min={0}
-                    max={2}
-                    step={0.05}
-                    value={settings.temperature}
-                    onInput={(value) => updateNumber("temperature", value)}
-                />
-                <GenerationNumberField
-                    label="Top P"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={settings.topP}
-                    onInput={(value) => updateNumber("topP", value)}
-                />
-                <GenerationNumberField
-                    label="Top K"
-                    min={0}
-                    step={1}
-                    value={settings.topK}
-                    onInput={(value) => updateNumber("topK", value, { integer: true })}
-                />
-                <GenerationNumberField
-                    label="Min P"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={settings.minP}
-                    onInput={(value) => updateNumber("minP", value)}
-                />
-                <GenerationNumberField
-                    label="Top A"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={settings.topA}
-                    onInput={(value) => updateNumber("topA", value)}
-                />
-                <GenerationNumberField
-                    label="Presence penalty"
-                    min={-2}
-                    max={2}
-                    step={0.05}
-                    value={settings.presencePenalty}
-                    onInput={(value) => updateNumber("presencePenalty", value)}
-                />
-                <GenerationNumberField
-                    label="Frequency penalty"
-                    min={-2}
-                    max={2}
-                    step={0.05}
-                    value={settings.frequencyPenalty}
-                    onInput={(value) => updateNumber("frequencyPenalty", value)}
-                />
-                <GenerationNumberField
-                    label="Repetition penalty"
-                    min={0}
-                    max={2}
-                    step={0.05}
-                    value={settings.repetitionPenalty}
-                    onInput={(value) => updateNumber("repetitionPenalty", value)}
-                />
-                <GenerationNumberField
-                    label="Seed"
-                    step={1}
-                    value={settings.seed}
-                    onInput={(value) => updateNumber("seed", value, { integer: true })}
-                />
+                    />
+                </div>
             </div>
-            <label>
-                Stop sequences
-                <StopSequencesTextarea
-                    value={settings.stopSequences}
-                    onChange={updateStopSequences}
-                />
-            </label>
+
+            <div className="preset-generation-card">
+                <h4>Advanced repetition & DRY</h4>
+                <div className="preset-generation-grid">
+                    <GenerationNumberField
+                        label="Rep penalty range"
+                        title="Number of previous tokens to consider when calculating repetition penalty (0 = entire context window)."
+                        min={0}
+                        step={1}
+                        value={settings.repetitionPenaltyRange}
+                        onInput={(value) =>
+                            updateNumber("repetitionPenaltyRange", value, {
+                                integer: true,
+                            })
+                        }
+                    />
+                    <GenerationNumberField
+                        label="DRY multiplier"
+                        title="DRY (Don't Repeat Yourself) penalty multiplier applied to matching n-gram phrases."
+                        min={0}
+                        step={0.01}
+                        value={settings.dryMultiplier}
+                        onInput={(value) => updateNumber("dryMultiplier", value)}
+                    />
+                    <GenerationNumberField
+                        label="DRY base"
+                        title="Base exponent for DRY penalty scaling as matching phrase length grows."
+                        min={1}
+                        step={0.01}
+                        value={settings.dryBase}
+                        onInput={(value) => updateNumber("dryBase", value)}
+                    />
+                    <GenerationNumberField
+                        label="DRY allowed length"
+                        title="Maximum number of repeated tokens allowed before DRY penalty begins."
+                        min={0}
+                        step={1}
+                        value={settings.dryAllowedLength}
+                        onInput={(value) =>
+                            updateNumber("dryAllowedLength", value, { integer: true })
+                        }
+                    />
+                    <GenerationNumberField
+                        label="DRY penalty last N"
+                        title="Maximum number of recent tokens checked for repeated phrase structures (0 = entire context)."
+                        min={0}
+                        step={1}
+                        value={settings.dryPenaltyLastN}
+                        onInput={(value) =>
+                            updateNumber("dryPenaltyLastN", value, { integer: true })
+                        }
+                    />
+                </div>
+            </div>
+
+            <div className="preset-generation-card">
+                <h4>XTC & Mirostat</h4>
+                <div className="preset-generation-grid">
+                    <GenerationNumberField
+                        label="XTC threshold"
+                        title="Exclude Top Candidates (XTC) threshold: Tokens above this probability may be excluded to encourage creative word choices."
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={settings.xtcThreshold}
+                        onInput={(value) => updateNumber("xtcThreshold", value)}
+                    />
+                    <GenerationNumberField
+                        label="XTC probability"
+                        title="Chance (0-1) of applying the XTC filter when candidates exceed the threshold."
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={settings.xtcProbability}
+                        onInput={(value) => updateNumber("xtcProbability", value)}
+                    />
+                    <GenerationNumberField
+                        label="Mirostat mode"
+                        title="Mirostat sampling algorithm (0 = disabled, 1 = Mirostat v1, 2 = Mirostat v2) that dynamically targets a specific perplexity level."
+                        min={0}
+                        step={1}
+                        value={settings.mirostatMode}
+                        onInput={(value) =>
+                            updateNumber("mirostatMode", value, { integer: true })
+                        }
+                    />
+                    <GenerationNumberField
+                        label="Mirostat tau"
+                        title="Target entropy (perplexity) for Mirostat sampling. Higher values yield more varied vocabulary."
+                        min={0}
+                        step={0.1}
+                        value={settings.mirostatTau}
+                        onInput={(value) => updateNumber("mirostatTau", value)}
+                    />
+                    <GenerationNumberField
+                        label="Mirostat eta"
+                        title="Learning rate for Mirostat entropy adjustment per generated token."
+                        min={0}
+                        step={0.01}
+                        value={settings.mirostatEta}
+                        onInput={(value) => updateNumber("mirostatEta", value)}
+                    />
+                </div>
+            </div>
+
+            <div className="preset-generation-card">
+                <h4>Stop sequences & provider samplers</h4>
+                <label title="Stop sequences: Generation stops immediately upon encountering any of these strings (one per line).">
+                    Stop sequences
+                    <StopSequencesTextarea
+                        value={settings.stopSequences}
+                        onChange={updateStopSequences}
+                    />
+                </label>
+                <label title="Custom numeric sampler pipeline order sent exclusively to KoboldCPP (e.g. 6, 0, 1, 3, 4, 2, 5).">
+                    KoboldCPP sampler order
+                    <input
+                        value={settings.samplerOrder?.join(", ") ?? ""}
+                        placeholder="6, 0, 1, 3, 4, 2, 5"
+                        onInput={(event) => updateSamplerOrder(event.currentTarget.value)}
+                    />
+                    <span className="field-hint">
+                        Optional numeric sampler order, sent only to KoboldCPP.
+                    </span>
+                </label>
+            </div>
         </section>
     );
 }
@@ -895,6 +1332,7 @@ type GenerationNumberFieldProps = {
     max?: number;
     min?: number;
     step?: number;
+    title?: string;
     value: number | undefined;
     onInput: (value: string) => void;
 };
@@ -904,11 +1342,12 @@ function GenerationNumberField({
     max,
     min,
     step,
+    title,
     value,
     onInput,
 }: GenerationNumberFieldProps) {
     return (
-        <label>
+        <label title={title}>
             {label}
             <DeferredNumberInput
                 max={max}

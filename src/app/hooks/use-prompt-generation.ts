@@ -36,6 +36,7 @@ import {
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { compilePresetMessages } from "#frontend/lib/presets/compile";
 import { getEffectiveContextTokenBudget } from "#frontend/lib/connections/context-budget";
+import { resolveEffectiveStopSequences } from "#frontend/lib/connections/generation-settings";
 import {
     preloadTokenizer,
     tokenizerContextForProfile,
@@ -752,15 +753,43 @@ export function usePromptGeneration({
         );
         const materializedPromptMessages =
             await materializeChatGenerationMessageAttachments(localPromptMessages);
+        const profileConfig = tokenProfile?.config as
+            | { model?: { id?: unknown } }
+            | undefined;
+        const profileModelId =
+            typeof profileConfig?.model?.id === "string" ? profileConfig.model.id : "";
+        const formatting = activePreset?.formatting;
+        const formattedPromptMessages = formatting?.alwaysAddCharacterName
+            ? materializedPromptMessages.map((message) =>
+                  message.role === "assistant" && typeof message.content === "string"
+                      ? {
+                            ...message,
+                            content: `${promptCharacter.data.name}: ${message.content}`,
+                        }
+                      : message,
+              )
+            : materializedPromptMessages;
+        const effectiveStops = resolveEffectiveStopSequences({
+            generation: activePreset?.generation,
+            formatting,
+            characterName: promptCharacter.data.name,
+            personaName: persona.name,
+            groupMemberNames: promptChat.members?.map((member) => member.name) ?? [],
+            modelId: profileModelId,
+        });
 
         return {
-            generation: activePreset?.generation,
+            generation: {
+                ...activePreset?.generation,
+                ...(effectiveStops ? { stopSequences: effectiveStops } : {}),
+            },
+            formatting,
             messages: generationMessages,
             debug: reconcilePromptDebugBlocks(promptBuild.debug, promptMessages),
             onImage: options.onImage,
             onReasoningToken: options.onReasoningToken,
             onToken: options.onToken,
-            promptMessages: materializedPromptMessages,
+            promptMessages: formattedPromptMessages,
             signal: options.signal,
             stream: options.stream,
         };

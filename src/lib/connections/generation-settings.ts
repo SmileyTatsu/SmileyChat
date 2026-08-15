@@ -1,4 +1,53 @@
-import type { PresetGenerationSettings } from "../presets/types";
+import type {
+    PresetFormattingSettings,
+    PresetGenerationSettings,
+} from "../presets/types";
+
+export function defaultStopTokensForModel(modelId: string): string[] {
+    const model = modelId.trim().toLowerCase();
+    if (/(^|[/:_-])llama[- ]?3/.test(model)) return ["<|eot_id|>", "<|end_of_text|>"];
+    if (/qwen|chatml/.test(model)) return ["<|im_end|>", "<|endoftext|>"];
+    if (/deepseek/.test(model)) return ["<｜end_of_sentence｜>", "<|end_of_sentence|>"];
+    if (/mistral|mixtral/.test(model)) return ["</s>", "[/INST]"];
+    return [];
+}
+
+export function resolveEffectiveStopSequences({
+    generation,
+    formatting,
+    characterName,
+    personaName,
+    groupMemberNames = [],
+    modelId = "",
+}: {
+    generation?: PresetGenerationSettings;
+    formatting?: PresetFormattingSettings;
+    characterName?: string;
+    personaName?: string;
+    groupMemberNames?: string[];
+    modelId?: string;
+}) {
+    const stops = new Set(generation?.stopSequences?.filter(Boolean) ?? []);
+    if (formatting?.singleLineMode) stops.add("\n");
+    if (formatting?.namesAsStopStrings) {
+        [personaName, characterName, ...groupMemberNames]
+            .filter((name): name is string => Boolean(name?.trim()))
+            .forEach((name) => stops.add(`\n${name.trim()}:`));
+        stops.add("\nUser:");
+        stops.add("\n{{user}}:");
+    }
+    if (formatting?.separatorsAsStopStrings)
+        [formatting.exampleSeparator, formatting.chatStartSeparator]
+            .filter((item): item is string => Boolean(item?.trim()))
+            .forEach((item) => stops.add(item.trim()));
+    if (formatting?.sequencesAsStopStrings)
+        [formatting.userPrefix, formatting.assistantPrefix]
+            .filter((item): item is string => Boolean(item?.trim()))
+            .forEach((item) => stops.add(item.trim()));
+    if (formatting?.instructTemplate === "auto")
+        defaultStopTokensForModel(modelId).forEach((token) => stops.add(token));
+    return stops.size ? [...stops] : undefined;
+}
 
 export function stopSequencesForGeneration(
     generation: PresetGenerationSettings | undefined,

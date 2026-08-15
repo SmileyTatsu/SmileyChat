@@ -9,6 +9,7 @@ import {
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
     isXAIProfile,
+    isKoboldCPPProfile,
     type ConnectionSettings,
 } from "./config";
 import { createAnthropicConnection } from "./anthropic/adapter";
@@ -17,6 +18,7 @@ import { createNovelAIConnection } from "./novelai/adapter";
 import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
 import { createXAIConnection } from "./xai/adapter";
+import { createKoboldCPPConnection } from "./koboldcpp/adapter";
 
 export function getAdapterForSettings(
     settings: ConnectionSettings,
@@ -101,6 +103,12 @@ export function getAdapterForSettings(
             apiKey: profile.config.apiKey?.trim() || undefined,
         });
     }
+    if (isKoboldCPPProfile(profile)) {
+        return createKoboldCPPConnection({
+            ...profile.config,
+            contextTokenBudget: profile.contextTokenBudget,
+        });
+    }
 
     const pluginAdapter = createAdapterFromPluginProvider(profile.provider, profile);
 
@@ -127,7 +135,8 @@ function applyTemporaryModelOverride(
         isGoogleAIProfile(profile) ||
         isAnthropicProfile(profile) ||
         isNovelAIProfile(profile) ||
-        isXAIProfile(profile)
+        isXAIProfile(profile) ||
+        isKoboldCPPProfile(profile)
     ) {
         return {
             ...profile,

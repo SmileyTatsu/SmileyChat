@@ -18,6 +18,7 @@ import {
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
     isXAIProfile,
+    isKoboldCPPProfile,
     sanitizeConnectionSecrets,
     sanitizeConnectionSettings,
     switchProfileProvider,
@@ -83,6 +84,12 @@ import { OpenAICompatibleConnection } from "./providers/openai-compatible-connec
 import { OpenRouterConnection } from "./providers/openrouter-connection";
 import { NovelAIConnection } from "./providers/novelai-connection";
 import { XAIConnection } from "./providers/xai-connection";
+import { KoboldCPPConnection } from "./providers/koboldcpp-connection";
+import {
+    createKoboldCPPConnection,
+    createKoboldCPPContextUrl,
+    createKoboldCPPModelUrl,
+} from "#frontend/lib/connections/koboldcpp/adapter";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
@@ -421,6 +428,36 @@ export function ConnectionsSettings({
                 return;
             }
 
+            if (isKoboldCPPProfile(activeProfile)) {
+                setRequestState("loading");
+                setStatusMessage(
+                    `Testing POST ${createKoboldCPPModelUrl(activeProfile.config).replace(/\/api\/v1\/model$/, "/api/v1/generate")}`,
+                );
+                try {
+                    const result = await createKoboldCPPConnection(
+                        activeProfile.config,
+                    ).generate({
+                        context: "",
+                        messages: [
+                            createUserMessage(
+                                "Reply briefly to confirm the connection works.",
+                                defaultPersona,
+                            ),
+                        ],
+                    });
+                    setStatusMessage(
+                        `KoboldCPP connection test succeeded: ${result.message}`,
+                    );
+                    setRequestState("success");
+                } catch (error) {
+                    setStatusMessage(
+                        messageFromError(error, "Unexpected connection error."),
+                    );
+                    setRequestState("error");
+                }
+                return;
+            }
+
             if (!activePluginProvider?.testConnection) {
                 setStatusMessage(
                     `${activeProfile.name} does not provide a connection test.`,
@@ -687,6 +724,61 @@ export function ConnectionsSettings({
             setRequestState("success");
         } catch (error) {
             setStatusMessage(messageFromError(error, "Unexpected connection error."));
+            setRequestState("error");
+        }
+    }
+
+    async function connectKoboldCPP() {
+        if (!isKoboldCPPProfile(activeProfile)) return;
+        setRequestState("loading");
+        setStatusMessage("Connecting to KoboldCPP…");
+        try {
+            const [modelResponse, contextResponse] = await Promise.all([
+                fetch(createKoboldCPPModelUrl(activeProfile.config)),
+                fetch(createKoboldCPPContextUrl(activeProfile.config)),
+            ]);
+            if (!modelResponse.ok || !contextResponse.ok)
+                throw new Error("Could not connect to KoboldCPP endpoints.");
+            const modelData = (await modelResponse.json()) as {
+                result?: string;
+                model?: string;
+            };
+            const contextData = (await contextResponse.json()) as
+                | { value?: number; max_context_length?: number }
+                | number;
+            const modelId = modelData.result ?? modelData.model ?? "";
+            const maxContextLength =
+                typeof contextData === "number"
+                    ? contextData
+                    : (contextData.value ?? contextData.max_context_length);
+            onSettingsChange({
+                ...settings,
+                profiles: settings.profiles.map((profile) =>
+                    profile.id === activeProfile.id
+                        ? {
+                              ...profile,
+                              contextTokenBudget:
+                                  typeof maxContextLength === "number"
+                                      ? maxContextLength
+                                      : profile.contextTokenBudget,
+                              config: {
+                                  ...activeProfile.config,
+                                  model: { source: "loaded", id: modelId },
+                                  ...(typeof maxContextLength === "number"
+                                      ? { maxContextLength }
+                                      : {}),
+                              },
+                              updatedAt: new Date().toISOString(),
+                          }
+                        : profile,
+                ),
+            });
+            setStatusMessage(
+                `Connected to KoboldCPP: ${modelId || "loaded model"}${maxContextLength ? ` (${maxContextLength.toLocaleString()} context tokens)` : ""}.`,
+            );
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(messageFromError(error, "KoboldCPP connection failed."));
             setRequestState("error");
         }
     }
@@ -971,6 +1063,7 @@ export function ConnectionsSettings({
                                 <option value="anthropic">Anthropic</option>
                                 <option value="novelai">NovelAI</option>
                                 <option value="xai">xAI</option>
+                                <option value="koboldcpp">KoboldCPP</option>
                                 {pluginProviders.map((provider) => (
                                     <option key={provider.id} value={provider.id}>
                                         {provider.label}
@@ -1115,6 +1208,14 @@ export function ConnectionsSettings({
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
                             onLoadModels={loadModels}
+                            onTest={testConnection}
+                        />
+                    ) : isKoboldCPPProfile(activeProfile) ? (
+                        <KoboldCPPConnection
+                            config={activeProfile.config}
+                            disabled={isBusy}
+                            onChange={(config) => updateActiveProfileConfig(config)}
+                            onConnect={() => void connectKoboldCPP()}
                             onTest={testConnection}
                         />
                     ) : activePluginProvider?.renderSettings ? (

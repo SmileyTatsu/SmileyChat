@@ -4,6 +4,41 @@ import { resolvePresetStreaming } from "./generation";
 import { importSillyTavernPreset, normalizePreset } from "./normalize";
 
 describe("preset normalization", () => {
+    test("normalizes and imports SillyTavern formatting settings", () => {
+        const normalized = normalizePreset({
+            title: "Formatting",
+            prompts: [],
+            formatting: { namesAsStopStrings: true },
+        });
+        expect(normalized.formatting).toMatchObject({
+            namesAsStopStrings: true,
+            exampleSeparator: "***",
+            instructTemplate: "auto",
+        });
+        const { preset } = importSillyTavernPreset(
+            {
+                name: "ST",
+                prompts: [],
+                names_as_stop: true,
+                single_line: true,
+                always_force_name2: true,
+                example_separator: "---",
+                chat_start: "START",
+                wrap_sequences_as_stop: true,
+                user_prefix: "U:",
+            },
+            "ST",
+        );
+        expect(preset.formatting).toMatchObject({
+            namesAsStopStrings: true,
+            singleLineMode: true,
+            alwaysAddCharacterName: true,
+            exampleSeparator: "---",
+            chatStartSeparator: "START",
+            sequencesAsStopStrings: true,
+            userPrefix: "U:",
+        });
+    });
     test("preserves presets without generation overrides", () => {
         const preset = normalizePreset({
             id: "preset-a",

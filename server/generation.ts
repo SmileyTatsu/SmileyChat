@@ -7,6 +7,7 @@ import {
     getActiveConnectionProfile,
     isAnthropicProfile,
     isGoogleAIProfile,
+    isKoboldCPPProfile,
     isNovelAIProfile,
     isOpenAICompatibleProfile,
     isOpenRouterProfile,
@@ -20,6 +21,7 @@ import { createNovelAIConnection } from "#frontend/lib/connections/novelai/adapt
 import { createOpenAICompatibleConnection } from "#frontend/lib/connections/openai-compatible/adapter";
 import { createOpenRouterConnection } from "#frontend/lib/connections/openrouter/adapter";
 import { createXAIConnection } from "#frontend/lib/connections/xai/adapter";
+import { createKoboldCPPConnection } from "#frontend/lib/connections/koboldcpp/adapter";
 import { listAnthropicModels } from "#frontend/lib/connections/anthropic/models";
 import { listGoogleAIModels } from "#frontend/lib/connections/google-ai/models";
 import { listOpenAICompatibleModels } from "#frontend/lib/connections/openai-compatible/models";
@@ -39,6 +41,7 @@ import { readConnectionSecrets, readConnectionSettings } from "./settings";
 type GenerationPayload = {
     profileId?: string;
     generation?: ChatGenerationRequest["generation"];
+    formatting?: ChatGenerationRequest["formatting"];
     promptMessages: ChatGenerationMessage[];
     stream?: boolean;
     tools?: ToolDefinition[];
@@ -89,6 +92,7 @@ export async function generateWithSavedConnection(
         try {
             const result = await adapter.generate({
                 generation: payload.generation,
+                formatting: payload.formatting,
                 messages: [],
                 promptMessages: payload.promptMessages,
                 signal,
@@ -167,6 +171,7 @@ export async function generateWithSavedConnection(
             try {
                 const result = await adapter.generate({
                     generation: payload.generation,
+                    formatting: payload.formatting,
                     messages: [],
                     onImage: (url) => {
                         noteFirstToken();
@@ -281,6 +286,9 @@ function parseGenerationPayload(value: unknown): GenerationPayload {
         generation: isRecord(value.generation)
             ? (value.generation as ChatGenerationRequest["generation"])
             : undefined,
+        formatting: isRecord(value.formatting)
+            ? (value.formatting as ChatGenerationRequest["formatting"])
+            : undefined,
         promptMessages: value.promptMessages,
         stream: value.stream === true,
         tools: Array.isArray(value.tools) ? (value.tools as ToolDefinition[]) : undefined,
@@ -308,6 +316,12 @@ function createBuiltInAdapter(profile: ConnectionProfile): ConnectionAdapter {
     if (isAnthropicProfile(profile)) return createAnthropicConnection(profile.config);
     if (isNovelAIProfile(profile)) return createNovelAIConnection(profile.config);
     if (isXAIProfile(profile)) return createXAIConnection(profile.config);
+    if (isKoboldCPPProfile(profile)) {
+        return createKoboldCPPConnection({
+            ...profile.config,
+            contextTokenBudget: profile.contextTokenBudget,
+        });
+    }
 
     throw new HttpError(
         400,

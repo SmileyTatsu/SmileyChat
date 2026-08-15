@@ -855,10 +855,77 @@
     min-width: 0;
 }
 
-.preset-generation-panel {
+.preset-generation-panel,
+.preset-formatting-panel {
     display: grid;
     gap: 12px;
     min-width: 0;
+}
+
+.preset-formatting-card,
+.preset-generation-card {
+    display: grid;
+    gap: 10px;
+    border: 1px solid #303440;
+    border-radius: 8px;
+    background: #191b21;
+    padding: 12px;
+}
+
+.preset-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.preset-card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.preset-scope-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(99, 137, 246, 0.12);
+    border: 1px solid rgba(99, 137, 246, 0.28);
+    color: #9ab4f9;
+    font-size: 0.73rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+}
+
+.preset-formatting-card h4,
+.preset-generation-card h4,
+.preset-card-header h4 {
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.preset-card-header button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid #303440;
+    border-radius: 6px;
+    background: #242832;
+    color: #ececf1;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.preset-card-header button:hover {
+    background: #2c313d;
+    border-color: #3b4050;
 }
 
 .preset-generation-grid {
@@ -868,10 +935,35 @@
     min-width: 0;
 }
 
+.preset-custom-sequences-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.preset-custom-sequences-grid label,
 .preset-generation-grid label,
-.preset-generation-panel > label {
+.preset-generation-panel > label,
+.preset-formatting-panel > label,
+.preset-formatting-card label {
     display: grid;
     gap: 6px;
+}
+
+.preset-toggle-row label.checkbox-field,
+.preset-formatting-card label.checkbox-field {
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.preset-toggle-row label.checkbox-field input,
+.preset-formatting-card label.checkbox-field input {
+    width: auto;
+    margin: 0;
 }
 
 .preset-stop-sequences {

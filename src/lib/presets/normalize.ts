@@ -14,6 +14,7 @@ import type {
     PresetPrompt,
     PresetPromptOrderEntry,
     PresetPromptRole,
+    PresetFormattingSettings,
     SillyTavernImportSummary,
     SmileyPreset,
 } from "./types";
@@ -116,6 +117,7 @@ export function normalizePreset(value: unknown): SmileyPreset {
         : [];
     const orderedIds = new Set(promptOrder.map((entry) => entry.promptId));
     const generation = normalizePresetGenerationSettings(preset.generation);
+    const formatting = normalizePresetFormattingSettings(preset.formatting);
     const metadata = normalizeRecord(preset.metadata);
     const extensions = normalizeRecord(preset.extensions);
 
@@ -134,6 +136,7 @@ export function normalizePreset(value: unknown): SmileyPreset {
         prompts,
         promptOrder,
         ...(generation ? { generation } : {}),
+        ...(formatting ? { formatting } : {}),
         ...(metadata ? { metadata } : {}),
         ...(extensions ? { extensions } : {}),
         createdAt: stringOrFallback(preset.createdAt, now),
@@ -160,6 +163,7 @@ export function importSillyTavernPreset(
     const promptIdRewriteMap = promptIdMapFromEntries(promptEntries);
     const sourceOrder = selectSillyTavernPromptOrder(source.prompt_order);
     const generationImport = normalizeSillyTavernGenerationSettings(source);
+    const formatting = normalizeSillyTavernFormattingSettings(source);
     const orderedPromptIds = new Set<string>();
     const promptOrder = sourceOrder
         .map((entry) => normalizeSillyTavernOrderEntry(entry))
@@ -195,6 +199,7 @@ export function importSillyTavernPreset(
         ...(generationImport.generation
             ? { generation: generationImport.generation }
             : {}),
+        ...(formatting ? { formatting } : {}),
         createdAt: now,
         updatedAt: now,
     });
@@ -211,6 +216,85 @@ export function importSillyTavernPreset(
             ),
         },
     };
+}
+
+function normalizePresetFormattingSettings(value: unknown): PresetFormattingSettings {
+    const source = isRecord(value) ? value : {};
+    const template = source.instructTemplate;
+    const instructTemplate: PresetFormattingSettings["instructTemplate"] =
+        template === "none" ||
+        template === "chatml" ||
+        template === "llama3" ||
+        template === "mistral" ||
+        template === "gemma2" ||
+        template === "alpaca" ||
+        template === "deepseek-r1" ||
+        template === "custom"
+            ? template
+            : "auto";
+    const formatting = {
+        ...(source.namesAsStopStrings === true ? { namesAsStopStrings: true } : {}),
+        ...(source.separatorsAsStopStrings === true
+            ? { separatorsAsStopStrings: true }
+            : {}),
+        ...(source.singleLineMode === true ? { singleLineMode: true } : {}),
+        ...(source.alwaysAddCharacterName === true
+            ? { alwaysAddCharacterName: true }
+            : {}),
+        exampleSeparator: stringOrFallback(source.exampleSeparator, "***"),
+        chatStartSeparator: stringOrFallback(source.chatStartSeparator, "***"),
+        instructTemplate,
+        ...(source.sequencesAsStopStrings === true
+            ? { sequencesAsStopStrings: true }
+            : {}),
+        ...optionalFormattingSequences(source),
+    };
+    return formatting;
+}
+
+function normalizeSillyTavernFormattingSettings(
+    source: Record<string, unknown>,
+): PresetFormattingSettings {
+    const instruct = isRecord(source.instruct) ? source.instruct : {};
+    return normalizePresetFormattingSettings({
+        namesAsStopStrings:
+            source.names_as_stop === true || source.names_behavior === "always",
+        separatorsAsStopStrings: source.separators_as_stop === true,
+        singleLineMode: source.single_line === true,
+        alwaysAddCharacterName: source.always_force_name2 === true,
+        exampleSeparator: source.example_separator,
+        chatStartSeparator: source.chat_start,
+        instructTemplate:
+            typeof source.instruct_template === "string"
+                ? source.instruct_template
+                : instruct.template,
+        sequencesAsStopStrings:
+            source.wrap_sequences_as_stop === true || source.sequences_as_stop === true,
+        userPrefix: source.user_prefix ?? instruct.user_prefix,
+        userSuffix: source.user_suffix ?? instruct.user_suffix,
+        assistantPrefix: source.assistant_prefix ?? instruct.assistant_prefix,
+        assistantSuffix: source.assistant_suffix ?? instruct.assistant_suffix,
+        systemPrefix: source.system_prefix ?? instruct.system_prefix,
+        systemSuffix: source.system_suffix ?? instruct.system_suffix,
+    });
+}
+
+function optionalFormattingSequences(source: Record<string, unknown>) {
+    const keys = [
+        "userPrefix",
+        "userSuffix",
+        "assistantPrefix",
+        "assistantSuffix",
+        "systemPrefix",
+        "systemSuffix",
+    ] as const;
+    return Object.fromEntries(
+        keys.flatMap((key) =>
+            typeof source[key] === "string" && source[key].trim()
+                ? [[key, source[key]]]
+                : [],
+        ),
+    );
 }
 
 export function createBlankPrompt(): PresetPrompt {

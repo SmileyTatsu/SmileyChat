@@ -37,6 +37,17 @@ const localCatalogs: Partial<
 };
 
 export function getModelMaxContextLimit(profile: ConnectionProfile | undefined): number {
+    if (profile?.provider === "koboldcpp") {
+        const configured = (profile.config as { maxContextLength?: unknown })
+            .maxContextLength;
+        if (
+            typeof configured === "number" &&
+            Number.isFinite(configured) &&
+            configured > 0
+        ) {
+            return Math.floor(configured);
+        }
+    }
     const model = getSelectedModel(profile);
     if (model?.source !== "custom" && model?.id) {
         const limit = getLocalModelContextTokenLimit(profile?.provider, model.id);
