@@ -417,7 +417,7 @@ export function useChatSession({
                 return;
             }
 
-            const errorMessage = generationErrorMessage(error);
+            const errorMessage = formatInterruptedGeneration(streamedContent, error);
             const targetChat = currentOrSourceChat(pendingChat);
             const lastMessage = targetChat.messages[targetChat.messages.length - 1];
 
@@ -438,11 +438,6 @@ export function useChatSession({
                         ),
                     ],
                     targetChat,
-                );
-            }
-            if (latestChatRef.current?.id === chatId) {
-                setChatError(
-                    "Generation failed. Swipe the failed response or send again to retry.",
                 );
             }
         } finally {
@@ -605,22 +600,18 @@ export function useChatSession({
                 return;
             }
 
+            const errorMessage = formatInterruptedGeneration(streamedContent, error);
             const targetChat = currentOrSourceChat(sourceChat);
             if (streamGeneration) {
-                updateMessageContent(messageId, generationErrorMessage(error), "error");
+                updateMessageContent(messageId, errorMessage, "error");
             } else {
                 appendSwipe(
                     messageId,
-                    generationErrorMessage(error),
+                    errorMessage,
                     "error",
                     undefined,
                     undefined,
                     targetChat,
-                );
-            }
-            if (latestChatRef.current?.id === chatId) {
-                setChatError(
-                    "Generation failed. Swipe the failed response again to retry.",
                 );
             }
         } finally {
@@ -744,7 +735,11 @@ export function useChatSession({
             );
         } catch (error) {
             if (!isAbortError(error)) {
-                setChatError(generationErrorMessage(error));
+                updateMessageContent(
+                    messageId,
+                    formatInterruptedGeneration(streamedContent, error),
+                    "error",
+                );
             }
         } finally {
             endGenerationController(chatId, abortController);
@@ -1057,8 +1052,15 @@ export function useChatSession({
     };
 }
 
-function generationErrorMessage(error: unknown) {
-    return `Generation failed: ${messageFromError(error)}`;
+export function formatInterruptedGeneration(content: string, error: unknown): string {
+    const errorDetail = messageFromError(error);
+    const trimmed = content.trim();
+
+    if (!trimmed) {
+        return `Generation failed: ${errorDetail}`;
+    }
+
+    return `${trimmed}\n\n*[Generation interrupted during streaming: ${errorDetail}]*`;
 }
 
 function isAbortError(error: unknown) {
