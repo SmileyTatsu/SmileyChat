@@ -8,6 +8,7 @@ This folder contains user guides, reference material, plugin documentation, and 
 - [How to Connect AI Models](guides/connecting-models.md)
 - [How to Import Characters](guides/importing-characters.md)
 - [Understanding Presets](guides/understanding-presets.md)
+- [Formatting & Instruct Templates (Beta)](guides/formatting-and-instruct.md)
 - [How to Backup and Restore Data](guides/backup-and-restore.md)
 - [How to Access SmileyChat Remotely](guides/remote-access.md)
 - [Troubleshooting](guides/troubleshooting.md)
@@ -17,6 +18,7 @@ This folder contains user guides, reference material, plugin documentation, and 
 
 - [Providers & AI Setup](reference/providers.md)
 - [Preset Macros](reference/macros.md)
+- [SillyTavern Compatibility](reference/sillytavern-compatibility.md)
 - [User Data & Storage](reference/user-data.md)
 - [Local API Routes](reference/api.md)
 - [Security Model](reference/security.md)

@@ -1,5 +1,6 @@
 import { isRecord } from "#frontend/lib/common/guards";
 import type { ChatMode } from "#frontend/types";
+import type { PresetFormattingSettings } from "#frontend/lib/presets/types";
 
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type FontScale = "small" | "default" | "large";
@@ -34,6 +35,11 @@ export type AppPreferences = {
     layout: {
         characterPanelOpenByDefault: boolean;
         railOrder: string[];
+    };
+    /** Global text-completion formatting, merged with active preset overrides for generation. */
+    formatting: {
+        activeTemplateId: string;
+        settings: PresetFormattingSettings;
     };
     sillytavern: {
         enabled: boolean;
@@ -82,6 +88,10 @@ export const defaultAppPreferences: AppPreferences = {
         characterPanelOpenByDefault: true,
         railOrder: [],
     },
+    formatting: {
+        activeTemplateId: "builtin:auto",
+        settings: { instructTemplate: "auto" },
+    },
     sillytavern: {
         enabled: true,
         basePath: "",
@@ -104,6 +114,7 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
     const appearance = isRecord(preferences.appearance) ? preferences.appearance : {};
     const chat = isRecord(preferences.chat) ? preferences.chat : {};
     const layout = isRecord(preferences.layout) ? preferences.layout : {};
+    const formatting = isRecord(preferences.formatting) ? preferences.formatting : {};
     const sillytavern = isRecord(preferences.sillytavern) ? preferences.sillytavern : {};
 
     return {
@@ -200,6 +211,16 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 defaultAppPreferences.layout.characterPanelOpenByDefault,
             ),
             railOrder: normalizeRailOrder(layout.railOrder),
+        },
+        formatting: {
+            activeTemplateId:
+                typeof formatting.activeTemplateId === "string" &&
+                formatting.activeTemplateId
+                    ? formatting.activeTemplateId
+                    : defaultAppPreferences.formatting.activeTemplateId,
+            settings: isRecord(formatting.settings)
+                ? (formatting.settings as PresetFormattingSettings)
+                : defaultAppPreferences.formatting.settings,
         },
         sillytavern: {
             enabled: booleanOrFallback(sillytavern.enabled, true),

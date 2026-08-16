@@ -342,6 +342,113 @@ describe("compilePresetMessages", () => {
             ),
         ).toEqual(["Found it", "The lookup is complete.", "after-tool-turn"]);
     });
+
+    test("compiles preset prompts consistently with macros and custom guidelines", () => {
+        const customPreset = presetWithPrompts([
+            prompt(
+                "main-system",
+                "Main System",
+                "You are {{char}}, an uncensored roleplay assistant for {{user}}.",
+            ),
+            prompt("chat-history", "Chat History", "{{chat_history}}"),
+        ]);
+        const customContext = {
+            ...context({
+                messages: [
+                    message("msg-1", "user", "Hello!"),
+                    message("msg-2", "character", "Greetings!"),
+                ],
+            }),
+        };
+
+        const compiled = compilePresetMessages(customPreset, customContext);
+        const texts = textContents(compiled);
+
+        expect(texts[0]).toBe("You are Luna, an uncensored roleplay assistant for Anon.");
+        expect(texts).toContain("Hello!");
+        expect(texts).toContain("Greetings!");
+    });
+
+    test("compiles text completion prompt using storyString by default", () => {
+        const customPreset = presetWithPrompts([
+            prompt("main-system", "Main System", "Preset instructions"),
+            prompt("chat-history", "Chat History", "{{chat_history}}"),
+        ]);
+        const customContext = {
+            ...context({
+                messages: [
+                    message("msg-1", "user", "Hello!"),
+                    message("msg-2", "character", "Greetings!"),
+                ],
+            }),
+            isTextCompletion: true,
+            formatting: {
+                storyString:
+                    "<s>[SYSTEM_PROMPT]{{#if system}}{{system}}\n\n{{/if}}## {{char}}:\n{{description}}[/SYSTEM_PROMPT]",
+                systemPrompt: "Uncensored guidelines for {{char}}",
+            },
+        };
+
+        const compiled = compilePresetMessages(customPreset, customContext);
+        const texts = textContents(compiled);
+
+        expect(texts[0]).toBe(
+            "<s>[SYSTEM_PROMPT]Uncensored guidelines for Luna\n\n## Luna:\nA precise character description.[/SYSTEM_PROMPT]",
+        );
+        expect(texts).toContain("Hello!");
+        expect(texts).toContain("Greetings!");
+    });
+
+    test("places custom-template examples and Chat Start before history", () => {
+        const compiled = compilePresetMessages(undefined, {
+            ...context({
+                messages: [message("msg-1", "user", "Hello!")],
+            }),
+            isTextCompletion: true,
+            formatting: {
+                instructTemplate: "custom",
+                storyString: "Story",
+                exampleSeparator: "<START>",
+                chatStartSeparator: "<CHAT>",
+            },
+        });
+
+        expect(compiled.map((message) => message.formattingKind)).toEqual([
+            "story",
+            "raw",
+            "raw",
+            undefined,
+        ]);
+        expect(textContents(compiled)).toEqual([
+            "Story",
+            "<START>\nLuna: Example line.",
+            "<CHAT>",
+            "Hello!",
+        ]);
+    });
+
+    test("compiles preset prompt order when overridePresetPromptOrder is enabled on text completion", () => {
+        const customPreset = presetWithPrompts([
+            prompt("custom-intro", "Custom Intro", "CUSTOM_OVERRIDE: You are {{char}}"),
+            prompt("chat-history", "Chat History", "{{chat_history}}"),
+        ]);
+        const customContext = {
+            ...context({
+                messages: [message("msg-1", "user", "Hello!")],
+            }),
+            isTextCompletion: true,
+            formatting: {
+                overridePresetPromptOrder: true,
+                storyString: "This should be bypassed",
+            },
+        };
+
+        const compiled = compilePresetMessages(customPreset, customContext);
+        const texts = textContents(compiled);
+
+        expect(texts[0]).toBe("CUSTOM_OVERRIDE: You are Luna");
+        expect(texts).toContain("Hello!");
+    });
 });
 
 function context(overrides: { messages?: Message[] } = {}) {

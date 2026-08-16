@@ -40,47 +40,84 @@ export async function buildPromptForGeneration({
 }): Promise<PromptBuildResult> {
     const processedContext = await applyContextMiddlewares(context, contextMiddlewares);
     const injections = await collectPromptInjections(processedContext, injectors);
-    const budget = planPromptBudget(processedContext, injections);
+    const textCompletionWorldInfo = processedContext.isTextCompletion
+        ? textCompletionWorldInfoFromInjections(injections)
+        : undefined;
+    const promptContext = {
+        ...processedContext,
+        ...(textCompletionWorldInfo ? { textCompletionWorldInfo } : {}),
+    };
+    const promptInjections = textCompletionWorldInfo
+        ? injections.filter(
+              (injection) =>
+                  !(
+                      injection.source === "lorebook" &&
+                      (injection.anchor === "before-character" ||
+                          injection.anchor === "after-character")
+                  ),
+          )
+        : injections;
+    const budget = planPromptBudget(promptContext, promptInjections);
     const historyMessages = selectHistoryMessagesForBudget({
-        messages: processedContext.messages,
+        messages: promptContext.messages,
         availableHistoryTokens: budget.availableHistoryTokens,
-        tokenContext: processedContext.tokenContext,
+        tokenContext: promptContext.tokenContext,
     });
-    const outlets = createPromptOutletRegistry(injections);
-    const compiled = compilePresetMessagesWithMetadata(processedContext.preset, {
-        character: processedContext.character,
-        generation: processedContext.generation,
-        group: processedContext.group,
+    const outlets = createPromptOutletRegistry(promptInjections);
+    const compiled = compilePresetMessagesWithMetadata(promptContext.preset, {
+        character: promptContext.character,
+        generation: promptContext.generation,
+        group: promptContext.group,
         // Pre-selection is a fast conservative estimate; final budget is enforced after compile.
         historyMessages,
-        metadata: processedContext.metadata ?? processedContext.chat.metadata,
-        messages: processedContext.messages,
-        mode: processedContext.mode,
+        metadata: promptContext.metadata ?? promptContext.chat.metadata,
+        messages: promptContext.messages,
+        mode: promptContext.mode,
         outlets,
-        personaDescription: processedContext.persona.description,
-        personaName: processedContext.persona.name,
-        userStatus: processedContext.userStatus,
+        personaDescription: promptContext.persona.description,
+        personaName: promptContext.persona.name,
+        userStatus: promptContext.userStatus,
+        formatting: promptContext.preferences.formatting.settings,
+        isTextCompletion: promptContext.isTextCompletion,
+        worldInfoBefore: promptContext.textCompletionWorldInfo?.before,
+        worldInfoAfter: promptContext.textCompletionWorldInfo?.after,
     });
-    const promptItems = applyPromptInjectionsWithMetadata(compiled, injections);
+    const promptItems = applyPromptInjectionsWithMetadata(compiled, promptInjections);
     const trimmedPrompt = finalizeAssembledPromptBudget({
         messages: historyMessages,
         promptItems,
-        tokenBudget: processedContext.tokenBudget,
-        tokenContext: processedContext.tokenContext,
+        tokenBudget: promptContext.tokenBudget,
+        tokenContext: promptContext.tokenContext,
     });
 
     return {
         debug: buildDebug({
             budget,
-            injections,
+            injections: promptInjections,
             messages: trimmedPrompt.messages,
             promptItems: trimmedPrompt.promptItems,
-            preset: processedContext.preset,
-            sourceMessages: processedContext.messages,
+            preset: promptContext.preset,
+            sourceMessages: promptContext.messages,
             tokenEstimate: trimmedPrompt.tokenEstimate,
         }),
         messages: trimmedPrompt.messages,
         promptMessages: trimmedPrompt.promptMessages,
+    };
+}
+
+function textCompletionWorldInfoFromInjections(injections: PromptInjection[]) {
+    const contentFor = (anchor: "before-character" | "after-character") =>
+        injections
+            .filter(
+                (injection) =>
+                    injection.source === "lorebook" && injection.anchor === anchor,
+            )
+            .sort((a, b) => a.order - b.order)
+            .map((injection) => injection.content)
+            .join("\n\n");
+    return {
+        before: contentFor("before-character"),
+        after: contentFor("after-character"),
     };
 }
 
@@ -100,6 +137,10 @@ function planPromptBudget(
         personaDescription: context.persona.description,
         personaName: context.persona.name,
         userStatus: context.userStatus,
+        formatting: context.preferences.formatting.settings,
+        isTextCompletion: context.isTextCompletion,
+        worldInfoBefore: context.textCompletionWorldInfo?.before,
+        worldInfoAfter: context.textCompletionWorldInfo?.after,
     }).map((item) => item.message);
     const staticPromptTokens = estimateChatGenerationMessages(
         staticPromptMessages,
@@ -415,6 +456,60 @@ function promptDebugBlock(
         return {
             kind: "prompt",
             label: prompt.title,
+            messageFingerprint,
+            source: item.source,
+        };
+    }
+
+    if (item.promptId === "model-system-prompt") {
+        return {
+            kind: "prompt",
+            label: "Model System Prompt (Formatting)",
+            messageFingerprint,
+            source: item.source,
+        };
+    }
+
+    if (item.promptId === "character-description") {
+        return {
+            kind: "prompt",
+            label: "Character Description",
+            messageFingerprint,
+            source: item.source,
+        };
+    }
+
+    if (item.promptId === "character-personality") {
+        return {
+            kind: "prompt",
+            label: "Character Personality",
+            messageFingerprint,
+            source: item.source,
+        };
+    }
+
+    if (item.promptId === "persona-description") {
+        return {
+            kind: "prompt",
+            label: "Persona Description",
+            messageFingerprint,
+            source: item.source,
+        };
+    }
+
+    if (item.promptId === "scenario") {
+        return {
+            kind: "prompt",
+            label: "Scenario & Instructions",
+            messageFingerprint,
+            source: item.source,
+        };
+    }
+
+    if (item.promptId === "dialogue-examples") {
+        return {
+            kind: "prompt",
+            label: "Chat Examples",
             messageFingerprint,
             source: item.source,
         };

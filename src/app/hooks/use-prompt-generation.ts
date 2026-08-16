@@ -35,6 +35,7 @@ import {
 } from "#frontend/lib/plugins/registry";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { compilePresetMessages } from "#frontend/lib/presets/compile";
+import type { PresetFormattingSettings } from "#frontend/lib/presets/types";
 import { getEffectiveContextTokenBudget } from "#frontend/lib/connections/context-budget";
 import { resolveEffectiveStopSequences } from "#frontend/lib/connections/generation-settings";
 import {
@@ -681,6 +682,10 @@ export function usePromptGeneration({
         const sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );
+        const effectiveFormatting = {
+            ...preferences.formatting.settings,
+            ...(activePreset?.formatting ?? {}),
+        };
         const promptCharacter = options.promptCharacter ?? sourceCharacter;
         const promptChat = options.sourceChat ?? latestChatRef.current;
 
@@ -707,8 +712,15 @@ export function usePromptGeneration({
                 messages: sourceGenerationMessages,
                 mode: sourceMode,
                 persona,
-                preferences,
+                preferences: {
+                    ...preferences,
+                    formatting: {
+                        ...preferences.formatting,
+                        settings: effectiveFormatting,
+                    },
+                },
                 preset: activePreset,
+                isTextCompletion: tokenProfile?.provider === "koboldcpp",
                 tokenBudget: contextTokenBudget,
                 tokenContext,
                 userStatus: sourceUserStatus,
@@ -758,17 +770,81 @@ export function usePromptGeneration({
             | undefined;
         const profileModelId =
             typeof profileConfig?.model?.id === "string" ? profileConfig.model.id : "";
-        const formatting = activePreset?.formatting;
-        const formattedPromptMessages = formatting?.alwaysAddCharacterName
-            ? materializedPromptMessages.map((message) =>
-                  message.role === "assistant" && typeof message.content === "string"
-                      ? {
-                            ...message,
-                            content: `${promptCharacter.data.name}: ${message.content}`,
-                        }
-                      : message,
+        // Use preset formatting overrides if defined, falling back to global formatting
+        const rawFormatting = effectiveFormatting;
+        const formattingMacroContext = {
+            character: promptCharacter,
+            group: isGroupChat(promptChat)
+                ? { memberIds: promptChat.members?.map((member) => member.characterId) }
+                : undefined,
+            messages: sourceGenerationMessages,
+            mode: sourceMode,
+            personaDescription: persona.description,
+            personaName: persona.name,
+            userStatus: sourceUserStatus,
+        };
+        const sequenceMacroFields = [
+            "userPrefix",
+            "userSuffix",
+            "assistantPrefix",
+            "assistantSuffix",
+            "systemPrefix",
+            "systemSuffix",
+            "storyStringPrefix",
+            "storyStringSuffix",
+            "firstInputSequence",
+            "lastInputSequence",
+            "firstOutputSequence",
+            "lastOutputSequence",
+        ] as const;
+        const resolvedSequences = rawFormatting.replaceMacrosInSequences
+            ? Object.fromEntries(
+                  sequenceMacroFields.flatMap((field) =>
+                      typeof rawFormatting[field] === "string"
+                          ? [
+                                [
+                                    field,
+                                    resolvePresetMacros(
+                                        rawFormatting[field],
+                                        formattingMacroContext,
+                                    ),
+                                ],
+                            ]
+                          : [],
+                  ),
               )
-            : materializedPromptMessages;
+            : {};
+        const formatting: PresetFormattingSettings = {
+            ...rawFormatting,
+            ...resolvedSequences,
+            ...(rawFormatting.userAlignmentMessage
+                ? {
+                      userAlignmentMessage: resolvePresetMacros(
+                          rawFormatting.userAlignmentMessage,
+                          formattingMacroContext,
+                      ),
+                  }
+                : {}),
+            ...(rawFormatting.systemPrompt
+                ? {
+                      systemPrompt: resolvePresetMacros(
+                          rawFormatting.systemPrompt,
+                          formattingMacroContext,
+                      ),
+                  }
+                : {}),
+        };
+        const formattedPromptMessages =
+            tokenProfile?.provider !== "koboldcpp" && formatting?.alwaysAddCharacterName
+                ? materializedPromptMessages.map((message) =>
+                      message.role === "assistant" && typeof message.content === "string"
+                          ? {
+                                ...message,
+                                content: `${promptCharacter.data.name}: ${message.content}`,
+                            }
+                          : message,
+                  )
+                : materializedPromptMessages;
         const effectiveStops = resolveEffectiveStopSequences({
             generation: activePreset?.generation,
             formatting,

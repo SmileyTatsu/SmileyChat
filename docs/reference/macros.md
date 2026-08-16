@@ -50,3 +50,15 @@ These macros provide access to the current chat session's flow. Note: To prevent
 - `{{trim}}`: When placed anywhere in a prompt block, it removes leading and trailing whitespace from that compiled block.
 - `{{// your comment here }}`: A comment macro. Everything inside will be removed entirely during preset compilation. Useful for adding notes to your preset prompts.
 - `{{outlet::outlet_name}}`: Used internally and by plugins to inject dynamic content registered via prompt outlets.
+
+## Story String macros (Formatting Beta)
+
+Text-completion Story Strings also support Handlebars-style conditionals and these context values:
+
+- `{{wiBefore}}` / `{{loreBefore}}`: Lore selected before character context.
+- `{{wiAfter}}` / `{{loreAfter}}`: Lore selected after character context.
+- `{{mesExamples}}`: Example dialogue after separator replacement.
+- `{{mesExamplesRaw}}`: Raw example dialogue from the character card.
+- `{{name}}`: Only special inside custom Instruct sequence fields when **Replace macros in sequences** is enabled. It resolves to the author of the message currently being wrapped, not the active character globally.
+
+Arbitrary Handlebars helpers and loops are not supported in ordinary preset blocks. See [Formatting & Instruct Templates (Beta)](../guides/formatting-and-instruct.md) and [SillyTavern Compatibility](sillytavern-compatibility.md) for boundaries.

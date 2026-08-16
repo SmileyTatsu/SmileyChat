@@ -1,0 +1,17 @@
+{
+    "id": "openai-harmony-thinking",
+    "name": "OpenAI Harmony (Thinking)",
+    "userPrefix": "<|start|>user<|message|>",
+    "userSuffix": "<|end|>",
+    "assistantPrefix": "<|start|>assistant<|channel|>final<|message|>",
+    "assistantSuffix": "<|end|>",
+    "systemPrefix": "<|start|>developer<|message|>",
+    "systemSuffix": "<|end|>",
+    "storyStringPrefix": "<|start|>system<|message|>",
+    "storyStringSuffix": "<|end|>",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "{{noop}}",
+    "userAlignmentMessage": ""
+}

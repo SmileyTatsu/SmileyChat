@@ -1,0 +1,23 @@
+{
+    "id": "llama-3-instruct",
+    "name": "Llama 3 Instruct",
+    "userPrefix": "<|start_header_id|>user<|end_header_id|>\n\n",
+    "userSuffix": "<|eot_id|>",
+    "assistantPrefix": "<|start_header_id|>assistant<|end_header_id|>\n\n",
+    "assistantSuffix": "<|eot_id|>",
+    "systemPrefix": "<|start_header_id|>system<|end_header_id|>\n\n",
+    "systemSuffix": "<|eot_id|>",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{personality}}\n{{/if}}{{#if scenario}}{{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}{{trim}}",
+    "storyStringPrefix": "<|start_header_id|>system<|end_header_id|>\n\n",
+    "storyStringSuffix": "<|eot_id|>",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": "",
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "",
+    "chatStartSeparator": "",
+    "stopSequences": ["<|eot_id|>"]
+}

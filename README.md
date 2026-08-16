@@ -127,6 +127,7 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 - [Connecting AI Models](docs/guides/connecting-models.md)
 - [Importing Characters](docs/guides/importing-characters.md)
 - [Understanding Presets](docs/guides/understanding-presets.md)
+- [Formatting & Instruct Templates (Beta)](docs/guides/formatting-and-instruct.md)
 - [Backup and Restore Data](docs/guides/backup-and-restore.md)
 - [Accessing SmileyChat Remotely](docs/guides/remote-access.md)
 - [Using LoreBooks](docs/guides/lorebooks.md)
@@ -136,6 +137,7 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 
 - [Providers & AI Setup](docs/reference/providers.md)
 - [Preset Macros](docs/reference/macros.md)
+- [SillyTavern Compatibility](docs/reference/sillytavern-compatibility.md)
 - [User Data & Storage](docs/reference/user-data.md)
 - [Core Architecture](docs/development/architecture.md)
 - [Security Model](docs/reference/security.md)

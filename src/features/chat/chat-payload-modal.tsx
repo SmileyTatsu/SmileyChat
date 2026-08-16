@@ -1,4 +1,4 @@
-import { Braces, Check, Copy, ListTree, X } from "lucide-preact";
+import { Braces, Check, Copy, FileText, ListTree, X } from "lucide-preact";
 import { useMemo, useState } from "preact/hooks";
 
 import type { DebugGenerationPayload } from "#frontend/app/hooks/use-prompt-generation";
@@ -11,7 +11,7 @@ type ChatPayloadModalProps = {
     onClose: () => void;
 };
 
-type PayloadTab = "structured" | "json";
+type PayloadTab = "structured" | "raw" | "json";
 
 const maxInlineMediaStringLength = 240;
 const base64PreviewLength = 96;
@@ -24,17 +24,10 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
         () => JSON.stringify(data.payload, truncateInlineMediaPayloads, 2),
         [data.payload],
     );
-
-    async function copyPayloadJson() {
-        try {
-            await navigator.clipboard.writeText(payloadJson);
-            setCopyState("copied");
-            window.setTimeout(() => setCopyState("idle"), 1200);
-        } catch {
-            setCopyState("error");
-            window.setTimeout(() => setCopyState("idle"), 1800);
-        }
-    }
+    const rawTextPrompt =
+        typeof (data.payload as { prompt?: unknown }).prompt === "string"
+            ? (data.payload as { prompt: string }).prompt
+            : undefined;
 
     return (
         <div className="plugin-modal-backdrop" role="presentation" onClick={onClose}>
@@ -56,11 +49,32 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                         </p>
                     </div>
                     <div className="chat-payload-header-actions">
-                        {activeTab === "json" && (
+                        {(activeTab === "json" || activeTab === "raw") && (
                             <button
                                 className="secondary-button chat-payload-copy-button"
                                 type="button"
-                                onClick={() => void copyPayloadJson()}
+                                onClick={() =>
+                                    void navigator.clipboard
+                                        .writeText(
+                                            activeTab === "raw"
+                                                ? (rawTextPrompt ?? "")
+                                                : payloadJson,
+                                        )
+                                        .then(() => {
+                                            setCopyState("copied");
+                                            window.setTimeout(
+                                                () => setCopyState("idle"),
+                                                1200,
+                                            );
+                                        })
+                                        .catch(() => {
+                                            setCopyState("error");
+                                            window.setTimeout(
+                                                () => setCopyState("idle"),
+                                                1800,
+                                            );
+                                        })
+                                }
                             >
                                 {copyState === "copied" ? (
                                     <Check size={15} />
@@ -71,7 +85,9 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                                     ? "Copy failed"
                                     : copyState === "copied"
                                       ? "Copied"
-                                      : "Copy JSON"}
+                                      : activeTab === "raw"
+                                        ? "Copy Raw Prompt"
+                                        : "Copy JSON"}
                             </button>
                         )}
                         <button
@@ -97,6 +113,18 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                             <ListTree size={15} />
                             Structured
                         </button>
+                        {rawTextPrompt !== undefined && (
+                            <button
+                                type="button"
+                                className={activeTab === "raw" ? "active" : ""}
+                                role="tab"
+                                aria-selected={activeTab === "raw"}
+                                onClick={() => setActiveTab("raw")}
+                            >
+                                <FileText size={15} />
+                                Raw Text Prompt
+                            </button>
+                        )}
                         <button
                             type="button"
                             className={activeTab === "json" ? "active" : ""}
@@ -127,6 +155,10 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                                 </p>
                             )}
                         </div>
+                    ) : activeTab === "raw" ? (
+                        <pre className="chat-payload-json">
+                            <code>{rawTextPrompt}</code>
+                        </pre>
                     ) : (
                         <pre className="chat-payload-json">
                             <code>{payloadJson}</code>

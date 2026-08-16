@@ -1,0 +1,23 @@
+{
+    "id": "mistral-v1",
+    "name": "Mistral V1",
+    "userPrefix": " [INST] ",
+    "userSuffix": "",
+    "assistantPrefix": " [/INST] ",
+    "assistantSuffix": "</s>",
+    "systemPrefix": "",
+    "systemSuffix": "",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{personality}}\n{{/if}}{{#if scenario}}{{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}{{trim}}",
+    "storyStringPrefix": " [INST] ",
+    "storyStringSuffix": " [/INST] Understood.</s>",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": " [/INST]",
+    "systemSameAsUser": true,
+    "userAlignmentMessage": "Let's get started. Please respond based on the information and instructions provided above.",
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "",
+    "chatStartSeparator": ""
+}

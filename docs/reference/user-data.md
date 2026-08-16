@@ -21,6 +21,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `assets/`: Avatar images for personas.
     - `orphaned/`: Safely holds data from deleted personas to prevent accidental loss.
 - `userData/presets/`: Contains generation presets (context templates, macros).
+- `userData/instruct/`: Contains **beta** custom instruct templates. `templates.json` is the saved collection; additional loose JSON template files are discovered and imported at read time. These templates are used by the Formatting tab and compatible text-completion requests.
 - `userData/lorebooks/`: Contains native LoreBook files and the LoreBook index.
     - `books/`: JSON files for each LoreBook.
     - `imports/`: Drop SmileyChat LoreBook JSON or SillyTavern World Info JSON here for import workflows.

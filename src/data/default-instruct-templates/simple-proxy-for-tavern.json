@@ -1,0 +1,23 @@
+{
+    "id": "simple-proxy-for-tavern",
+    "name": "simple-proxy-for-tavern",
+    "userPrefix": "### Instruction:\n#### {{name}}:",
+    "userSuffix": "",
+    "assistantPrefix": "### Response:\n#### {{name}}:",
+    "assistantSuffix": "",
+    "systemPrefix": "",
+    "systemSuffix": "",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{char}}'s personality: {{personality}}\n{{/if}}{{#if scenario}}Scenario: {{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}",
+    "storyStringPrefix": "## {{char}}\n- You're \"{{char}}\" in this never-ending roleplay with \"{{user}}\".\n### Input:",
+    "storyStringSuffix": "### Response:\n(OOC) Understood. I will take this info into account for the roleplay. (end OOC)\n",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "### Response (2 paragraphs, engaging, natural, authentic, descriptive, creative):\n#### {{name}}:",
+    "userAlignmentMessage": "",
+    "sequencesAsStopStrings": true,
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "### New Roleplay:",
+    "chatStartSeparator": "### New Roleplay:"
+}

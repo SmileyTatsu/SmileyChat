@@ -2,6 +2,7 @@ import {
     ChevronsLeft,
     ChevronsRight,
     KeyRound,
+    FileText,
     LibraryBig,
     Maximize2,
     Minimize2,
@@ -37,6 +38,7 @@ import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 
 import { ConnectionsSettings } from "./connections/connections-settings";
 import { GeneralSettings } from "./general-settings";
+import { FormattingSettings } from "./formatting-settings";
 import { LorebooksSettings } from "./lorebooks-settings";
 import { PersonasSettings } from "./personas/personas-settings";
 import { PluginsSettings } from "./plugins-settings";
@@ -81,6 +83,7 @@ type OptionsModalProps = {
 const settingsCategories = [
     { id: "connections", label: "Connections", icon: KeyRound },
     { id: "preset", label: "Preset", icon: SlidersHorizontal },
+    { id: "formatting", label: "Formatting (Beta)", icon: FileText },
     { id: "lorebooks", label: "LoreBooks", icon: LibraryBig },
     { id: "personas", label: "Personas", icon: Users },
     { id: "plugins", label: "Plugins", icon: Puzzle },
@@ -343,8 +346,20 @@ export function OptionsModal({
                                 mode={mode}
                                 onCollectionChange={onPresetCollectionChange}
                                 persona={persona}
+                                preferences={preferences}
+                                onPreferencesChange={onPreferencesChange}
                                 streamingFallback={preferences.chat.streaming}
                                 userStatus={userStatus}
+                            />
+                        )}
+                        {activeCategory === "formatting" && (
+                            <FormattingSettings
+                                character={character}
+                                messages={messages}
+                                preferences={preferences}
+                                onPreferencesChange={onPreferencesChange}
+                                presetCollection={presetCollection}
+                                onPresetCollectionChange={onPresetCollectionChange}
                             />
                         )}
                         {activeCategory === "personas" && (

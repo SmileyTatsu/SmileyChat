@@ -5,6 +5,8 @@ export type UserStatus = "online" | "away" | "dnd" | "offline";
 export type SettingsCategory =
     | "connections"
     | "preset"
+    | "formatting"
+    | "lorebooks"
     | "personas"
     | "plugins"
     | "settings"

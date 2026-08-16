@@ -12,10 +12,14 @@ export const defaultPresetGenerationSettings: PresetGenerationSettings = {
 
 export const sillyTavernGenerationFieldMap = {
     frequency_penalty: "frequencyPenalty",
+    freq_pen: "frequencyPenalty",
     min_p: "minP",
     presence_penalty: "presencePenalty",
+    presence_pen: "presencePenalty",
     repetition_penalty: "repetitionPenalty",
+    rep_pen: "repetitionPenalty",
     rep_pen_range: "repetitionPenaltyRange",
+    rep_pen_size: "repetitionPenaltyRange",
     dry_multiplier: "dryMultiplier",
     dry_base: "dryBase",
     dry_allowed_length: "dryAllowedLength",
@@ -24,6 +28,7 @@ export const sillyTavernGenerationFieldMap = {
     xtc_threshold: "xtcThreshold",
     xtc_probability: "xtcProbability",
     mirostat: "mirostatMode",
+    mirostat_mode: "mirostatMode",
     mirostat_tau: "mirostatTau",
     mirostat_eta: "mirostatEta",
     sampler_order: "samplerOrder",
@@ -34,12 +39,14 @@ export const sillyTavernGenerationFieldMap = {
     stream: "streaming",
     stream_openai: "streaming",
     temperature: "temperature",
+    temp: "temperature",
     top_a: "topA",
     top_k: "topK",
     top_p: "topP",
     typical_p: "typicalP",
     typical: "typicalP",
     tfs: "tfs",
+    tfs_z: "tfs",
 } as const;
 
 export function normalizePresetGenerationSettings(
@@ -81,13 +88,8 @@ export function normalizePresetGenerationSettings(
     assignNumber(output, "mirostatEta", source.mirostatEta, 0, 10);
     assignNumber(output, "typicalP", source.typicalP, 0, 1);
     assignNumber(output, "tfs", source.tfs, 0, 1);
-    if (
-        Array.isArray(source.samplerOrder) &&
-        source.samplerOrder.every(
-            (item) => typeof item === "number" && Number.isInteger(item),
-        )
-    )
-        output.samplerOrder = source.samplerOrder;
+    const samplerOrder = normalizeSamplerOrder(source.samplerOrder);
+    if (samplerOrder?.length) output.samplerOrder = samplerOrder;
     assignInteger(output, "seed", source.seed);
 
     const stopSequences = normalizeStringList(source.stopSequences);
@@ -96,6 +98,32 @@ export function normalizePresetGenerationSettings(
     }
 
     return Object.keys(output).length ? output : undefined;
+}
+
+export function normalizeSamplerOrder(value: unknown): number[] | undefined {
+    if (Array.isArray(value)) {
+        const numbers = value
+            .map((item) => (typeof item === "number" ? item : Number(item)))
+            .filter((item) => Number.isInteger(item));
+        return numbers.length ? numbers : undefined;
+    }
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                return normalizeSamplerOrder(parsed);
+            } catch {
+                // ignore
+            }
+        }
+        const numbers = trimmed
+            .split(",")
+            .map((item) => Number(item.trim()))
+            .filter((item) => Number.isInteger(item));
+        return numbers.length ? numbers : undefined;
+    }
+    return undefined;
 }
 
 export function resolvePresetStreaming(
@@ -110,18 +138,20 @@ export function normalizeSillyTavernGenerationSettings(value: unknown): {
     importedFields: string[];
 } {
     const source = isRecord(value) ? value : {};
+    const presetSub = isRecord(source.preset) ? source.preset : {};
     const raw: Record<string, unknown> = {};
     const importedFields: string[] = [];
 
     for (const [sourceField, targetField] of Object.entries(
         sillyTavernGenerationFieldMap,
     )) {
-        if (!(sourceField in source)) {
-            continue;
+        if (sourceField in source) {
+            raw[targetField] = source[sourceField];
+            importedFields.push(sourceField);
+        } else if (sourceField in presetSub) {
+            raw[targetField] = presetSub[sourceField];
+            importedFields.push(sourceField);
         }
-
-        raw[targetField] = source[sourceField];
-        importedFields.push(sourceField);
     }
 
     return {

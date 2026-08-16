@@ -1,0 +1,19 @@
+{
+    "id": "vicuna-1-0",
+    "name": "Vicuna 1.0",
+    "userPrefix": "### Human:",
+    "userSuffix": "",
+    "assistantPrefix": "### Assistant:",
+    "assistantSuffix": "",
+    "systemPrefix": "",
+    "systemSuffix": "",
+    "storyStringPrefix": "",
+    "storyStringSuffix": "",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "systemSameAsUser": true,
+    "userAlignmentMessage": "",
+    "sequencesAsStopStrings": true
+}

@@ -1,0 +1,23 @@
+{
+    "id": "gemma-4",
+    "name": "Gemma 4",
+    "userPrefix": "<|turn>user\n",
+    "userSuffix": "<turn|>\n",
+    "assistantPrefix": "<|turn>model\n",
+    "assistantSuffix": "<turn|>\n",
+    "systemPrefix": "<|turn>system\n",
+    "systemSuffix": "<turn|>\n",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{personality}}\n{{/if}}{{#if scenario}}{{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}{{trim}}",
+    "storyStringPrefix": "<|turn>system\n",
+    "storyStringSuffix": "<turn|>\n",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": "",
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "",
+    "chatStartSeparator": "",
+    "stopSequences": ["<turn|>"]
+}

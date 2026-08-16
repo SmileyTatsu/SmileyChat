@@ -11,9 +11,10 @@ import {
     getMessageReasoningDetails,
 } from "../messages";
 import { dynamicPromptIds } from "./defaults";
-import { formatCharacterBook, resolvePresetMacros } from "./macros";
+import { defaultStoryString } from "../instruct";
+import { formatCharacterBook, renderStoryString, resolvePresetMacros } from "./macros";
 import { messageAuthorForPrompt } from "./message-format";
-import type { PresetPrompt, SmileyPreset } from "./types";
+import type { PresetFormattingSettings, PresetPrompt, SmileyPreset } from "./types";
 import type { AnchoredPromptMessage } from "../prompt/injections";
 import { isMessageIncludedInPrompt } from "../prompt/message-utils";
 import type { PromptOutletRegistry } from "../prompt/outlets";
@@ -26,6 +27,8 @@ type CompilePresetContext = {
         memberIds?: string[];
     };
     generation?: PromptGenerationContext;
+    formatting?: PresetFormattingSettings;
+    isTextCompletion?: boolean;
     /**
      * Budget-selected turns inserted as chat history.
      * When omitted, `messages` is used for both macros and history insertion.
@@ -42,6 +45,8 @@ type CompilePresetContext = {
     personaDescription: string;
     personaName: string;
     userStatus: UserStatus;
+    worldInfoBefore?: string;
+    worldInfoAfter?: string;
 };
 
 function historyMessagesForCompile(context: CompilePresetContext) {
@@ -51,6 +56,7 @@ function historyMessagesForCompile(context: CompilePresetContext) {
 function macroContextForCompile(context: CompilePresetContext) {
     return {
         character: context.character,
+        formatting: context.formatting,
         generation: context.generation,
         group: context.group,
         metadata: context.metadata,
@@ -60,6 +66,8 @@ function macroContextForCompile(context: CompilePresetContext) {
         personaDescription: context.personaDescription,
         personaName: context.personaName,
         userStatus: context.userStatus,
+        worldInfoBefore: context.worldInfoBefore,
+        worldInfoAfter: context.worldInfoAfter,
     };
 }
 
@@ -90,6 +98,13 @@ export function compilePresetMessagesWithMetadata(
     preset: SmileyPreset | undefined,
     context: CompilePresetContext,
 ): AnchoredPromptMessage[] {
+    if (
+        context.isTextCompletion &&
+        context.formatting?.overridePresetPromptOrder !== true
+    ) {
+        return compileStoryStringMessagesWithMetadata(context);
+    }
+
     if (!preset) {
         return [
             {
@@ -117,7 +132,7 @@ export function compilePresetMessagesWithMetadata(
         .filter((prompt) => isInjectedPrompt(prompt, chatHistoryPromptId))
         .map((prompt) => ({
             prompt,
-            content: contentForPrompt(prompt.id, prompt.content, context).trim(),
+            content: contentForPrompt(prompt, context).trim(),
         }))
         .filter((item) => Boolean(item.content));
 
@@ -131,7 +146,7 @@ export function compilePresetMessagesWithMetadata(
             continue;
         }
 
-        const content = contentForPrompt(prompt.id, prompt.content, context).trim();
+        const content = contentForPrompt(prompt, context).trim();
 
         if (content) {
             messages.push(toAnchoredPromptMessage(prompt, content));
@@ -141,14 +156,96 @@ export function compilePresetMessagesWithMetadata(
     return messages;
 }
 
-function contentForPrompt(
-    promptId: string,
-    promptContent: string,
+function compileStoryStringMessagesWithMetadata(
     context: CompilePresetContext,
-) {
-    const rawContent = promptContent.trim()
-        ? promptContent
-        : emptyDynamicPromptContent(promptId, context);
+): AnchoredPromptMessage[] {
+    const macros = macroContextForCompile(context);
+    const storyTemplate = context.formatting?.storyString || defaultStoryString;
+    const resolvedStory = renderStoryString(storyTemplate, macros);
+    const messages: AnchoredPromptMessage[] = [];
+
+    if (resolvedStory) {
+        messages.push({
+            anchor: "after-character",
+            message: {
+                role: "system",
+                content: resolvedStory,
+                formattingKind: "story",
+            },
+            promptId: "story-context",
+            source: "preset",
+        });
+    }
+
+    // ST places examples and Chat Start between the Story String and visible
+    // history. Raw blocks preserve template-owned separators for custom
+    // text-completion formats without assigning them an artificial chat role.
+    if (
+        context.formatting?.instructTemplate === "custom" &&
+        !context.formatting.skipExamples
+    ) {
+        const examples = context.character.data.mes_example?.trim();
+        const referencesExamples = /\{\{\s*mesExamples(?:Raw)?\s*\}\}/i.test(
+            storyTemplate,
+        );
+        if (examples && !referencesExamples) {
+            const separator = context.formatting.exampleSeparator ?? "";
+            const formattedExamples = resolvePresetMacros(examples, macros).replace(
+                /<START>/gi,
+                separator,
+            );
+            messages.push({
+                anchor: "before-examples",
+                message: {
+                    role: "system",
+                    content: /<START>/i.test(examples)
+                        ? formattedExamples
+                        : `${separator ? `${separator}\n` : ""}${formattedExamples}`,
+                    formattingKind: "raw",
+                },
+                promptId: "dialogue-examples",
+                source: "preset",
+            });
+        }
+    }
+    if (
+        context.formatting?.instructTemplate === "custom" &&
+        context.formatting.chatStartSeparator
+    ) {
+        messages.push({
+            anchor: "before-history",
+            message: {
+                role: "system",
+                content: context.formatting.chatStartSeparator,
+                formattingKind: "raw",
+            },
+            promptId: "chat-start",
+            source: "preset",
+        });
+    }
+
+    const history = historyMessagesForCompile(context).filter(isMessageIncludedInPrompt);
+    messages.push(
+        ...history.flatMap((msg) =>
+            toAnchoredHistoryMessages(msg, context, "chatHistory"),
+        ),
+    );
+
+    return messages;
+}
+
+function contentForPrompt(prompt: PresetPrompt, context: CompilePresetContext) {
+    const isMainSystemPrompt =
+        prompt.systemPrompt ||
+        prompt.id === "69994633-aef6-4892-85d6-a47ddb7d03d6" ||
+        prompt.id === "main" ||
+        prompt.title.toLowerCase().includes("assistant instructions");
+
+    const rawContent = prompt.content.trim()
+        ? prompt.content
+        : isMainSystemPrompt && context.formatting?.systemPrompt?.trim()
+          ? context.formatting.systemPrompt.trim()
+          : emptyDynamicPromptContent(prompt.id, context);
 
     return resolvePresetMacros(rawContent, macroContextForCompile(context));
 }
@@ -387,12 +484,21 @@ function toGenerationMessage(
     return {
         role: promptRoleForMessage(message),
         content: messageContentWithAttachments(message, context),
+        speakerName: message.author,
+        ...(promptRoleForMessage(message) === "assistant" &&
+        firstAssistantMessageId(context.messages) === message.id
+            ? { isFirstAssistantInChat: true }
+            : {}),
         ...(reasoning ? { reasoning } : {}),
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
         // We still check message.toolCalls/toolResult for backwards compatibility with old chats
         ...(message.toolCalls?.length ? { toolCalls: message.toolCalls } : {}),
         ...(message.toolResult ? { toolResult: message.toolResult } : {}),
     };
+}
+
+function firstAssistantMessageId(messages: Message[]) {
+    return messages.find((message) => promptRoleForMessage(message) === "assistant")?.id;
 }
 
 function toAnchoredHistoryMessages(
@@ -412,6 +518,7 @@ function toAnchoredHistoryMessages(
                           message: {
                               role: promptRoleForMessage(message),
                               content: "",
+                              speakerName: message.author,
                               toolCalls: activities.map((activity) => activity.call),
                           },
                           messageId: message.id,
@@ -422,6 +529,7 @@ function toAnchoredHistoryMessages(
                           message: {
                               role: "user" as const,
                               content: activity.result.content,
+                              speakerName: "System",
                               toolResult: activity.result,
                           },
                           messageId: message.id,
@@ -435,6 +543,7 @@ function toAnchoredHistoryMessages(
                       message: {
                           role: "assistant" as const,
                           content: messageContentWithAttachments(message, context),
+                          speakerName: message.author,
                           ...(getMessageReasoning(message)
                               ? { reasoning: getMessageReasoning(message) }
                               : {}),
@@ -546,13 +655,26 @@ function messageTextForGeneration(message: Message, context: CompilePresetContex
         return content;
     }
 
-    if (
-        message.role !== "character" ||
-        !message.authorCharacterId ||
-        !context.group?.memberIds?.includes(message.authorCharacterId)
-    ) {
-        return content;
+    if (context.isTextCompletion) {
+        const behavior = context.formatting?.namesBehavior ?? "force";
+        const isGroupCharacter =
+            message.role === "character" &&
+            Boolean(
+                message.authorCharacterId &&
+                context.group?.memberIds?.includes(message.authorCharacterId),
+            );
+        const isPastPersona =
+            message.role === "user" &&
+            Boolean(message.author && message.author !== context.personaName);
+        const includeName =
+            behavior === "always" ||
+            (behavior === "force" && (isGroupCharacter || isPastPersona));
+        return includeName ? `${message.author}: ${content}` : content;
     }
 
-    return `${messageAuthorForPrompt(message, context.group)}${content}`;
+    return message.role === "character" &&
+        message.authorCharacterId &&
+        context.group?.memberIds?.includes(message.authorCharacterId)
+        ? `${messageAuthorForPrompt(message, context.group)}${content}`
+        : content;
 }

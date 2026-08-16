@@ -1,0 +1,18 @@
+{
+    "id": "wizardlm",
+    "name": "WizardLM",
+    "userPrefix": "",
+    "userSuffix": "",
+    "assistantPrefix": "### Response:",
+    "assistantSuffix": "</s>",
+    "systemPrefix": "",
+    "systemSuffix": "",
+    "storyStringPrefix": "",
+    "storyStringSuffix": "",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": "",
+    "sequencesAsStopStrings": true
+}

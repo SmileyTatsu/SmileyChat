@@ -1,5 +1,4 @@
 import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
-import { instructTemplateLabels, type InstructTemplateId } from "#frontend/lib/instruct";
 import type { KoboldCPPConnectionConfig } from "#frontend/lib/connections/koboldcpp/types";
 import { ConnectionActions } from "./shared-fields";
 
@@ -53,25 +52,6 @@ export function KoboldCPPConnection({
                     value={config.model.id || ""}
                     placeholder="Click Connect to inspect your KoboldCPP server"
                 />
-            </label>
-
-            <label>
-                Instruct template
-                <select
-                    value={config.instructTemplate}
-                    onInput={(event) =>
-                        updateConfig({
-                            instructTemplate: event.currentTarget
-                                .value as InstructTemplateId,
-                        })
-                    }
-                >
-                    {Object.entries(instructTemplateLabels).map(([id, label]) => (
-                        <option key={id} value={id}>
-                            {label}
-                        </option>
-                    ))}
-                </select>
             </label>
 
             <div className="connection-field-grid">

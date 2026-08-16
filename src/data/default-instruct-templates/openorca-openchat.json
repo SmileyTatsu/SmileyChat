@@ -1,0 +1,17 @@
+{
+    "id": "openorca-openchat",
+    "name": "OpenOrca-OpenChat",
+    "userPrefix": "\nUser: ",
+    "userSuffix": "<|end_of_turn|>",
+    "assistantPrefix": "\nAssistant: ",
+    "assistantSuffix": "<|end_of_turn|>",
+    "systemPrefix": "",
+    "systemSuffix": "",
+    "storyStringPrefix": "",
+    "storyStringSuffix": "",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": ""
+}

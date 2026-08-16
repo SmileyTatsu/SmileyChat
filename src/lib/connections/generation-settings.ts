@@ -40,10 +40,24 @@ export function resolveEffectiveStopSequences({
         [formatting.exampleSeparator, formatting.chatStartSeparator]
             .filter((item): item is string => Boolean(item?.trim()))
             .forEach((item) => stops.add(item.trim()));
-    if (formatting?.sequencesAsStopStrings)
-        [formatting.userPrefix, formatting.assistantPrefix]
+    if (formatting?.sequencesAsStopStrings) {
+        [
+            formatting.userPrefix,
+            formatting.userSuffix,
+            formatting.assistantPrefix,
+            formatting.assistantSuffix,
+            formatting.systemPrefix,
+            formatting.systemSuffix,
+            formatting.firstInputSequence,
+            formatting.lastInputSequence,
+            formatting.firstOutputSequence,
+            formatting.lastOutputSequence,
+            formatting.storyStringPrefix,
+            formatting.storyStringSuffix,
+        ]
             .filter((item): item is string => Boolean(item?.trim()))
             .forEach((item) => stops.add(item.trim()));
+    }
     if (formatting?.instructTemplate === "auto")
         defaultStopTokensForModel(modelId).forEach((token) => stops.add(token));
     return stops.size ? [...stops] : undefined;

@@ -1,0 +1,23 @@
+{
+    "id": "alpaca",
+    "name": "Alpaca",
+    "userPrefix": "### Instruction:",
+    "userSuffix": "\n\n",
+    "assistantPrefix": "### Response:",
+    "assistantSuffix": "\n\n",
+    "systemPrefix": "### Input:",
+    "systemSuffix": "\n\n",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{personality}}\n{{/if}}{{#if scenario}}{{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}{{trim}}",
+    "storyStringPrefix": "",
+    "storyStringSuffix": "\n\n",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": "",
+    "sequencesAsStopStrings": true,
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "",
+    "chatStartSeparator": ""
+}

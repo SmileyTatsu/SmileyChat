@@ -1,12 +1,9 @@
-import type { InstructTemplateId } from "../../instruct";
-
 export type KoboldCPPConnectionConfig = {
     apiKey?: string;
     baseUrl: string;
     maxOutputTokens?: number;
     maxContextLength?: number;
     model: { source: "loaded" | "custom"; id: string };
-    instructTemplate: InstructTemplateId;
 };
 
 export type KoboldCPPRuntimeConfig = KoboldCPPConnectionConfig & {

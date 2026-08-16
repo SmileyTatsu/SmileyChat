@@ -1,0 +1,17 @@
+{
+    "id": "koboldai",
+    "name": "KoboldAI",
+    "userPrefix": "{{[INPUT]}}",
+    "userSuffix": "{{[INPUT_END]}}",
+    "assistantPrefix": "{{[OUPUT]}}",
+    "assistantSuffix": "{{[OUTPUT_END]}}",
+    "systemPrefix": "{{[SYSTEM]}}",
+    "systemSuffix": "{{[SYSTEM_END]}}",
+    "storyStringPrefix": "{{[SYSTEM]}}",
+    "storyStringSuffix": "{{[SYSTEM_END]}}",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": ""
+}

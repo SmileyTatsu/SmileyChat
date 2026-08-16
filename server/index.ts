@@ -91,6 +91,12 @@ import {
 } from "./plugin-profiles";
 import { finalize, runSecurityPipeline } from "./security/pipeline";
 import {
+    deleteInstructTemplate,
+    readInstructTemplates,
+    saveInstructTemplate,
+    writeInstructTemplates,
+} from "./instruct-store";
+import {
     readAppPreferences,
     readConnectionSecrets,
     readConnectionSettings,
@@ -373,6 +379,36 @@ const createServer = () =>
                         await readJsonBody(request),
                     );
                     return json({ ok: true, presets });
+                }),
+            },
+
+            "/api/instruct-templates": {
+                GET: api(async () => {
+                    const templates = await readInstructTemplates();
+                    return json({ ok: true, templates });
+                }),
+
+                POST: api(async (request) => {
+                    const result = await saveInstructTemplate(
+                        await readJsonBody(request),
+                    );
+                    return json({ ok: true, ...result });
+                }),
+
+                PUT: api(async (request) => {
+                    const templates = await writeInstructTemplates(
+                        await readJsonBody(request),
+                    );
+                    return json({ ok: true, templates });
+                }),
+            },
+
+            "/api/instruct-templates/:templateId": {
+                DELETE: api(async (request) => {
+                    const templates = await deleteInstructTemplate(
+                        request.params.templateId,
+                    );
+                    return json({ ok: true, templates });
                 }),
             },
 

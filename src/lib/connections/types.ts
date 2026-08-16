@@ -59,6 +59,15 @@ export type ChatGenerationMessageRole =
 export type ChatGenerationMessage = {
     role: ChatGenerationMessageRole;
     content: string | ChatGenerationMessageContentPart[];
+    /**
+     * Original chat author used by text-completion templates that contain
+     * SillyTavern's per-message `{{name}}` sequence macro.
+     */
+    speakerName?: string;
+    /** Whether this is the first assistant turn in the complete chat history. */
+    isFirstAssistantInChat?: boolean;
+    /** A text-completion-only block that uses story-string wrapper sequences. */
+    formattingKind?: "story" | "raw";
     reasoning?: string;
     reasoningDetails?: unknown;
     toolCalls?: ToolCall[];

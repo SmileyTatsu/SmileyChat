@@ -13,6 +13,7 @@ import {
 } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { saveInstructTemplate } from "#frontend/lib/api/client";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
@@ -26,6 +27,7 @@ import {
     compilePresetContext,
     compilePresetMessages,
 } from "#frontend/lib/presets/compile";
+import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type {
     PresetFormattingSettings,
     PresetGenerationSettings,
@@ -73,11 +75,13 @@ type PresetSettingsProps = {
     mode: ChatMode;
     onCollectionChange: (collection: PresetCollection) => void;
     persona: SmileyPersona;
+    preferences?: AppPreferences;
+    onPreferencesChange?: (preferences: AppPreferences) => void;
     streamingFallback: boolean;
     userStatus: UserStatus;
 };
 
-type PresetPanelView = "editor" | "generation" | "formatting" | "preview";
+type PresetPanelView = "editor" | "generation" | "preview";
 type PresetPreviewView = "compiled" | "flat";
 
 export function PresetSettings({
@@ -89,6 +93,8 @@ export function PresetSettings({
     mode,
     onCollectionChange,
     persona,
+    preferences,
+    onPreferencesChange,
     streamingFallback,
     userStatus,
 }: PresetSettingsProps) {
@@ -210,6 +216,40 @@ export function PresetSettings({
                           status: `Imported ${summary.importedPrompts} prompt(s), ${summary.enabledPrompts} enabled, ${summary.importedGenerationFields.length} generation field(s). Ignored ${summary.ignoredFields.length} unsupported field(s).`,
                       };
                   })();
+
+            // If the imported preset includes custom instruct formatting, register it to userData/instruct
+            if (isRecord(raw)) {
+                try {
+                    const parsedInstruct = parseInstructTemplateJson(raw);
+                    if (
+                        parsedInstruct.formatting.instructTemplate === "custom" ||
+                        parsedInstruct.template.userPrefix ||
+                        parsedInstruct.template.assistantSuffix ||
+                        parsedInstruct.template.storyString
+                    ) {
+                        const id = createId("instruct");
+                        const saved = await saveInstructTemplate({
+                            ...parsedInstruct.template,
+                            id,
+                        });
+                        if (onPreferencesChange && preferences) {
+                            onPreferencesChange({
+                                ...preferences,
+                                formatting: {
+                                    activeTemplateId: `custom:${saved.template.id}`,
+                                    settings: {
+                                        ...parsedInstruct.formatting,
+                                        instructTemplate: "custom",
+                                    } as PresetFormattingSettings,
+                                },
+                            });
+                        }
+                    }
+                } catch {
+                    // Ignore non-instruct json parsing
+                }
+            }
+
             const nextCollection = normalizePresetCollection({
                 activePresetId: imported.preset.id,
                 presets: [...collection.presets, imported.preset],
@@ -281,10 +321,6 @@ export function PresetSettings({
             ...preset,
             generation: Object.keys(nextGeneration).length ? nextGeneration : undefined,
         }));
-    }
-
-    function updateFormatting(nextFormatting: PresetFormattingSettings) {
-        updateActivePreset((preset) => ({ ...preset, formatting: nextFormatting }));
     }
 
     function updateOrderEntry(promptId: string, enabled: boolean) {
@@ -541,16 +577,6 @@ export function PresetSettings({
                                 Generation
                             </button>
                             <button
-                                className={activeView === "formatting" ? "active" : ""}
-                                type="button"
-                                role="tab"
-                                aria-selected={activeView === "formatting"}
-                                onClick={() => setActiveView("formatting")}
-                            >
-                                <TextQuote size={16} />
-                                Formatting
-                            </button>
-                            <button
                                 className={activeView === "preview" ? "active" : ""}
                                 type="button"
                                 role="tab"
@@ -637,19 +663,98 @@ export function PresetSettings({
                     )}
 
                     {activeView === "editor" && (
-                        <PresetEditor
-                            orderedPrompts={orderedPrompts}
-                            selectedPrompt={selectedPrompt}
-                            selectedPromptId={selectedPromptId}
-                            selectedPromptOrderEntry={selectedPromptOrderEntry}
-                            onAddPrompt={addPrompt}
-                            onDeleteSelectedPrompt={deleteSelectedPrompt}
-                            onMovePrompt={movePrompt}
-                            onReorderPrompt={reorderPrompt}
-                            onSelectPrompt={setSelectedPromptId}
-                            onUpdateOrderEntry={updateOrderEntry}
-                            onUpdatePrompt={updatePrompt}
-                        />
+                        <div>
+                            {getActiveConnectionProfile(connectionSettings)?.provider ===
+                                "koboldcpp" && (
+                                <div
+                                    className="preset-text-completion-banner"
+                                    role="status"
+                                >
+                                    <AlertTriangle size={18} />
+                                    <div>
+                                        <strong>
+                                            Text Completion provider active (
+                                            {getActiveConnectionProfile(
+                                                connectionSettings,
+                                            )?.name || "KoboldCPP"}
+                                            )
+                                        </strong>
+                                        <p>
+                                            By default, prompts are assembled using the
+                                            Formatter's <strong>Story String</strong> and
+                                            instruct turn tokens.
+                                        </p>
+                                        <label
+                                            className="checkbox-field"
+                                            style={{
+                                                marginTop: "6px",
+                                                display: "inline-flex",
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    preferences?.formatting.settings
+                                                        .overridePresetPromptOrder ===
+                                                    true
+                                                }
+                                                onChange={(event) => {
+                                                    if (
+                                                        onPreferencesChange &&
+                                                        preferences
+                                                    ) {
+                                                        onPreferencesChange({
+                                                            ...preferences,
+                                                            formatting: {
+                                                                ...preferences.formatting,
+                                                                settings: {
+                                                                    ...preferences
+                                                                        .formatting
+                                                                        .settings,
+                                                                    overridePresetPromptOrder:
+                                                                        (
+                                                                            event.currentTarget as HTMLInputElement
+                                                                        ).checked,
+                                                                },
+                                                            },
+                                                        });
+                                                    }
+                                                }}
+                                            />
+                                            <span style={{ fontSize: "0.83rem" }}>
+                                                Override Formatter with Preset Prompt
+                                                Order (Advanced)
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+                            <div
+                                className={
+                                    getActiveConnectionProfile(connectionSettings)
+                                        ?.provider === "koboldcpp" &&
+                                    preferences?.formatting.settings
+                                        .overridePresetPromptOrder !== true
+                                        ? "preset-editor-dimmed"
+                                        : ""
+                                }
+                            >
+                                <PresetEditor
+                                    orderedPrompts={orderedPrompts}
+                                    selectedPrompt={selectedPrompt}
+                                    selectedPromptId={selectedPromptId}
+                                    selectedPromptOrderEntry={selectedPromptOrderEntry}
+                                    onAddPrompt={addPrompt}
+                                    onDeleteSelectedPrompt={deleteSelectedPrompt}
+                                    onMovePrompt={movePrompt}
+                                    onReorderPrompt={reorderPrompt}
+                                    onSelectPrompt={setSelectedPromptId}
+                                    onUpdateOrderEntry={updateOrderEntry}
+                                    onUpdatePrompt={updatePrompt}
+                                />
+                            </div>
+                        </div>
                     )}
 
                     {activeView === "generation" && (
@@ -658,21 +763,6 @@ export function PresetSettings({
                             streamingFallback={streamingFallback}
                             warnings={generationWarnings}
                             onChange={updateGeneration}
-                        />
-                    )}
-
-                    {activeView === "formatting" && (
-                        <PresetFormattingEditor
-                            formatting={activePreset.formatting}
-                            onChange={updateFormatting}
-                            onStatusMessage={(msg) => {
-                                setStatusMessage(msg);
-                                setRequestState("success");
-                            }}
-                            onStatusError={(msg) => {
-                                setStatusMessage(msg);
-                                setRequestState("error");
-                            }}
                         />
                     )}
 
@@ -696,263 +786,6 @@ export function PresetSettings({
                     onClose={() => setConfirmAction(undefined)}
                 />
             )}
-        </section>
-    );
-}
-
-function PresetFormattingEditor({
-    formatting,
-    onChange,
-    onStatusMessage,
-    onStatusError,
-}: {
-    formatting: PresetFormattingSettings | undefined;
-    onChange: (formatting: PresetFormattingSettings) => void;
-    onStatusMessage?: (message: string) => void;
-    onStatusError?: (error: string) => void;
-}) {
-    const instructFileInputRef = useRef<HTMLInputElement>(null);
-    const settings = formatting ?? {};
-    const update = (patch: Partial<PresetFormattingSettings>) =>
-        onChange({ ...settings, ...patch });
-    const isCustom = settings.instructTemplate === "custom";
-
-    async function handleInstructFile(file: File) {
-        try {
-            const raw = JSON.parse(await file.text()) as unknown;
-            const parsed = parseInstructTemplateJson(raw);
-            update({
-                ...parsed.formatting,
-            });
-            const templateName = parsed.name || file.name.replace(/\.json$/i, "");
-            onStatusMessage?.(`Imported instruct template "${templateName}".`);
-        } catch (error) {
-            onStatusError?.(
-                messageFromError(error, "Failed to import instruct template."),
-            );
-        } finally {
-            if (instructFileInputRef.current) {
-                instructFileInputRef.current.value = "";
-            }
-        }
-    }
-
-    const toggle = (
-        key:
-            | "namesAsStopStrings"
-            | "separatorsAsStopStrings"
-            | "singleLineMode"
-            | "alwaysAddCharacterName"
-            | "sequencesAsStopStrings",
-        label: string,
-        description?: string,
-    ) => (
-        <label className="checkbox-field" title={description}>
-            <input
-                checked={settings[key] === true}
-                type="checkbox"
-                onInput={(event) => update({ [key]: event.currentTarget.checked })}
-            />
-            <span>{label}</span>
-        </label>
-    );
-
-    return (
-        <section className="preset-formatting-panel" aria-label="Formatting settings">
-            <div className="preset-section-header">
-                <h3>Formatting</h3>
-                <button type="button" onClick={() => onChange({})}>
-                    Clear
-                </button>
-            </div>
-            <p className="field-hint">
-                Configure stop strings, anti-impersonation, and custom instruct sequences
-                for this preset.
-            </p>
-
-            <div className="preset-formatting-card">
-                <h4>Stop strings & anti-impersonation</h4>
-                <div className="preset-toggle-row">
-                    {toggle(
-                        "namesAsStopStrings",
-                        "Names as stop strings",
-                        "Prevents the character from speaking for you or other characters by adding names (e.g. {{user}}:, {{char}}:) to the stop sequences.",
-                    )}
-                    {toggle(
-                        "separatorsAsStopStrings",
-                        "Separators as stop strings",
-                        "Prevents the model from generating fake example dialogues or restarting the chat by adding separators (like ***) to stop sequences.",
-                    )}
-                    {toggle(
-                        "singleLineMode",
-                        "Generate only one line per request",
-                        "Stops generation at the first newline character, restricting responses to a single line.",
-                    )}
-                </div>
-            </div>
-
-            <div className="preset-formatting-card">
-                <h4>Dialogue formatting & delimiters</h4>
-                <div className="preset-toggle-row compact">
-                    {toggle(
-                        "alwaysAddCharacterName",
-                        "Always prefix character name to assistant turns",
-                        "Forces the character's name prefix (e.g. 'Character: ') on every assistant turn in 1-on-1 chats.",
-                    )}
-                </div>
-                <div className="preset-generation-grid">
-                    <label title="Text separator placed between example dialogue messages in the prompt.">
-                        Example dialogue separator
-                        <input
-                            value={settings.exampleSeparator ?? "***"}
-                            placeholder="***"
-                            onInput={(event) =>
-                                update({ exampleSeparator: event.currentTarget.value })
-                            }
-                        />
-                    </label>
-                    <label title="Text separator placed right before the live chat history begins in the prompt.">
-                        Chat start separator
-                        <input
-                            value={settings.chatStartSeparator ?? "***"}
-                            placeholder="***"
-                            onInput={(event) =>
-                                update({ chatStartSeparator: event.currentTarget.value })
-                            }
-                        />
-                    </label>
-                </div>
-            </div>
-
-            <div className="preset-formatting-card">
-                <div className="preset-card-header">
-                    <div className="preset-card-title-group">
-                        <h4>Instruct template</h4>
-                        <span
-                            className="preset-scope-badge"
-                            title="Applied to raw text completion endpoints like KoboldCPP or local completion backends"
-                        >
-                            Text Completion only
-                        </span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => instructFileInputRef.current?.click()}
-                        title="Import instruct template JSON"
-                    >
-                        <Upload size={14} />
-                        Import template
-                    </button>
-                    <input
-                        ref={instructFileInputRef}
-                        type="file"
-                        accept=".json,application/json"
-                        style={{ display: "none" }}
-                        onChange={(event) => {
-                            const file = event.currentTarget.files?.[0];
-                            if (file) void handleInstructFile(file);
-                        }}
-                    />
-                </div>
-                <p className="field-hint">
-                    Used only for Text Completion backends (e.g. KoboldCPP or local
-                    completion endpoints). Native Chat APIs (OpenAI, Anthropic, Gemini,
-                    OpenRouter, xAI) automatically apply their model's official chat
-                    template.
-                </p>
-                <div className="preset-generation-grid">
-                    <label title="Instruct format wrapper applied to messages when using Text Completion backends (e.g. KoboldCPP).">
-                        Template format
-                        <select
-                            value={settings.instructTemplate ?? "auto"}
-                            onInput={(event) =>
-                                update({
-                                    instructTemplate: event.currentTarget
-                                        .value as PresetFormattingSettings["instructTemplate"],
-                                })
-                            }
-                        >
-                            <option value="auto">Auto (detect from model)</option>
-                            <option value="none">None / native chat</option>
-                            <option value="chatml">ChatML / Qwen</option>
-                            <option value="llama3">Llama 3</option>
-                            <option value="mistral">Mistral</option>
-                            <option value="gemma2">Gemma 2</option>
-                            <option value="alpaca">Alpaca</option>
-                            <option value="deepseek-r1">DeepSeek-R1</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                    </label>
-                </div>
-                <div className="preset-toggle-row compact">
-                    {toggle(
-                        "sequencesAsStopStrings",
-                        "Instruct sequences as stop strings",
-                        "Automatically adds user and assistant instruct sequence prefixes to stop sequences to prevent the model from generating both sides of the conversation.",
-                    )}
-                </div>
-                {isCustom && (
-                    <div className="preset-custom-sequences-grid">
-                        <label title="Prefix placed immediately before each user turn in raw text completion.">
-                            User prefix
-                            <input
-                                value={settings.userPrefix ?? ""}
-                                placeholder="### Instruction:"
-                                onInput={(event) =>
-                                    update({ userPrefix: event.currentTarget.value })
-                                }
-                            />
-                        </label>
-                        <label title="Suffix placed immediately after each user turn in raw text completion.">
-                            User suffix
-                            <input
-                                value={settings.userSuffix ?? ""}
-                                onInput={(event) =>
-                                    update({ userSuffix: event.currentTarget.value })
-                                }
-                            />
-                        </label>
-                        <label title="Prefix placed immediately before each assistant turn in raw text completion.">
-                            Assistant prefix
-                            <input
-                                value={settings.assistantPrefix ?? ""}
-                                placeholder="### Response:"
-                                onInput={(event) =>
-                                    update({ assistantPrefix: event.currentTarget.value })
-                                }
-                            />
-                        </label>
-                        <label title="Suffix placed immediately after each assistant turn in raw text completion.">
-                            Assistant suffix
-                            <input
-                                value={settings.assistantSuffix ?? ""}
-                                onInput={(event) =>
-                                    update({ assistantSuffix: event.currentTarget.value })
-                                }
-                            />
-                        </label>
-                        <label title="Prefix placed immediately before each system/instruction turn in raw text completion.">
-                            System prefix
-                            <input
-                                value={settings.systemPrefix ?? ""}
-                                placeholder="### System:"
-                                onInput={(event) =>
-                                    update({ systemPrefix: event.currentTarget.value })
-                                }
-                            />
-                        </label>
-                        <label title="Suffix placed immediately after each system/instruction turn in raw text completion.">
-                            System suffix
-                            <input
-                                value={settings.systemSuffix ?? ""}
-                                onInput={(event) =>
-                                    update({ systemSuffix: event.currentTarget.value })
-                                }
-                            />
-                        </label>
-                    </div>
-                )}
-            </div>
         </section>
     );
 }

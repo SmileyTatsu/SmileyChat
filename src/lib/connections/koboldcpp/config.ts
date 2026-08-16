@@ -7,7 +7,6 @@ export const defaultKoboldCPPConfig: KoboldCPPConnectionConfig = {
     baseUrl: "http://localhost:5001/api",
     maxOutputTokens: defaultOutputTokenLimit,
     model: { source: "loaded", id: "" },
-    instructTemplate: "auto",
 };
 
 export function normalizeKoboldCPPConfig(value: unknown): KoboldCPPConnectionConfig {
@@ -19,7 +18,6 @@ export function normalizeKoboldCPPConfig(value: unknown): KoboldCPPConnectionCon
         config.maxContextLength > 0
             ? Math.floor(config.maxContextLength)
             : undefined;
-    const template = config.instructTemplate;
     return {
         apiKey: stringOrUndefined(config.apiKey),
         baseUrl: stringOrUndefined(config.baseUrl) ?? defaultKoboldCPPConfig.baseUrl,
@@ -29,14 +27,5 @@ export function normalizeKoboldCPPConfig(value: unknown): KoboldCPPConnectionCon
             source: model.source === "custom" ? "custom" : "loaded",
             id: stringOrUndefined(model.id) ?? "",
         },
-        instructTemplate:
-            template === "llama3" ||
-            template === "chatml" ||
-            template === "mistral" ||
-            template === "gemma2" ||
-            template === "alpaca" ||
-            template === "deepseek-r1"
-                ? template
-                : "auto",
     };
 }

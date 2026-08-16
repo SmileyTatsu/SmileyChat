@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { Message, SmileyCharacter } from "#frontend/types";
 
 import { defaultCharacterData } from "../characters/defaults";
-import { resolvePresetMacros, type MacroContext } from "./macros";
+import { renderStoryString, resolvePresetMacros, type MacroContext } from "./macros";
 
 describe("resolvePresetMacros", () => {
     test("returns plain text without scanning when no macros are present", () => {
@@ -30,6 +30,72 @@ describe("resolvePresetMacros", () => {
         });
 
         expect(resolvePresetMacros("count={{message_count}}", context)).toBe("count=3");
+    });
+
+    test("evaluates {{#if}} conditionals and resolves SillyTavern macro aliases", () => {
+        const context = createMacroContext({
+            character: {
+                id: "char-1",
+                version: 1,
+                data: {
+                    ...defaultCharacterData,
+                    name: "Luna",
+                    description: "Fierce warrior.",
+                    personality: "",
+                    scenario: "In a forest.",
+                    mes_example: "{{char}}: Hello.",
+                    system_prompt: "You are Luna.",
+                    extensions: {},
+                },
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+        });
+
+        const template = [
+            "{{#if description}}## {{char}}'s Description:\n{{description}}\n{{/if}}",
+            "{{#if personality}}## Personality:\n{{personality}}\n{{/if}}",
+            "{{#if scenario}}## Scenario:\n{{scenario}}\n{{/if}}",
+            "{{#if persona}}## {{user}}'s Persona:\n{{persona}}\n{{/if}}",
+            "{{#if mesExamples}}## Examples:\n{{mesExamples}}\n{{/if}}",
+        ].join("\n");
+
+        const resolved = resolvePresetMacros(template, context);
+
+        expect(resolved).toContain("## Luna's Description:\nFierce warrior.");
+        expect(resolved).not.toContain("## Personality:");
+        expect(resolved).toContain("## Scenario:\nIn a forest.");
+        expect(resolved).toContain("## Anon's Persona:\nA tester.");
+        expect(resolved).toContain("## Examples:\nLuna: Hello.");
+    });
+
+    test("evaluates {{#if ... else}} and {{#unless}} conditional branches", () => {
+        const context = createMacroContext();
+        expect(
+            resolvePresetMacros(
+                "{{#if personality}}Has personality{{else}}No personality{{/if}}",
+                context,
+            ),
+        ).toBe("No personality");
+        expect(
+            resolvePresetMacros(
+                "{{#unless personality}}Personality missing{{/unless}}",
+                context,
+            ),
+        ).toBe("Personality missing");
+    });
+
+    test("renders Story Strings with Handlebars blocks and separate lore positions", () => {
+        const rendered = renderStoryString(
+            "{{#if wiBefore}}Before: {{wiBefore}}{{/if}}|{{#if wiAfter}}After: {{wiAfter}}{{/if}}|{{#each tags}}{{this}},{{/each}}",
+            {
+                ...createMacroContext(),
+                worldInfoBefore: "Old map",
+                worldInfoAfter: "New clue",
+            },
+        );
+
+        expect(rendered).toBe("Before: Old map|After: New clue|");
     });
 });
 

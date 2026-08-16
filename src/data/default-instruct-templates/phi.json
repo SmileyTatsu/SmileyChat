@@ -1,0 +1,23 @@
+{
+    "id": "phi",
+    "name": "Phi",
+    "userPrefix": "<|user|>\n",
+    "userSuffix": "<|end|>\n",
+    "assistantPrefix": "<|assistant|>\n",
+    "assistantSuffix": "<|end|>\n",
+    "systemPrefix": "<|system|>\n",
+    "systemSuffix": "<|end|>\n",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{personality}}\n{{/if}}{{#if scenario}}{{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}{{trim}}",
+    "storyStringPrefix": "<|system|>\n",
+    "storyStringSuffix": "<|end|>\n",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": "",
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "",
+    "chatStartSeparator": "",
+    "stopSequences": ["<|end|>"]
+}

@@ -54,6 +54,22 @@ describe("KoboldCPP connection adapter", () => {
         );
     });
 
+    test("uses custom template stops without injecting auto-detected stops", () => {
+        const payload = createKoboldCPPBody(
+            {
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+                formatting: {
+                    instructTemplate: "custom",
+                    stopSequences: ["<custom-stop>"],
+                },
+            },
+            config,
+        );
+
+        expect(payload.stop_sequence).toEqual(["<custom-stop>"]);
+    });
+
     test("streams tokens", async () => {
         globalThis.fetch = (async () =>
             new Response('data: {"token":"Hello"}\n\ndata: {"token":" there"}\n\n', {

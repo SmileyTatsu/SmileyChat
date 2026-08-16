@@ -58,6 +58,11 @@ export type PromptBuildContext = {
     persona: SmileyPersona;
     preferences: AppPreferences;
     preset: SmileyPreset | undefined;
+    isTextCompletion?: boolean;
+    textCompletionWorldInfo?: {
+        before: string;
+        after: string;
+    };
     tokenBudget: number;
     tokenContext?: TokenCountContext;
     userStatus: UserStatus;

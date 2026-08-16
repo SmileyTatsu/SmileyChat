@@ -53,6 +53,8 @@ export type PresetInstructTemplate =
     | "deepseek-r1"
     | "custom";
 
+export type InstructNamesBehavior = "never" | "force" | "always";
+
 export type PresetFormattingSettings = {
     namesAsStopStrings?: boolean;
     separatorsAsStopStrings?: boolean;
@@ -68,6 +70,23 @@ export type PresetFormattingSettings = {
     assistantSuffix?: string;
     systemPrefix?: string;
     systemSuffix?: string;
+    systemPrompt?: string;
+    storyString?: string;
+    storyStringPrefix?: string;
+    storyStringSuffix?: string;
+    firstInputSequence?: string;
+    lastInputSequence?: string;
+    firstOutputSequence?: string;
+    lastOutputSequence?: string;
+    systemSameAsUser?: boolean;
+    userAlignmentMessage?: string;
+    overridePresetPromptOrder?: boolean;
+    stopSequences?: string[];
+    wrapSequencesWithNewlines?: boolean;
+    namesBehavior?: InstructNamesBehavior;
+    replaceMacrosInSequences?: boolean;
+    skipExamples?: boolean;
+    activationRegex?: string;
 };
 
 export type PresetGenerationSettings = {

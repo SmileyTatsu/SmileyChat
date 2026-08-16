@@ -1,4 +1,5 @@
 import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
+import Handlebars from "handlebars";
 
 import { getCharacterTagline } from "../characters/normalize";
 import { formatDate, formatDateTime, formatShortTime } from "../common/time";
@@ -8,8 +9,11 @@ import { messageTextForHistory } from "./message-format";
 import type { PromptOutletRegistry } from "../prompt/outlets";
 import type { PromptGenerationContext } from "../prompt/types";
 
+import type { PresetFormattingSettings } from "./types";
+
 export type MacroContext = {
     character: SmileyCharacter;
+    formatting?: PresetFormattingSettings;
     group?: {
         joinPrefix?: string;
         memberIds?: string[];
@@ -22,6 +26,8 @@ export type MacroContext = {
     personaName: string;
     personaDescription: string;
     userStatus: UserStatus;
+    worldInfoBefore?: string;
+    worldInfoAfter?: string;
 };
 
 type MacroValue = {
@@ -30,11 +36,59 @@ type MacroValue = {
 };
 
 const commentMacroPattern = /\{\{\/\/[\s\S]*?\}\}/g;
+const ifBlockPattern =
+    /\{\{#if\s+([a-zA-Z0-9_]+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g;
+const unlessBlockPattern =
+    /\{\{#unless\s+([a-zA-Z0-9_]+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/unless\}\}/g;
 const macroPattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
 const maxNestedMacroDepth = 8;
 
 export function resolvePresetMacros(content: string, context: MacroContext) {
     return resolvePresetMacrosInternal(content, context, 0, new Set());
+}
+
+/** Render a SillyTavern-style Story String with Handlebars blocks and known macros. */
+export function renderStoryString(content: string, context: MacroContext) {
+    const source = content.replace(commentMacroPattern, "");
+    const system =
+        context.character.data.system_prompt?.trim() ||
+        context.formatting?.systemPrompt?.trim() ||
+        "";
+    const examplesRaw = context.character.data.mes_example || "";
+    const exampleSeparator = context.formatting?.exampleSeparator ?? "";
+    const examples = context.formatting?.skipExamples
+        ? ""
+        : examplesRaw.replace(/<START>/gi, exampleSeparator);
+    const template = Handlebars.compile(source, {
+        noEscape: true,
+        strict: false,
+        knownHelpersOnly: false,
+    });
+    const rendered = template(
+        {
+            anchorBefore: "",
+            anchorAfter: "",
+            char: context.character.data.name,
+            description: context.character.data.description,
+            personality: context.character.data.personality,
+            scenario: context.character.data.scenario,
+            system,
+            persona: context.personaDescription,
+            user: context.personaName,
+            wiBefore: context.worldInfoBefore ?? "",
+            loreBefore: context.worldInfoBefore ?? "",
+            wiAfter: context.worldInfoAfter ?? "",
+            loreAfter: context.worldInfoAfter ?? "",
+            mesExamples: examples,
+            mesExamplesRaw: examplesRaw,
+        },
+        {
+            helpers: {
+                trim: () => "",
+            },
+        },
+    );
+    return resolvePresetMacros(rendered, context);
 }
 
 /**
@@ -45,6 +99,34 @@ export function resolvePresetMacros(content: string, context: MacroContext) {
  */
 export function resolveCharacterCardMacros(content: string, character: SmileyCharacter) {
     return resolveCharacterCardMacrosInternal(content, character, 0, new Set());
+}
+
+function evaluateConditionals(
+    content: string,
+    evaluator: (key: string) => boolean,
+): string {
+    let result = content;
+    let iterations = 0;
+
+    while (
+        (ifBlockPattern.test(result) || unlessBlockPattern.test(result)) &&
+        iterations < maxNestedMacroDepth
+    ) {
+        iterations++;
+        result = result
+            .replace(
+                ifBlockPattern,
+                (_, key: string, thenBranch: string, elseBranch = "") =>
+                    evaluator(key) ? thenBranch : elseBranch,
+            )
+            .replace(
+                unlessBlockPattern,
+                (_, key: string, thenBranch: string, elseBranch = "") =>
+                    evaluator(key) ? elseBranch : thenBranch,
+            );
+    }
+
+    return result;
 }
 
 function resolvePresetMacrosInternal(
@@ -60,6 +142,11 @@ function resolvePresetMacrosInternal(
 
     const shouldTrim = /\{\{\s*trim\s*\}\}/.test(content);
     let resolved = content.replace(commentMacroPattern, "");
+
+    resolved = evaluateConditionals(resolved, (key) => {
+        const val = valueForMacro(key.trim(), context);
+        return Boolean(val?.value?.trim());
+    });
 
     resolved = resolved.replace(macroPattern, (match, key: string) => {
         const normalizedKey = key.trim();
@@ -102,7 +189,17 @@ function resolveCharacterCardMacrosInternal(
         return content;
     }
 
-    const resolved = content.replace(commentMacroPattern, "");
+    let resolved = content.replace(commentMacroPattern, "");
+
+    resolved = evaluateConditionals(resolved, (key) => {
+        const val = characterCardMacroValue(
+            key.trim().toLowerCase(),
+            character,
+            [],
+            false,
+        );
+        return Boolean(val?.value?.trim());
+    });
 
     return resolved.replace(macroPattern, (match, key: string) => {
         const normalizedKey = key.trim().toLowerCase();
@@ -140,6 +237,23 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
         return { recursive: true, value: context.outlets?.render(outletName) ?? "" };
     }
 
+    const lower = key.toLowerCase().replace(/[\s_-]+/g, "");
+
+    // System prompt alias that checks formatting.systemPrompt fallback if character prompt is empty
+    if (
+        lower === "system" ||
+        lower === "systemprompt" ||
+        lower === "charsystemprompt" ||
+        lower === "charprompt"
+    ) {
+        const val =
+            context.character.data.system_prompt?.trim() ||
+            context.formatting?.systemPrompt?.trim();
+        if (val) {
+            return { recursive: true, value: val };
+        }
+    }
+
     const characterValue = characterCardMacroValue(
         key,
         context.character,
@@ -150,36 +264,37 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
         return characterValue;
     }
 
-    switch (key) {
+    switch (lower) {
         // Persona fields
         case "user":
-        case "persona_name":
+        case "personaname":
             return { recursive: true, value: context.personaName };
         case "persona":
-        case "persona_description":
+        case "personadescription":
             return { recursive: true, value: context.personaDescription };
         case "status":
-        case "user_status":
+        case "userstatus":
             return { value: context.userStatus };
+
+        // World info / Lore aliases
+        case "wibefore":
+        case "lorebefore":
+            return { recursive: true, value: context.worldInfoBefore ?? "" };
+        case "wiafter":
+        case "loreafter":
+            return { recursive: true, value: context.worldInfoAfter ?? "" };
 
         // Conversation history and message lookups. These are intentionally not
         // recursively expanded so chat content cannot accidentally invoke macros.
-        case "chat_history":
+        case "chathistory":
             return { value: chatHistory(context.messages, context) };
-        case "last message":
-        case "last_message":
-        case "lastMessage":
+        case "lastmessage":
             return { value: lastMessage(context.messages) };
-        case "last user message":
-        case "last_user_message":
-        case "lastUserMessage":
+        case "lastusermessage":
             return { value: lastUserMessage(context.messages) };
-        case "last char message":
-        case "last_char_message":
-        case "lastCharMessage":
+        case "lastcharmessage":
             return { value: lastCharacterMessage(context.messages) };
-        case "message count":
-        case "message_count":
+        case "messagecount":
             return { value: String(context.messages.length) };
 
         // Runtime/session values
@@ -208,36 +323,44 @@ function characterCardMacroValue(
     messages: Message[] = [],
     includeFirstMessageFallback = true,
 ): MacroValue | undefined {
-    switch (key) {
+    const lower = key.toLowerCase().replace(/[\s_-]+/g, "");
+
+    switch (lower) {
         case "char":
             return { recursive: true, value: character.data.name };
-        case "char_description":
+        case "chardescription":
+        case "description":
             return { recursive: true, value: character.data.description };
-        case "char_personality":
+        case "charpersonality":
         case "personality":
             return { recursive: true, value: character.data.personality };
         case "tagline":
             return { recursive: true, value: getCharacterTagline(character) };
         case "scenario":
             return { recursive: true, value: character.data.scenario };
-        case "char_first_message":
+        case "charfirstmessage":
             return character.data.first_mes
                 ? { recursive: true, value: character.data.first_mes }
                 : includeFirstMessageFallback
                   ? { value: firstCharacterMessage(messages) }
                   : undefined;
-        case "char_message_examples":
-        case "message_examples":
-        case "mes_example":
+        case "charmessageexamples":
+        case "messageexamples":
+        case "mesexamples":
+        case "mesexample":
             return { recursive: true, value: character.data.mes_example };
-        case "char_system_prompt":
-        case "system_prompt":
+        case "charsystemprompt":
+        case "systemprompt":
+        case "system":
+        case "charprompt":
             return { recursive: true, value: character.data.system_prompt };
-        case "char_post_history_instructions":
-        case "post_history_instructions":
+        case "charposthistoryinstructions":
+        case "posthistoryinstructions":
             return { recursive: true, value: character.data.post_history_instructions };
-        case "character_book":
-        case "char_lore":
+        case "characterbook":
+        case "charlore":
+        case "wibefore":
+        case "wiafter":
             return { recursive: true, value: formatCharacterBook(character) };
         default:
             return undefined;

@@ -1,0 +1,22 @@
+{
+    "id": "synthia",
+    "name": "Synthia",
+    "userPrefix": "USER: ",
+    "userSuffix": "\n",
+    "assistantPrefix": "ASSISTANT: ",
+    "assistantSuffix": "\n",
+    "systemPrefix": "SYSTEM: ",
+    "systemSuffix": "\n",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{personality}}\n{{/if}}{{#if scenario}}{{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}{{trim}}",
+    "storyStringPrefix": "SYSTEM: ",
+    "storyStringSuffix": "\n",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": "Let's get started. Please respond based on the information and instructions provided above.",
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "",
+    "chatStartSeparator": ""
+}

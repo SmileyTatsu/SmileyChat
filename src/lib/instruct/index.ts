@@ -1,4 +1,6 @@
 import { isRecord } from "../common/guards";
+import { createId } from "../common/ids";
+import { normalizeStringList } from "../connections/config-utils";
 import { messageContentToText } from "../connections/images";
 import type { ChatGenerationMessage } from "../connections/types";
 import type { PresetFormattingSettings } from "../presets/types";
@@ -21,6 +23,7 @@ export const instructTemplateLabels: Record<InstructTemplateId, string> = {
     alpaca: "Alpaca",
     "deepseek-r1": "DeepSeek-R1",
 };
+
 export const instructTemplateStopSequences: Record<
     Exclude<InstructTemplateId, "auto">,
     string[]
@@ -32,6 +35,167 @@ export const instructTemplateStopSequences: Record<
     alpaca: ["### Instruction:"],
     "deepseek-r1": ["<｜end_of_sentence｜>", "<｜User｜>"],
 };
+
+export const defaultStoryString = `{{#if anchorBefore}}{{anchorBefore}}
+{{/if}}{{#if system}}{{system}}
+{{/if}}{{#if wiBefore}}{{wiBefore}}
+{{/if}}{{#if description}}{{description}}
+{{/if}}{{#if personality}}{{personality}}
+{{/if}}{{#if scenario}}{{scenario}}
+{{/if}}{{#if persona}}{{persona}}
+{{/if}}{{#if anchorAfter}}{{anchorAfter}}
+{{/if}}{{trim}}`;
+
+export type CustomInstructTemplate = {
+    id: string;
+    name: string;
+    userPrefix?: string;
+    userSuffix?: string;
+    assistantPrefix?: string;
+    assistantSuffix?: string;
+    systemPrefix?: string;
+    systemSuffix?: string;
+    storyString?: string;
+    storyStringPrefix?: string;
+    storyStringSuffix?: string;
+    firstInputSequence?: string;
+    lastInputSequence?: string;
+    firstOutputSequence?: string;
+    lastOutputSequence?: string;
+    systemSameAsUser?: boolean;
+    userAlignmentMessage?: string;
+    systemPrompt?: string;
+    sequencesAsStopStrings?: boolean;
+    namesAsStopStrings?: boolean;
+    alwaysAddCharacterName?: boolean;
+    singleLineMode?: boolean;
+    exampleSeparator?: string;
+    chatStartSeparator?: string;
+    stopSequences?: string[];
+    wrapSequencesWithNewlines?: boolean;
+    namesBehavior?: "never" | "force" | "always";
+    replaceMacrosInSequences?: boolean;
+    skipExamples?: boolean;
+    activationRegex?: string;
+    overridePresetPromptOrder?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+export function slugifyInstructName(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+}
+
+export function isValidInstructTemplateId(id: string) {
+    return /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(id);
+}
+
+export function normalizeCustomInstructTemplate(value: unknown): CustomInstructTemplate {
+    const raw = isRecord(value) ? value : {};
+    const name =
+        typeof raw.name === "string" && raw.name.trim()
+            ? raw.name.trim()
+            : "Custom Instruct";
+    const id =
+        typeof raw.id === "string" && isValidInstructTemplateId(raw.id.trim())
+            ? raw.id.trim()
+            : slugifyInstructName(name) || createId("instruct");
+
+    const stopSequences = normalizeStringList(
+        raw.stopSequences ?? raw.stop_sequences ?? raw.stop_sequence ?? raw.stop,
+    );
+
+    return {
+        id,
+        name,
+        ...(typeof raw.userPrefix === "string" ? { userPrefix: raw.userPrefix } : {}),
+        ...(typeof raw.userSuffix === "string" ? { userSuffix: raw.userSuffix } : {}),
+        ...(typeof raw.assistantPrefix === "string"
+            ? { assistantPrefix: raw.assistantPrefix }
+            : {}),
+        ...(typeof raw.assistantSuffix === "string"
+            ? { assistantSuffix: raw.assistantSuffix }
+            : {}),
+        ...(typeof raw.systemPrefix === "string"
+            ? { systemPrefix: raw.systemPrefix }
+            : {}),
+        ...(typeof raw.systemSuffix === "string"
+            ? { systemSuffix: raw.systemSuffix }
+            : {}),
+        ...(typeof raw.storyString === "string" ? { storyString: raw.storyString } : {}),
+        ...(typeof raw.story_string === "string"
+            ? { storyString: raw.story_string }
+            : {}),
+        ...(typeof raw.storyStringPrefix === "string"
+            ? { storyStringPrefix: raw.storyStringPrefix }
+            : {}),
+        ...(typeof raw.story_string_prefix === "string"
+            ? { storyStringPrefix: raw.story_string_prefix }
+            : {}),
+        ...(typeof raw.storyStringSuffix === "string"
+            ? { storyStringSuffix: raw.storyStringSuffix }
+            : {}),
+        ...(typeof raw.story_string_suffix === "string"
+            ? { storyStringSuffix: raw.story_string_suffix }
+            : {}),
+        ...(typeof raw.systemPrompt === "string"
+            ? { systemPrompt: raw.systemPrompt }
+            : {}),
+        ...(typeof raw.firstInputSequence === "string"
+            ? { firstInputSequence: raw.firstInputSequence }
+            : {}),
+        ...(typeof raw.lastInputSequence === "string"
+            ? { lastInputSequence: raw.lastInputSequence }
+            : {}),
+        ...(typeof raw.firstOutputSequence === "string"
+            ? { firstOutputSequence: raw.firstOutputSequence }
+            : {}),
+        ...(typeof raw.lastOutputSequence === "string"
+            ? { lastOutputSequence: raw.lastOutputSequence }
+            : {}),
+        ...(raw.systemSameAsUser === true ? { systemSameAsUser: true } : {}),
+        ...(typeof raw.userAlignmentMessage === "string"
+            ? { userAlignmentMessage: raw.userAlignmentMessage }
+            : {}),
+        ...(raw.sequencesAsStopStrings === true ? { sequencesAsStopStrings: true } : {}),
+        ...(raw.namesAsStopStrings === true ? { namesAsStopStrings: true } : {}),
+        ...(raw.alwaysAddCharacterName === true ? { alwaysAddCharacterName: true } : {}),
+        ...(raw.singleLineMode === true ? { singleLineMode: true } : {}),
+        ...(raw.overridePresetPromptOrder === true
+            ? { overridePresetPromptOrder: true }
+            : {}),
+        ...(raw.wrapSequencesWithNewlines === true || raw.wrap === true
+            ? { wrapSequencesWithNewlines: true }
+            : {}),
+        ...(raw.namesBehavior === "never" ||
+        raw.namesBehavior === "force" ||
+        raw.namesBehavior === "always"
+            ? { namesBehavior: raw.namesBehavior }
+            : {}),
+        ...(raw.replaceMacrosInSequences === true || raw.macro === true
+            ? { replaceMacrosInSequences: true }
+            : {}),
+        ...(raw.skipExamples === true || raw.skip_examples === true
+            ? { skipExamples: true }
+            : {}),
+        ...(typeof raw.activationRegex === "string" ||
+        typeof raw.activation_regex === "string"
+            ? { activationRegex: (raw.activationRegex ?? raw.activation_regex) as string }
+            : {}),
+        ...(typeof raw.exampleSeparator === "string"
+            ? { exampleSeparator: raw.exampleSeparator }
+            : {}),
+        ...(typeof raw.chatStartSeparator === "string"
+            ? { chatStartSeparator: raw.chatStartSeparator }
+            : {}),
+        ...(stopSequences.length ? { stopSequences } : {}),
+        ...(typeof raw.createdAt === "string" ? { createdAt: raw.createdAt } : {}),
+        ...(typeof raw.updatedAt === "string" ? { updatedAt: raw.updatedAt } : {}),
+    };
+}
 
 export function getInstructTemplateStopSequences(
     template: InstructTemplateId,
@@ -110,67 +274,320 @@ export function formatCustomInstructPrompt(
     messages: ChatGenerationMessage[],
     formatting: PresetFormattingSettings,
 ) {
-    const sequenceFor = (role: ChatGenerationMessage["role"]) => {
-        if (role === "assistant")
-            return [formatting.assistantPrefix ?? "", formatting.assistantSuffix ?? ""];
-        if (role === "system" || role === "developer")
-            return [formatting.systemPrefix ?? "", formatting.systemSuffix ?? ""];
-        return [formatting.userPrefix ?? "", formatting.userSuffix ?? ""];
-    };
-    const output = messages.map((message) => {
-        const [prefix, suffix] = sequenceFor(message.role);
-        return `${prefix}${messageContentToText(message.content)}${suffix}`;
-    });
-    return `${output.join("\n")}${formatting.assistantPrefix ?? ""}`;
+    const rawTurns = messages.map((message) => ({
+        role: message.role === "developer" ? "system" : message.role,
+        content: messageContentToText(message.content),
+        formattingKind: message.formattingKind,
+        speakerName: message.speakerName,
+        isFirstAssistantInChat: message.isFirstAssistantInChat,
+    }));
+
+    const wrap = (sequence: string) =>
+        formatting.wrapSequencesWithNewlines && sequence ? `\n${sequence}\n` : sequence;
+    const systemPrefix = wrap(formatting.systemPrefix ?? "");
+    const systemSuffix = wrap(formatting.systemSuffix ?? "");
+    const userPrefix = wrap(formatting.userPrefix ?? "");
+    const userSuffix = wrap(formatting.userSuffix ?? "");
+    const assistantPrefix = wrap(formatting.assistantPrefix ?? "");
+    const assistantSuffix = wrap(formatting.assistantSuffix ?? "");
+    const firstInputPrefix = wrap(
+        formatting.firstInputSequence ?? formatting.userPrefix ?? "",
+    );
+    const lastInputPrefix = wrap(
+        formatting.lastInputSequence ?? formatting.userPrefix ?? "",
+    );
+    const firstOutputPrefix = wrap(
+        formatting.firstOutputSequence ?? formatting.assistantPrefix ?? "",
+    );
+    const lastOutputPrefix = wrap(
+        formatting.lastOutputSequence ?? formatting.assistantPrefix ?? "",
+    );
+    const storyPrefix = wrap(
+        formatting.storyStringPrefix !== undefined
+            ? formatting.storyStringPrefix
+            : (formatting.systemPrefix ?? ""),
+    );
+    const storySuffix = wrap(
+        formatting.storyStringSuffix !== undefined
+            ? formatting.storyStringSuffix
+            : (formatting.systemSuffix ?? ""),
+    );
+    const userAlignment = formatting.userAlignmentMessage?.trim();
+    const sequenceFor = (sequence: string, speakerName?: string) =>
+        formatting.replaceMacrosInSequences
+            ? sequence.replace(/\{\{\s*name\s*\}\}/gi, speakerName || "System")
+            : sequence;
+
+    const chatTurns = rawTurns.filter(
+        (turn) => turn.role !== "system" && !turn.formattingKind,
+    );
+    const userTurnsCount = chatTurns.filter((turn) => turn.role === "user").length;
+    let seenUserTurns = 0;
+    let seenAssistantTurns = 0;
+    const firstConversationTurn = chatTurns[0];
+    const needsAlignment = Boolean(
+        userAlignment && firstConversationTurn?.role !== "user",
+    );
+    let output = needsAlignment ? `${firstInputPrefix}${userAlignment}${userSuffix}` : "";
+
+    for (const turn of rawTurns) {
+        if (turn.formattingKind === "raw") {
+            output += turn.content;
+            continue;
+        }
+        if (turn.formattingKind === "story") {
+            output += `${sequenceFor(storyPrefix, turn.speakerName)}${turn.content}${sequenceFor(storySuffix, turn.speakerName)}`;
+            continue;
+        }
+        if (turn.role === "system") {
+            const prefix = sequenceFor(
+                formatting.systemSameAsUser ? userPrefix : systemPrefix,
+                turn.speakerName,
+            );
+            const suffix = sequenceFor(
+                formatting.systemSameAsUser ? userSuffix : systemSuffix,
+                turn.speakerName,
+            );
+            output += `${prefix}${turn.content}${suffix}`;
+            continue;
+        }
+        const isUser = turn.role === "user";
+
+        if (isUser) {
+            seenUserTurns++;
+            const isFirstUser = seenUserTurns === 1;
+            const isLastUser = seenUserTurns === userTurnsCount;
+            const prefix = sequenceFor(
+                isFirstUser
+                    ? firstInputPrefix
+                    : isLastUser
+                      ? lastInputPrefix
+                      : userPrefix,
+                turn.speakerName,
+            );
+            const suffix = sequenceFor(userSuffix, turn.speakerName);
+
+            let text = turn.content;
+            if (isFirstUser && userAlignment && !needsAlignment) {
+                text = `${userAlignment}\n\n${text}`;
+            }
+
+            output += `${prefix}${text}${suffix}`;
+        } else {
+            seenAssistantTurns++;
+            const isFirstAssistant =
+                turn.isFirstAssistantInChat ?? seenAssistantTurns === 1;
+            const prefix = sequenceFor(
+                isFirstAssistant ? firstOutputPrefix : assistantPrefix,
+                turn.speakerName,
+            );
+            const suffix = sequenceFor(assistantSuffix, turn.speakerName);
+
+            output += `${prefix}${turn.content}${suffix}`;
+        }
+    }
+
+    const lastTurn = rawTurns[rawTurns.length - 1];
+    if (lastTurn && lastTurn.role === "user") {
+        output += sequenceFor(lastOutputPrefix, lastTurn.speakerName);
+    }
+
+    return output;
 }
 
 export function parseInstructTemplateJson(value: unknown): {
     formatting: Partial<PresetFormattingSettings>;
     name?: string;
+    template: CustomInstructTemplate;
 } {
     if (!isRecord(value)) {
         throw new Error("Invalid JSON: Expected an instruct template object.");
     }
 
-    const name = typeof value.name === "string" ? value.name.trim() : undefined;
+    const raw = value;
+    const instruct = isRecord(raw.instruct) ? raw.instruct : raw;
+    const context = isRecord(raw.context) ? raw.context : raw;
+    const preset = isRecord(raw.preset) ? raw.preset : raw;
+    const sysprompt = isRecord(raw.sysprompt) ? raw.sysprompt : raw;
+
+    const name =
+        asStringOrUndefined(instruct.name) ??
+        asStringOrUndefined(context.name) ??
+        asStringOrUndefined(sysprompt.name) ??
+        asStringOrUndefined(preset.name) ??
+        asStringOrUndefined(raw.name);
+
+    const templateName = name ? name.trim() : undefined;
     const template =
-        typeof value.instruct_template === "string" ? value.instruct_template : undefined;
+        typeof instruct.instruct_template === "string"
+            ? instruct.instruct_template
+            : typeof raw.instruct_template === "string"
+              ? raw.instruct_template
+              : undefined;
 
     const userPrefix =
-        asStringOrUndefined(value.userPrefix) ??
-        asStringOrUndefined(value.user_prefix) ??
-        asStringOrUndefined(value.input_sequence);
+        asStringOrUndefined(instruct.userPrefix) ??
+        asStringOrUndefined(instruct.user_prefix) ??
+        asStringOrUndefined(instruct.input_sequence) ??
+        asStringOrUndefined(instruct.user_sequence) ??
+        asStringOrUndefined(raw.userPrefix) ??
+        asStringOrUndefined(raw.user_prefix) ??
+        asStringOrUndefined(raw.input_sequence);
 
     const userSuffix =
-        asStringOrUndefined(value.userSuffix) ??
-        asStringOrUndefined(value.user_suffix) ??
-        asStringOrUndefined(value.user_sequence_suffix);
+        asStringOrUndefined(instruct.userSuffix) ??
+        asStringOrUndefined(instruct.user_suffix) ??
+        asStringOrUndefined(instruct.input_suffix) ??
+        asStringOrUndefined(instruct.user_sequence_suffix) ??
+        asStringOrUndefined(raw.userSuffix) ??
+        asStringOrUndefined(raw.user_suffix) ??
+        asStringOrUndefined(raw.input_suffix) ??
+        asStringOrUndefined(raw.user_sequence_suffix);
 
     const assistantPrefix =
-        asStringOrUndefined(value.assistantPrefix) ??
-        asStringOrUndefined(value.assistant_prefix) ??
-        asStringOrUndefined(value.output_sequence);
+        asStringOrUndefined(instruct.assistantPrefix) ??
+        asStringOrUndefined(instruct.assistant_prefix) ??
+        asStringOrUndefined(instruct.output_sequence) ??
+        asStringOrUndefined(instruct.assistant_sequence) ??
+        asStringOrUndefined(raw.assistantPrefix) ??
+        asStringOrUndefined(raw.assistant_prefix) ??
+        asStringOrUndefined(raw.output_sequence);
 
     const assistantSuffix =
-        asStringOrUndefined(value.assistantSuffix) ??
-        asStringOrUndefined(value.assistant_suffix) ??
-        asStringOrUndefined(value.assistant_sequence_suffix);
+        asStringOrUndefined(instruct.assistantSuffix) ??
+        asStringOrUndefined(instruct.assistant_suffix) ??
+        asStringOrUndefined(instruct.output_suffix) ??
+        asStringOrUndefined(instruct.assistant_sequence_suffix) ??
+        asStringOrUndefined(raw.assistantSuffix) ??
+        asStringOrUndefined(raw.assistant_suffix) ??
+        asStringOrUndefined(raw.output_suffix) ??
+        asStringOrUndefined(raw.assistant_sequence_suffix);
 
     const systemPrefix =
-        asStringOrUndefined(value.systemPrefix) ??
-        asStringOrUndefined(value.system_prefix) ??
-        asStringOrUndefined(value.system_sequence);
+        asStringOrUndefined(instruct.systemPrefix) ??
+        asStringOrUndefined(instruct.system_prefix) ??
+        asStringOrUndefined(instruct.system_sequence) ??
+        asStringOrUndefined(instruct.system_sequence_prefix) ??
+        asStringOrUndefined(raw.systemPrefix) ??
+        asStringOrUndefined(raw.system_prefix) ??
+        asStringOrUndefined(raw.system_sequence);
 
     const systemSuffix =
-        asStringOrUndefined(value.systemSuffix) ??
-        asStringOrUndefined(value.system_suffix) ??
-        asStringOrUndefined(value.system_sequence_suffix);
+        asStringOrUndefined(instruct.systemSuffix) ??
+        asStringOrUndefined(instruct.system_suffix) ??
+        asStringOrUndefined(instruct.system_sequence_suffix) ??
+        asStringOrUndefined(instruct.system_suffix) ??
+        asStringOrUndefined(raw.systemSuffix) ??
+        asStringOrUndefined(raw.system_suffix) ??
+        asStringOrUndefined(raw.system_sequence_suffix);
 
     const sequencesAsStopStrings =
-        value.sequencesAsStopStrings === true ||
-        value.sequences_as_stop === true ||
-        value.wrap_sequences_as_stop === true ||
-        value.wrap_sequences === true;
+        instruct.sequencesAsStopStrings === true ||
+        instruct.wrap_sequences === true ||
+        instruct.wrap_sequences_as_stop === true ||
+        instruct.sequences_as_stop === true ||
+        raw.sequencesAsStopStrings === true ||
+        raw.wrap_sequences_as_stop === true ||
+        raw.sequences_as_stop === true;
+
+    const namesAsStopStrings =
+        instruct.names_as_stop === true ||
+        context.names_as_stop_strings === true ||
+        raw.namesAsStopStrings === true ||
+        raw.names_as_stop === true;
+
+    const alwaysAddCharacterName =
+        context.always_force_name2 === true ||
+        raw.alwaysAddCharacterName === true ||
+        raw.always_force_name2 === true;
+
+    const singleLineMode =
+        context.single_line === true ||
+        raw.singleLineMode === true ||
+        raw.single_line === true;
+
+    const exampleSeparator =
+        asStringOrUndefined(context.example_separator) ??
+        asStringOrUndefined(raw.exampleSeparator);
+
+    const chatStartSeparator =
+        asStringOrUndefined(context.chat_start) ??
+        asStringOrUndefined(raw.chatStartSeparator);
+    const storyString =
+        asStringOrUndefined(context.story_string) ??
+        asStringOrUndefined(instruct.story_string) ??
+        asStringOrUndefined(raw.story_string) ??
+        asStringOrUndefined(context.storyString) ??
+        asStringOrUndefined(raw.storyString);
+    const storyStringPrefix =
+        asStringOrUndefined(instruct.story_string_prefix) ??
+        asStringOrUndefined(raw.story_string_prefix) ??
+        asStringOrUndefined(instruct.storyStringPrefix) ??
+        asStringOrUndefined(raw.storyStringPrefix);
+    const storyStringSuffix =
+        asStringOrUndefined(instruct.story_string_suffix) ??
+        asStringOrUndefined(raw.story_string_suffix) ??
+        asStringOrUndefined(instruct.storyStringSuffix) ??
+        asStringOrUndefined(raw.storyStringSuffix);
+    const systemPrompt =
+        asStringOrUndefined(sysprompt.content) ?? asStringOrUndefined(raw.systemPrompt);
+    const firstInputSequence =
+        asStringOrUndefined(instruct.first_input_sequence) ??
+        asStringOrUndefined(instruct.firstInputSequence) ??
+        asStringOrUndefined(raw.firstInputSequence) ??
+        asStringOrUndefined(raw.first_input_sequence);
+    const lastInputSequence =
+        asStringOrUndefined(instruct.last_input_sequence) ??
+        asStringOrUndefined(instruct.lastInputSequence) ??
+        asStringOrUndefined(raw.lastInputSequence) ??
+        asStringOrUndefined(raw.last_input_sequence);
+    const firstOutputSequence =
+        asStringOrUndefined(instruct.first_output_sequence) ??
+        asStringOrUndefined(instruct.firstOutputSequence) ??
+        asStringOrUndefined(raw.firstOutputSequence) ??
+        asStringOrUndefined(raw.first_output_sequence);
+    const lastOutputSequence =
+        asStringOrUndefined(instruct.last_output_sequence) ??
+        asStringOrUndefined(instruct.lastOutputSequence) ??
+        asStringOrUndefined(raw.lastOutputSequence) ??
+        asStringOrUndefined(raw.last_output_sequence);
+    const systemSameAsUser =
+        instruct.system_same_as_user === true ||
+        instruct.systemSameAsUser === true ||
+        raw.system_same_as_user === true ||
+        raw.systemSameAsUser === true;
+    const userAlignmentMessage =
+        asStringOrUndefined(instruct.user_alignment_message) ??
+        asStringOrUndefined(instruct.userAlignmentMessage) ??
+        asStringOrUndefined(raw.user_alignment_message) ??
+        asStringOrUndefined(raw.userAlignmentMessage);
+    const overridePresetPromptOrder =
+        instruct.overridePresetPromptOrder === true ||
+        raw.overridePresetPromptOrder === true ||
+        instruct.override_preset_prompt_order === true;
+    const namesBehavior =
+        instruct.names_behavior === "none" || instruct.names_behavior === "never"
+            ? "never"
+            : instruct.names_behavior === "always"
+              ? "always"
+              : instruct.names_behavior === "force"
+                ? "force"
+                : undefined;
+    const replaceMacrosInSequences = instruct.macro === true || raw.macro === true;
+    const skipExamples = instruct.skip_examples === true || raw.skip_examples === true;
+    const activationRegex =
+        asStringOrUndefined(instruct.activation_regex) ??
+        asStringOrUndefined(raw.activation_regex);
+
+    const stopSequences = normalizeStringList(
+        instruct.stop_sequence ??
+            instruct.stop_sequences ??
+            instruct.stopSequences ??
+            raw.stop_sequence ??
+            raw.stop_sequences ??
+            raw.stopSequences ??
+            raw.stop,
+    );
 
     const hasAnyCustomSequences = Boolean(
         userPrefix ||
@@ -178,24 +595,80 @@ export function parseInstructTemplateJson(value: unknown): {
         assistantPrefix ||
         assistantSuffix ||
         systemPrefix ||
-        systemSuffix,
+        systemSuffix ||
+        storyString ||
+        firstInputSequence ||
+        lastInputSequence ||
+        firstOutputSequence ||
+        lastOutputSequence ||
+        userAlignmentMessage,
     );
 
+    const formatting: Partial<PresetFormattingSettings> = {
+        instructTemplate: hasAnyCustomSequences
+            ? "custom"
+            : ((template as PresetFormattingSettings["instructTemplate"]) ?? "custom"),
+        ...(userPrefix !== undefined ? { userPrefix } : {}),
+        ...(userSuffix !== undefined ? { userSuffix } : {}),
+        ...(assistantPrefix !== undefined ? { assistantPrefix } : {}),
+        ...(assistantSuffix !== undefined ? { assistantSuffix } : {}),
+        ...(systemPrefix !== undefined ? { systemPrefix } : {}),
+        ...(systemSuffix !== undefined ? { systemSuffix } : {}),
+        ...(storyString !== undefined ? { storyString } : {}),
+        ...(storyStringPrefix !== undefined ? { storyStringPrefix } : {}),
+        ...(storyStringSuffix !== undefined ? { storyStringSuffix } : {}),
+        ...(firstInputSequence !== undefined ? { firstInputSequence } : {}),
+        ...(lastInputSequence !== undefined ? { lastInputSequence } : {}),
+        ...(firstOutputSequence !== undefined ? { firstOutputSequence } : {}),
+        ...(lastOutputSequence !== undefined ? { lastOutputSequence } : {}),
+        ...(systemSameAsUser ? { systemSameAsUser: true } : {}),
+        ...(userAlignmentMessage !== undefined ? { userAlignmentMessage } : {}),
+        ...(overridePresetPromptOrder ? { overridePresetPromptOrder: true } : {}),
+        ...(instruct.wrap === true || raw.wrap === true
+            ? { wrapSequencesWithNewlines: true }
+            : {}),
+        ...(stopSequences.length ? { stopSequences } : {}),
+        ...(namesBehavior ? { namesBehavior } : {}),
+        ...(replaceMacrosInSequences ? { replaceMacrosInSequences: true } : {}),
+        ...(skipExamples ? { skipExamples: true } : {}),
+        ...(activationRegex !== undefined ? { activationRegex } : {}),
+        ...(sequencesAsStopStrings ? { sequencesAsStopStrings: true } : {}),
+        ...(namesAsStopStrings ? { namesAsStopStrings: true } : {}),
+        ...(alwaysAddCharacterName ? { alwaysAddCharacterName: true } : {}),
+        ...(singleLineMode ? { singleLineMode: true } : {}),
+        ...(exampleSeparator !== undefined ? { exampleSeparator } : {}),
+        ...(chatStartSeparator !== undefined ? { chatStartSeparator } : {}),
+        ...(systemPrompt !== undefined ? { systemPrompt } : {}),
+    };
+
+    const customTemplate = normalizeCustomInstructTemplate({
+        id:
+            slugifyInstructName(templateName || "custom-instruct") ||
+            createId("instruct"),
+        name: templateName || "Custom Instruct",
+        ...formatting,
+        ...(stopSequences.length ? { stopSequences } : {}),
+        ...(storyString !== undefined ? { storyString } : {}),
+        ...(storyStringPrefix !== undefined ? { storyStringPrefix } : {}),
+        ...(storyStringSuffix !== undefined ? { storyStringSuffix } : {}),
+        ...(systemPrompt !== undefined ? { systemPrompt } : {}),
+        ...(firstInputSequence !== undefined ? { firstInputSequence } : {}),
+        ...(lastInputSequence !== undefined ? { lastInputSequence } : {}),
+        ...(firstOutputSequence !== undefined ? { firstOutputSequence } : {}),
+        ...(lastOutputSequence !== undefined ? { lastOutputSequence } : {}),
+        ...(systemSameAsUser ? { systemSameAsUser } : {}),
+        ...(userAlignmentMessage !== undefined ? { userAlignmentMessage } : {}),
+        ...(overridePresetPromptOrder ? { overridePresetPromptOrder } : {}),
+        ...(namesBehavior ? { namesBehavior } : {}),
+        ...(replaceMacrosInSequences ? { replaceMacrosInSequences: true } : {}),
+        ...(skipExamples ? { skipExamples: true } : {}),
+        ...(activationRegex !== undefined ? { activationRegex } : {}),
+    });
+
     return {
-        name,
-        formatting: {
-            instructTemplate: hasAnyCustomSequences
-                ? "custom"
-                : ((template as PresetFormattingSettings["instructTemplate"]) ??
-                  "custom"),
-            ...(userPrefix !== undefined ? { userPrefix } : {}),
-            ...(userSuffix !== undefined ? { userSuffix } : {}),
-            ...(assistantPrefix !== undefined ? { assistantPrefix } : {}),
-            ...(assistantSuffix !== undefined ? { assistantSuffix } : {}),
-            ...(systemPrefix !== undefined ? { systemPrefix } : {}),
-            ...(systemSuffix !== undefined ? { systemSuffix } : {}),
-            ...(sequencesAsStopStrings ? { sequencesAsStopStrings: true } : {}),
-        },
+        name: templateName,
+        formatting,
+        template: customTemplate,
     };
 }
 

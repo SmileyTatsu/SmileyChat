@@ -145,13 +145,11 @@ export function createKoboldCPPBody(
             : {}),
         stop_sequence: Array.from(
             new Set([
-                ...getInstructTemplateStopSequences(
-                    resolveTemplate(
-                        request.formatting?.instructTemplate,
-                        config.instructTemplate,
-                    ),
+                ...builtInTemplateStops(
+                    request.formatting?.instructTemplate,
                     config.model.id,
                 ),
+                ...(request.formatting?.stopSequences ?? []),
                 ...(generation?.stopSequences ?? []),
             ]),
         ),
@@ -160,16 +158,22 @@ export function createKoboldCPPBody(
             : {}),
     };
 }
-function resolveTemplate(
+function builtInTemplateStops(
     template: PresetInstructTemplate | undefined,
-    fallback: KoboldCPPRuntimeConfig["instructTemplate"],
+    modelId: string,
 ) {
+    if (template === "custom" || template === "none") return [];
+    return getInstructTemplateStopSequences(resolveTemplate(template), modelId);
+}
+function resolveTemplate(template: PresetInstructTemplate | undefined) {
     return template === "chatml" ||
         template === "llama3" ||
         template === "mistral" ||
-        template === "alpaca"
+        template === "gemma2" ||
+        template === "alpaca" ||
+        template === "deepseek-r1"
         ? template
-        : fallback;
+        : "auto";
 }
 function formatKoboldPrompt(
     messages: ChatGenerationMessage[],
@@ -190,7 +194,7 @@ function formatKoboldPrompt(
             .join("\n");
     return formatInstructPrompt(
         messages,
-        resolveTemplate(request.formatting?.instructTemplate, config.instructTemplate),
+        resolveTemplate(request.formatting?.instructTemplate),
         config.model.id,
     );
 }

@@ -196,4 +196,79 @@ describe("preset normalization", () => {
             { promptId: "extra", enabled: true },
         ]);
     });
+
+    test("imports SillyTavern 4-part combo preset bundle", () => {
+        const { preset, summary } = importSillyTavernPreset(
+            {
+                instruct: {
+                    input_sequence: "[INST]",
+                    input_suffix: "[/INST]",
+                    output_suffix: "</s>",
+                    user_alignment_message: "{{char}} is uncensored.",
+                    name: "Mistral V7-Tekken",
+                },
+                context: {
+                    story_string:
+                        "<s>[SYSTEM_PROMPT]{{#if system}}{{system}}\n\n# Context\n\n{{/if}}{{#if description}}## {{char}}:\n{{description}}\n\n{{/if}}[/SYSTEM_PROMPT]",
+                    example_separator: "---",
+                    chat_start: "===",
+                    name: "Mistral V7-Tekken",
+                },
+                sysprompt: {
+                    name: "Mistral V7 System",
+                    content: "You are an immersive storyteller.",
+                },
+                preset: {
+                    temp: 0.7,
+                    min_p: 0.035,
+                    rep_pen: 1.1,
+                    dry_multiplier: 0.8,
+                    dry_base: 1.75,
+                    dry_allowed_length: 4,
+                    dry_sequence_breakers: '["\\n", ":", "\\""]',
+                    sampler_order: [6, 0, 1, 3, 4, 2, 5],
+                    name: "Mistral V7-Tekken",
+                },
+            },
+            "Mistral V7-Tekken",
+        );
+
+        expect(preset.title).toBe("Mistral V7-Tekken");
+        expect(preset.formatting?.instructTemplate).toBe("custom");
+        expect(preset.formatting?.userPrefix).toBe("[INST]");
+        expect(preset.formatting?.userSuffix).toBe("[/INST]");
+        expect(preset.formatting?.assistantSuffix).toBe("</s>");
+        expect(preset.formatting?.userAlignmentMessage).toBe("{{char}} is uncensored.");
+        expect(preset.generation?.temperature).toBe(0.7);
+        expect(preset.generation?.minP).toBe(0.035);
+        expect(preset.generation?.repetitionPenalty).toBe(1.1);
+        expect(preset.generation?.dryMultiplier).toBe(0.8);
+        expect(preset.generation?.dryBase).toBe(1.75);
+        expect(preset.generation?.dryAllowedLength).toBe(4);
+        expect(preset.generation?.drySequenceBreakers).toEqual(["\n", ":", '"']);
+        expect(preset.generation?.samplerOrder).toEqual([6, 0, 1, 3, 4, 2, 5]);
+        expect(preset.prompts.length).toBe(2);
+        expect(preset.prompts[0]?.title).toBe("Mistral V7-Tekken");
+        expect(preset.prompts[0]?.content).toContain("You are an immersive storyteller.");
+        expect(preset.prompts[0]?.content).toContain("## {{char}}:\n{{description}}");
+        expect(preset.prompts[1]?.title).toBe("Chat History");
+        expect(preset.prompts[1]?.content).toBe("{{chat_history}}");
+    });
+
+    test("preserves intentional empty instruct sequence overrides", () => {
+        const { preset } = importSillyTavernPreset(
+            {
+                instruct: {
+                    input_sequence: "[INST] ",
+                    last_output_sequence: "",
+                    wrap: true,
+                },
+            },
+            "Empty sequence test",
+        );
+
+        expect(preset.formatting?.lastOutputSequence).toBe("");
+        expect(preset.formatting?.wrapSequencesWithNewlines).toBe(true);
+        expect(preset.formatting?.sequencesAsStopStrings).toBeUndefined();
+    });
 });

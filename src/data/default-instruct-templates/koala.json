@@ -1,0 +1,18 @@
+{
+    "id": "koala",
+    "name": "Koala",
+    "userPrefix": "USER: ",
+    "userSuffix": " ",
+    "assistantPrefix": "GPT: ",
+    "assistantSuffix": "</s>",
+    "systemPrefix": "",
+    "systemSuffix": "",
+    "storyStringPrefix": "BEGINNING OF CONVERSATION: ",
+    "storyStringSuffix": "\n",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "systemSameAsUser": true,
+    "userAlignmentMessage": ""
+}

@@ -22,6 +22,7 @@ import type {
     LorebookImportResult,
     LorebookEntry,
 } from "../lorebooks/types";
+import type { CustomInstructTemplate } from "../instruct";
 
 const csrfHeaderName = "x-smileychat-csrf";
 const csrfMagicHeaderName = "x-smileychat-csrf-magic";
@@ -399,6 +400,34 @@ export function savePresetCollection(presets: PresetCollection) {
     return requestJson<{ ok: true; presets: PresetCollection }>(
         "/api/presets",
         jsonInit("PUT", presets),
+    );
+}
+
+export function loadInstructTemplates() {
+    return requestJson<{ ok: true; templates: CustomInstructTemplate[] }>(
+        "/api/instruct-templates",
+    );
+}
+
+export function saveInstructTemplate(template: unknown) {
+    return requestJson<{
+        ok: true;
+        template: CustomInstructTemplate;
+        templates: CustomInstructTemplate[];
+    }>("/api/instruct-templates", jsonInit("POST", template));
+}
+
+export function saveInstructTemplates(templates: CustomInstructTemplate[]) {
+    return requestJson<{ ok: true; templates: CustomInstructTemplate[] }>(
+        "/api/instruct-templates",
+        jsonInit("PUT", { templates }),
+    );
+}
+
+export function deleteInstructTemplate(templateId: string) {
+    return requestJson<{ ok: true; templates: CustomInstructTemplate[] }>(
+        `/api/instruct-templates/${encodeURIComponent(templateId)}`,
+        { method: "DELETE" },
     );
 }
 

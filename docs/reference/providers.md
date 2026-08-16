@@ -125,7 +125,7 @@ Defaults and endpoints:
 
 Features:
 
-- **Instruct Templates**: Automatically format prompts locally using predefined templates (`auto`, `llama3`, `chatml`, `mistral`, `gemma2`, `alpaca`, `deepseek-r1`) or preset-level instruct settings.
+- **Instruct Templates (Beta)**: Automatically format prompts locally using predefined templates (`auto`, `llama3`, `chatml`, `mistral`, `gemma2`, `alpaca`, `deepseek-r1`) or custom templates from **Settings > Formatting (Beta)**. See [Formatting & Instruct Templates](../guides/formatting-and-instruct.md).
 - **Context Length**: Automatically inspects server context length or allows manual override.
 - **Multimodality**: Sends image attachments directly to KoboldCPP vision models.
 - **Sampling & Stopping**: Respects preset sampling settings (temperature, top-p, top-k, min-p, top-a, typical-p, tfs, repetition penalty) and injects template stop sequences.

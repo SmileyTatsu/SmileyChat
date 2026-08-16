@@ -1,0 +1,23 @@
+{
+    "id": "moonshot-ai",
+    "name": "Moonshot AI",
+    "userPrefix": "<|im_user|>user<|im_middle|>",
+    "userSuffix": "<|im_end|>",
+    "assistantPrefix": "<|im_assistant|>assistant<|im_middle|>",
+    "assistantSuffix": "<|im_end|>",
+    "systemPrefix": "<|im_system|>system<|im_middle|>",
+    "systemSuffix": "<|im_end|>",
+    "storyString": "{{#if anchorBefore}}{{anchorBefore}}\n{{/if}}{{#if system}}{{system}}\n{{/if}}{{#if wiBefore}}{{wiBefore}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{personality}}\n{{/if}}{{#if scenario}}{{scenario}}\n{{/if}}{{#if wiAfter}}{{wiAfter}}\n{{/if}}{{#if persona}}{{persona}}\n{{/if}}{{#if anchorAfter}}{{anchorAfter}}\n{{/if}}{{trim}}",
+    "storyStringPrefix": "<|im_system|>system<|im_middle|>",
+    "storyStringSuffix": "<|im_end|>",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "userAlignmentMessage": "",
+    "namesAsStopStrings": true,
+    "alwaysAddCharacterName": true,
+    "exampleSeparator": "",
+    "chatStartSeparator": "",
+    "stopSequences": ["<|im_end|>"]
+}

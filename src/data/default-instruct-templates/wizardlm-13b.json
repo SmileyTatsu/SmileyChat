@@ -1,0 +1,19 @@
+{
+    "id": "wizardlm-13b",
+    "name": "WizardLM-13B",
+    "userPrefix": "USER: ",
+    "userSuffix": "",
+    "assistantPrefix": "ASSISTANT: ",
+    "assistantSuffix": "",
+    "systemPrefix": "",
+    "systemSuffix": "",
+    "storyStringPrefix": "",
+    "storyStringSuffix": "",
+    "firstInputSequence": "",
+    "lastInputSequence": "",
+    "firstOutputSequence": "",
+    "lastOutputSequence": "",
+    "systemSameAsUser": true,
+    "userAlignmentMessage": "",
+    "sequencesAsStopStrings": true
+}

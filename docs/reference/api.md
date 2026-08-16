@@ -80,6 +80,10 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `PUT /api/preferences`: Save local app preferences to JSON.
 - `GET /api/presets`: Load saved preset collection, creating defaults if missing.
 - `PUT /api/presets`: Save preset collection to JSON.
+- `GET /api/instruct-templates`: Load **beta** custom instruct templates from `userData/instruct`, including compatible loose JSON files.
+- `POST /api/instruct-templates`: Save or import one **beta** custom instruct template into `userData/instruct`.
+- `PUT /api/instruct-templates`: Replace the **beta** custom instruct template collection in `userData/instruct`.
+- `DELETE /api/instruct-templates/:templateId`: Delete one **beta** custom instruct template by its validated ID.
 
 ## SillyTavern Migration & Sync
 
