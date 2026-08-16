@@ -63,6 +63,10 @@ export type PromptBuildContext = {
         before: string;
         after: string;
     };
+    textCompletionAnchors?: {
+        before: string;
+        after: string;
+    };
     tokenBudget: number;
     tokenContext?: TokenCountContext;
     userStatus: UserStatus;

@@ -352,6 +352,57 @@ describe("buildPromptForGeneration", () => {
             ),
         ).toBe(true);
     });
+
+    test("renders before/after-character injections through Story String anchors", async () => {
+        const result = await buildPromptForGeneration({
+            context: createPromptContext({
+                isTextCompletion: true,
+                preferences: {
+                    ...defaultAppPreferences,
+                    formatting: {
+                        activeTemplateId: "custom",
+                        settings: {
+                            instructTemplate: "custom",
+                            storyString: "{{anchorBefore}}|{{anchorAfter}}",
+                        },
+                    },
+                },
+            }),
+            injectors: [
+                () => [
+                    {
+                        id: "before-anchor",
+                        anchor: "before-character",
+                        content: "Before",
+                        order: 0,
+                        role: "system",
+                        source: "core",
+                    },
+                    {
+                        id: "after-anchor",
+                        anchor: "after-character",
+                        content: "After",
+                        order: 1,
+                        role: "system",
+                        source: "plugin",
+                    },
+                ],
+            ],
+        });
+
+        expect(result.promptMessages).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ content: "Before|After" }),
+            ]),
+        );
+        expect(
+            result.promptMessages.filter((message) =>
+                typeof message.content === "string"
+                    ? message.content === "Before" || message.content === "After"
+                    : false,
+            ),
+        ).toHaveLength(0);
+    });
 });
 
 function createPromptContext(

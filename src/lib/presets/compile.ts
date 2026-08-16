@@ -47,6 +47,8 @@ type CompilePresetContext = {
     userStatus: UserStatus;
     worldInfoBefore?: string;
     worldInfoAfter?: string;
+    anchorBefore?: string;
+    anchorAfter?: string;
 };
 
 function historyMessagesForCompile(context: CompilePresetContext) {
@@ -68,6 +70,8 @@ function macroContextForCompile(context: CompilePresetContext) {
         userStatus: context.userStatus,
         worldInfoBefore: context.worldInfoBefore,
         worldInfoAfter: context.worldInfoAfter,
+        anchorBefore: context.anchorBefore,
+        anchorAfter: context.anchorAfter,
     };
 }
 

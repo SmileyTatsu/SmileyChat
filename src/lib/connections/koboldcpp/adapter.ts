@@ -25,6 +25,7 @@ export function createKoboldCPPConnection(
     return {
         id: "koboldcpp",
         label: "KoboldCPP",
+        promptMode: "text-completion",
         buildPayload: (request) => createKoboldCPPBody(request, config),
         async generate(request) {
             const body = createKoboldCPPBody(request, config);

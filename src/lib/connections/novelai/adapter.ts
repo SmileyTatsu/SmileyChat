@@ -27,6 +27,9 @@ export function createNovelAIConnection(config: NovelAIRuntimeConfig): Connectio
     return {
         id: "novelai",
         label: "NovelAI",
+        promptMode: usesNovelAITextGenerationApi(config.model.id)
+            ? "text-completion"
+            : "chat",
         buildPayload(request) {
             if (usesNovelAITextGenerationApi(config.model.id)) {
                 return createNovelAITextGenerationBody(request, config);

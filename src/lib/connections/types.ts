@@ -79,6 +79,11 @@ export type ChatGenerationRequest = {
     debug?: PromptBuildDebug;
     generation?: PresetGenerationSettings;
     formatting?: PresetFormattingSettings;
+    formattingTemplate?: {
+        id?: string;
+        name?: string;
+        reason: "manual" | "activation-regex" | "auto-fallback";
+    };
     messages: Message[];
     onImage?: (url: string) => void;
     onReasoningToken?: (token: string) => void;
@@ -104,6 +109,8 @@ export type ChatGenerationResult = {
 export type ConnectionAdapter = {
     id: string;
     label: string;
+    /** The request shape the adapter accepts after prompt compilation. */
+    promptMode?: "chat" | "text-completion";
     buildPayload: (request: ChatGenerationRequest) => Promise<unknown> | unknown;
     generate: (request: ChatGenerationRequest) => Promise<ChatGenerationResult>;
 };

@@ -8,6 +8,7 @@ import { defaultOutputTokenLimit } from "../output-tokens";
 import { MessageRole } from "#frontend/types";
 import { ChatGenerationMessageRole } from "../types";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
+import { formatCustomInstructPrompt, formatInstructPrompt } from "../../instruct";
 
 import {
     eratoLogitBias,
@@ -62,7 +63,7 @@ export function createNovelAITextGenerationBody(
     config: NovelAIRuntimeConfig,
 ): NovelAITextGenerationRequest {
     const generation = request.generation;
-    const input = createNovelAITextGenerationInput(createNovelAIMessages(request));
+    const input = createNovelAITextGenerationInput(request, config);
     const maxTokens = config.maxOutputTokens ?? defaultOutputTokenLimit;
 
     return {
@@ -91,21 +92,27 @@ export function createNovelAITextGenerationBody(
     };
 }
 
-function createNovelAITextGenerationInput(messages: NovelAIChatMessage[]) {
-    const lines = messages.flatMap((message) => {
-        const content = message.content.trim();
-        if (!content) {
-            return [];
-        }
+function createNovelAITextGenerationInput(
+    request: ChatGenerationRequest,
+    config: NovelAIRuntimeConfig,
+) {
+    const messages = request.promptMessages ?? createNovelAIMessages(request);
+    const formatting = request.formatting;
 
-        if (message.role === "system") {
-            return [content, ""];
-        }
-
-        return [`${message.role === "user" ? "User" : "Assistant"}: ${content}`];
-    });
-
-    return [...lines, "Assistant:"].join("\n").trimStart();
+    if (formatting?.instructTemplate === "custom") {
+        return formatCustomInstructPrompt(messages, formatting);
+    }
+    if (formatting?.instructTemplate === "none") {
+        return messages
+            .map((message) => messageContentToText(message.content))
+            .join("\n");
+    }
+    return formatInstructPrompt(
+        messages,
+        formatting?.instructTemplate ?? "auto",
+        config.model.id,
+        formatting,
+    );
 }
 
 function createNovelAIMessages(request: ChatGenerationRequest): NovelAIChatMessage[] {

@@ -41,6 +41,16 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                 <header>
                     <div>
                         <h2 id="chat-payload-modal-title">Prompt payload</h2>
+                        {data.request.formattingTemplate && (
+                            <p className="field-hint">
+                                Template:{" "}
+                                {data.request.formattingTemplate.name ?? "Auto fallback"}
+                                {data.request.formattingTemplate.reason ===
+                                "activation-regex"
+                                    ? " (Auto match)"
+                                    : ""}
+                            </p>
+                        )}
                         <p>
                             {promptMessages.length} compiled prompt blocks
                             {data.tokenContext

@@ -86,7 +86,10 @@ function anchorTargetIndex(messages: AnchoredPromptMessage[], anchor: PromptAnch
             ]);
         case "before-scenario":
         case "after-scenario":
-            return messages.findIndex((item) => item.anchor === "after-scenario");
+            return firstMatchingAnchorIndex(messages, [
+                "after-scenario",
+                "after-character",
+            ]);
         case "before-history":
             return firstHistoryIndex(messages);
         case "after-history":

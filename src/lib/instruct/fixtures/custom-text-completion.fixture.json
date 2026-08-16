@@ -1,0 +1,24 @@
+{
+    "name": "Custom text-completion prompt",
+    "formatting": {
+        "instructTemplate": "custom",
+        "systemPrefix": "<sys>",
+        "systemSuffix": "</sys>",
+        "storyStringPrefix": "<story>",
+        "storyStringSuffix": "</story>",
+        "userPrefix": "<user>",
+        "lastOutputSequence": "<assistant>"
+    },
+    "messages": [
+        { "role": "system", "content": "Rules" },
+        { "role": "system", "content": "Story", "formattingKind": "story" },
+        {
+            "role": "system",
+            "content": "<START>\nLuna: Example",
+            "formattingKind": "raw"
+        },
+        { "role": "system", "content": "<CHAT>", "formattingKind": "raw" },
+        { "role": "user", "content": "Hello", "speakerName": "Anon" }
+    ],
+    "goldenPrompt": "<sys>Rules</sys><story>Story</story><START>\nLuna: Example<CHAT><user>Hello<assistant>"
+}

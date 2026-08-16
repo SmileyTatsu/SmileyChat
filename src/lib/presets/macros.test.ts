@@ -97,6 +97,26 @@ describe("resolvePresetMacros", () => {
 
         expect(rendered).toBe("Before: Old map|After: New clue|");
     });
+
+    test("renders structured prompt anchors in Story Strings", () => {
+        expect(
+            renderStoryString("{{anchorBefore}}|{{anchorAfter}}", {
+                ...createMacroContext(),
+                anchorBefore: "Before character",
+                anchorAfter: "After character",
+            }),
+        ).toBe("Before character|After character");
+    });
+
+    test("supports SillyTavern anchorTop and anchorBottom aliases", () => {
+        expect(
+            renderStoryString("{{anchorTop}}|{{anchorBottom}}", {
+                ...createMacroContext(),
+                anchorBefore: "Top",
+                anchorAfter: "Bottom",
+            }),
+        ).toBe("Top|Bottom");
+    });
 });
 
 function createMacroContext(overrides: Partial<MacroContext> = {}): MacroContext {

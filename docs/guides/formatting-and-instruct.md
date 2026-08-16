@@ -10,7 +10,7 @@ SmileyChat ships with a comprehensive built-in catalog of **over 35 standard tem
 
 The template dropdown organizes formats into:
 
-- **Auto (detect from model)**: Automatically selects SmileyChat's optimized built-in formatter based on the connected model's name (detecting Llama 3, ChatML/Qwen, Mistral, Gemma 2, Alpaca, or DeepSeek-R1).
+- **Auto (detect from model)**: Selects the most specific valid matching activation regex from the bundled and saved template catalog, then falls back to SmileyChat's legacy model-family formatter when no specific template matches. Manual selections always take precedence.
 - **Raw text / None**: Sends the assembled text without instruction wrapper tokens (ideal for base story continuation models).
 - **Standard Built-in Templates**: The bundled catalog of predefined model templates that you can select directly or customize.
 - **Custom Templates**: Templates you create, import, or customize yourself.

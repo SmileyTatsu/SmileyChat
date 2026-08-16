@@ -70,6 +70,41 @@ describe("KoboldCPP connection adapter", () => {
         expect(payload.stop_sequence).toEqual(["<custom-stop>"]);
     });
 
+    test("keeps the custom text-completion prompt golden output stable", () => {
+        const payload = createKoboldCPPBody(
+            {
+                messages: [],
+                promptMessages: [
+                    { role: "system", content: "Rules" },
+                    { role: "system", content: "Story", formattingKind: "story" },
+                    {
+                        role: "system",
+                        content: "<START>\nLuna: Example",
+                        formattingKind: "raw",
+                    },
+                    { role: "system", content: "<CHAT>", formattingKind: "raw" },
+                    { role: "user", content: "Hello", speakerName: "Anon" },
+                ],
+                formatting: {
+                    instructTemplate: "custom",
+                    systemPrefix: "<sys>",
+                    systemSuffix: "</sys>",
+                    storyStringPrefix: "<story>",
+                    storyStringSuffix: "</story>",
+                    userPrefix: "<user>",
+                    lastOutputSequence: "<assistant>",
+                    stopSequences: ["</stop>"],
+                },
+            },
+            config,
+        );
+
+        expect(payload).toMatchObject({
+            prompt: "<sys>Rules</sys><story>Story</story><START>\nLuna: Example<CHAT><user>Hello<assistant>",
+            stop_sequence: ["</stop>"],
+        });
+    });
+
     test("streams tokens", async () => {
         globalThis.fetch = (async () =>
             new Response('data: {"token":"Hello"}\n\ndata: {"token":" there"}\n\n', {

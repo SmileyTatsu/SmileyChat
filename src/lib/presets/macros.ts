@@ -28,6 +28,8 @@ export type MacroContext = {
     userStatus: UserStatus;
     worldInfoBefore?: string;
     worldInfoAfter?: string;
+    anchorBefore?: string;
+    anchorAfter?: string;
 };
 
 type MacroValue = {
@@ -66,8 +68,10 @@ export function renderStoryString(content: string, context: MacroContext) {
     });
     const rendered = template(
         {
-            anchorBefore: "",
-            anchorAfter: "",
+            anchorBefore: context.anchorBefore ?? "",
+            anchorAfter: context.anchorAfter ?? "",
+            anchorTop: context.anchorBefore ?? "",
+            anchorBottom: context.anchorAfter ?? "",
             char: context.character.data.name,
             description: context.character.data.description,
             personality: context.character.data.personality,

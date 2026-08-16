@@ -28,6 +28,8 @@ import type {
     PromptInjector,
 } from "./types";
 import { providerTokenPolicy } from "../connections/token-policy";
+import { formatCustomInstructPrompt, formatInstructPrompt } from "../instruct";
+import { estimateText } from "./token-estimator";
 
 export async function buildPromptForGeneration({
     context,
@@ -43,20 +45,32 @@ export async function buildPromptForGeneration({
     const textCompletionWorldInfo = processedContext.isTextCompletion
         ? textCompletionWorldInfoFromInjections(injections)
         : undefined;
+    const textCompletionAnchors = processedContext.isTextCompletion
+        ? textCompletionAnchorsFromInjections(injections)
+        : undefined;
     const promptContext = {
         ...processedContext,
         ...(textCompletionWorldInfo ? { textCompletionWorldInfo } : {}),
+        ...(textCompletionAnchors ? { textCompletionAnchors } : {}),
     };
-    const promptInjections = textCompletionWorldInfo
-        ? injections.filter(
-              (injection) =>
-                  !(
-                      injection.source === "lorebook" &&
-                      (injection.anchor === "before-character" ||
-                          injection.anchor === "after-character")
-                  ),
-          )
-        : injections;
+    const promptInjections =
+        textCompletionWorldInfo || textCompletionAnchors
+            ? injections.filter(
+                  (injection) =>
+                      !(
+                          (injection.anchor === "before-character" ||
+                              injection.anchor === "after-character") &&
+                          (injection.source === "lorebook" ||
+                              Boolean(
+                                  textCompletionAnchors?.[
+                                      injection.anchor === "before-character"
+                                          ? "before"
+                                          : "after"
+                                  ],
+                              ))
+                      ),
+              )
+            : injections;
     const budget = planPromptBudget(promptContext, promptInjections);
     const historyMessages = selectHistoryMessagesForBudget({
         messages: promptContext.messages,
@@ -81,9 +95,13 @@ export async function buildPromptForGeneration({
         isTextCompletion: promptContext.isTextCompletion,
         worldInfoBefore: promptContext.textCompletionWorldInfo?.before,
         worldInfoAfter: promptContext.textCompletionWorldInfo?.after,
+        anchorBefore: promptContext.textCompletionAnchors?.before,
+        anchorAfter: promptContext.textCompletionAnchors?.after,
     });
     const promptItems = applyPromptInjectionsWithMetadata(compiled, promptInjections);
     const trimmedPrompt = finalizeAssembledPromptBudget({
+        formatting: promptContext.preferences.formatting.settings,
+        isTextCompletion: promptContext.isTextCompletion === true,
         messages: historyMessages,
         promptItems,
         tokenBudget: promptContext.tokenBudget,
@@ -121,6 +139,22 @@ function textCompletionWorldInfoFromInjections(injections: PromptInjection[]) {
     };
 }
 
+function textCompletionAnchorsFromInjections(injections: PromptInjection[]) {
+    const contentFor = (anchor: "before-character" | "after-character") =>
+        injections
+            .filter(
+                (injection) =>
+                    injection.source !== "lorebook" && injection.anchor === anchor,
+            )
+            .sort((a, b) => a.order - b.order)
+            .map((injection) => injection.content)
+            .join("\n\n");
+    return {
+        before: contentFor("before-character"),
+        after: contentFor("after-character"),
+    };
+}
+
 function planPromptBudget(
     context: PromptBuildContext,
     injections: PromptInjection[],
@@ -141,6 +175,8 @@ function planPromptBudget(
         isTextCompletion: context.isTextCompletion,
         worldInfoBefore: context.textCompletionWorldInfo?.before,
         worldInfoAfter: context.textCompletionWorldInfo?.after,
+        anchorBefore: context.textCompletionAnchors?.before,
+        anchorAfter: context.textCompletionAnchors?.after,
     }).map((item) => item.message);
     const staticPromptTokens = estimateChatGenerationMessages(
         staticPromptMessages,
@@ -202,11 +238,15 @@ function normalizePromptInjections(value: PromptInjection[]) {
 }
 
 function finalizeAssembledPromptBudget({
+    formatting,
+    isTextCompletion,
     messages,
     promptItems,
     tokenBudget,
     tokenContext,
 }: {
+    formatting: import("../presets/types").PresetFormattingSettings;
+    isTextCompletion: boolean;
     messages: Message[];
     promptItems: AnchoredPromptMessage[];
     tokenBudget: number;
@@ -217,7 +257,17 @@ function finalizeAssembledPromptBudget({
         estimateGenerationMessage(item.message, tokenContext),
     );
     const protectedHistoryId = protectedHistoryMessageId(messages);
-    let tokenEstimate = itemCosts.reduce((total, cost) => total + cost, 0);
+    const estimate = () =>
+        isTextCompletion
+            ? estimateText(
+                  serializeTextCompletionPrompt(
+                      output.map((item) => item.message),
+                      formatting,
+                  ),
+                  tokenContext,
+              )
+            : itemCosts.reduce((total, cost) => total + cost, 0);
+    let tokenEstimate = estimate();
 
     while (tokenEstimate > tokenBudget) {
         const index = firstRemovableHistoryIndex(output, protectedHistoryId);
@@ -227,7 +277,7 @@ function finalizeAssembledPromptBudget({
         }
 
         const removedCost = removeHistoryPromptAt(output, itemCosts, index);
-        tokenEstimate -= removedCost;
+        tokenEstimate = isTextCompletion ? estimate() : tokenEstimate - removedCost;
     }
 
     while (tokenEstimate > tokenBudget) {
@@ -237,9 +287,10 @@ function finalizeAssembledPromptBudget({
             break;
         }
 
-        tokenEstimate -= itemCosts[index] ?? 0;
+        const removedCost = itemCosts[index] ?? 0;
         output.splice(index, 1);
         itemCosts.splice(index, 1);
+        tokenEstimate = isTextCompletion ? estimate() : tokenEstimate - removedCost;
     }
 
     const promptMessages = output.map((item) => item.message);
@@ -258,6 +309,32 @@ function finalizeAssembledPromptBudget({
         promptMessages,
         tokenEstimate,
     };
+}
+
+function serializeTextCompletionPrompt(
+    messages: ChatGenerationMessage[],
+    formatting: import("../presets/types").PresetFormattingSettings,
+) {
+    if (formatting.instructTemplate === "custom") {
+        return formatCustomInstructPrompt(messages, formatting);
+    }
+    if (formatting.instructTemplate === "none") {
+        return messages
+            .map((message) =>
+                typeof message.content === "string"
+                    ? message.content
+                    : message.content
+                          .map((part) => (part.type === "text" ? part.text : ""))
+                          .join("\n"),
+            )
+            .join("\n");
+    }
+    return formatInstructPrompt(
+        messages,
+        formatting.instructTemplate ?? "auto",
+        "",
+        formatting,
+    );
 }
 
 function firstRemovableHistoryIndex(

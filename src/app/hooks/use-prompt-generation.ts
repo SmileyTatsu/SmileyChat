@@ -44,6 +44,10 @@ import {
     type TokenCountContext,
 } from "#frontend/lib/tokenizer";
 import { resolvePresetMacros } from "#frontend/lib/presets/macros";
+import {
+    getCustomInstructTemplateLibrary,
+    resolveActiveInstructTemplate,
+} from "#frontend/lib/instruct/resolver";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import {
     assertPromptMessagesWithinBudget,
@@ -673,6 +677,10 @@ export function usePromptGeneration({
             connectionSettings,
             options.continuation?.profileId,
         );
+        const connection = getAdapterForSettings(
+            connectionSettings,
+            options.continuation?.profileId,
+        );
         const tokenContext = tokenProfile
             ? tokenizerContextForProfile(tokenProfile)
             : undefined;
@@ -682,10 +690,29 @@ export function usePromptGeneration({
         const sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );
+        const presetFormatting = activePreset?.formatting;
         const effectiveFormatting = {
             ...preferences.formatting.settings,
-            ...(activePreset?.formatting ?? {}),
+            ...(presetFormatting ?? {}),
         };
+        const profileConfig = tokenProfile?.config as
+            | { model?: { id?: unknown } }
+            | undefined;
+        const profileModelId =
+            typeof profileConfig?.model?.id === "string" ? profileConfig.model.id : "";
+        const isTextCompletion = connection.promptMode === "text-completion";
+        const templateResolution = isTextCompletion
+            ? await resolveActiveInstructTemplate({
+                  activeTemplateId: preferences.formatting.activeTemplateId,
+                  formatting: preferences.formatting.settings,
+                  presetFormatting,
+                  modelId: profileModelId,
+                  customTemplates: await getCustomInstructTemplateLibrary(),
+              })
+            : undefined;
+        // Preset overrides are resolved first; Auto can then select a matching
+        // text-completion template without changing manual selections.
+        const rawFormatting = templateResolution?.formatting ?? effectiveFormatting;
         const promptCharacter = options.promptCharacter ?? sourceCharacter;
         const promptChat = options.sourceChat ?? latestChatRef.current;
 
@@ -716,11 +743,11 @@ export function usePromptGeneration({
                     ...preferences,
                     formatting: {
                         ...preferences.formatting,
-                        settings: effectiveFormatting,
+                        settings: rawFormatting,
                     },
                 },
                 preset: activePreset,
-                isTextCompletion: tokenProfile?.provider === "koboldcpp",
+                isTextCompletion,
                 tokenBudget: contextTokenBudget,
                 tokenContext,
                 userStatus: sourceUserStatus,
@@ -765,13 +792,7 @@ export function usePromptGeneration({
         );
         const materializedPromptMessages =
             await materializeChatGenerationMessageAttachments(localPromptMessages);
-        const profileConfig = tokenProfile?.config as
-            | { model?: { id?: unknown } }
-            | undefined;
-        const profileModelId =
-            typeof profileConfig?.model?.id === "string" ? profileConfig.model.id : "";
         // Use preset formatting overrides if defined, falling back to global formatting
-        const rawFormatting = effectiveFormatting;
         const formattingMacroContext = {
             character: promptCharacter,
             group: isGroupChat(promptChat)
@@ -835,7 +856,7 @@ export function usePromptGeneration({
                 : {}),
         };
         const formattedPromptMessages =
-            tokenProfile?.provider !== "koboldcpp" && formatting?.alwaysAddCharacterName
+            !isTextCompletion && formatting?.alwaysAddCharacterName
                 ? materializedPromptMessages.map((message) =>
                       message.role === "assistant" && typeof message.content === "string"
                           ? {
@@ -860,6 +881,14 @@ export function usePromptGeneration({
                 ...(effectiveStops ? { stopSequences: effectiveStops } : {}),
             },
             formatting,
+            ...(templateResolution
+                ? {
+                      formattingTemplate: {
+                          ...templateResolution.template,
+                          reason: templateResolution.reason,
+                      },
+                  }
+                : {}),
             messages: generationMessages,
             debug: reconcilePromptDebugBlocks(promptBuild.debug, promptMessages),
             onImage: options.onImage,

@@ -30,6 +30,24 @@ describe("NovelAI connection adapter", () => {
         expect(createNovelAITextGenerationUrl(textConfig, true)).toBe(
             "https://text.novelai.net/ai/generate-stream",
         );
+        expect(createNovelAIConnection(chatConfig).promptMode).toBe("chat");
+        expect(createNovelAIConnection(textConfig).promptMode).toBe("text-completion");
+    });
+
+    test("uses the shared custom text-completion formatter for raw models", async () => {
+        const payload = await createNovelAIConnection({
+            model: { source: "default", id: "kayra-v1" },
+        }).buildPayload({
+            messages: [],
+            promptMessages: [{ role: "user", content: "Hello" }],
+            formatting: {
+                instructTemplate: "custom",
+                userPrefix: "<user>",
+                lastOutputSequence: "<assistant>",
+            },
+        });
+
+        expect(payload).toMatchObject({ input: "<user>Hello<assistant>" });
     });
 
     test("streams text generation tokens", async () => {

@@ -28,6 +28,10 @@ import {
     slugifyInstructName,
     type CustomInstructTemplate,
 } from "#frontend/lib/instruct";
+import {
+    setCustomInstructTemplateLibrary,
+    withBuiltinActivationMetadata,
+} from "#frontend/lib/instruct/resolver";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import {
     importSillyTavernPreset,
@@ -62,9 +66,11 @@ const standardBuiltInTemplates: CustomInstructTemplate[] = [
         storyString: defaultStoryString,
     },
     ...(Array.isArray(defaultInstructTemplates)
-        ? (defaultInstructTemplates as CustomInstructTemplate[]).sort((a, b) =>
-              a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-          )
+        ? (defaultInstructTemplates as CustomInstructTemplate[])
+              .map(withBuiltinActivationMetadata)
+              .sort((a, b) =>
+                  a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+              )
         : []),
 ];
 
@@ -90,6 +96,10 @@ export function FormattingSettings({
     const formatting = preferences.formatting.settings;
     const activeId = preferences.formatting.activeTemplateId || "builtin:auto";
     const customTemplates = templates;
+
+    useEffect(() => {
+        setCustomInstructTemplateLibrary(templates);
+    }, [templates]);
 
     useEffect(() => {
         void loadInstructTemplates()
