@@ -8,7 +8,7 @@ The following imported behavior is supported for the beta Formatting/Instruct fe
 
 - Prompt lists, titles, roles, enabled prompt order, and injection metadata used by SmileyChat.
 - Supported sampler settings and streaming.
-- Common Instruct sequences, Story String, Story String wrappers, system-as-user, alignment message, sequence wrapping, stops, name behavior, macro replacement, skip examples, example separator, and Chat Start.
+- Common Instruct sequences, Story String, Story String wrappers, system-as-user, alignment message, sequence wrapping, newline collapsing (`collapse_consecutive_newlines` / `collapse_newlines`), stops, name behavior, macro replacement, skip examples, example separator, and Chat Start. Explicit `false` values (such as `names_as_stop: false` or `collapse_newlines: false`) are preserved during import without unprompted overrides.
 - Per-message `{{name}}` replacement in sequences when sequence macro replacement is enabled.
 - Story String conditional rendering and `wiBefore` / `wiAfter` lore placement.
 - The first-output sequence applies only to the first assistant message in the complete chat, even if history trimming removes earlier turns.

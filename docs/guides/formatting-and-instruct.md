@@ -6,11 +6,22 @@ The **Settings > Formatting (Beta)** tab configures how SmileyChat turns an asse
 
 ## Choosing a template
 
-The tab includes `Auto`, `None`, and a large built-in catalog of imported-compatible formats. It includes families such as Llama, ChatML, Mistral, Gemma, Alpaca, DeepSeek, Command R, OpenAI Harmony, Vicuna, WizardLM, and others. The exact built-in catalog is the list shown in the template selector and can grow without changing the file format. You can also create, import, save, export, and delete custom templates.
+SmileyChat ships with a comprehensive built-in catalog of **over 35 standard templates** ready to use out-of-the-box (including Llama 2/3/4, ChatML, Mistral v1–v7/Tekken, Gemma 2/4, Command R, DeepSeek-V2.5/R1, GLM-4, Alpaca, KoboldAI, OpenAI Harmony, Vicuna, WizardLM, and more).
 
-- **Auto** selects SmileyChat's built-in formatter from the connected model name.
-- **None** sends the assembled text without model wrapper tokens.
-- **Custom** uses the sequences in the current template.
+The template dropdown organizes formats into:
+
+- **Auto (detect from model)**: Automatically selects SmileyChat's optimized built-in formatter based on the connected model's name (detecting Llama 3, ChatML/Qwen, Mistral, Gemma 2, Alpaca, or DeepSeek-R1).
+- **Raw text / None**: Sends the assembled text without instruction wrapper tokens (ideal for base story continuation models).
+- **Standard Built-in Templates**: The bundled catalog of predefined model templates that you can select directly or customize.
+- **Custom Templates**: Templates you create, import, or customize yourself.
+
+### Two-role canonicalization in built-in templates
+
+Most modern instruct formats (like Llama 3, ChatML, and DeepSeek) have native system role tags (`<system>`, `<|im_start|>system`). However, strict two-role template families (**Mistral**, **Gemma 2**, **Alpaca**) only understand `User` and `Assistant` turns. For these templates, SmileyChat:
+
+1. Deterministically canonicalizes system prompt runs and mid-history injections without creating invalid system tags: Gemma 2 and Alpaca fold system text into the following user turn, while Mistral preserves initial system text inside `<<SYS>>...<</SYS>>` within the first `[INST]` block.
+2. Automatically generates a user alignment turn when chatting with a character whose first message is a greeting, preventing strict models (like Gemma 2) from rejecting model-first turn sequences.
+3. Omits duplicate leading `<s>` tags so local backends (like KoboldCPP or Ollama) don't duplicate BOS tokens.
 
 Custom templates are stored locally in `userData/instruct/templates.json`. Compatible loose JSON files in `userData/instruct/` are also discovered. Template IDs are stable, validated identifiers; editable names are not used as file paths or IDs.
 
@@ -34,7 +45,9 @@ The **Include names** setting controls name prefixes in text completion:
 
 When **Replace macros in sequences** is enabled, normal supported macros in sequence fields are resolved before generation. The special `{{name}}` macro is resolved per message while the sequence is applied; it uses that message's author and falls back to `System` for non-chat blocks. Leaving the toggle off preserves literal sequence text, which is important for older templates that use braces literally.
 
-**Wrap sequences with newlines** adds a newline before and after each non-empty sequence. **Sequences as stop strings** and **Names as stop strings** contribute stop strings to a text-completion request. Custom templates use their own stop strings; SmileyChat does not also inject auto-detected built-in stops.
+**Wrap sequences with newlines** adds a newline before and after each non-empty sequence. **Collapse consecutive newlines** (enabled by default) normalizes sequence seams where wrapping would otherwise introduce three or more consecutive newlines (`\n\n\n\n`). For custom templates, this collapsing is seam-aware and preserves message-internal paragraphs; built-in template formatters apply a final `\n{3,}` to `\n\n` collapse across the assembled output.
+
+**Single-line mode** registers both `\n` and `\n\n` as stop sequences. **Sequences as stop strings** and **Names as stop strings** contribute stop strings to a text-completion request. Custom templates use their own stop strings; SmileyChat does not also inject auto-detected built-in stops.
 
 ## Story Strings and macros
 
