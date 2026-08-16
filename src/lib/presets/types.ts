@@ -56,6 +56,8 @@ export type PresetInstructTemplate =
 export type InstructNamesBehavior = "never" | "force" | "always";
 
 export type PresetFormattingSettings = {
+    /** Enabled by default; false preserves authored whitespace at sequence seams. */
+    collapseConsecutiveNewlines?: boolean;
     namesAsStopStrings?: boolean;
     separatorsAsStopStrings?: boolean;
     singleLineMode?: boolean;

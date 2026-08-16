@@ -214,6 +214,8 @@ export function FormattingSettings({
         return formatInstructPrompt(
             previewMessages,
             formatting.instructTemplate ?? "auto",
+            "",
+            resolvedFormatting,
         );
     }, [character, formatting, previewMessages]);
 
@@ -755,6 +757,11 @@ function TemplateEditor({
                     onChange={(value) => onChange({ singleLineMode: value })}
                 />
                 <Toggle
+                    label="Collapse consecutive newlines"
+                    value={template.collapseConsecutiveNewlines !== false}
+                    onChange={(value) => onChange({ collapseConsecutiveNewlines: value })}
+                />
+                <Toggle
                     label="Format system messages as user turns"
                     value={template.systemSameAsUser}
                     onChange={(value) => onChange({ systemSameAsUser: value })}
@@ -925,6 +932,7 @@ function settingsForCustomTemplate(
         namesAsStopStrings: template.namesAsStopStrings,
         alwaysAddCharacterName: template.alwaysAddCharacterName,
         singleLineMode: template.singleLineMode,
+        collapseConsecutiveNewlines: template.collapseConsecutiveNewlines,
         exampleSeparator: template.exampleSeparator,
         chatStartSeparator: template.chatStartSeparator,
     };

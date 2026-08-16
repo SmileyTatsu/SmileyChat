@@ -358,7 +358,12 @@ function normalizePresetFormattingSettings(value: unknown): PresetFormattingSett
             ? template
             : "auto";
     const formatting = {
-        ...(source.namesAsStopStrings === true ? { namesAsStopStrings: true } : {}),
+        ...(typeof source.namesAsStopStrings === "boolean"
+            ? { namesAsStopStrings: source.namesAsStopStrings }
+            : {}),
+        ...(typeof source.collapseConsecutiveNewlines === "boolean"
+            ? { collapseConsecutiveNewlines: source.collapseConsecutiveNewlines }
+            : {}),
         ...(source.separatorsAsStopStrings === true
             ? { separatorsAsStopStrings: true }
             : {}),
@@ -508,10 +513,21 @@ function normalizeSillyTavernFormattingSettings(
         asStringOrUndefined(instruct.systemPrompt) ??
         asStringOrUndefined(source.systemPrompt);
 
-    const namesAsStopStrings =
-        source.names_as_stop === true ||
-        instruct.names_as_stop === true ||
-        context.names_as_stop_strings === true;
+    const namesAsStopStrings = firstBoolean(
+        source.names_as_stop,
+        source.namesAsStopStrings,
+        instruct.names_as_stop,
+        instruct.namesAsStopStrings,
+        context.names_as_stop_strings,
+    );
+    const collapseConsecutiveNewlines = firstBoolean(
+        instruct.collapseConsecutiveNewlines,
+        instruct.collapse_consecutive_newlines,
+        instruct.collapse_newlines,
+        source.collapseConsecutiveNewlines,
+        source.collapse_consecutive_newlines,
+        source.collapse_newlines,
+    );
     const namesBehavior =
         instruct.names_behavior === "none" || instruct.names_behavior === "never"
             ? "never"
@@ -581,7 +597,10 @@ function normalizeSillyTavernFormattingSettings(
     ].some((value) => value !== undefined);
 
     return normalizePresetFormattingSettings({
-        namesAsStopStrings,
+        ...(namesAsStopStrings !== undefined ? { namesAsStopStrings } : {}),
+        ...(collapseConsecutiveNewlines !== undefined
+            ? { collapseConsecutiveNewlines }
+            : {}),
         separatorsAsStopStrings,
         singleLineMode,
         alwaysAddCharacterName,
@@ -642,6 +661,10 @@ function optionalFormattingSequences(source: Record<string, unknown>) {
             typeof source[key] === "string" ? [[key, source[key]]] : [],
         ),
     );
+}
+
+function firstBoolean(...values: unknown[]): boolean | undefined {
+    return values.find((value): value is boolean => typeof value === "boolean");
 }
 
 export function createBlankPrompt(): PresetPrompt {

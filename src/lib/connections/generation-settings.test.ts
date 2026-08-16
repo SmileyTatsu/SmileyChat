@@ -22,6 +22,7 @@ describe("effective generation stop sequences", () => {
             expect.arrayContaining([
                 "END",
                 "\n",
+                "\n\n",
                 "\nLuna:",
                 "\nAnon:",
                 "\nMira:",

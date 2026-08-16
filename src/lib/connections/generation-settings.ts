@@ -28,7 +28,10 @@ export function resolveEffectiveStopSequences({
     modelId?: string;
 }) {
     const stops = new Set(generation?.stopSequences?.filter(Boolean) ?? []);
-    if (formatting?.singleLineMode) stops.add("\n");
+    if (formatting?.singleLineMode) {
+        stops.add("\n");
+        stops.add("\n\n");
+    }
     if (formatting?.namesAsStopStrings) {
         [personaName, characterName, ...groupMemberNames]
             .filter((name): name is string => Boolean(name?.trim()))

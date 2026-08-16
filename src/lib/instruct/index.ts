@@ -69,6 +69,7 @@ export type CustomInstructTemplate = {
     namesAsStopStrings?: boolean;
     alwaysAddCharacterName?: boolean;
     singleLineMode?: boolean;
+    collapseConsecutiveNewlines?: boolean;
     exampleSeparator?: string;
     chatStartSeparator?: string;
     stopSequences?: string[];
@@ -161,7 +162,16 @@ export function normalizeCustomInstructTemplate(value: unknown): CustomInstructT
             ? { userAlignmentMessage: raw.userAlignmentMessage }
             : {}),
         ...(raw.sequencesAsStopStrings === true ? { sequencesAsStopStrings: true } : {}),
-        ...(raw.namesAsStopStrings === true ? { namesAsStopStrings: true } : {}),
+        ...(typeof raw.namesAsStopStrings === "boolean"
+            ? { namesAsStopStrings: raw.namesAsStopStrings }
+            : {}),
+        ...(typeof raw.collapseConsecutiveNewlines === "boolean"
+            ? { collapseConsecutiveNewlines: raw.collapseConsecutiveNewlines }
+            : typeof raw.collapse_consecutive_newlines === "boolean"
+              ? { collapseConsecutiveNewlines: raw.collapse_consecutive_newlines }
+              : typeof raw.collapse_newlines === "boolean"
+                ? { collapseConsecutiveNewlines: raw.collapse_newlines }
+                : {}),
         ...(raw.alwaysAddCharacterName === true ? { alwaysAddCharacterName: true } : {}),
         ...(raw.singleLineMode === true ? { singleLineMode: true } : {}),
         ...(raw.overridePresetPromptOrder === true
@@ -231,6 +241,7 @@ export function formatInstructPrompt(
     messages: ChatGenerationMessage[],
     template: InstructTemplateId,
     modelName = "",
+    formatting?: PresetFormattingSettings,
 ) {
     const resolved = template === "auto" ? detectInstructTemplate(modelName) : template;
     const turns = messages.map((message) => ({
@@ -238,36 +249,134 @@ export function formatInstructPrompt(
         content: messageContentToText(message.content),
     }));
 
-    if (resolved === "chatml") {
-        return `${turns.map((turn) => `<|im_start|>${turn.role}\n${turn.content}<|im_end|>`).join("\n")}\n<|im_start|>assistant\n`;
-    }
-    if (resolved === "mistral") {
-        const system = turns
-            .filter((turn) => turn.role === "system")
-            .map((turn) => turn.content)
-            .join("\n\n");
-        const chat = turns.filter((turn) => turn.role !== "system");
-        if (chat.length === 0) {
-            return `<s>[INST] <<SYS>>\n${system}\n<</SYS>>\n\n [/INST]`;
+    return formatCanonicalInstructPrompt(turns, resolved, formatting);
+}
+
+type InstructTurn = { role: string; content: string };
+
+function formatCanonicalInstructPrompt(
+    turns: InstructTurn[],
+    template: Exclude<InstructTemplateId, "auto">,
+    formatting?: PresetFormattingSettings,
+) {
+    if (template === "mistral") return renderMistral(turns, formatting);
+    if (template === "gemma2") return renderGemma(turns, formatting);
+    if (template === "alpaca") return renderAlpaca(turns, formatting);
+    const prefill =
+        template === "chatml"
+            ? "<|im_start|>assistant\n"
+            : template === "deepseek-r1"
+              ? "<\uFF5CAssistant\uFF5C><think>\n"
+              : "<|start_header_id|>assistant<|end_header_id|>\n\n";
+    return renderNativeTurns(
+        turns,
+        formatting,
+        (turn) => {
+            if (template === "chatml")
+                return `<|im_start|>${turn.role}\n${turn.content}<|im_end|>`;
+            if (template === "deepseek-r1")
+                return `<\uFF5C${turn.role === "assistant" ? "Assistant" : turn.role === "system" ? "System" : "User"}\uFF5C>${turn.content}`;
+            return `<|start_header_id|>${turn.role}<|end_header_id|>\n\n${turn.content}<|eot_id|>`;
+        },
+        prefill,
+    );
+}
+
+function renderNativeTurns(
+    turns: InstructTurn[],
+    formatting: PresetFormattingSettings | undefined,
+    render: (turn: InstructTurn) => string,
+    prefill: string,
+) {
+    const alignment = formatting?.userAlignmentMessage?.trim();
+    const aligned =
+        turns[0]?.role === "assistant" && alignment
+            ? [{ role: "user", content: alignment }, ...turns]
+            : turns;
+    return joinGenerated([...aligned.map(render), prefill], "\n", formatting);
+}
+
+function canonicalTwoRoleTurns(
+    turns: InstructTurn[],
+    formatting?: PresetFormattingSettings,
+) {
+    const output: Array<InstructTurn & { system?: string }> = [];
+    let pendingSystem: string[] = [];
+    const alignment = formatting?.userAlignmentMessage?.trim() ?? "";
+    for (const turn of turns) {
+        if (turn.role === "system") {
+            pendingSystem.push(turn.content);
+            continue;
         }
-        return chat
-            .map((turn, index) =>
-                turn.role === "user"
-                    ? `<s>[INST] ${index === 0 && system ? `<<SYS>>\n${system}\n<</SYS>>\n\n` : ""}${turn.content} [/INST]`
-                    : ` ${turn.content}</s>`,
-            )
-            .join("");
+        if (turn.role !== "user" && turn.role !== "assistant") continue;
+        const system = pendingSystem.join("\n\n");
+        pendingSystem = [];
+        if (turn.role === "assistant" && (system || output.length === 0)) {
+            output.push({
+                role: "user",
+                content: [system, alignment].filter(Boolean).join("\n\n"),
+            });
+        }
+        output.push({ ...turn, ...(turn.role === "user" && system ? { system } : {}) });
     }
-    if (resolved === "gemma2") {
-        return `${turns.map((turn) => `<start_of_turn>${turn.role === "assistant" ? "model" : turn.role}\n${turn.content}<end_of_turn>`).join("\n")}\n<start_of_turn>model\n`;
+    if (pendingSystem.length) {
+        output.push({
+            role: "user",
+            content: [...pendingSystem, alignment].filter(Boolean).join("\n\n"),
+        });
     }
-    if (resolved === "alpaca") {
-        return `${turns.map((turn) => `### ${turn.role === "assistant" ? "Response" : turn.role === "system" ? "System" : "Instruction"}:\n${turn.content}`).join("\n\n")}\n\n### Response:\n`;
-    }
-    if (resolved === "deepseek-r1") {
-        return `${turns.map((turn) => `<｜${turn.role === "assistant" ? "Assistant" : turn.role === "system" ? "System" : "User"}｜>${turn.content}`).join("\n")}\n<｜Assistant｜><think>\n`;
-    }
-    return `${turns.map((turn) => `<|start_header_id|>${turn.role}<|end_header_id|>\n\n${turn.content}<|eot_id|>`).join("\n")}\n<|start_header_id|>assistant<|end_header_id|>\n\n`;
+    return output;
+}
+
+function renderMistral(turns: InstructTurn[], formatting?: PresetFormattingSettings) {
+    return canonicalTwoRoleTurns(turns, formatting)
+        .map((turn) =>
+            turn.role === "user"
+                ? `[INST] ${turn.system ? `<<SYS>>\n${turn.system}\n<</SYS>>\n\n` : ""}${turn.content} [/INST]`
+                : ` ${turn.content}</s>`,
+        )
+        .join("");
+}
+
+function renderGemma(turns: InstructTurn[], formatting?: PresetFormattingSettings) {
+    const canonical = canonicalTwoRoleTurns(turns, formatting);
+    return joinGenerated(
+        [
+            ...canonical.map(
+                (turn) =>
+                    `<start_of_turn>${turn.role === "assistant" ? "model" : "user"}\n${[turn.system, turn.content].filter(Boolean).join("\n\n")}<end_of_turn>`,
+            ),
+            "<start_of_turn>model\n",
+        ],
+        "\n",
+        formatting,
+    );
+}
+
+function renderAlpaca(turns: InstructTurn[], formatting?: PresetFormattingSettings) {
+    const canonical = canonicalTwoRoleTurns(turns, formatting);
+    return joinGenerated(
+        [
+            ...canonical.map(
+                (turn) =>
+                    `### ${turn.role === "assistant" ? "Response" : "Instruction"}:\n${[turn.system, turn.content].filter(Boolean).join("\n\n")}`,
+            ),
+            "### Response:\n",
+        ],
+        "\n\n",
+        formatting,
+    );
+}
+
+function joinGenerated(
+    parts: string[],
+    separator: string,
+    formatting?: PresetFormattingSettings,
+) {
+    const output = parts.join(separator);
+    return formatting?.collapseConsecutiveNewlines === false
+        ? output
+        : output.replace(/\n{3,}/g, "\n\n");
 }
 
 export function formatCustomInstructPrompt(
@@ -283,7 +392,9 @@ export function formatCustomInstructPrompt(
     }));
 
     const wrap = (sequence: string) =>
-        formatting.wrapSequencesWithNewlines && sequence ? `\n${sequence}\n` : sequence;
+        formatting.wrapSequencesWithNewlines && sequence
+            ? `\n${formatting.collapseConsecutiveNewlines === false ? sequence : sequence.replace(/^\n+|\n+$/g, "")}\n`
+            : sequence;
     const systemPrefix = wrap(formatting.systemPrefix ?? "");
     const systemSuffix = wrap(formatting.systemSuffix ?? "");
     const userPrefix = wrap(formatting.userPrefix ?? "");
@@ -490,11 +601,21 @@ export function parseInstructTemplateJson(value: unknown): {
         raw.wrap_sequences_as_stop === true ||
         raw.sequences_as_stop === true;
 
-    const namesAsStopStrings =
-        instruct.names_as_stop === true ||
-        context.names_as_stop_strings === true ||
-        raw.namesAsStopStrings === true ||
-        raw.names_as_stop === true;
+    const namesAsStopStrings = firstBoolean(
+        instruct.namesAsStopStrings,
+        instruct.names_as_stop,
+        context.names_as_stop_strings,
+        raw.namesAsStopStrings,
+        raw.names_as_stop,
+    );
+    const collapseConsecutiveNewlines = firstBoolean(
+        instruct.collapseConsecutiveNewlines,
+        instruct.collapse_consecutive_newlines,
+        instruct.collapse_newlines,
+        raw.collapseConsecutiveNewlines,
+        raw.collapse_consecutive_newlines,
+        raw.collapse_newlines,
+    );
 
     const alwaysAddCharacterName =
         context.always_force_name2 === true ||
@@ -633,7 +754,10 @@ export function parseInstructTemplateJson(value: unknown): {
         ...(skipExamples ? { skipExamples: true } : {}),
         ...(activationRegex !== undefined ? { activationRegex } : {}),
         ...(sequencesAsStopStrings ? { sequencesAsStopStrings: true } : {}),
-        ...(namesAsStopStrings ? { namesAsStopStrings: true } : {}),
+        ...(namesAsStopStrings !== undefined ? { namesAsStopStrings } : {}),
+        ...(collapseConsecutiveNewlines !== undefined
+            ? { collapseConsecutiveNewlines }
+            : {}),
         ...(alwaysAddCharacterName ? { alwaysAddCharacterName: true } : {}),
         ...(singleLineMode ? { singleLineMode: true } : {}),
         ...(exampleSeparator !== undefined ? { exampleSeparator } : {}),
@@ -670,6 +794,10 @@ export function parseInstructTemplateJson(value: unknown): {
         formatting,
         template: customTemplate,
     };
+}
+
+function firstBoolean(...values: unknown[]): boolean | undefined {
+    return values.find((value): value is boolean => typeof value === "boolean");
 }
 
 function asStringOrUndefined(value: unknown): string | undefined {

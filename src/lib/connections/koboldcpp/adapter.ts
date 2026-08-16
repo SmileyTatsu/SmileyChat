@@ -144,14 +144,18 @@ export function createKoboldCPPBody(
             ? { sampler_order: generation.samplerOrder }
             : {}),
         stop_sequence: Array.from(
-            new Set([
-                ...builtInTemplateStops(
-                    request.formatting?.instructTemplate,
-                    config.model.id,
+            new Set(
+                [
+                    ...builtInTemplateStops(
+                        request.formatting?.instructTemplate,
+                        config.model.id,
+                    ),
+                    ...(request.formatting?.stopSequences ?? []),
+                    ...(generation?.stopSequences ?? []),
+                ].filter(
+                    (stop): stop is string => typeof stop === "string" && Boolean(stop),
                 ),
-                ...(request.formatting?.stopSequences ?? []),
-                ...(generation?.stopSequences ?? []),
-            ]),
+            ),
         ),
         ...(typeof generation?.seed === "number"
             ? { sampler_seed: generation.seed }
@@ -196,6 +200,7 @@ function formatKoboldPrompt(
         messages,
         resolveTemplate(request.formatting?.instructTemplate),
         config.model.id,
+        request.formatting,
     );
 }
 export function normalizeKoboldBaseUrl(baseUrl: string): string {

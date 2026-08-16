@@ -271,4 +271,30 @@ describe("preset normalization", () => {
         expect(preset.formatting?.wrapSequencesWithNewlines).toBe(true);
         expect(preset.formatting?.sequencesAsStopStrings).toBeUndefined();
     });
+
+    test("preserves explicit false formatting flags and newline aliases", () => {
+        expect(
+            normalizePreset({
+                formatting: {
+                    collapseConsecutiveNewlines: false,
+                    namesAsStopStrings: false,
+                },
+            }).formatting,
+        ).toMatchObject({
+            collapseConsecutiveNewlines: false,
+            namesAsStopStrings: false,
+        });
+
+        const { preset } = importSillyTavernPreset(
+            {
+                instruct: { collapse_consecutive_newlines: false },
+                names_as_stop: false,
+            },
+            "False flags",
+        );
+        expect(preset.formatting).toMatchObject({
+            collapseConsecutiveNewlines: false,
+            namesAsStopStrings: false,
+        });
+    });
 });

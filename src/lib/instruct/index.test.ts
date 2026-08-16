@@ -30,10 +30,10 @@ describe("instruct templates", () => {
         );
     });
 
-    test("keeps a system-only Mistral prompt generation-ready", () => {
+    test("keeps a system-only Mistral prompt generation-ready without a BOS token", () => {
         expect(
             formatInstructPrompt([{ role: "system", content: "Rules" }], "mistral"),
-        ).toBe("<s>[INST] <<SYS>>\nRules\n<</SYS>>\n\n [/INST]");
+        ).toBe("[INST] Rules [/INST]");
     });
 
     test("detects ChatML families and provides DeepSeek user stops", () => {
@@ -49,6 +49,8 @@ describe("instruct templates", () => {
             output_sequence: "### Response:\n",
             system_sequence: "### System:\n",
             wrap_sequences_as_stop: true,
+            collapse_newlines: false,
+            names_as_stop: false,
         });
 
         expect(parsed.name).toBe("SillyTavern Custom");
@@ -57,6 +59,8 @@ describe("instruct templates", () => {
         expect(parsed.formatting.assistantPrefix).toBe("### Response:\n");
         expect(parsed.formatting.systemPrefix).toBe("### System:\n");
         expect(parsed.formatting.sequencesAsStopStrings).toBe(true);
+        expect(parsed.formatting.collapseConsecutiveNewlines).toBe(false);
+        expect(parsed.formatting.namesAsStopStrings).toBe(false);
     });
 
     test("parses SillyTavern combo bundle JSON (e.g. Mistral V7-Tekken)", () => {
@@ -176,6 +180,51 @@ describe("instruct templates", () => {
                 userAlignmentMessage: "Continue safely.",
             }),
         ).toBe("<u>Continue safely.</u><a>Prior reply</a>");
+    });
+
+    test("canonicalizes strict two-role templates without illegal system turns", () => {
+        const history = [
+            { role: "system" as const, content: "Rules" },
+            { role: "assistant" as const, content: "Greeting" },
+            { role: "system" as const, content: "Depth injection" },
+            { role: "user" as const, content: "Reply" },
+            { role: "system" as const, content: "Terminal injection" },
+        ];
+        const mistral = formatInstructPrompt(history, "mistral", "", {
+            userAlignmentMessage: "Align",
+        });
+        expect(mistral).toStartWith("[INST]");
+        expect(mistral).toContain("Rules\n\nAlign");
+        expect(mistral).toContain("<<SYS>>\nDepth injection\n<</SYS>>\n\nReply");
+        expect(mistral).toContain("Terminal injection\n\nAlign");
+        expect(mistral).toContain("Greeting</s>");
+    });
+
+    test("adds an empty alignment user turn before a system-less greeting", () => {
+        expect(
+            formatInstructPrompt(
+                [{ role: "assistant", content: "Greeting" }],
+                "gemma2",
+                "",
+                {
+                    userAlignmentMessage: "Start",
+                },
+            ),
+        ).toStartWith("<start_of_turn>user\nStart<end_of_turn>");
+    });
+
+    test("collapses sequence seams without changing message-internal paragraphs", () => {
+        const messages = [{ role: "user" as const, content: "First\n\n\nSecond" }];
+        const wrapped = { userPrefix: "<u>\n\n", wrapSequencesWithNewlines: true };
+        expect(formatCustomInstructPrompt(messages, wrapped)).toContain(
+            "First\n\n\nSecond",
+        );
+        expect(
+            formatCustomInstructPrompt(messages, {
+                ...wrapped,
+                collapseConsecutiveNewlines: false,
+            }),
+        ).toContain("<u>\n\n\nFirst");
     });
 
     test("expands the per-message name macro only when sequence macros are enabled", () => {
