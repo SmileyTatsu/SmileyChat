@@ -150,9 +150,6 @@ function runForDestination(
         macroResolver: (value) => api.presets.resolveMacros(value),
         logger: api.logger,
     });
-    if (transformed !== text) {
-        api.logger.debug("Applied regex replacement", { destination, target });
-    }
     return transformed;
 }
 
