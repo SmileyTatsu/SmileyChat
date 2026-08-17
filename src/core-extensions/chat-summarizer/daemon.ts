@@ -159,6 +159,7 @@ export async function runSummarization(
     }
 
     inFlightChatIds.add(chatId);
+    const startedAt = Date.now();
 
     try {
         const settings = getSummarizerSettings();
@@ -184,6 +185,12 @@ export async function runSummarization(
                 error: undefined,
             });
         }
+
+        api.logger.info("Generating chat summary", {
+            chatId,
+            mode: options.mode,
+            messagesCount: messagesToSummarize.length,
+        });
 
         const previousSummary =
             options.mode === "full" || !settings.includePreviousSummary
@@ -223,6 +230,12 @@ export async function runSummarization(
             settings.maxSummaryCharacters,
         );
 
+        api.logger.info("Chat summary generated", {
+            chatId,
+            summaryLength: summaryText.length,
+            durationMs: Date.now() - startedAt,
+        });
+
         return saveChatSummaryState(api, chatId, {
             version: 1,
             chatId,
@@ -234,6 +247,7 @@ export async function runSummarization(
             status: "idle",
         });
     } catch (error) {
+        api.logger.error("Chat summary generation failed", error);
         const currentState = await getChatSummaryState(api, chatId);
         return saveChatSummaryState(api, chatId, {
             ...currentState,

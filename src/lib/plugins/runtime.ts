@@ -24,6 +24,7 @@ import type {
 } from "./types";
 
 export async function loadRuntimePlugins(manifests: PluginManifest[]) {
+    const startedAt = performance.now();
     const runtimeManifests = mergeCoreAndUserPluginManifests(manifests);
     initializePluginEnabledStates(runtimeManifests);
 
@@ -54,6 +55,19 @@ export async function loadRuntimePlugins(manifests: PluginManifest[]) {
             )
             .map((manifest) => loadRuntimePlugin(manifest)),
     );
+    const loaded = runtimeManifests.filter((manifest) => manifest.enabled !== false);
+    void localApiFetch("/api/plugins/runtime/logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            level: "info",
+            message: `Activated ${loaded.length} plugins`,
+            detail: {
+                durationMs: Math.round(performance.now() - startedAt),
+                plugins: loaded.map((manifest) => manifest.id),
+            },
+        }),
+    }).catch(() => undefined);
 }
 
 async function loadBundledRuntimePlugin(

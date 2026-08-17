@@ -143,12 +143,17 @@ function runForDestination(
         )
     )
         return text;
-    return runRegexPass(text, {
+    const transformed = runRegexPass(text, {
         destination,
         depth,
         target,
         macroResolver: (value) => api.presets.resolveMacros(value),
+        logger: api.logger,
     });
+    if (transformed !== text) {
+        api.logger.debug("Applied regex replacement", { destination, target });
+    }
+    return transformed;
 }
 
 export const regexReplacerPlugin = {

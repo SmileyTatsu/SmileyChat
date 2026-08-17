@@ -1,4 +1,5 @@
 import {
+    Activity,
     ChevronsLeft,
     ChevronsRight,
     KeyRound,
@@ -38,6 +39,7 @@ import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 
 import { ConnectionsSettings } from "./connections/connections-settings";
 import { GeneralSettings } from "./general-settings";
+import { DiagnosticsSettings } from "./diagnostics-settings";
 import { FormattingSettings } from "./formatting-settings";
 import { LorebooksSettings } from "./lorebooks-settings";
 import { PersonasSettings } from "./personas/personas-settings";
@@ -89,6 +91,7 @@ const settingsCategories = [
     { id: "plugins", label: "Plugins", icon: Puzzle },
     { id: "settings", label: "Settings", icon: Settings },
     { id: "sillytavern", label: "SillyTavern Sync", icon: RefreshCw },
+    { id: "diagnostics", label: "Diagnostics", icon: Activity },
 ] satisfies Array<{
     id: SettingsCategory;
     label: string;
@@ -400,6 +403,14 @@ export function OptionsModal({
                                 preferences={preferences}
                                 onPreferencesChange={onPreferencesChange}
                                 onSyncComplete={onSillyTavernSyncComplete}
+                            />
+                        )}
+                        {activeCategory === "diagnostics" && (
+                            <DiagnosticsSettings
+                                loadError={preferencesLoadError}
+                                preferences={preferences}
+                                saveStatus={preferencesSaveStatus}
+                                onPreferencesChange={onPreferencesChange}
                             />
                         )}
                     </div>

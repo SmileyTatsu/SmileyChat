@@ -126,6 +126,11 @@ export async function runPipeline(
     let fallbackText = options.originalText;
     let runError = "";
 
+    api.logger.info("Running post-processing pipeline", {
+        mode: options.mode,
+        passCount: passes.length,
+    });
+
     activeAbortController = new AbortController();
     openPipelineModal(api);
 
@@ -189,13 +194,20 @@ export async function runPipeline(
             currentText = output || currentText;
             fallbackText = currentText;
         }
+
+        api.logger.info("Post-processing pipeline completed", {
+            mode: options.mode,
+            passesRun: snapshots.length,
+        });
     } catch (error) {
         if (isAbortError(error)) {
+            api.logger.info("Post-processing pipeline aborted", { mode: options.mode });
             return finishRun({ accepted: false, text: options.originalText });
         }
 
         runError =
             error instanceof Error ? error.message : "Post-processing pass failed.";
+        api.logger.warn("Post-processing pass failed", { error: runError });
         snapshots.push({
             passId: "error",
             passName: "Pipeline stopped",

@@ -9,6 +9,7 @@ export {
 export const rootDir = resolve(import.meta.dir, "..");
 export const distDir = join(rootDir, "dist");
 export const userDataDir = join(rootDir, "userData");
+export const logsDir = join(userDataDir, "logs");
 export const envFilePath = join(rootDir, ".env");
 export const defaultCharacterSeedsDir = join(
     rootDir,

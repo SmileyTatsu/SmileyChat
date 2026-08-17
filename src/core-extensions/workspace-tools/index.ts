@@ -522,7 +522,25 @@ export function activate(api: SmileyPluginApi) {
         },
     ];
 
-    const disposers = tools.map((tool) => api.tools.registerTool(tool));
+    const disposers = tools.map((tool) => {
+        const originalRun = tool.run;
+        return api.tools.registerTool({
+            ...tool,
+            run: async (args, context) => {
+                api.logger.info("Executing workspace tool", { tool: tool.name });
+                try {
+                    const result = await originalRun(args, context);
+                    return result;
+                } catch (error) {
+                    api.logger.error("Workspace tool failed", {
+                        tool: tool.name,
+                        error: error instanceof Error ? error.message : String(error),
+                    });
+                    throw error;
+                }
+            },
+        });
+    });
     return () => disposers.forEach((dispose) => dispose());
 }
 

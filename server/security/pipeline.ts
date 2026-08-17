@@ -25,6 +25,7 @@ import {
     type RateLimitResult,
 } from "./rate-limit";
 import { applySecurityHeaders } from "./security-headers";
+import { logger } from "../logger";
 
 export interface SecurityContext {
     ip: string;
@@ -118,6 +119,7 @@ export function runSecurityPipeline(
     // IP allowlist runs first so blocked IPs never reach auth/rate limit.
     const allowlistResult = checkIpAllowlist(ip);
     if (allowlistResult === false) {
+        logger.warn("security", "Allowlist blocked request", { ip, path: url.pathname });
         return finalize(
             new Response(
                 JSON.stringify({ error: "Forbidden.", code: "ip_not_allowlisted" }),
@@ -132,11 +134,19 @@ export function runSecurityPipeline(
 
     const rateLimit = checkRateLimit(url, ip, request.method);
     if (rateLimit?.exceeded) {
+        logger.warn("security", "Rate limit exceeded", {
+            ip,
+            path: url.pathname,
+            method: request.method,
+        });
         return finalize(buildRateLimitedResponse(rateLimit), url);
     }
 
     const authRejection = checkBasicAuth(request, url, ip);
-    if (authRejection) return finalize(authRejection, url);
+    if (authRejection) {
+        logger.warn("security", "Authentication failed", { ip, path: url.pathname });
+        return finalize(authRejection, url);
+    }
 
     return { ip, url, rateLimit, trustedProxy };
 }

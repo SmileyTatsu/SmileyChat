@@ -477,6 +477,13 @@ export type PluginNetworkApi = {
     fetch(url: string, init?: PluginNetworkFetchInit): Promise<Response>;
 };
 
+export type PluginLoggerApi = {
+    info(message: string, detail?: Record<string, unknown>): void;
+    debug(message: string, detail?: Record<string, unknown>): void;
+    warn(message: string, detail?: Record<string, unknown>): void;
+    error(message: string, error?: unknown): void;
+};
+
 export type PluginModalProps = {
     close: () => void;
     snapshot: PluginAppSnapshot | undefined;
@@ -502,6 +509,7 @@ export type SmileyPluginApi = {
     actions: PluginActionsApi;
     model: PluginModelApi;
     network: PluginNetworkApi;
+    logger: PluginLoggerApi;
     ui: {
         h: typeof import("preact").h;
         registerSettingsPanel(panel: PluginSettingsPanel): void;

@@ -185,7 +185,19 @@ export function getPluginRegistryAllowedHostnames() {
 }
 
 export function getLogLevel() {
-    return normalizeEnvValue(Bun.env.SMILEYCHAT_LOG_LEVEL) ?? "info";
+    const value = normalizeEnvValue(Bun.env.SMILEYCHAT_LOG_LEVEL);
+    return value === "trace" ||
+        value === "debug" ||
+        value === "info" ||
+        value === "warn" ||
+        value === "error"
+        ? value
+        : "info";
+}
+
+/** Raw prompts and provider bodies are deliberately environment-only. */
+export function isSensitivePayloadLoggingEnabled() {
+    return isEnabledFlag(Bun.env.SMILEYCHAT_LOG_SENSITIVE_PAYLOADS);
 }
 
 export { isEnabledFlag, isDisabledFlag };

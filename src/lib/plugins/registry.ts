@@ -1,6 +1,7 @@
 import type { h } from "preact";
 
 import { createId } from "../common/ids";
+import { localApiFetch } from "../api/client";
 import type { ConnectionProfile } from "../connections/config";
 import type { ConnectionAdapter } from "../connections/types";
 import { formatCustomInstructPrompt, formatInstructPrompt } from "../instruct";
@@ -595,6 +596,7 @@ export function createPluginApi(
                 return network.fetch(url, init);
             },
         },
+        logger: pluginLogger(manifest),
         ui: {
             h: preactH,
             registerSettingsPanel(panel) {
@@ -910,6 +912,46 @@ export function createPluginApi(
         },
         storage,
         events: pluginEvents(manifest),
+    };
+}
+
+function pluginLogger(manifest: PluginManifest) {
+    const write = (
+        level: "debug" | "info" | "warn" | "error",
+        message: string,
+        detail?: Record<string, unknown>,
+    ) => {
+        const safeMessage = String(message).slice(0, 2048);
+        console[level](`[plugin:${manifest.id}] ${safeMessage}`, detail ?? "");
+        void localApiFetch(`/api/plugins/${encodeURIComponent(manifest.id)}/logs`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                level,
+                message: safeMessage,
+                ...(detail ? { detail } : {}),
+            }),
+        }).catch(() => undefined);
+    };
+    return {
+        info: (message: string, detail?: Record<string, unknown>) =>
+            write("info", message, detail),
+        debug: (message: string, detail?: Record<string, unknown>) =>
+            write("debug", message, detail),
+        warn: (message: string, detail?: Record<string, unknown>) =>
+            write("warn", message, detail),
+        error: (message: string, error?: unknown) =>
+            write(
+                "error",
+                message,
+                error instanceof Error
+                    ? { error: error.message }
+                    : error && typeof error === "object"
+                      ? (error as Record<string, unknown>)
+                      : error === undefined
+                        ? undefined
+                        : { error: String(error) },
+            ),
     };
 }
 

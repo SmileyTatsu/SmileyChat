@@ -57,7 +57,9 @@ import {
     updateLorebookIndex,
     writeLorebookById,
 } from "./lorebook-store";
-import { userDataDir } from "./paths";
+import { logsDir, userDataDir } from "./paths";
+import { clearLogFiles, getLogStats } from "./log-file-manager";
+import { getRecentLogs, log, logger, subscribeLogs } from "./logger";
 import { requirePrivilegedAccess } from "./security/privileged-gate";
 import { writePersonaAvatar } from "./persona-avatar";
 import { servePersonaAsset } from "./persona-images";
@@ -73,6 +75,7 @@ import {
 import {
     deletePluginStorage,
     installVerifiedPlugin,
+    logPluginTelemetry,
     proxyPluginFetch,
     readPluginManifests,
     readPluginRegistry,
@@ -257,6 +260,89 @@ const createServer = () =>
             "/api/plugins/:pluginId/update": {
                 POST: api(async (request) => {
                     return updateInstalledPlugin(request.params.pluginId);
+                }),
+            },
+
+            "/api/plugins/:pluginId/logs": {
+                POST: api(async (request) =>
+                    logPluginTelemetry(
+                        request.params.pluginId,
+                        await readJsonBody(request),
+                    ),
+                ),
+            },
+
+            "/api/logs/stream": {
+                GET: api(async (request, routeServer) => {
+                    routeServer.timeout(request, 255);
+                    const encoder = new TextEncoder();
+                    let unsubscribe: (() => void) | undefined;
+                    let heartbeat: ReturnType<typeof setInterval> | undefined;
+                    const body = new ReadableStream<Uint8Array>({
+                        start(controller) {
+                            // Immediately flush an initial comment so Bun sends 200 headers over TCP,
+                            // allowing the browser's EventSource to transition to OPEN (readyState = 1).
+                            try {
+                                controller.enqueue(encoder.encode(": open\n\n"));
+                            } catch {
+                                // Ignore enqueue errors
+                            }
+
+                            heartbeat = setInterval(() => {
+                                try {
+                                    controller.enqueue(encoder.encode(": ping\n\n"));
+                                } catch {
+                                    if (heartbeat) clearInterval(heartbeat);
+                                }
+                            }, 5_000);
+
+                            unsubscribe = subscribeLogs((entry) => {
+                                try {
+                                    controller.enqueue(
+                                        encoder.encode(
+                                            `data: ${JSON.stringify(entry)}\n\n`,
+                                        ),
+                                    );
+                                } catch {
+                                    unsubscribe?.();
+                                }
+                            });
+                        },
+                        cancel() {
+                            if (heartbeat) clearInterval(heartbeat);
+                            unsubscribe?.();
+                        },
+                    });
+                    return new Response(body, {
+                        headers: {
+                            "Cache-Control": "no-cache, no-transform",
+                            Connection: "keep-alive",
+                            "Content-Type": "text/event-stream; charset=utf-8",
+                            "X-Accel-Buffering": "no",
+                        },
+                    });
+                }),
+            },
+
+            "/api/logs/recent": {
+                GET: api(async () => {
+                    const [logs, stats] = await Promise.all([
+                        getRecentLogs(),
+                        getLogStats(),
+                    ]);
+                    return json({ logs, stats });
+                }),
+            },
+
+            "/api/logs": {
+                GET: api(async () => json({ stats: await getLogStats() })),
+                DELETE: api(async () => {
+                    await clearLogFiles();
+                    log("server", "info", "Cleared log files", undefined, {
+                        skipFile: true,
+                    });
+                    const stats = await getLogStats();
+                    return json({ ok: true, stats });
                 }),
             },
 
@@ -1028,15 +1114,75 @@ function api<Path extends string, WebSocketData = undefined>(
     handler: ApiHandler<Path, WebSocketData>,
 ) {
     return async (request: Bun.BunRequest<Path>, server: Bun.Server<WebSocketData>) => {
+        const startedAt = Date.now();
         const pipeline = runSecurityPipeline(request, server);
-        if (pipeline instanceof Response) return pipeline;
+        if (pipeline instanceof Response) {
+            logger.warn(
+                "http",
+                `${request.method} ${new URL(request.url).pathname} -> ${pipeline.status}`,
+                { durationMs: Date.now() - startedAt },
+            );
+            return pipeline;
+        }
 
         try {
             await verifyCsrfRequest(request, pipeline.trustedProxy);
             const response = await handler(routeRequest(request), server, pipeline);
-            return finalize(response, pipeline.url, pipeline.rateLimit);
+            const finalized = finalize(response, pipeline.url, pipeline.rateLimit);
+            const pathname = pipeline.url.pathname;
+            const isAssetRoute =
+                pathname.endsWith("/avatar") ||
+                pathname.includes("/assets/") ||
+                pathname.includes("/attachments/");
+            const isBackgroundPoll =
+                (request.method === "GET" &&
+                    (pathname === "/api/mcp" ||
+                        pathname === "/api/health" ||
+                        pathname === "/api/csrf")) ||
+                pathname.startsWith("/api/logs");
+
+            if (finalized.status >= 500) {
+                logger.error(
+                    "http",
+                    `${request.method} ${pathname} -> ${finalized.status}`,
+                    {
+                        durationMs: Date.now() - startedAt,
+                        ip: pipeline.ip,
+                    },
+                );
+            } else if (finalized.status >= 400) {
+                logger.warn(
+                    "http",
+                    `${request.method} ${pathname} -> ${finalized.status}`,
+                    {
+                        durationMs: Date.now() - startedAt,
+                        ip: pipeline.ip,
+                    },
+                );
+            } else {
+                logger.debug(
+                    "http",
+                    `${request.method} ${pathname} -> ${finalized.status}`,
+                    {
+                        durationMs: Date.now() - startedAt,
+                        ip: pipeline.ip,
+                        ...(isAssetRoute ? { asset: true } : {}),
+                    },
+                );
+            }
+            return finalized;
         } catch (error) {
-            return finalize(apiErrorResponse(error), pipeline.url, pipeline.rateLimit);
+            const finalized = finalize(
+                apiErrorResponse(error),
+                pipeline.url,
+                pipeline.rateLimit,
+            );
+            logger.warn(
+                "http",
+                `${request.method} ${pipeline.url.pathname} -> ${finalized.status}`,
+                { durationMs: Date.now() - startedAt, ip: pipeline.ip },
+            );
+            return finalized;
         }
     };
 }

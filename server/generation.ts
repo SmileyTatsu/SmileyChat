@@ -37,6 +37,7 @@ import type {
 
 import { BadRequestError, HttpError, json } from "./http";
 import { readConnectionSecrets, readConnectionSettings } from "./settings";
+import { logger, sensitiveLog } from "./logger";
 
 type GenerationPayload = {
     profileId?: string;
@@ -54,16 +55,6 @@ const encoder = new TextEncoder();
 // slow time-to-first-token windows alive well within the route timeout.
 const HEARTBEAT_INTERVAL_MS = 5_000;
 
-function logGeneration(message: string, detail?: Record<string, unknown>) {
-    const suffix = detail
-        ? " " +
-          Object.entries(detail)
-              .map(([key, value]) => `${key}=${value}`)
-              .join(" ")
-        : "";
-    console.log(`[generate] ${message}${suffix}`);
-}
-
 export async function generateWithSavedConnection(
     value: unknown,
     signal: AbortSignal,
@@ -78,13 +69,28 @@ export async function generateWithSavedConnection(
     const adapter = createBuiltInAdapter(profile);
     const startedAt = Date.now();
 
-    logGeneration("start", {
+    const isTextCompletion = adapter.promptMode === "text-completion";
+    const mode = isTextCompletion
+        ? `text-completion${payload.formatting?.instructTemplate ? ` (instruct: ${payload.formatting.instructTemplate})` : ""}`
+        : "chat-completion";
+
+    const promptStats = promptDiagnostics(payload.promptMessages);
+    logger.info("generate", "START", {
         provider: profile.provider,
         profileId: profile.id,
+        profile: profile.name,
+        model: configuredModel(profile),
+        baseUrl: safeBaseUrl(profile),
+        mode,
         stream: payload.stream === true,
-        promptMessages: payload.promptMessages.length,
         tools: payload.tools?.length ?? 0,
     });
+    logger.info("generate", "PROMPT", {
+        ...promptStats,
+        toolNames: payload.tools?.map((tool) => tool.name).join(",") || "none",
+    });
+    logger.debug("generate", "SAMPLING", generationDiagnostics(payload.generation));
+    sensitiveLog("generate", "RAW PROMPT", { messages: payload.promptMessages });
 
     // A completed provider request does not need an SSE transport. Returning
     // JSON avoids a terminal-frame close race for non-streaming generation.
@@ -99,18 +105,10 @@ export async function generateWithSavedConnection(
                 stream: false,
                 tools: payload.tools,
             });
-            logGeneration("done", {
-                mode: "json",
-                ms: Date.now() - startedAt,
-                chars: result.message.length,
-            });
+            logGenerationDone(result, startedAt, "json");
             return json({ result: publicGenerationResult(result) });
         } catch (error) {
-            logGeneration("error", {
-                mode: "json",
-                ms: Date.now() - startedAt,
-                message: error instanceof Error ? error.message : String(error),
-            });
+            logGenerationError(error, startedAt, "json");
             return json(
                 {
                     error: error instanceof Error ? error.message : "Generation failed.",
@@ -154,13 +152,17 @@ export async function generateWithSavedConnection(
                 } catch {
                     cancelled = true;
                     generationController.abort();
-                    logGeneration("enqueue-failed", { ms: Date.now() - startedAt });
+                    logger.warn("generate", "SSE enqueue failed", {
+                        durationMs: Date.now() - startedAt,
+                    });
                 }
             };
             const noteFirstToken = () => {
                 if (firstTokenAt) return;
                 firstTokenAt = Date.now();
-                logGeneration("first-token", { ms: firstTokenAt - startedAt });
+                logger.info("generate", "STREAM first-token", {
+                    ttftMs: firstTokenAt - startedAt,
+                });
             };
 
             // Flush an immediate byte so the socket is active before the
@@ -169,6 +171,7 @@ export async function generateWithSavedConnection(
             heartbeat = setInterval(() => sendComment("ping"), HEARTBEAT_INTERVAL_MS);
 
             try {
+                let reasoningStartedAt = 0;
                 const result = await adapter.generate({
                     generation: payload.generation,
                     formatting: payload.formatting,
@@ -179,6 +182,12 @@ export async function generateWithSavedConnection(
                     },
                     onReasoningToken: (token) => {
                         noteFirstToken();
+                        if (!reasoningStartedAt) {
+                            reasoningStartedAt = Date.now();
+                            logger.debug("generate", "STREAM reasoning", {
+                                ttftMs: reasoningStartedAt - startedAt,
+                            });
+                        }
                         send("reasoning", { token });
                     },
                     onToken: (token) => {
@@ -191,22 +200,17 @@ export async function generateWithSavedConnection(
                     tools: payload.tools,
                 });
                 send("done", publicGenerationResult(result));
-                logGeneration("done", {
-                    mode: "sse",
-                    ms: Date.now() - startedAt,
-                    ttftMs: firstTokenAt ? firstTokenAt - startedAt : "n/a",
-                    chars: result.message.length,
-                });
+                if (reasoningStartedAt)
+                    logger.debug("generate", "STREAM reasoning complete", {
+                        durationMs: Date.now() - reasoningStartedAt,
+                    });
+                logGenerationDone(result, startedAt, "sse", firstTokenAt || undefined);
             } catch (error) {
                 send("error", {
                     message:
                         error instanceof Error ? error.message : "Generation failed.",
                 });
-                logGeneration("error", {
-                    mode: "sse",
-                    ms: Date.now() - startedAt,
-                    message: error instanceof Error ? error.message : String(error),
-                });
+                logGenerationError(error, startedAt, "sse");
             } finally {
                 if (heartbeat) clearInterval(heartbeat);
                 signal.removeEventListener("abort", abortGeneration);
@@ -219,7 +223,9 @@ export async function generateWithSavedConnection(
             // Stop the provider fetch when the client closes its SSE reader;
             // this prevents a paid response from draining after a phone user
             // presses Stop or disconnects.
-            logGeneration("client-cancel", { ms: Date.now() - startedAt });
+            logger.info("generate", "CANCEL client-cancel", {
+                durationMs: Date.now() - startedAt,
+            });
             generationController.abort();
         },
     });
@@ -232,6 +238,120 @@ export async function generateWithSavedConnection(
             "X-Accel-Buffering": "no",
         },
     });
+}
+
+function logGenerationDone(
+    result: ChatGenerationResult,
+    startedAt: number,
+    mode: string,
+    firstTokenAt?: number,
+) {
+    const durationMs = Date.now() - startedAt;
+    const estimatedTokens = Math.max(1, Math.ceil(result.message.length / 4));
+    const raw =
+        result.raw && typeof result.raw === "object"
+            ? (result.raw as Record<string, unknown>)
+            : {};
+    const usage =
+        raw.usage && typeof raw.usage === "object"
+            ? (raw.usage as Record<string, unknown>)
+            : {};
+    const finishReason =
+        typeof raw.finish_reason === "string" ? raw.finish_reason : "stop";
+    logger.info(
+        "generate",
+        `DONE ${finishReason === "length" ? "[TRUNCATED] " : ""}${mode}`,
+        {
+            durationMs,
+            ...(firstTokenAt ? { ttftMs: firstTokenAt - startedAt } : {}),
+            chars: result.message.length,
+            estimatedTokens,
+            tokPerSec: Number(
+                (estimatedTokens / Math.max(durationMs / 1000, 0.001)).toFixed(1),
+            ),
+            finishReason,
+            promptTokens: usage.prompt_tokens,
+            completionTokens: usage.completion_tokens,
+            totalTokens: usage.total_tokens,
+        },
+    );
+}
+
+function logGenerationError(error: unknown, startedAt: number, mode: string) {
+    const message = error instanceof Error ? error.message : String(error);
+    const status =
+        error && typeof error === "object" && "status" in error
+            ? (error as { status: unknown }).status
+            : undefined;
+    logger.error("generate", `ERROR ${mode}`, {
+        durationMs: Date.now() - startedAt,
+        ...(status ? { status } : {}),
+        message,
+    });
+}
+
+function promptDiagnostics(messages: ChatGenerationMessage[]) {
+    const roles = { system: 0, developer: 0, user: 0, assistant: 0, images: 0, files: 0 };
+    let characters = 0;
+    for (const message of messages) {
+        roles[message.role] += 1;
+        if (typeof message.content === "string") characters += message.content.length;
+        else
+            for (const part of message.content) {
+                characters += JSON.stringify(part).length;
+                const type =
+                    typeof part === "object" && part && "type" in part
+                        ? String((part as { type: unknown }).type)
+                        : "";
+                if (type.includes("image")) roles.images += 1;
+                if (type.includes("file")) roles.files += 1;
+            }
+    }
+    return {
+        messages: messages.length,
+        system: roles.system + roles.developer,
+        user: roles.user,
+        assistant: roles.assistant,
+        images: roles.images,
+        files: roles.files,
+        estimatedTokens: Math.ceil(characters / 4),
+    };
+}
+
+function configuredModel(profile: ConnectionProfile) {
+    const config = profile.config as Record<string, unknown>;
+    const model = config.model;
+    if (typeof model === "string") return model;
+    if (model && typeof model === "object" && "id" in model)
+        return String((model as { id: unknown }).id);
+    return "default";
+}
+function safeBaseUrl(profile: ConnectionProfile) {
+    const value = (profile.config as Record<string, unknown>).baseUrl;
+    try {
+        const url = new URL(typeof value === "string" ? value : "");
+        return `${url.protocol}//${url.host}`;
+    } catch {
+        return "configured";
+    }
+}
+
+function generationDiagnostics(generation: GenerationPayload["generation"]) {
+    if (!generation || typeof generation !== "object") return {};
+    const value = generation as Record<string, unknown>;
+    return Object.fromEntries(
+        [
+            "temperature",
+            "maxTokens",
+            "max_tokens",
+            "topP",
+            "top_p",
+            "reasoningEffort",
+            "reasoning_effort",
+        ]
+            .filter((key) => value[key] !== undefined)
+            .map((key) => [key, value[key]]),
+    );
 }
 
 export function publicGenerationResult(

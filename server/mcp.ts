@@ -10,6 +10,7 @@ import { json } from "./http";
 import { mcpSecretsPath, mcpSettingsPath } from "./paths";
 import { isCorePluginEnabled } from "./plugins";
 import { assignProcessToSmileyChatJob } from "./windows-process-job";
+import { logger } from "./logger";
 import {
     defaultMcpSettings,
     exportOpenCodeMcp,
@@ -112,14 +113,19 @@ export async function autoConnectMcpServers() {
         const settings = await readSettings();
         const secrets = await readSecrets();
         const enabledServers = settings.servers.filter((server) => server.enabled);
+        logger.info("mcp", `Connecting to ${enabledServers.length} enabled server(s)`);
 
         for (const server of enabledServers) {
             connect(server, secrets.servers[server.id] ?? {}).catch((error) => {
-                console.error(`[mcp] Failed to auto-connect to ${server.name}:`, error);
+                logger.error("mcp", `Failed to auto-connect to ${server.name}`, {
+                    error: error instanceof Error ? error.message : String(error),
+                });
             });
         }
     } catch (error) {
-        console.error("[mcp] Failed to auto-connect MCP servers on startup.", error);
+        logger.error("mcp", "Failed to auto-connect MCP servers on startup", {
+            error: error instanceof Error ? error.message : String(error),
+        });
     }
 }
 
@@ -147,20 +153,42 @@ export async function callMcpTool(serverId: string, toolName: string, args: unkn
         (await readSecrets()).servers[serverId] ?? {},
     );
 
-    const result = await connection.client.callTool(
-        {
-            name: toolName,
-            arguments:
-                args && typeof args === "object" ? (args as Record<string, unknown>) : {},
-        },
-        undefined,
-        { timeout: 60_000 },
-    );
+    const startedAt = Date.now();
+    let result;
+    try {
+        result = await connection.client.callTool(
+            {
+                name: toolName,
+                arguments:
+                    args && typeof args === "object"
+                        ? (args as Record<string, unknown>)
+                        : {},
+            },
+            undefined,
+            { timeout: 60_000 },
+        );
+    } catch (error) {
+        logger.error("mcp", "CALL failed", {
+            server: server.name,
+            tool: toolName,
+            durationMs: Date.now() - startedAt,
+            error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+    }
 
+    const content = resultToText(
+        result as { content?: unknown[]; structuredContent?: unknown },
+    );
+    logger.info("mcp", "CALL", {
+        server: server.name,
+        tool: toolName,
+        durationMs: Date.now() - startedAt,
+        status: result.isError ? "error" : "ok",
+        chars: content.length,
+    });
     return json({
-        content: resultToText(
-            result as { content?: unknown[]; structuredContent?: unknown },
-        ),
+        content,
         isError: result.isError === true,
     });
 }
@@ -245,6 +273,7 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
     const connection: Connection = { client, transport, tools: [], connecting: true };
     connections.set(server.id, connection);
 
+    const startedAt = Date.now();
     try {
         await client.connect(transport);
         client.setNotificationHandler(
@@ -253,9 +282,20 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
         );
         await discover(server, connection);
         connection.connecting = false;
+        logger.info("mcp", "Connected", {
+            server: server.name,
+            transport: server.transport,
+            durationMs: Date.now() - startedAt,
+            tools: connection.tools.map((tool) => tool.name).join(",") || "none",
+        });
         return connection;
     } catch (error) {
         connection.error = error instanceof Error ? error.message : "Connection failed";
+        logger.error("mcp", "Failed to connect", {
+            server: server.name,
+            durationMs: Date.now() - startedAt,
+            error: connection.error,
+        });
         await close(server.id);
         throw error;
     }

@@ -15,6 +15,7 @@ import {
     personaOrphanedDir,
     pluginsDir,
     instructDir,
+    logsDir,
     userDataDir,
 } from "./paths";
 
@@ -28,6 +29,7 @@ export function ensureUserData() {
         "plugins",
         "lorebooks",
         "instruct",
+        "logs",
     ];
 
     for (const folder of folders) {
@@ -52,6 +54,7 @@ export function ensureUserData() {
         personaOrphanedDir,
         pluginsDir,
         instructDir,
+        logsDir,
     ]) {
         if (!existsSync(folder)) {
             mkdirSync(folder, { recursive: true });

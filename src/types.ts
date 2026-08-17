@@ -10,6 +10,8 @@ export type SettingsCategory =
     | "personas"
     | "plugins"
     | "settings"
+    | "sillytavern"
+    | "diagnostics"
     | (string & {});
 
 export const MessageRole = {

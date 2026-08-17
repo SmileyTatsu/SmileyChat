@@ -27,6 +27,7 @@ import {
 import { BadRequestError, HttpError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
 import { safeFetch } from "./security/safe-fetch";
+import { logger, type LogLevel } from "./logger";
 
 const corePluginIds = new Set([
     "smiley-chat-formatter",
@@ -120,6 +121,7 @@ type InstallArtifactOptions = {
 };
 
 export async function readPluginManifests(): Promise<PluginManifest[]> {
+    const startedAt = Date.now();
     const coreManifests = await readCorePluginManifests();
     await mkdir(pluginsDir, { recursive: true });
 
@@ -155,11 +157,55 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
                 install: await readPluginInstallMetadata(pluginRoot),
             } as PluginManifest);
         } catch (error) {
-            console.warn(`Could not load plugin manifest ${manifestPath}:`, error);
+            logger.warn("plugins", "Could not load plugin manifest", {
+                path: manifestPath,
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
     }
 
+    logger.debug("plugins", "Discovered plugin manifests", {
+        core: coreManifests.length,
+        user: manifests.length - coreManifests.length,
+        durationMs: Date.now() - startedAt,
+        plugins: manifests.map((manifest) => manifest.id).join(","),
+    });
+
     return manifests;
+}
+
+export async function logPluginTelemetry(pluginId: string, body: unknown) {
+    if (pluginId !== "runtime" && !corePluginIds.has(pluginId)) {
+        const manifests = await readPluginManifests();
+        if (!manifests.some((manifest) => manifest.id === pluginId)) {
+            return json({ error: "Plugin not found." }, 404);
+        }
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body))
+        return json({ error: "Invalid plugin log payload." }, 400);
+    const value = body as Record<string, unknown>;
+    const level = value.level;
+    const message =
+        typeof value.message === "string" ? value.message.trim().slice(0, 2048) : "";
+    if (!message || !["debug", "info", "warn", "error"].includes(String(level)))
+        return json({ error: "Invalid plugin log payload." }, 400);
+    const detail =
+        value.detail && typeof value.detail === "object" && !Array.isArray(value.detail)
+            ? Object.fromEntries(
+                  Object.entries(value.detail as Record<string, unknown>)
+                      .slice(0, 30)
+                      .map(([key, item]) => [
+                          key.slice(0, 80),
+                          typeof item === "string" ? item.slice(0, 512) : item,
+                      ]),
+              )
+            : undefined;
+    logger[level as Exclude<LogLevel, "trace">](
+        "plugins",
+        `[${pluginId}] ${message}`,
+        detail ? { ...detail, clientTelemetry: true } : { clientTelemetry: true },
+    );
+    return json({ ok: true });
 }
 
 export async function readPluginRegistry() {

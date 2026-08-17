@@ -5,6 +5,7 @@ import type { PresetFormattingSettings } from "#frontend/lib/presets/types";
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type FontScale = "small" | "default" | "large";
 export type TimeFormat = "12h" | "24h";
+export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
 export type AppPreferences = {
     version: 1;
@@ -55,6 +56,22 @@ export type AppPreferences = {
             lorebooks: boolean;
         };
         lastSyncedAt: string;
+    };
+    logging: {
+        level: LogLevel;
+        subsystems: {
+            generation: boolean;
+            generationPromptDetails: boolean;
+            generationSamplingDetails: boolean;
+            http: boolean;
+            httpAssetRequests: boolean;
+            plugins: boolean;
+            pluginsClientTelemetry: boolean;
+            mcp: boolean;
+            mcpToolCalls: boolean;
+            server: boolean;
+        };
+        fileLogging: { enabled: boolean; maxDays: number; maxTotalSizeMb: number };
     };
 };
 
@@ -107,6 +124,22 @@ export const defaultAppPreferences: AppPreferences = {
         },
         lastSyncedAt: "",
     },
+    logging: {
+        level: "info",
+        subsystems: {
+            generation: true,
+            generationPromptDetails: true,
+            generationSamplingDetails: false,
+            http: true,
+            httpAssetRequests: false,
+            plugins: true,
+            pluginsClientTelemetry: true,
+            mcp: true,
+            mcpToolCalls: true,
+            server: true,
+        },
+        fileLogging: { enabled: true, maxDays: 7, maxTotalSizeMb: 25 },
+    },
 };
 
 export function normalizeAppPreferences(value: unknown): AppPreferences {
@@ -116,6 +149,9 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
     const layout = isRecord(preferences.layout) ? preferences.layout : {};
     const formatting = isRecord(preferences.formatting) ? preferences.formatting : {};
     const sillytavern = isRecord(preferences.sillytavern) ? preferences.sillytavern : {};
+    const logging = isRecord(preferences.logging) ? preferences.logging : {};
+    const loggingSubsystems = isRecord(logging.subsystems) ? logging.subsystems : {};
+    const fileLogging = isRecord(logging.fileLogging) ? logging.fileLogging : {};
 
     return {
         version: 1,
@@ -254,6 +290,38 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                     ? sillytavern.lastSyncedAt
                     : "",
         },
+        logging: {
+            level: normalizeLogLevel(logging.level),
+            subsystems: {
+                generation: booleanOrFallback(loggingSubsystems.generation, true),
+                generationPromptDetails: booleanOrFallback(
+                    loggingSubsystems.generationPromptDetails,
+                    true,
+                ),
+                generationSamplingDetails: booleanOrFallback(
+                    loggingSubsystems.generationSamplingDetails,
+                    false,
+                ),
+                http: booleanOrFallback(loggingSubsystems.http, true),
+                httpAssetRequests: booleanOrFallback(
+                    loggingSubsystems.httpAssetRequests,
+                    false,
+                ),
+                plugins: booleanOrFallback(loggingSubsystems.plugins, true),
+                pluginsClientTelemetry: booleanOrFallback(
+                    loggingSubsystems.pluginsClientTelemetry,
+                    true,
+                ),
+                mcp: booleanOrFallback(loggingSubsystems.mcp, true),
+                mcpToolCalls: booleanOrFallback(loggingSubsystems.mcpToolCalls, true),
+                server: booleanOrFallback(loggingSubsystems.server, true),
+            },
+            fileLogging: {
+                enabled: booleanOrFallback(fileLogging.enabled, true),
+                maxDays: numberInRange(fileLogging.maxDays, 7, 1, 90),
+                maxTotalSizeMb: numberInRange(fileLogging.maxTotalSizeMb, 25, 5, 1000),
+            },
+        },
     };
 }
 
@@ -282,6 +350,16 @@ function normalizeFontScale(value: unknown, fallback: FontScale) {
 
 function normalizeTimeFormat(value: unknown, fallback: TimeFormat) {
     return value === "12h" || value === "24h" ? value : fallback;
+}
+
+function normalizeLogLevel(value: unknown): LogLevel {
+    return value === "trace" ||
+        value === "debug" ||
+        value === "info" ||
+        value === "warn" ||
+        value === "error"
+        ? value
+        : "info";
 }
 
 function normalizeChatMode(value: unknown, fallback: ChatMode) {

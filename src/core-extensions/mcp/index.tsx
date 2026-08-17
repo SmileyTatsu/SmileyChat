@@ -70,9 +70,19 @@ function scheduleConnectionRefresh(api: SmileyPluginApi) {
 
 async function refreshTools(api: SmileyPluginApi) {
     clearTools();
-    for (const server of latest?.servers ?? [])
-        for (const tool of server.tools)
+    let count = 0;
+    for (const server of latest?.servers ?? []) {
+        for (const tool of server.tools) {
             disposers.push(api.tools.registerTool(toPluginTool(tool)));
+            count += 1;
+        }
+    }
+    if (count > 0) {
+        api.logger.debug("Registered MCP tools", {
+            serverCount: latest?.servers.length ?? 0,
+            toolCount: count,
+        });
+    }
 }
 
 function clearTools() {

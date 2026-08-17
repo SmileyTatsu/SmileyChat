@@ -12,6 +12,10 @@ export type RegexRunOptions = {
     destination: RegexRule["destination"];
     macroResolver?: (value: string) => string;
     target: RegexTarget;
+    logger?: {
+        warn: (message: string, detail?: Record<string, unknown>) => void;
+        debug?: (message: string, detail?: Record<string, unknown>) => void;
+    };
 };
 
 export function runRegexPass(text: string, options: RegexRunOptions): string {
@@ -42,7 +46,17 @@ export function runRegexPass(text: string, options: RegexRunOptions): string {
                 replacementForMatch(args, rule),
             );
         } catch (error) {
-            console.warn(`Regex Replacer: Invalid rule "${rule.description}"`, error);
+            if (options.logger) {
+                options.logger.warn(
+                    `Invalid regex rule "${rule.description || rule.pattern}"`,
+                    {
+                        pattern: rule.pattern,
+                        error: error instanceof Error ? error.message : String(error),
+                    },
+                );
+            } else {
+                console.warn(`Regex Replacer: Invalid rule "${rule.description}"`, error);
+            }
             return current;
         }
     }, text);
