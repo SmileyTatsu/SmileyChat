@@ -59,7 +59,14 @@ import {
 } from "./lorebook-store";
 import { logsDir, userDataDir } from "./paths";
 import { clearLogFiles, getLogStats } from "./log-file-manager";
-import { getRecentLogs, log, logger, subscribeLogs } from "./logger";
+import {
+    getRecentLogs,
+    log,
+    logger,
+    subscribeLogs,
+    updateLoggerConnectionSecrets,
+    updateLoggerPreferences,
+} from "./logger";
 import { requirePrivilegedAccess } from "./security/privileged-gate";
 import { writePersonaAvatar } from "./persona-avatar";
 import { servePersonaAsset } from "./persona-images";
@@ -426,6 +433,7 @@ const createServer = () =>
                     const secrets = await writeConnectionSecrets(
                         await readJsonBody(request),
                     );
+                    updateLoggerConnectionSecrets(secrets);
                     return json({ ok: true, secrets });
                 }),
             },
@@ -615,6 +623,7 @@ const createServer = () =>
                     const preferences = await writeAppPreferences(
                         await readJsonBody(request),
                     );
+                    updateLoggerPreferences(preferences);
                     return json({ ok: true, preferences });
                 }),
             },

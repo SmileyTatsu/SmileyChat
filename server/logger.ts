@@ -3,6 +3,7 @@ import { appendLogLine, pruneLogFiles } from "./log-file-manager";
 import { mcpSecretsPath } from "./paths";
 import { readAppPreferences, readConnectionSecrets } from "./settings";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
+import type { ConnectionSecrets } from "#frontend/lib/connections/config";
 
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 export type LogSubsystem =
@@ -50,10 +51,10 @@ const levelColors: Record<LogLevel, string> = {
 let fileEnabled = true;
 let maxDays = 7;
 let maxTotalSizeMb = 25;
-let lastPreferencesRead = 0;
-let pruning = false;
 let configuredLevel: LogLevel = "info";
 let knownSecrets: string[] = [];
+let knownConnectionSecrets: ConnectionSecrets | undefined;
+let knownMcpSecrets: unknown;
 let subsystems: AppPreferences["logging"]["subsystems"] = {
     generation: true,
     generationPromptDetails: true,
@@ -74,21 +75,16 @@ const logListeners = new Set<(entry: LogEntry) => void>();
 
 const retentionTimer = setInterval(
     () => {
-        void readAppPreferences()
-            .then((preferences) =>
-                pruneLogFiles(
-                    preferences.logging.fileLogging.maxDays,
-                    preferences.logging.fileLogging.maxTotalSizeMb,
-                ),
-            )
-            .catch(() => undefined);
+        void refreshLoggerConfiguration().then(() =>
+            pruneLogFiles(maxDays, maxTotalSizeMb).catch(() => undefined),
+        );
     },
     60 * 60 * 1000,
 );
 retentionTimer.unref?.();
 
-// Initial secrets collection
-void refreshSecrets();
+// Load persisted settings once at startup. Log calls only consult this in-memory state.
+void refreshLoggerConfiguration();
 
 export function getRecentLogs(): LogEntry[] {
     return [...logRingBuffer];
@@ -108,8 +104,6 @@ export function log(
     detail?: Record<string, unknown>,
     options?: { skipFile?: boolean },
 ) {
-    refreshPreferences();
-
     const shouldConsole = shouldLog(subsystem, level, message, detail);
     const shouldFile =
         !options?.skipFile &&
@@ -375,69 +369,78 @@ function formatDetail(detail?: Record<string, unknown>): string {
         .join("");
 }
 
+export function updateLoggerPreferences(preferences: AppPreferences) {
+    fileEnabled = preferences.logging.fileLogging.enabled;
+    maxDays = preferences.logging.fileLogging.maxDays;
+    maxTotalSizeMb = preferences.logging.fileLogging.maxTotalSizeMb;
+    configuredLevel = preferences.logging.level;
+    subsystems = preferences.logging.subsystems;
+}
+
+export function updateLoggerConnectionSecrets(secrets: ConnectionSecrets) {
+    knownConnectionSecrets = secrets;
+    updateKnownSecrets();
+}
+
+export function updateLoggerMcpSecrets(secrets: unknown) {
+    knownMcpSecrets = secrets;
+    updateKnownSecrets();
+}
+
+async function refreshLoggerConfiguration() {
+    await Promise.all([
+        readAppPreferences()
+            .then(updateLoggerPreferences)
+            .catch(() => undefined),
+        refreshSecrets(),
+    ]);
+}
+
 async function refreshSecrets() {
     try {
         const secrets = await readConnectionSecrets().catch(() => null);
-        const set = new Set<string>();
-
-        if (secrets?.profiles) {
-            for (const profile of Object.values(secrets.profiles)) {
-                if (profile && typeof profile === "object") {
-                    for (const val of Object.values(profile)) {
-                        if (typeof val === "string" && val.trim().length >= 8) {
-                            set.add(val.trim());
-                        }
-                    }
-                }
-            }
-        }
+        let mcpSecrets: unknown;
 
         if (await Bun.file(mcpSecretsPath).exists()) {
             try {
-                const mcp = (await Bun.file(mcpSecretsPath).json()) as {
-                    servers?: Record<string, Record<string, string>>;
-                };
-                if (mcp?.servers) {
-                    for (const serverSecrets of Object.values(mcp.servers)) {
-                        if (serverSecrets && typeof serverSecrets === "object") {
-                            for (const val of Object.values(serverSecrets)) {
-                                if (typeof val === "string" && val.trim().length >= 8) {
-                                    set.add(val.trim());
-                                }
-                            }
-                        }
-                    }
-                }
+                mcpSecrets = await Bun.file(mcpSecretsPath).json();
             } catch {
                 // Ignore MCP json errors
             }
         }
-
-        knownSecrets = Array.from(set).sort((a, b) => b.length - a.length);
+        knownConnectionSecrets = secrets ?? undefined;
+        knownMcpSecrets = mcpSecrets;
+        updateKnownSecrets();
     } catch {
         // Ignore
     }
 }
 
-function refreshPreferences() {
-    if (Date.now() - lastPreferencesRead < 1_000) return;
-    lastPreferencesRead = Date.now();
-    void Promise.all([
-        readAppPreferences()
-            .then((preferences) => {
-                fileEnabled = preferences.logging.fileLogging.enabled;
-                maxDays = preferences.logging.fileLogging.maxDays;
-                maxTotalSizeMb = preferences.logging.fileLogging.maxTotalSizeMb;
-                configuredLevel = preferences.logging.level;
-                subsystems = preferences.logging.subsystems;
-                if (!pruning) {
-                    pruning = true;
-                    void pruneLogFiles(maxDays, maxTotalSizeMb).finally(() => {
-                        pruning = false;
-                    });
-                }
-            })
-            .catch(() => undefined),
-        refreshSecrets(),
-    ]);
+function updateKnownSecrets() {
+    const set = new Set<string>();
+    addSecrets(set, knownConnectionSecrets?.profiles);
+    if (
+        knownMcpSecrets &&
+        typeof knownMcpSecrets === "object" &&
+        "servers" in knownMcpSecrets
+    ) {
+        addSecrets(
+            set,
+            (knownMcpSecrets as { servers?: Record<string, Record<string, string>> })
+                .servers,
+        );
+    }
+    knownSecrets = Array.from(set).sort((a, b) => b.length - a.length);
+}
+
+function addSecrets(set: Set<string>, groups?: Record<string, Record<string, unknown>>) {
+    if (!groups) return;
+    for (const group of Object.values(groups)) {
+        if (!group || typeof group !== "object") continue;
+        for (const value of Object.values(group)) {
+            if (typeof value === "string" && value.trim().length >= 8) {
+                set.add(value.trim());
+            }
+        }
+    }
 }

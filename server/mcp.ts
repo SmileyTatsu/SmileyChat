@@ -10,7 +10,7 @@ import { json } from "./http";
 import { mcpSecretsPath, mcpSettingsPath } from "./paths";
 import { isCorePluginEnabled } from "./plugins";
 import { assignProcessToSmileyChatJob } from "./windows-process-job";
-import { logger } from "./logger";
+import { logger, updateLoggerMcpSecrets } from "./logger";
 import {
     defaultMcpSettings,
     exportOpenCodeMcp,
@@ -86,6 +86,7 @@ export async function writeMcpServers(body: unknown) {
 
     await closeAll();
     await writeData(settings, supplied);
+    updateLoggerMcpSecrets(supplied);
 
     return json({ settings, servers: await records(settings) });
 }
