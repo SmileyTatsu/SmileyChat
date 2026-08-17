@@ -84,6 +84,11 @@ Recommended labels:
 `api.model.generate`, `api.model.estimateTokens`, and
 `api.model.getContextBudget`.
 
+`connections:providers` permits registering browser-run connection adapters. A
+provider using `promptMode: "text-completion"` can use
+`api.formatting.formatTextCompletionPrompt(...)` to serialize the active
+instruct template and prompt messages.
+
 `enabled`
 
 Optional boolean. Defaults to `true`. The Options > Plugins toggle writes this field.

@@ -4,6 +4,7 @@ import { loadLorebook } from "#frontend/lib/api/client";
 import {
     type ConnectionSettings,
     getActiveConnectionProfile,
+    isNativeProvider,
 } from "#frontend/lib/connections/config";
 import {
     filterLocalChatGenerationMessageAttachments,
@@ -216,7 +217,15 @@ export function usePromptGeneration({
         const profileId =
             options.continuation?.profileId ??
             getActiveConnectionProfile(sourceConnectionSettings)?.id;
-        const connection = createServerGenerationConnection(profileId);
+        const profile = profileId
+            ? sourceConnectionSettings.profiles.find(
+                  (candidate) => candidate.id === profileId,
+              )
+            : getActiveConnectionProfile(sourceConnectionSettings);
+        const connection =
+            profile && !isNativeProvider(profile.provider)
+                ? getAdapterForSettings(sourceConnectionSettings, profile.id)
+                : createServerGenerationConnection(profileId);
         const request = await buildGenerationRequest(
             sourceMessages,
             sourceCharacter,

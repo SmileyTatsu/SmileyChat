@@ -33,6 +33,7 @@ import {
     defaultConnectionSettings,
     extractConnectionSecrets,
     getActiveConnectionProfile,
+    isNativeProvider,
     normalizeConnectionSecrets,
     normalizeConnectionSettings,
     sanitizeConnectionSecrets,
@@ -861,7 +862,15 @@ export function App() {
             throw new Error("Plugin model request must include at least one message.");
         }
 
-        const connection = createServerGenerationConnection(request.profileId);
+        const profile = request.profileId
+            ? connectionSettings.profiles.find(
+                  (candidate) => candidate.id === request.profileId,
+              )
+            : getActiveConnectionProfile(connectionSettings);
+        const connection =
+            profile && !isNativeProvider(profile.provider)
+                ? getAdapterForSettings(connectionSettings, profile.id)
+                : createServerGenerationConnection(request.profileId);
         const preset =
             (request.presetId
                 ? presetCollection.presets.find(

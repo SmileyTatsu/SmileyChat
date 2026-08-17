@@ -333,6 +333,24 @@ describe("plugin registry runtime isolation", () => {
         expect(api.model.getContextBudget()).toBe(16000);
         expect(api.model.getContextBudget({ profileId: "profile-large" })).toBe(32000);
     });
+
+    test("formats text-completion prompts with the shared instruct serializer", () => {
+        const api = pluginApi(uniqueId("text-completion-formatting"), []);
+
+        expect(
+            api.formatting.formatTextCompletionPrompt(
+                [{ role: "user", content: "Hello" }],
+                { instructTemplate: "chatml" },
+                "qwen-test",
+            ),
+        ).toBe("<|im_start|>user\nHello<|im_end|>\n<|im_start|>assistant\n");
+        expect(
+            api.formatting.formatTextCompletionPrompt(
+                [{ role: "user", content: "Hello" }],
+                { instructTemplate: "none" },
+            ),
+        ).toBe("Hello");
+    });
 });
 
 function pluginApi(id: string, permissions: string[]) {

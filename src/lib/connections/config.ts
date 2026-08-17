@@ -125,7 +125,13 @@ export type PluginConnectionProfile = {
     name: string;
     provider: Exclude<
         ConnectionProviderId,
-        "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai"
+        | "openai-compatible"
+        | "openrouter"
+        | "google-ai"
+        | "anthropic"
+        | "novelai"
+        | "xai"
+        | "koboldcpp"
     >;
     contextTokenBudget: number;
     overrideModelContext: boolean;
@@ -731,7 +737,7 @@ function providerSupportsBaseUrl(provider: ConnectionProviderId) {
     );
 }
 
-function isNativeProvider(provider: ConnectionProviderId) {
+export function isNativeProvider(provider: ConnectionProviderId) {
     return (
         provider === "openai-compatible" ||
         provider === "openrouter" ||

@@ -20,11 +20,12 @@ import type {
     ConnectionAdapter,
     ToolDefinition,
 } from "../connections/types";
+import type { InstructTemplateId } from "../instruct";
 import type { LorebookCollection } from "../lorebooks/types";
 import type { MessageFormattingOptions } from "../message-formatting/quote-highlighting";
 import type { AppPreferences } from "../preferences/types";
 import type { MacroContext } from "../presets/macros";
-import type { PresetCollection } from "../presets/types";
+import type { PresetCollection, PresetFormattingSettings } from "../presets/types";
 import type {
     PromptBuildContext,
     PromptGenerationTrigger,
@@ -333,6 +334,25 @@ export type PluginConnectionProvider = {
     testConnection?: (profile: ConnectionProfile) => Promise<string>;
 };
 
+/** Text-completion prompt serialization helpers for connection provider plugins. */
+export type PluginFormattingApi = {
+    formatInstructPrompt(
+        messages: ChatGenerationMessage[],
+        template: InstructTemplateId,
+        modelName?: string,
+        formatting?: PresetFormattingSettings,
+    ): string;
+    formatCustomInstructPrompt(
+        messages: ChatGenerationMessage[],
+        formatting: PresetFormattingSettings,
+    ): string;
+    formatTextCompletionPrompt(
+        messages: ChatGenerationMessage[],
+        formatting: PresetFormattingSettings,
+        modelName?: string,
+    ): string;
+};
+
 export type PluginToolContext = PluginAppSnapshot & {
     /** Signals that the generation invoking this tool has been cancelled. */
     signal?: AbortSignal;
@@ -515,6 +535,7 @@ export type SmileyPluginApi = {
     connections: {
         registerProvider(provider: PluginConnectionProvider): void;
     };
+    formatting: PluginFormattingApi;
     tools: {
         /** Returns a disposer so dynamic tool sources can be refreshed safely. */
         registerTool(tool: PluginTool): () => void;

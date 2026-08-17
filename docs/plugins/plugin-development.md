@@ -144,6 +144,46 @@ Connection provider plugins should register through `api.connections.registerPro
 
 Provider calls run from the frontend by default and are subject to browser CORS rules. Use `api.network.fetch` only for trusted helper APIs that need the guarded local fetch bridge.
 
+### Text-completion providers
+
+Set `promptMode: "text-completion"` when an endpoint accepts a single prompt
+string. SmileyChat will compile the active preset with story-string formatting,
+apply compatible lore and plugin injections, resolve stop sequences, and trim
+history using the serialized prompt size. Your adapter receives the enriched
+request through `promptMessages`, `formatting`, and `generation.stopSequences`.
+
+```js
+api.connections.registerProvider({
+    id: "local-completion",
+    label: "Local Completion",
+    createAdapter(profile) {
+        const buildPayload = (request) => ({
+            prompt: api.formatting.formatTextCompletionPrompt(
+                request.promptMessages ?? [],
+                request.formatting ?? { instructTemplate: "auto" },
+                String(profile.config.model ?? ""),
+            ),
+            stop: request.generation?.stopSequences,
+        });
+        return {
+            id: "local-completion",
+            label: "Local Completion",
+            promptMode: "text-completion",
+            buildPayload,
+            async generate(request) {
+                const payload = buildPayload(request);
+                // Send payload to the provider and normalize its reply.
+                return { provider: "local-completion", message: "..." };
+            },
+        };
+    },
+});
+```
+
+Declare the `connections:providers` permission in the plugin manifest. Plugin
+provider adapters run in the browser, so their endpoint must allow the app's
+origin through CORS.
+
 ## Local Testing Checklist
 
 Before sharing a plugin:

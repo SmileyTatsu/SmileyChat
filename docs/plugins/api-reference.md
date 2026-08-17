@@ -858,6 +858,8 @@ api.connections.registerProvider({
         return {
             id: "example-provider",
             label: "Example Provider",
+            // Use "text-completion" when the provider expects one serialized prompt.
+            promptMode: "chat",
             async generate(request) {
                 return {
                     provider: "example-provider",
@@ -892,6 +894,35 @@ api.connections.registerProvider({
     },
 });
 ```
+
+Set `promptMode` to `"text-completion"` for providers that expect a single
+instruct-formatted prompt instead of discrete chat messages. SmileyChat then
+compiles the active preset using its story-string flow, applies text-completion
+prompt injections, trims against the serialized prompt, and supplies the result
+through `request.promptMessages`. The active formatting settings and resolved
+stop sequences are available as `request.formatting` and
+`request.generation?.stopSequences`.
+
+Provider adapters run in the browser. Built-in providers use the local server
+generation path, while registered plugin providers receive generation requests
+directly through their `createAdapter` result.
+
+## `api.formatting`
+
+Text-completion providers can reuse the built-in instruct serializer rather than
+maintaining their own templates.
+
+```js
+const prompt = api.formatting.formatTextCompletionPrompt(
+    request.promptMessages ?? [],
+    request.formatting ?? { instructTemplate: "auto" },
+    String(profile.config.model ?? ""),
+);
+```
+
+`formatTextCompletionPrompt` handles `custom`, `none`, and built-in/automatic
+instruct templates. `formatInstructPrompt` and `formatCustomInstructPrompt` are
+also exposed when a provider needs to select one explicitly.
 
 Requires `connections:providers`.
 

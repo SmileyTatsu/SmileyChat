@@ -3,6 +3,8 @@ import type { h } from "preact";
 import { createId } from "../common/ids";
 import type { ConnectionProfile } from "../connections/config";
 import type { ConnectionAdapter } from "../connections/types";
+import { formatCustomInstructPrompt, formatInstructPrompt } from "../instruct";
+import { messageContentToText } from "../connections/images";
 import { estimateChatGenerationMessages } from "../prompt/token-estimator";
 import { requireDeclaredPluginPermission } from "./permissions";
 import type {
@@ -844,6 +846,26 @@ export function createPluginApi(
                 if (registered) {
                     notifyRegistryChanged();
                 }
+            },
+        },
+        formatting: {
+            formatInstructPrompt,
+            formatCustomInstructPrompt,
+            formatTextCompletionPrompt(messages, formatting, modelName = "") {
+                if (formatting.instructTemplate === "custom") {
+                    return formatCustomInstructPrompt(messages, formatting);
+                }
+                if (formatting.instructTemplate === "none") {
+                    return messages
+                        .map((message) => messageContentToText(message.content))
+                        .join("\n");
+                }
+                return formatInstructPrompt(
+                    messages,
+                    formatting.instructTemplate ?? "auto",
+                    modelName,
+                    formatting,
+                );
             },
         },
         tools: {
