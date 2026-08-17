@@ -110,3 +110,16 @@ Most security settings hot-reload within about 2 seconds. If a setting still doe
 SmileyChat reads data from the local `userData/` folder in the current checkout.
 
 Check that you started SmileyChat from the expected project folder and that your backup was restored into that folder's `userData/` directory.
+
+## Checking Logs & Diagnostics
+
+If you encounter unexpected errors, connection failures, or plugin crashes:
+
+1. Open **Options** (gear icon in the bottom-left persona bar) and select **Diagnostics**.
+2. View real-time streaming logs from the Bun server and frontend extensions.
+3. Use the search input or toggle subsystem and severity level pills (`generate`, `http`, `plugins`, `mcp`, `server`, `security`) to isolate relevant events.
+4. Click **Export Logs** to save a snapshot of current logs for bug reports.
+
+Server log files are also saved locally to `userData/logs/smileychat-YYYY-MM-DD.log`.
+
+To increase logging verbosity during debugging, set `SMILEYCHAT_LOG_LEVEL=debug` (or `trace`) in `.env` or adjust the Log Level in the Diagnostics settings card. Sensitive prompts and payloads can be inspected by setting `SMILEYCHAT_LOG_SENSITIVE_PAYLOADS=true` in `.env` (kept disabled by default to protect privacy).

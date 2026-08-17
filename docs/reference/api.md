@@ -117,6 +117,14 @@ _See [Plugin API Reference](../plugins/api-reference.md) for full context on plu
 - `GET /api/plugins/:pluginId/storage/:key`: Load plugin-owned JSON storage value.
 - `PUT /api/plugins/:pluginId/storage/:key`: Save plugin-owned JSON storage value.
 - `DELETE /api/plugins/:pluginId/storage/:key`: Delete plugin-owned JSON storage value.
+- `POST /api/plugins/:pluginId/logs`: Submit client-side telemetry / plugin log entries to the server logger.
+
+## Diagnostics & Logging
+
+- `GET /api/logs/stream`: Stream real-time log entries over Server-Sent Events (SSE) with automatic keepalive heartbeats.
+- `GET /api/logs/recent`: Fetch recent in-memory log buffer entries and log file storage statistics.
+- `GET /api/logs`: Fetch log file storage statistics (`fileCount`, `totalSizeBytes`, date ranges).
+- `DELETE /api/logs`: Clear saved log files in `userData/logs`.
 
 ## System & Security
 

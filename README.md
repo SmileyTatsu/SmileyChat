@@ -28,6 +28,7 @@ SmileyChat is a local-first frontend application designed for interacting with A
 - **Personas**: Create and manage multiple user personas. Switch between them instantly and set custom visual statuses (Online, Away, Do Not Disturb).
 - **Attachments & Multimodality**: Support for image and file attachments during chats, integrating directly with multimodal providers.
 - **Context Management**: Intelligent context trimming based on your local provider's token limits to ensure prompt stability and prevent token overflow.
+- **Diagnostics & Logging**: In-app real-time diagnostics viewer, live SSE log streaming, granular subsystem filters, automatic secret scrubbing, and daily rotating log files.
 - **Extensible Plugin System**: Customize and extend the core functionality using local ESM plugins.
 
 ### Built-in Utilities

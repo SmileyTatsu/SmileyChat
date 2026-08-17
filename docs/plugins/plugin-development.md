@@ -138,6 +138,24 @@ userData/plugins/{pluginId}/data/{key}.json
 
 Plugin profiles can snapshot and restore this storage.
 
+## Logging and Diagnostics
+
+Use `api.logger` (`info`, `debug`, `warn`, `error`) instead of unformatted `console.log` statements for plugin diagnostics and error handling.
+
+```js
+export function activate(api) {
+    api.logger.info("Plugin activated");
+
+    try {
+        // Initialization logic
+    } catch (err) {
+        api.logger.error("Initialization failed", err);
+    }
+}
+```
+
+Plugin logs are automatically routed to the browser console and relayed to the Bun server's logger under the `plugins` subsystem. They appear in the in-app **Diagnostics** tab (Options > Diagnostics) and server log files under `userData/logs/`.
+
 ## Provider Plugins
 
 Connection provider plugins should register through `api.connections.registerProvider` instead of patching core connection code.

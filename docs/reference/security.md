@@ -30,6 +30,7 @@ except port/host/CSRF secret.
 | Security headers         | CSP, X-Frame-Options, Referrer-Policy, etc. on every response                     | on                                       | _(none)_                                                                         |
 | Privileged gate          | Extra gate for connection-secret reads and writes                                 | loopback exempt from admin secret        | `SMILEYCHAT_ADMIN_SECRET`, `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK`         |
 | SSRF guard               | Block plugin, registry, and artifact fetches to loopback / private / reserved IPs | on                                       | `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH`, `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS` |
+| Logging & Redaction      | Structured diagnostics with automatic credential scrubbing                        | on (`info` level, sensitive masked)      | `SMILEYCHAT_LOG_LEVEL`, `SMILEYCHAT_LOG_SENSITIVE_PAYLOADS`                      |
 
 ## What each layer actually does
 
@@ -265,6 +266,15 @@ switch.
 Plugin registry and artifact downloads are also HTTPS-only and size-limited. Manual
 artifact installation is disabled unless `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true`.
 
+### Logging, Secret Scrubbing & Privacy
+
+SmileyChat features structured multi-level logging (`trace`, `debug`, `info`, `warn`, `error`) across distinct subsystems: `security`, `http`, `generate`, `plugins`, `mcp`, and `server`.
+
+- **Automatic Secret Scrubbing:** The server actively collects configured API keys from `userData/settings/connection-secrets.json`, credentials from `userData/settings/core-extensions/mcp-secrets.json`, Bearer tokens, passwords, and sensitive authorization headers. Any occurrence of these secrets is dynamically masked to `[REDACTED]` across terminal output, in-memory diagnostics buffers, and rotating log files.
+- **Sensitive Payload Gating:** To preserve privacy, full conversation prompts, system instructions, and raw LLM request bodies are never written to log sinks by default. Logging sensitive prompt payloads requires an explicit `.env` opt-in via `SMILEYCHAT_LOG_SENSITIVE_PAYLOADS=true`, which cannot be enabled from the UI.
+- **Security Audit Trail:** Security events (such as remote lockdown triggers, allowlist rejections, CSRF failures, rate-limit warnings, and admin-secret rejections) are tagged under the `security` subsystem.
+- **Tiered Log Sinks:** High-signal messages are displayed in the terminal console (default `INFO`), while the full log stream is available in the 1,000-entry in-memory buffer (accessible via `GET /api/logs/stream` and the in-app Diagnostics viewer in Options) and persistent rotating files in `userData/logs/`.
+
 ## Hot-reload
 
 Settings live in `.env`. SmileyChat polls the file every 2 seconds
@@ -331,8 +341,9 @@ Then in Caddy / nginx / Tailscale Serve, terminate TLS and proxy to
   is plain JSON. Same risk profile as a browser's saved passwords or
   any other local-first app's config file. Assume anyone with disk
   access can read them.
-- **No audit log.** Auth failures and rate-limit rejections go to
-  stdout; there's no structured event stream.
+- **No external SIEM export.** Security events, auth failures, and rate limits
+  are structured and logged locally to `userData/logs/` and the in-app Diagnostics
+  viewer, but there is no remote syslog/webhook export built-in.
 - **No CSRF on GETs.** That's intentional (GETs don't change state). The
   secrets endpoint has a privileged gate, but a script running in a loopback
   SmileyChat origin can still read keys unless

@@ -18,6 +18,7 @@ Inside this folder, you will find:
 - `presets/`: Prompt presets and generation settings.
 - `lorebooks/`: Native LoreBooks and imported World Info data.
 - `settings/`: Preferences, connection profiles, core extensions data, and separate local API key files.
+- `logs/`: Daily rotating server diagnostics and runtime log files.
 - `plugins/`: Locally installed trusted plugins and plugin-owned storage.
 
 API keys are stored in `userData/settings/connection-secrets.json`. Secrets for Model Context Protocol (MCP) servers are in `userData/settings/core-extensions/mcp-secrets.json`. They are separated from normal connection settings to reduce accidental export, but they are not encrypted at rest.

@@ -74,9 +74,10 @@ Use `bun run typecheck` for fast TypeScript validation, `bun test` for unit test
 - Character panel work belongs in `src/features/characters/`.
 - Persona UI belongs in `src/features/personas/`.
 - Options and provider settings belong in `src/features/settings/`.
+- Diagnostics viewer UI belongs in `src/features/settings/diagnostics-settings.tsx`.
 - Provider request/response behavior belongs in `src/lib/connections/`.
 - Preset compilation, macros, and prompt injection belong in `src/lib/presets/` and `src/lib/prompt/`.
-- Server persistence routes belong in `server/`.
+- Server persistence, logger sinks, and API routes belong in `server/`.
 - Plugin API additions should be typed and documented under `src/lib/plugins/` and `docs/plugins/`.
 
 ## Documentation

@@ -54,7 +54,7 @@ These permissions are currently checked:
 | `api.tools.registerTool`                                                       | `tools:register`        |
 | `api.events.on`, `api.events.emit`                                             | `events`                |
 
-`api.storage` is available to loaded plugins without a separate runtime permission, but `storage` is still a useful manifest label for user visibility.
+`api.storage` and `api.logger` are available to loaded plugins without separate runtime permissions. `storage` is still a useful manifest label for user visibility.
 
 ## `api.plugin`
 
@@ -379,6 +379,38 @@ Supported options:
 - `maxResponseBytes`: response size cap from 1 byte through 10 MiB. Defaults to 10 MiB.
 
 The returned `Response` contains the upstream status and filtered response headers. Unsafe response headers such as `set-cookie`, `content-length`, and transfer headers are removed.
+
+## `api.logger`
+
+Logs structured diagnostic messages and client-side telemetry from the plugin. Messages are output to the browser console and dispatched asynchronously to the local server logger under the `plugins` subsystem with a `[pluginId]` prefix.
+
+```js
+// Info logging with optional structured detail
+api.logger.info("Custom tool initialized successfully", { toolCount: 3 });
+
+// Debug-level diagnostics
+api.logger.debug("Parsing temporary input fragment", { length: 128 });
+
+// Warnings
+api.logger.warn("External endpoint returned deprecated schema version");
+
+// Errors with error object or string
+api.logger.error("Failed to parse plugin cache", error);
+```
+
+Methods:
+
+- `api.logger.info(message: string, detail?: Record<string, unknown>): void`
+- `api.logger.debug(message: string, detail?: Record<string, unknown>): void`
+- `api.logger.warn(message: string, detail?: Record<string, unknown>): void`
+- `api.logger.error(message: string, error?: unknown): void`
+
+Notes:
+
+- Messages are capped at 2,048 characters.
+- Detail objects support up to 30 keys with truncated string values for safety.
+- Dispatched server logs appear in the live in-app Diagnostics viewer, Server-Sent Events log stream (`/api/logs/stream`), and daily rotating server log files under `userData/logs/`.
+- Automatic secret scrubbing is performed by the server logger.
 
 ## `api.ui.h`
 
@@ -1016,5 +1048,6 @@ These routes are used by the app and plugin runtime:
 - `GET /api/plugins/{pluginId}/storage/{key}`: load one plugin-owned JSON value.
 - `PUT /api/plugins/{pluginId}/storage/{key}`: save one plugin-owned JSON value.
 - `DELETE /api/plugins/{pluginId}/storage/{key}`: delete one plugin-owned JSON value.
+- `POST /api/plugins/{pluginId}/logs`: submit client-side plugin telemetry and diagnostics to the server logger.
 
 Provider calls should still go directly from the frontend to the configured provider URL. Do not add local API proxy routes for provider model listing or generation unless the project direction changes.

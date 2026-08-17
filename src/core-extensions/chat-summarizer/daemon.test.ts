@@ -41,6 +41,12 @@ describe("chat summarizer daemon", () => {
                 },
                 async setJson() {},
             },
+            logger: {
+                info() {},
+                debug() {},
+                warn() {},
+                error() {},
+            },
         } as unknown as SmileyPluginApi;
         const settings: SummarizerSettings = {
             ...defaultSummarizerSettings,

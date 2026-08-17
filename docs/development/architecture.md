@@ -31,3 +31,15 @@ Chats can also be forked at specific messages via `/api/chats/{chatId}/fork`.
 SmileyChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are trusted local browser ESM modules that run in the SmileyChat page, so permissions guide API access but are not a sandbox.
 
 In addition to user plugins, SmileyChat bundles several **Core Extensions** (e.g. MCP Servers, LoreBooks, Formatting, Regex Replacer) which act internally like plugins but are part of the core distribution. For more information, see the [Plugins Docs](../plugins/README.md).
+
+## Diagnostics & Logging Architecture
+
+SmileyChat implements a multi-tier logging pipeline configured across server and client subsystems:
+
+1. **Subsystems**: Events are categorized into `generate` (latency, tokens, finishes), `http` (API endpoints and asset traffic), `plugins` (extension actions and client telemetry), `mcp` (tool execution and connection events), `server` (lifecycle and migrations), and `security` (auth, allowlists, CSRF).
+2. **Tiered Sinks**:
+    - **Terminal Console**: High-signal, colored ANSI logs formatted by subsystem and level (`INFO` default).
+    - **In-Memory Ring Buffer**: A 1,000-entry in-memory ring buffer powering the Server-Sent Events stream (`GET /api/logs/stream`) and the in-app Diagnostics viewer.
+    - **Disk Persistence**: Daily rotating files under `userData/logs/` (`smileychat-YYYY-MM-DD.log`, splitting at 10MB) with automated retention pruning by age and max directory size.
+3. **Secret Scrubbing & Privacy**: API keys (`connection-secrets.json`), MCP credentials (`mcp-secrets.json`), Bearer tokens, and sensitive headers are scrubbed across all sinks. Generation prompts and raw payloads are strictly excluded unless opted into via `SMILEYCHAT_LOG_SENSITIVE_PAYLOADS=true` in `.env`.
+4. **Client Telemetry**: Plugins and core extensions invoke `api.logger`, which dispatches logs to `POST /api/plugins/:pluginId/logs` to unify client and server diagnostics into a single stream.

@@ -28,7 +28,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `orphaned/`: Safely holds data from deleted LoreBooks to prevent accidental loss.
     - `index.json`: Tracks active LoreBook selection, ordering, and summaries.
 - `userData/settings/`: App configuration.
-    - `preferences.json`: Local UI preferences (dark mode, font size, streaming, SillyTavern sync settings, dialogue highlights, etc.).
+    - `preferences.json`: Local UI and runtime preferences (dark mode, font size, streaming, SillyTavern sync settings, dialogue highlights, and logging subsystem/retention configurations).
     - `connections.json`: Provider URLs and generic model settings.
     - `connection-secrets.json`: **API Keys**. This is kept strictly separated so it is less likely to be accidentally exported, but it is not encrypted at rest.
     - `csrf-secret.json`: Token used to secure local API endpoints.
@@ -36,6 +36,8 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `core-extensions/`: Storage for built-in extension data.
         - `mcp.json`: Settings for Model Context Protocol servers.
         - `mcp-secrets.json`: Secrets and credentials for MCP servers.
+- `userData/logs/`: Daily rotating server and diagnostics log files.
+    - `smileychat-YYYY-MM-DD.log`: Active log file for the day (rotates to indexed files like `-1.log` if exceeding 10MB). Automatically pruned based on age (default 7 days) and total storage size (default 25MB) configured in Diagnostics settings.
 - `userData/plugins/`: Folder for user-installed extension modules.
     - Each plugin folder contains `plugin.json`, browser ESM files, optional CSS, and plugin-owned `data/{key}.json` storage.
     - Plugins installed or updated by SmileyChat also contain `smileychat-install.json`, which records whether the plugin came from the verified registry or a manual artifact URL.

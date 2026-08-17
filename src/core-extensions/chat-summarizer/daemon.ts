@@ -230,7 +230,7 @@ export async function runSummarization(
             settings.maxSummaryCharacters,
         );
 
-        api.logger.info("Chat summary generated", {
+        api.logger?.info("Chat summary generated", {
             chatId,
             summaryLength: summaryText.length,
             durationMs: Date.now() - startedAt,
@@ -247,7 +247,7 @@ export async function runSummarization(
             status: "idle",
         });
     } catch (error) {
-        api.logger.error("Chat summary generation failed", error);
+        api.logger?.error("Chat summary generation failed", error);
         const currentState = await getChatSummaryState(api, chatId);
         return saveChatSummaryState(api, chatId, {
             ...currentState,
