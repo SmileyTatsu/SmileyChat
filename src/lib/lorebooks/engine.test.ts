@@ -51,6 +51,34 @@ describe("lorebook activation engine", () => {
         expect(injections).toHaveLength(0);
     });
 
+    test("matches whole-word keys with Unicode-aware boundaries", () => {
+        const book = lorebook({
+            keys: ["café"],
+            content: "Coffee lore.",
+            matchWholeWords: true,
+        });
+        const context = {
+            generation: {
+                activeCharacterId: "char-1",
+                stream: false,
+                trigger: "send" as const,
+            },
+        };
+
+        expect(
+            createLorebookPromptInjections([book], {
+                ...context,
+                messages: [message("user", "Visit the café, please.")],
+            }),
+        ).toHaveLength(1);
+        expect(
+            createLorebookPromptInjections([book], {
+                ...context,
+                messages: [message("user", "A cafétéria is nearby.")],
+            }),
+        ).toHaveLength(0);
+    });
+
     test("maps at-depth and outlet entries to prompt injection placement", () => {
         const injections = createLorebookPromptInjections(
             [

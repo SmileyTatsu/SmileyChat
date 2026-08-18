@@ -9,6 +9,9 @@ import type {
 } from "../prompt/types";
 import type { Lorebook, LorebookEntry } from "./types";
 
+const MAX_COMPILED_KEY_REGEXES = 512;
+const compiledKeyRegexes = new Map<string, RegExp>();
+
 export type LorebookActivationContext = {
     generation: PromptGenerationContext;
     messages: Message[];
@@ -162,10 +165,33 @@ function matchesKey(
         return sourceText.includes(targetKey);
     }
 
-    return new RegExp(
-        `(^|[^\\p{L}\\p{N}_])${escapeRegExp(targetKey)}(?=$|[^\\p{L}\\p{N}_])`,
+    return getCompiledKeyRegex(targetKey).test(sourceText);
+}
+
+function getCompiledKeyRegex(key: string) {
+    const cachedRegex = compiledKeyRegexes.get(key);
+
+    if (cachedRegex) {
+        // Refresh this entry so the Map retains the least recently used keys.
+        compiledKeyRegexes.delete(key);
+        compiledKeyRegexes.set(key, cachedRegex);
+        return cachedRegex;
+    }
+
+    if (compiledKeyRegexes.size >= MAX_COMPILED_KEY_REGEXES) {
+        const leastRecentlyUsedKey = compiledKeyRegexes.keys().next().value;
+
+        if (leastRecentlyUsedKey) {
+            compiledKeyRegexes.delete(leastRecentlyUsedKey);
+        }
+    }
+
+    const regex = new RegExp(
+        `(^|[^\\p{L}\\p{N}_])${escapeRegExp(key)}(?=$|[^\\p{L}\\p{N}_])`,
         "u",
-    ).test(sourceText);
+    );
+    compiledKeyRegexes.set(key, regex);
+    return regex;
 }
 
 function triggerAllowsEntry(entry: LorebookEntry, generation: PromptGenerationContext) {
