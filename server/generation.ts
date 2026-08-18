@@ -122,9 +122,9 @@ export async function generateWithSavedConnection(
     const abortGeneration = () => generationController.abort();
     signal.addEventListener("abort", abortGeneration, { once: true });
 
+    let cancelled = false;
     const body = new ReadableStream<Uint8Array>({
         async start(controller) {
-            let cancelled = false;
             let firstTokenAt = 0;
             let heartbeat: ReturnType<typeof setInterval> | undefined;
 
@@ -132,7 +132,7 @@ export async function generateWithSavedConnection(
             // parser. Writing them keeps the socket active so Bun's idle
             // timeout never fires mid-generation.
             const sendComment = (text: string) => {
-                if (cancelled) return;
+                if (cancelled || generationController.signal.aborted) return;
                 try {
                     controller.enqueue(encoder.encode(`: ${text}\n\n`));
                 } catch {
@@ -141,7 +141,7 @@ export async function generateWithSavedConnection(
                 }
             };
             const send = (event: string, data: unknown) => {
-                if (cancelled) return;
+                if (cancelled || generationController.signal.aborted) return;
 
                 try {
                     controller.enqueue(
@@ -206,11 +206,22 @@ export async function generateWithSavedConnection(
                     });
                 logGenerationDone(result, startedAt, "sse", firstTokenAt || undefined);
             } catch (error) {
-                send("error", {
-                    message:
-                        error instanceof Error ? error.message : "Generation failed.",
-                });
-                logGenerationError(error, startedAt, "sse");
+                const isAborted =
+                    cancelled ||
+                    generationController.signal.aborted ||
+                    signal.aborted ||
+                    (error instanceof DOMException && error.name === "AbortError") ||
+                    (error instanceof Error &&
+                        (error.name === "AbortError" ||
+                            error.message.toLowerCase().includes("aborted")));
+
+                if (!isAborted) {
+                    send("error", {
+                        message:
+                            error instanceof Error ? error.message : "Generation failed.",
+                    });
+                    logGenerationError(error, startedAt, "sse");
+                }
             } finally {
                 if (heartbeat) clearInterval(heartbeat);
                 signal.removeEventListener("abort", abortGeneration);
@@ -223,6 +234,7 @@ export async function generateWithSavedConnection(
             // Stop the provider fetch when the client closes its SSE reader;
             // this prevents a paid response from draining after a phone user
             // presses Stop or disconnects.
+            cancelled = true;
             logger.info("generate", "CANCEL client-cancel", {
                 durationMs: Date.now() - startedAt,
             });
@@ -385,7 +397,7 @@ function logGenerationError(error: unknown, startedAt: number, mode: string) {
         error && typeof error === "object" && "status" in error
             ? (error as { status: unknown }).status
             : undefined;
-    logger.error("generate", `ERROR ${mode}`, {
+    logger.error("generate", mode, {
         durationMs: Date.now() - startedAt,
         ...(status ? { status } : {}),
         message,
