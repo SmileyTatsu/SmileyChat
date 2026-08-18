@@ -2,6 +2,14 @@ import { extname, isAbsolute, join, normalize, relative } from "node:path";
 
 import { distDir } from "./paths";
 
+const IMMUTABLE_ASSET_PATH = /^\/assets\/.*[.-][a-zA-Z0-9_-]{8,}\.[^/]+$/;
+
+function staticCacheControl(pathname: string) {
+    return IMMUTABLE_ASSET_PATH.test(pathname)
+        ? "public, max-age=31536000, immutable"
+        : "no-cache";
+}
+
 export async function serveStatic(url: URL) {
     const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
     const requestedPath = normalize(join(distDir, pathname));
@@ -15,7 +23,9 @@ export async function serveStatic(url: URL) {
     const file = Bun.file(requestedPath);
 
     if (await file.exists()) {
-        return new Response(file);
+        return new Response(file, {
+            headers: { "Cache-Control": staticCacheControl(pathname) },
+        });
     }
 
     if (extname(pathname)) {
@@ -33,5 +43,7 @@ export async function serveStatic(url: URL) {
         });
     }
 
-    return new Response(indexFile);
+    return new Response(indexFile, {
+        headers: { "Cache-Control": "no-cache" },
+    });
 }
