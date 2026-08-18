@@ -8,6 +8,7 @@ export type LorebookIndex = {
     version: 1;
     activeLorebookId: string;
     lorebookIds: string[];
+    summaries: LorebookSummary[];
 };
 
 export type LorebookSummary = {

@@ -18,6 +18,7 @@ import type {
     LorebookImportResult,
     LorebookIndex,
     LorebookEntry,
+    LorebookSummary,
 } from "#frontend/lib/lorebooks/types";
 
 import {
@@ -34,12 +35,11 @@ import { withResourceLock } from "./resource-lock";
 
 export async function readLorebookCollection(): Promise<LorebookCollection> {
     const index = await readLorebookIndex();
-    const lorebooks = await readLorebooksFromIndex(index);
 
     return normalizeLorebookCollection({
         version: 1,
         activeLorebookId: index.activeLorebookId,
-        lorebooks: lorebooks.map(lorebookToSummary),
+        lorebooks: sortLorebookSummaries(index.summaries),
     });
 }
 
@@ -74,6 +74,7 @@ export async function createLorebook(value: unknown) {
         version: 1,
         activeLorebookId,
         lorebookIds,
+        summaries: replaceLorebookSummary(index.summaries, lorebookToSummary(lorebook)),
     });
 
     return {
@@ -103,13 +104,7 @@ async function writeLorebookByIdUnlocked(lorebookId: string, value: unknown) {
     await writeJsonAtomic(lorebookFilePath(lorebook.id), lorebook);
     const index = await readLorebookIndex();
 
-    if (!index.lorebookIds.includes(lorebook.id)) {
-        await writeFileBackedIndex(lorebookIndexPath, {
-            version: 1,
-            activeLorebookId: index.activeLorebookId || lorebook.id,
-            lorebookIds: [lorebook.id, ...index.lorebookIds],
-        });
-    }
+    await updateLorebookSummary(lorebook, index);
 
     return lorebook;
 }
@@ -139,6 +134,7 @@ export async function patchLorebookById(lorebookId: string, value: unknown) {
         });
         if (!lorebook) throw new BadRequestError("Invalid LoreBook patch.");
         await writeJsonAtomic(lorebookFilePath(lorebookId), lorebook);
+        await updateLorebookSummary(lorebook);
         return lorebook;
     });
 }
@@ -199,6 +195,7 @@ function normalizeEntry(value: unknown): LorebookEntry | undefined {
 async function writeLorebookEntries(lorebook: Lorebook, entries: LorebookEntry[]) {
     const next = { ...lorebook, entries, updatedAt: new Date().toISOString() };
     await writeJsonAtomic(lorebookFilePath(lorebook.id), next);
+    await updateLorebookSummary(next);
     return next;
 }
 
@@ -220,6 +217,7 @@ export async function deleteLorebookById(lorebookId: string) {
                 ? (lorebookIds[0] ?? "")
                 : index.activeLorebookId,
         lorebookIds,
+        summaries: index.summaries.filter((summary) => summary.id !== lorebookId),
     });
 
     return {
@@ -241,6 +239,10 @@ export async function updateLorebookIndex(value: unknown) {
         version: 1 as const,
         activeLorebookId,
         lorebookIds,
+        summaries: lorebookIds.flatMap((id) => {
+            const summary = current.summaries.find((item) => item.id === id);
+            return summary ? [summary] : [];
+        }),
     };
 
     await writeFileBackedIndex(lorebookIndexPath, index);
@@ -343,10 +345,24 @@ async function readLorebookIndex(): Promise<LorebookIndex> {
 
 async function repairLorebookIndex(index: LorebookIndex): Promise<LorebookIndex> {
     const lorebookIds = await readExistingIdsInOrder(index.lorebookIds, lorebookFilePath);
+    const summariesById = new Map(
+        index.summaries.map((summary) => [summary.id, summary]),
+    );
+    const hasAllSummaries = lorebookIds.every((id) => summariesById.has(id));
 
-    if (lorebookIds.length === index.lorebookIds.length) {
+    if (lorebookIds.length === index.lorebookIds.length && hasAllSummaries) {
         return index;
     }
+
+    // Pre-summary indexes are hydrated once. Future summary reads stay compact.
+    const summaries = hasAllSummaries
+        ? lorebookIds.flatMap((id) => {
+              const summary = summariesById.get(id);
+              return summary ? [summary] : [];
+          })
+        : (await readLorebooksFromIndex({ ...index, lorebookIds })).map(
+              lorebookToSummary,
+          );
 
     const repairedIndex = {
         version: 1 as const,
@@ -354,6 +370,7 @@ async function repairLorebookIndex(index: LorebookIndex): Promise<LorebookIndex>
             ? index.activeLorebookId
             : (lorebookIds[0] ?? ""),
         lorebookIds,
+        summaries,
     };
 
     await writeFileBackedIndex(lorebookIndexPath, repairedIndex);
@@ -375,6 +392,7 @@ async function rebuildLorebookIndex(): Promise<LorebookIndex> {
         version: 1 as const,
         activeLorebookId: sortedLorebooks[0]?.id ?? "",
         lorebookIds: sortedLorebooks.map((lorebook) => lorebook.id),
+        summaries: sortedLorebooks.map(lorebookToSummary),
     };
 
     await writeFileBackedIndex(lorebookIndexPath, index);
@@ -392,6 +410,30 @@ function sortLorebooks(lorebooks: Lorebook[]) {
             Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||
             left.title.localeCompare(right.title),
     );
+}
+
+function sortLorebookSummaries(summaries: LorebookSummary[]) {
+    return [...summaries].sort(
+        (left, right) =>
+            Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||
+            left.title.localeCompare(right.title),
+    );
+}
+
+function replaceLorebookSummary(summaries: LorebookSummary[], summary: LorebookSummary) {
+    return [summary, ...summaries.filter((item) => item.id !== summary.id)];
+}
+
+async function updateLorebookSummary(lorebook: Lorebook, index?: LorebookIndex) {
+    const current = index ?? (await readLorebookIndex());
+    await writeFileBackedIndex(lorebookIndexPath, {
+        version: 1,
+        activeLorebookId: current.activeLorebookId || lorebook.id,
+        lorebookIds: current.lorebookIds.includes(lorebook.id)
+            ? current.lorebookIds
+            : [lorebook.id, ...current.lorebookIds],
+        summaries: replaceLorebookSummary(current.summaries, lorebookToSummary(lorebook)),
+    });
 }
 
 function moveToFront(ids: string[], id: string) {

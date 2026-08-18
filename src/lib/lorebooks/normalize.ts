@@ -83,11 +83,21 @@ export function normalizeLorebookIndex(value: unknown): LorebookIndex {
     const activeLorebookId = lorebookIds.includes(asString(source.activeLorebookId))
         ? asString(source.activeLorebookId)
         : (lorebookIds[0] ?? "");
+    const summariesById = new Map(
+        normalizeArray(source.summaries, normalizeLorebookSummary).map((summary) => [
+            summary.id,
+            summary,
+        ]),
+    );
 
     return {
         version: 1,
         activeLorebookId,
         lorebookIds,
+        summaries: lorebookIds.flatMap((id) => {
+            const summary = summariesById.get(id);
+            return summary ? [summary] : [];
+        }),
     };
 }
 

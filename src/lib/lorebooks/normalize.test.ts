@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { normalizeLorebook } from "./normalize";
+import { normalizeLorebook, normalizeLorebookIndex } from "./normalize";
 import { exportSillyTavernLorebook, importSillyTavernLorebook } from "./sillytavern";
 
 describe("lorebook normalization", () => {
@@ -76,5 +76,18 @@ describe("lorebook normalization", () => {
         expect(exported.name).toBe("World");
         expect(exported.entries["0"].key).toEqual(["city"]);
         expect(exported.entries["0"].content).toBe("The city never sleeps.");
+    });
+
+    test("keeps index summaries aligned to indexed lorebooks", () => {
+        const index = normalizeLorebookIndex({
+            activeLorebookId: "book-1",
+            lorebookIds: ["book-1", "book-2"],
+            summaries: [
+                { id: "book-1", title: "World", updatedAt: "2026-01-01T00:00:00.000Z" },
+                { id: "orphan", title: "Unused", updatedAt: "2026-01-01T00:00:00.000Z" },
+            ],
+        });
+
+        expect(index.summaries.map((summary) => summary.id)).toEqual(["book-1"]);
     });
 });
