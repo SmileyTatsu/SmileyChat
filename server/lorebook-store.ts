@@ -29,6 +29,7 @@ import {
     writeFileBackedIndex,
 } from "./file-store";
 import { BadRequestError, NotFoundError, json, writeJsonAtomic } from "./http";
+import { logger } from "./logger";
 import { lorebookFilePath } from "./lorebook-file-paths";
 import { lorebookBooksDir, lorebookIndexPath, lorebookOrphanedDir } from "./paths";
 import { withResourceLock } from "./resource-lock";
@@ -271,9 +272,14 @@ export async function importUploadedLorebooks(
             result.imported += 1;
             result.activeLorebookId = result.activeLorebookId ?? lorebook.id;
         } catch (error) {
+            const message = error instanceof Error ? error.message : "Import failed.";
+            logger.warn("server", `Failed to import LoreBook "${file.name}"`, {
+                fileName: file.name,
+                error: message,
+            });
             result.failed.push({
                 fileName: file.name,
-                error: error instanceof Error ? error.message : "Import failed.",
+                error: message,
             });
         }
     }

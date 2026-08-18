@@ -1,6 +1,7 @@
 import { consumeChatCompletionStream } from "../chat-completions";
 import { filePartToBlob, hasFileContent } from "../images";
 import { safeResponseText, trimTrailingSlash } from "../http";
+import { clientLogger } from "../../logging/client-logger";
 import { readJsonServerSentEvents } from "../streaming";
 import type {
     ChatGenerationMessage,
@@ -39,7 +40,7 @@ export function createNovelAIConnection(config: NovelAIRuntimeConfig): Connectio
         },
         async generate(request) {
             if (request.tools?.length) {
-                console.warn(
+                clientLogger.warn(
                     "NovelAI does not support native tool calling. Registered tools were ignored for this request.",
                 );
             }

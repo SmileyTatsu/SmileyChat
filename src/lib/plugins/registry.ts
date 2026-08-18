@@ -2,6 +2,7 @@ import type { h } from "preact";
 
 import { createId } from "../common/ids";
 import { localApiFetch } from "../api/client";
+import { clientLogger, createClientLogger } from "../logging/client-logger";
 import type { ConnectionProfile } from "../connections/config";
 import type { ConnectionAdapter } from "../connections/types";
 import { formatCustomInstructPrompt, formatInstructPrompt } from "../instruct";
@@ -30,6 +31,7 @@ import type {
     PluginConnectionProvider,
     PluginEventsApi,
     PluginHeaderAction,
+    PluginLoggerApi,
     PluginMacroResolver,
     PluginMacroResolveOptions,
     PluginManifest,
@@ -224,7 +226,7 @@ export function deactivatePlugin(pluginId: string) {
         try {
             dispose();
         } catch (error) {
-            console.warn(`Plugin ${pluginId} cleanup failed:`, error);
+            createClientLogger(pluginId).warn(`Plugin ${pluginId} cleanup failed`, error);
         }
         pluginDisposers.delete(pluginId);
     }
@@ -333,7 +335,7 @@ export function applyMessageDisplayMiddlewares(
                 const next = middleware.value(current, { ...context, content: current });
 
                 if (typeof next !== "string") {
-                    console.warn(
+                    createClientLogger(middleware.pluginId).warn(
                         `Plugin ${getPluginDisplayName(middleware.pluginId)} display middleware returned a non-text value.`,
                     );
                     return current;
@@ -915,43 +917,16 @@ export function createPluginApi(
     };
 }
 
-function pluginLogger(manifest: PluginManifest) {
-    const write = (
-        level: "debug" | "info" | "warn" | "error",
-        message: string,
-        detail?: Record<string, unknown>,
-    ) => {
-        const safeMessage = String(message).slice(0, 2048);
-        console[level](`[plugin:${manifest.id}] ${safeMessage}`, detail ?? "");
-        void localApiFetch(`/api/plugins/${encodeURIComponent(manifest.id)}/logs`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                level,
-                message: safeMessage,
-                ...(detail ? { detail } : {}),
-            }),
-        }).catch(() => undefined);
-    };
+function pluginLogger(manifest: PluginManifest): PluginLoggerApi {
+    const logger = createClientLogger(manifest.id);
     return {
         info: (message: string, detail?: Record<string, unknown>) =>
-            write("info", message, detail),
+            logger.info(message, detail),
         debug: (message: string, detail?: Record<string, unknown>) =>
-            write("debug", message, detail),
+            logger.debug(message, detail),
         warn: (message: string, detail?: Record<string, unknown>) =>
-            write("warn", message, detail),
-        error: (message: string, error?: unknown) =>
-            write(
-                "error",
-                message,
-                error instanceof Error
-                    ? { error: error.message }
-                    : error && typeof error === "object"
-                      ? (error as Record<string, unknown>)
-                      : error === undefined
-                        ? undefined
-                        : { error: String(error) },
-            ),
+            logger.warn(message, detail),
+        error: (message: string, error?: unknown) => logger.error(message, error),
     };
 }
 
@@ -1183,13 +1158,13 @@ function callRegistryCallback(action: string, callback: () => void) {
     try {
         callback();
     } catch (error) {
-        console.warn(`Plugin ${action} failed:`, error);
+        clientLogger.warn(`Plugin ${action} failed`, error);
     }
 }
 
 function warnPluginCallbackError(pluginId: string, action: string, error: unknown) {
     const displayName = pluginId === "app" ? "app" : getPluginDisplayName(pluginId);
-    console.warn(`Plugin ${displayName} ${action} failed:`, error);
+    createClientLogger(pluginId).warn(`Plugin ${displayName} ${action} failed`, error);
 }
 
 function enabledValues<T>(items: Array<Owned<T>>) {
@@ -1266,7 +1241,7 @@ function registerOwnedMapValue<T>(
     const current = items.get(key);
 
     if (current && current.pluginId !== item.pluginId) {
-        console.warn(
+        createClientLogger(item.pluginId).warn(
             `Plugin ${getPluginDisplayName(item.pluginId)} tried to register duplicate plugin key "${key}" already owned by ${getPluginDisplayName(current.pluginId)}.`,
         );
         return false;

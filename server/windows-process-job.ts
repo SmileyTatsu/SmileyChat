@@ -1,5 +1,7 @@
 import { dlopen, FFIType, type Pointer } from "bun:ffi";
 
+import { logger } from "./logger";
+
 const JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9;
 const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000;
 const PROCESS_TERMINATE = 0x0001;
@@ -129,7 +131,9 @@ export function assignProcessToSmileyChatJob(pid: number) {
             sharedJob = WindowsKillOnCloseJob.create() ?? null;
         } catch (error) {
             sharedJob = null;
-            console.warn("[mcp] Windows process cleanup job is unavailable:", error);
+            logger.warn("mcp", "[mcp] Windows process cleanup job is unavailable", {
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
     }
 
@@ -137,7 +141,8 @@ export function assignProcessToSmileyChatJob(pid: number) {
 
     const assigned = sharedJob.assign(pid);
     if (!assigned) {
-        console.warn(
+        logger.warn(
+            "mcp",
             `[mcp] Could not add process ${pid} to the Windows cleanup job; ` +
                 "disconnect and signal-based cleanup will remain active.",
         );

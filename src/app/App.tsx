@@ -27,6 +27,7 @@ import {
     isGroupChat,
     isGroupWorkspace,
 } from "#frontend/lib/chats/normalize";
+import { clientLogger } from "#frontend/lib/logging/client-logger";
 import { messageFromError } from "#frontend/lib/common/errors";
 import {
     applyConnectionSecrets,
@@ -624,7 +625,10 @@ export function App() {
             keepalive: true,
             method: "PUT",
         }).catch((error) => {
-            console.warn("Could not persist connection settings before unload:", error);
+            clientLogger.warn(
+                "Could not persist connection settings before unload",
+                error,
+            );
         });
         if (connectionSecretsAccessibleRef.current) {
             void localApiFetch("/api/connections/secrets", {
@@ -633,8 +637,8 @@ export function App() {
                 keepalive: true,
                 method: "PUT",
             }).catch((error) => {
-                console.warn(
-                    "Could not persist connection secrets before unload:",
+                clientLogger.warn(
+                    "Could not persist connection secrets before unload",
                     error,
                 );
             });
@@ -811,7 +815,7 @@ export function App() {
             keepalive: true,
             method: "PUT",
         }).catch((error) => {
-            console.warn("Could not persist preferences before unload:", error);
+            clientLogger.warn("Could not persist preferences before unload", error);
         });
     }
 
@@ -853,7 +857,7 @@ export function App() {
             const response = await loadPluginManifests();
             await loadRuntimePlugins(response.plugins);
         } catch (error) {
-            console.warn("Could not load plugins:", error);
+            clientLogger.warn("Could not load plugins", error);
         }
     }
 

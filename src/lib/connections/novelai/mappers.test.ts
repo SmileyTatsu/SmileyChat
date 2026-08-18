@@ -109,7 +109,7 @@ describe("NovelAI connection mappers", () => {
 
         expect(body).toEqual({
             model: "kayra-v1",
-            input: "Stay in character.\n\nUser: Hello.\nAssistant: Hi.\nAssistant:",
+            input: "<|start_header_id|>system<|end_header_id|>\n\nStay in character.<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\nHello.<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\nHi.<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
             parameters: {
                 use_string: true,
                 max_length: 250,

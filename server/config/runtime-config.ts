@@ -13,6 +13,8 @@
 // "0.0.0.0 by default" doesn't expose chats or API keys to the network
 // in a fresh install. Override with SMILEYCHAT_HOST=127.0.0.1 to bind
 // loopback only.
+import { logger } from "../logger";
+
 const DEFAULT_HOST = "0.0.0.0";
 const DEFAULT_PORT = 4173;
 const DEFAULT_FRONTEND_PORT = 5173;
@@ -47,7 +49,8 @@ function normalizeHttpsUrl(value: string | undefined | null, fallback: string) {
         // Warn below with the original value.
     }
 
-    console.warn(
+    logger.warn(
+        "server",
         `[runtime-config] Invalid HTTPS URL "${candidate}"; falling back to ${fallback}.`,
     );
     return fallback;
@@ -65,7 +68,8 @@ function parsePort(value: string | undefined, fallback: number) {
     if (!value) return fallback;
     const num = Number.parseInt(value, 10);
     if (Number.isInteger(num) && num >= 1 && num <= 65535) return num;
-    console.warn(
+    logger.warn(
+        "server",
         `[runtime-config] Invalid port "${value}"; falling back to ${fallback}.`,
     );
     return fallback;

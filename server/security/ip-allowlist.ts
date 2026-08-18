@@ -12,6 +12,7 @@ import {
     isDockerBypassEnabled,
     isTailscaleBypassEnabled,
 } from "../config/runtime-config";
+import { logger } from "../logger";
 
 export interface CidrEntry {
     bytes: number[];
@@ -133,7 +134,10 @@ function buildAllowlist(raw: string | null): CidrEntry[] | null {
         if (!trimmed) continue;
         const cidr = parseCidr(trimmed);
         if (!cidr) {
-            console.warn(`[ip-allowlist] Ignoring invalid entry: "${trimmed}"`);
+            logger.warn(
+                "security",
+                `[ip-allowlist] Ignoring invalid entry: "${trimmed}"`,
+            );
             continue;
         }
         entries.push(cidr);
@@ -148,7 +152,8 @@ function getAllowlist(): CidrEntry[] | null {
     }
 
     if (cachedAllowlist.entries && !cachedAllowlist.announced) {
-        console.log(
+        logger.info(
+            "security",
             `[ip-allowlist] Restricting access to: ${cachedAllowlist.raw}  (+ loopback always allowed)`,
         );
         cachedAllowlist.announced = true;
@@ -179,7 +184,8 @@ function getPrivateNetworkCidrs(): CidrEntry[] {
                 if (!trimmed) continue;
                 const cidr = parseCidr(trimmed);
                 if (!cidr) {
-                    console.warn(
+                    logger.warn(
+                        "security",
                         `[trusted-private-networks] Ignoring invalid entry: "${trimmed}"`,
                     );
                     continue;
@@ -191,7 +197,8 @@ function getPrivateNetworkCidrs(): CidrEntry[] {
     }
 
     if (cachedPrivateNetworks.raw && !cachedPrivateNetworks.announced) {
-        console.log(
+        logger.info(
+            "security",
             `[trusted-private-networks] Overriding default private-network list with: ${cachedPrivateNetworks.raw}`,
         );
         cachedPrivateNetworks.announced = true;
@@ -241,7 +248,8 @@ export function isTrustedInterfaceIp(ip: string): boolean {
 
     if (tailscaleOn && isTailscaleIp(ip)) {
         if (!bypassAnnounced.tailscale) {
-            console.warn(
+            logger.warn(
+                "security",
                 "[auth-bypass] SMILEYCHAT_BYPASS_AUTH_TAILSCALE=true. Tailscale CGNAT clients (100.64.0.0/10) skip Basic Auth and IP allowlist.",
             );
             bypassAnnounced.tailscale = true;
@@ -251,7 +259,8 @@ export function isTrustedInterfaceIp(ip: string): boolean {
 
     if (dockerOn && isDockerIp(ip)) {
         if (!bypassAnnounced.docker) {
-            console.warn(
+            logger.warn(
+                "security",
                 "[auth-bypass] SMILEYCHAT_BYPASS_AUTH_DOCKER=true. Docker bridge clients (172.16.0.0/12) skip Basic Auth and IP allowlist.",
             );
             bypassAnnounced.docker = true;

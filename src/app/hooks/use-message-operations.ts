@@ -16,6 +16,7 @@ import {
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
 import { getMessageUpdateMiddlewares } from "#frontend/lib/plugins/registry";
+import { clientLogger } from "#frontend/lib/logging/client-logger";
 import type { MessageUpdateKind } from "#frontend/lib/plugins/types";
 import type {
     ChatAttachment,
@@ -454,15 +455,15 @@ function applyMessageUpdateMiddlewares(
 
                 if (replacement !== undefined) {
                     if (replacement.id !== message.id) {
-                        console.warn(
-                            "Plugin message update middleware cannot change a message ID.",
+                        clientLogger.warn(
+                            "Plugin message update middleware cannot change a message ID",
                         );
                         continue;
                     }
                     nextMessage = replacement;
                 }
             } catch (error) {
-                console.warn("Plugin message update middleware failed:", error);
+                clientLogger.warn("Plugin message update middleware failed", error);
             }
         }
 

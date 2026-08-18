@@ -232,17 +232,29 @@ export function redactObject(obj: Record<string, unknown>): Record<string, unkno
     for (const [key, value] of Object.entries(obj)) {
         if (isSensitiveKey(key)) {
             result[key] = "[REDACTED]";
+        } else if (value instanceof Error) {
+            result[key] = {
+                name: value.name,
+                message: redact(value.message),
+                ...(value.stack ? { stack: redact(value.stack) } : {}),
+            };
         } else if (typeof value === "string") {
             result[key] = redact(value);
         } else if (value && typeof value === "object" && !Array.isArray(value)) {
             result[key] = redactObject(value as Record<string, unknown>);
         } else if (Array.isArray(value)) {
             result[key] = value.map((item) =>
-                typeof item === "string"
-                    ? redact(item)
-                    : item && typeof item === "object"
-                      ? redactObject(item as Record<string, unknown>)
-                      : item,
+                item instanceof Error
+                    ? {
+                          name: item.name,
+                          message: redact(item.message),
+                          ...(item.stack ? { stack: redact(item.stack) } : {}),
+                      }
+                    : typeof item === "string"
+                      ? redact(item)
+                      : item && typeof item === "object"
+                        ? redactObject(item as Record<string, unknown>)
+                        : item,
             );
         } else {
             result[key] = value;
@@ -363,6 +375,9 @@ function formatDetail(detail?: Record<string, unknown>): string {
         .map(([key, value]) => {
             if (isSensitiveKey(key)) {
                 return ` ${key}=[REDACTED]`;
+            }
+            if (value instanceof Error) {
+                return ` ${key}=${redact(value.message || value.name)}`;
             }
             return ` ${key}=${redact(typeof value === "string" ? value : JSON.stringify(value))}`;
         })

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "preact/hooks";
 
 import { saveChat, saveChatWithKeepAlive } from "#frontend/lib/api/client";
 import { chatToSummary } from "#frontend/lib/chats/normalize";
+import { clientLogger } from "#frontend/lib/logging/client-logger";
 import { messageFromError } from "#frontend/lib/common/errors";
 import type { ChatSession, ChatSummary, ChatSummaryCollection } from "#frontend/types";
 
@@ -52,7 +53,7 @@ export function useChatAutosave({
 
             for (const chat of pendingChats.values()) {
                 void saveChatWithKeepAlive(chat).catch((error) => {
-                    console.warn("Could not persist chat before unload:", error);
+                    clientLogger.warn("Could not persist chat before unload", error);
                 });
             }
         }

@@ -27,6 +27,7 @@ import {
     readCharacterCollection,
     readCharacterSummaryCollection,
 } from "./character-store";
+import { logger } from "./logger";
 import { readPresetCollection, writePresetCollection } from "./settings";
 
 export type SillyTavernTargets = {
@@ -94,6 +95,7 @@ export async function syncSillyTavern(value: unknown) {
     const warnings: string[] = [];
     const characterIds = new Map<string, string>();
     await seedCharacterIds(characterIds);
+    logger.info("server", `SillyTavern sync started for "${scan.userFolder}"`);
     try {
         if (targets.characters)
             imported.characters = await importCharacters(
@@ -102,7 +104,9 @@ export async function syncSillyTavern(value: unknown) {
                 characterIds,
             );
     } catch (e) {
-        errors.push(`Characters: ${message(e)}`);
+        const err = message(e);
+        logger.warn("server", "SillyTavern import characters failed", { error: err });
+        errors.push(`Characters: ${err}`);
     }
     try {
         if (targets.chats)
@@ -113,7 +117,9 @@ export async function syncSillyTavern(value: unknown) {
                 warnings,
             );
     } catch (e) {
-        errors.push(`Character chats: ${message(e)}`);
+        const err = message(e);
+        logger.warn("server", "SillyTavern import chats failed", { error: err });
+        errors.push(`Character chats: ${err}`);
     }
     try {
         if (targets.groupChats)
@@ -123,26 +129,38 @@ export async function syncSillyTavern(value: unknown) {
                 characterIds,
             );
     } catch (e) {
-        errors.push(`Group chats: ${message(e)}`);
+        const err = message(e);
+        logger.warn("server", "SillyTavern import group chats failed", { error: err });
+        errors.push(`Group chats: ${err}`);
     }
     try {
         if (targets.personas)
             imported.personas = await importPersonas(scan.userFolder, overwrite);
     } catch (e) {
-        errors.push(`Personas: ${message(e)}`);
+        const err = message(e);
+        logger.warn("server", "SillyTavern import personas failed", { error: err });
+        errors.push(`Personas: ${err}`);
     }
     try {
         if (targets.presets)
             imported.presets = await importPresets(scan.userFolder, overwrite);
     } catch (e) {
-        errors.push(`Presets: ${message(e)}`);
+        const err = message(e);
+        logger.warn("server", "SillyTavern import presets failed", { error: err });
+        errors.push(`Presets: ${err}`);
     }
     try {
         if (targets.lorebooks)
             imported.lorebooks = await importLorebooks(scan.userFolder, overwrite);
     } catch (e) {
-        errors.push(`Lorebooks: ${message(e)}`);
+        const err = message(e);
+        logger.warn("server", "SillyTavern import lorebooks failed", { error: err });
+        errors.push(`Lorebooks: ${err}`);
     }
+    logger.info("server", `SillyTavern sync completed (${errors.length} error(s))`, {
+        imported,
+        errorsCount: errors.length,
+    });
     return { success: errors.length === 0, imported, errors, warnings };
 }
 

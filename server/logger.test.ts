@@ -57,6 +57,19 @@ describe("logger", () => {
         expect((cleaned.headers as string[])[0]).toBe("Authorization: [REDACTED]");
     });
 
+    test("redacts and formats Error instances in detail objects", () => {
+        const error = new Error("Failed with secret sk-proj-1234567890abcdef123456");
+        const obj = { error };
+        const cleaned = redactObject(obj);
+        expect(typeof cleaned.error).toBe("object");
+        const errObj = cleaned.error as { name: string; message: string; stack?: string };
+        expect(errObj.name).toBe("Error");
+        expect(errObj.message).toBe("Failed with secret [REDACTED]");
+        if (errObj.stack) {
+            expect(errObj.stack).not.toContain("sk-proj-1234567890abcdef123456");
+        }
+    });
+
     test("records logs to in-memory buffer and dispatches to subscribers", () => {
         const received: unknown[] = [];
         const unsubscribe = subscribeLogs((entry) => {

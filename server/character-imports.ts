@@ -28,6 +28,7 @@ import {
     readCharacterSummaryCollection,
 } from "./character-store";
 import { BadRequestError } from "./http";
+import { logger } from "./logger";
 import { characterImportsDir } from "./paths";
 
 type CharacterImportCandidate = {
@@ -74,10 +75,15 @@ export async function importDroppedCharacterFiles(): Promise<DroppedCharacterImp
             result.activeCharacterId = imported.id;
             await rm(sourcePath, { force: true });
         } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Unexpected import error.";
+            logger.warn("server", `Failed to import dropped character "${fileName}"`, {
+                fileName,
+                error: message,
+            });
             result.failed.push({
                 fileName,
-                error:
-                    error instanceof Error ? error.message : "Unexpected import error.",
+                error: message,
             });
         }
     }
@@ -134,10 +140,15 @@ export async function importUploadedCharacterFiles(
             result.imported += 1;
             result.activeCharacterId = imported.id;
         } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Unexpected import error.";
+            logger.warn("server", `Failed to import uploaded character "${file.name}"`, {
+                fileName: file.name,
+                error: message,
+            });
             result.failed.push({
                 fileName: file.name,
-                error:
-                    error instanceof Error ? error.message : "Unexpected import error.",
+                error: message,
             });
         }
     }

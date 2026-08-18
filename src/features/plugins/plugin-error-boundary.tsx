@@ -1,5 +1,6 @@
 import { Component, type ComponentChildren } from "preact";
 
+import { clientLogger } from "#frontend/lib/logging/client-logger";
 import { getPluginDisplayName } from "#frontend/lib/plugins/registry";
 
 type PluginErrorBoundaryProps = {
@@ -32,7 +33,7 @@ export class PluginErrorBoundary extends Component<
     }
 
     componentDidCatch(error: unknown) {
-        console.warn(`${this.props.pluginName} plugin UI failed to render:`, error);
+        clientLogger.warn(`${this.props.pluginName} plugin UI failed to render`, error);
     }
 
     componentDidUpdate(previousProps: PluginErrorBoundaryProps) {

@@ -3,6 +3,7 @@ import {
     savePluginEnabled,
     savePluginStorageSnapshot,
 } from "../api/client";
+import { createClientLogger } from "../logging/client-logger";
 import {
     buildAppliedEnabledMap,
     type PluginConfigSnapshot,
@@ -33,7 +34,10 @@ export async function applyProfileToPlugins(
             await savePluginStorageSnapshot(pluginId, snapshot);
             configChanges.add(pluginId);
         } catch (error) {
-            console.warn(`Could not restore plugin storage for ${pluginId}:`, error);
+            createClientLogger(pluginId).warn(
+                `Could not restore plugin storage for ${pluginId}`,
+                error,
+            );
         }
     }
 
@@ -66,7 +70,10 @@ export async function snapshotAllPluginConfigs(
             const response = await loadPluginStorageSnapshot(plugin.id);
             result[plugin.id] = response.storage;
         } catch (error) {
-            console.warn(`Could not snapshot plugin storage for ${plugin.id}:`, error);
+            createClientLogger(plugin.id).warn(
+                `Could not snapshot plugin storage for ${plugin.id}`,
+                error,
+            );
         }
     }
 

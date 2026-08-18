@@ -445,9 +445,10 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
 
         if (backupCreated) {
             await rm(backupRoot, { recursive: true, force: true }).catch((error) => {
-                console.warn(
-                    `Could not remove plugin install backup ${backupRoot}:`,
-                    error,
+                logger.warn(
+                    "plugins",
+                    `Could not remove plugin install backup ${backupRoot}`,
+                    { error: error instanceof Error ? error.message : String(error) },
                 );
             });
         }
@@ -1134,7 +1135,11 @@ export async function writePluginStorageSnapshot(pluginId: string, body: unknown
                 value,
             );
         } catch (error) {
-            console.warn(`Could not restore plugin storage ${pluginId}/${key}:`, error);
+            logger.warn(
+                "plugins",
+                `Could not restore plugin storage ${pluginId}/${key}`,
+                { error: error instanceof Error ? error.message : String(error) },
+            );
         }
     }
 

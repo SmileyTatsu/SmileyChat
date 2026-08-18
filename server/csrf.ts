@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 
 import { getCsrfTrustedOrigins, getFrontendPort } from "./config/runtime-config";
 import { HttpError, writeJsonAtomic } from "./http";
+import { logger } from "./logger";
 import { csrfSecretPath } from "./paths";
 import { isPrivateNetworkHostname } from "./private-network";
 
@@ -27,7 +28,8 @@ function announceRejectedOrigin(kind: "Origin" | "Referer", value: string, hint:
         if (oldest !== undefined) announcedRejectedOrigins.delete(oldest);
     }
     announcedRejectedOrigins.add(key);
-    console.warn(
+    logger.warn(
+        "security",
         `[csrf] Rejected request: ${kind} '${value}' is not in the trusted list. ${hint}`,
     );
 }

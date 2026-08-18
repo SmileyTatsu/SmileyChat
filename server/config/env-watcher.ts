@@ -10,6 +10,7 @@
 
 import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
 
+import { logger } from "../logger";
 import { getEnvFilePath, reloadRuntimeEnv, type EnvReloadResult } from "./env-loader";
 
 const RESTART_REQUIRED_KEYS = new Set<string>([
@@ -51,17 +52,24 @@ function logDiff(diff: EnvReloadResult) {
     }
 
     if (diff.added.length > 0) {
-        console.log(`[env-watcher] Added: ${diff.added.map(describeKey).join(", ")}`);
+        logger.info(
+            "server",
+            `[env-watcher] Added: ${diff.added.map(describeKey).join(", ")}`,
+        );
     }
     if (diff.updated.length > 0) {
-        console.log(`[env-watcher] Updated: ${diff.updated.map(describeKey).join(", ")}`);
+        logger.info(
+            "server",
+            `[env-watcher] Updated: ${diff.updated.map(describeKey).join(", ")}`,
+        );
     }
     if (diff.removed.length > 0) {
-        console.log(`[env-watcher] Removed: ${diff.removed.join(", ")}`);
+        logger.info("server", `[env-watcher] Removed: ${diff.removed.join(", ")}`);
     }
 
     if (restartKeys.length > 0) {
-        console.warn(
+        logger.warn(
+            "server",
             `[env-watcher] These variables changed but require a server restart to take effect: ${restartKeys.join(", ")}`,
         );
     }
@@ -77,11 +85,13 @@ export function startEnvWatcher(): EnvWatcherHandle {
     let stopped = false;
 
     if (!existsSync(envPath)) {
-        console.log(
+        logger.info(
+            "server",
             `[env-watcher] No .env file at ${envPath}; watcher will pick it up when created.`,
         );
     } else {
-        console.log(
+        logger.info(
+            "server",
             `[env-watcher] Watching ${envPath} for changes (security settings propagate without restart).`,
         );
     }
@@ -95,7 +105,8 @@ export function startEnvWatcher(): EnvWatcherHandle {
     ) => {
         if (stopped) return;
         if (curr.mtimeMs === 0 && prev.mtimeMs !== 0) {
-            console.warn(
+            logger.warn(
+                "server",
                 `[env-watcher] .env disappeared at ${envPath}; clearing previously loaded keys.`,
             );
         }
@@ -106,7 +117,9 @@ export function startEnvWatcher(): EnvWatcherHandle {
             const diff = reloadRuntimeEnv();
             logDiff(diff);
         } catch (error) {
-            console.error("[env-watcher] Failed to reload .env", error);
+            logger.error("server", "[env-watcher] Failed to reload .env", {
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
     };
 
@@ -124,7 +137,9 @@ export function startEnvWatcher(): EnvWatcherHandle {
                 logDiff(diff);
                 return diff;
             } catch (error) {
-                console.error("[env-watcher] Manual reload failed", error);
+                logger.error("server", "[env-watcher] Manual reload failed", {
+                    error: error instanceof Error ? error.message : String(error),
+                });
                 return null;
             }
         },

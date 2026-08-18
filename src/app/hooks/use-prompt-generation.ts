@@ -34,6 +34,7 @@ import {
     getPromptInjectors,
     getPromptMiddlewares,
 } from "#frontend/lib/plugins/registry";
+import { clientLogger } from "#frontend/lib/logging/client-logger";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { compilePresetMessages } from "#frontend/lib/presets/compile";
 import type { PresetFormattingSettings } from "#frontend/lib/presets/types";
@@ -511,15 +512,17 @@ export function usePromptGeneration({
     ): Promise<ToolResult> {
         const tool = allowedTools?.get(call.name);
 
-        console.info(
-            "[SmileyChat tool call]",
-            call.name,
-            call.arguments ?? call.argumentsText,
-        );
+        clientLogger.info(`[SmileyChat tool call] ${call.name}`, {
+            tool: call.name,
+            arguments: call.arguments ?? call.argumentsText,
+        });
 
         if (!tool) {
             const content = `Tool error: Tool "${call.name}" is not enabled for this chat.`;
-            console.error("[SmileyChat tool error]", call.name, content);
+            clientLogger.error(`[SmileyChat tool error] ${call.name}`, {
+                tool: call.name,
+                error: content,
+            });
             return {
                 toolCallId: call.id,
                 name: call.name,
@@ -532,7 +535,10 @@ export function usePromptGeneration({
 
         if (!args) {
             const content = `Tool error: Tool "${call.name}" arguments were not a JSON object.`;
-            console.error("[SmileyChat tool error]", call.name, content);
+            clientLogger.error(`[SmileyChat tool error] ${call.name}`, {
+                tool: call.name,
+                error: content,
+            });
             return {
                 toolCallId: call.id,
                 name: call.name,
@@ -545,7 +551,10 @@ export function usePromptGeneration({
 
         if (!snapshot) {
             const content = `Tool error: App state snapshot is not available for "${call.name}".`;
-            console.error("[SmileyChat tool error]", call.name, content);
+            clientLogger.error(`[SmileyChat tool error] ${call.name}`, {
+                tool: call.name,
+                error: content,
+            });
             return {
                 toolCallId: call.id,
                 name: call.name,
@@ -571,7 +580,10 @@ export function usePromptGeneration({
             }
 
             const content = `Tool error: ${messageFromError(error)}`;
-            console.error("[SmileyChat tool error]", call.name, error);
+            clientLogger.error(`[SmileyChat tool error] ${call.name}`, {
+                tool: call.name,
+                error: error instanceof Error ? error.message : String(error),
+            });
             return {
                 toolCallId: call.id,
                 name: call.name,
@@ -937,7 +949,7 @@ export function usePromptGeneration({
 
             return lorebooks.filter((item): item is Lorebook => Boolean(item));
         } catch (error) {
-            console.warn("Failed to load native LoreBooks:", error);
+            clientLogger.warn("Failed to load native LoreBooks", error);
             return [];
         }
     }

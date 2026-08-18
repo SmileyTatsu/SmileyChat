@@ -9,6 +9,7 @@ import {
 } from "#frontend/lib/plugins/profiles";
 
 import { json, writeJsonAtomic } from "./http";
+import { logger } from "./logger";
 import { pluginProfilesPath } from "./paths";
 
 type PluginProfilesResponse = {
@@ -30,7 +31,9 @@ export async function readPluginProfilesState(): Promise<PluginProfilesState> {
         const parsed = (await file.json()) as Partial<PluginProfilesState>;
         return normalizePluginProfilesState(parsed);
     } catch (error) {
-        console.warn("Could not parse plugin-profiles.json; using defaults:", error);
+        logger.warn("plugins", "Could not parse plugin-profiles.json; using defaults", {
+            error: error instanceof Error ? error.message : String(error),
+        });
         return defaultPluginProfilesState();
     }
 }

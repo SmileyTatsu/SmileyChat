@@ -1,5 +1,6 @@
 import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
 import type { Message, MessageRole } from "#frontend/types";
+import { createClientLogger } from "#frontend/lib/logging/client-logger";
 
 import { getRegexSettings, type RegexRule } from "./settings";
 
@@ -46,17 +47,15 @@ export function runRegexPass(text: string, options: RegexRunOptions): string {
                 replacementForMatch(args, rule),
             );
         } catch (error) {
-            if (options.logger) {
-                options.logger.warn(
-                    `Invalid regex rule "${rule.description || rule.pattern}"`,
-                    {
-                        pattern: rule.pattern,
-                        error: error instanceof Error ? error.message : String(error),
-                    },
-                );
-            } else {
-                console.warn(`Regex Replacer: Invalid rule "${rule.description}"`, error);
-            }
+            const fallbackLogger =
+                options.logger ?? createClientLogger("smiley-regex-replacer");
+            fallbackLogger.warn(
+                `Invalid regex rule "${rule.description || rule.pattern}"`,
+                {
+                    pattern: rule.pattern,
+                    error: error instanceof Error ? error.message : String(error),
+                },
+            );
             return current;
         }
     }, text);

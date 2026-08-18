@@ -17,6 +17,7 @@ import {
     isUnauthenticatedPrivateNetworkAllowed,
     isUnauthenticatedRemoteAllowed,
 } from "../config/runtime-config";
+import { logger } from "../logger";
 
 import {
     isInIpAllowlist,
@@ -71,7 +72,8 @@ function loadConfig(): ResolvedConfig | null {
     }
 
     if (cached.resolved && !cached.announced) {
-        console.log(
+        logger.info(
+            "security",
             `[basic-auth] HTTP Basic Auth enabled (realm="${cached.resolved.realm}", user="${cached.resolved.user}")`,
         );
         cached.announced = true;
@@ -160,7 +162,8 @@ export function checkBasicAuth(request: Request, url: URL, ip: string): Response
             return null;
         if (isUnauthenticatedRemoteAllowed()) return null;
         if (!lockdownAnnounced) {
-            console.warn(
+            logger.warn(
+                "security",
                 `[basic-auth] Refused non-loopback connection from ${ip}. No auth configured; set SMILEYCHAT_BASIC_AUTH_USER/PASS, SMILEYCHAT_IP_ALLOWLIST, or SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK/REMOTE.`,
             );
             lockdownAnnounced = true;

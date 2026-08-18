@@ -156,7 +156,7 @@ const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
 
-    console.log(`Received ${signal}; shutting down SmileyChat.`);
+    logger.info("server", `Received ${signal}; shutting down SmileyChat.`);
     envWatcher.stop();
     server?.stop(true);
     try {
@@ -165,7 +165,9 @@ const shutdown = async (signal: string) => {
             new Promise((resolve) => setTimeout(resolve, 4_500)),
         ]);
     } catch (error) {
-        console.error("Error during shutdown:", error);
+        logger.error("server", "Error during shutdown", {
+            error: error instanceof Error ? error.message : String(error),
+        });
     }
     process.exit(0);
 };
@@ -997,13 +999,21 @@ const listeningPort = server.port ?? port;
 
 console.log(`Open ${getBrowserUrl(hostname, listeningPort)} in your browser.`);
 console.log(`SmileyChat listening on ${formatListeningTarget(hostname, listeningPort)}.`);
+logger.info(
+    "server",
+    `SmileyChat listening on ${formatListeningTarget(hostname, listeningPort)} (browser URL: ${getBrowserUrl(hostname, listeningPort)})`,
+);
 if (shouldOpenBrowser()) {
     openBrowser(getBrowserUrl(hostname, listeningPort));
 } else {
-    console.log("[server] Browser launch is disabled by SMILEYCHAT_OPEN_BROWSER.");
+    logger.info(
+        "server",
+        "[server] Browser launch is disabled by SMILEYCHAT_OPEN_BROWSER.",
+    );
 }
 if (hostname === "0.0.0.0" || hostname === "::") {
-    console.log(
+    logger.info(
+        "server",
         `[server] Reachable from LAN, Tailscale, and Docker. Loopback (127.0.0.1) is always allowed; ` +
             `remote requests see the access-setup page until you set SMILEYCHAT_BASIC_AUTH_USER/PASS or ` +
             `SMILEYCHAT_IP_ALLOWLIST in .env (changes hot-reload, no restart).`,
@@ -1050,7 +1060,10 @@ async function reclaimPort(targetPort: number) {
         }
 
         for (const pid of pids) {
-            console.log(`Reclaiming port ${targetPort}: stopping process ${pid}.`);
+            logger.info(
+                "server",
+                `Reclaiming port ${targetPort}: stopping process ${pid}.`,
+            );
             try {
                 execFileSync("taskkill", ["/F", "/T", "/PID", pid], { stdio: "ignore" });
             } catch {
@@ -1074,7 +1087,8 @@ async function confirmPortReclaim(
     processLabel: string,
 ) {
     if (!process.stdin.isTTY || !process.stdout.isTTY) {
-        console.error(
+        logger.error(
+            "server",
             `Port ${targetPort} is in use by ${processLabel} ${pidList}. ` +
                 "No interactive terminal is available, so it will not be stopped.",
         );
@@ -1108,7 +1122,8 @@ async function startServerWithRetry<T>(create: () => T): Promise<T> {
             if (code !== "EADDRINUSE" || Date.now() >= retryDeadline) throw error;
 
             if (!notified) {
-                console.log(
+                logger.info(
+                    "server",
                     `Port ${port} is still being released; waiting briefly to retry…`,
                 );
                 notified = true;
@@ -1186,11 +1201,26 @@ function api<Path extends string, WebSocketData = undefined>(
                 pipeline.url,
                 pipeline.rateLimit,
             );
-            logger.warn(
-                "http",
-                `${request.method} ${pipeline.url.pathname} -> ${finalized.status}`,
-                { durationMs: Date.now() - startedAt, ip: pipeline.ip },
-            );
+            const status = finalized.status;
+            const errorDetails = {
+                durationMs: Date.now() - startedAt,
+                ip: pipeline.ip,
+                error: error instanceof Error ? error.message : String(error),
+                ...(error instanceof Error && error.stack ? { stack: error.stack } : {}),
+            };
+            if (status >= 500) {
+                logger.error(
+                    "http",
+                    `${request.method} ${pipeline.url.pathname} -> ${status}`,
+                    errorDetails,
+                );
+            } else {
+                logger.warn(
+                    "http",
+                    `${request.method} ${pipeline.url.pathname} -> ${status}`,
+                    errorDetails,
+                );
+            }
             return finalized;
         }
     };
@@ -1264,13 +1294,17 @@ function openBrowser(url: string) {
         });
         browser.unref();
         browser.once("error", (error) => {
-            console.warn(
+            logger.warn(
+                "server",
                 `[server] Could not open the browser automatically: ${error.message}`,
             );
         });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.warn(`[server] Could not open the browser automatically: ${message}`);
+        logger.warn(
+            "server",
+            `[server] Could not open the browser automatically: ${message}`,
+        );
     }
 }
 
