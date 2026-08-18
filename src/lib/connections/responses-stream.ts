@@ -12,6 +12,7 @@ export async function consumeResponsesApiStream(
     let message = "";
     let model: string | undefined;
     let reasoning = "";
+    let usage: Record<string, unknown> | undefined;
 
     await readJsonServerSentEvents<Record<string, unknown>>(
         response,
@@ -19,6 +20,12 @@ export async function consumeResponsesApiStream(
             model = extractResponsesModel(chunk) ?? model;
             const reasoningDelta = extractResponsesReasoningDelta(chunk);
             const delta = extractResponsesTextDelta(chunk);
+
+            if (isRecord(chunk.usage)) {
+                usage = { ...(usage ?? {}), ...chunk.usage };
+            } else if (isRecord(chunk.response) && isRecord(chunk.response.usage)) {
+                usage = { ...(usage ?? {}), ...chunk.response.usage };
+            }
 
             if (reasoningDelta) {
                 reasoning += reasoningDelta;
@@ -42,6 +49,7 @@ export async function consumeResponsesApiStream(
         provider: options.provider,
         model,
         ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
+        ...(usage ? { raw: { ...(model ? { model } : {}), usage } } : {}),
     };
 }
 

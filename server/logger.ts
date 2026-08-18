@@ -230,6 +230,9 @@ export function redact(value: string): string {
 export function redactObject(obj: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
+        if (value === undefined) {
+            continue;
+        }
         if (isSensitiveKey(key)) {
             result[key] = "[REDACTED]";
         } else if (value instanceof Error) {
@@ -372,6 +375,7 @@ function shouldLogFile(
 function formatDetail(detail?: Record<string, unknown>): string {
     if (!detail) return "";
     return Object.entries(detail)
+        .filter(([, value]) => value !== undefined)
         .map(([key, value]) => {
             if (isSensitiveKey(key)) {
                 return ` ${key}=[REDACTED]`;

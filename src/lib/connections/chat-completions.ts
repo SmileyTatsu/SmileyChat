@@ -204,6 +204,9 @@ export async function consumeChatCompletionStream(
     let reasoning = "";
     let reasoningDetails: unknown;
     let finishReason: string | undefined;
+    let usage:
+        | { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
+        | undefined;
     const images: string[] = [];
     const streamedToolCalls = new Map<
         number,
@@ -223,6 +226,9 @@ export async function consumeChatCompletionStream(
 
             model = chunk.model ?? model;
             finishReason = chunk.choices?.[0]?.finish_reason ?? finishReason;
+            if (chunk.usage) {
+                usage = { ...(usage ?? {}), ...chunk.usage };
+            }
 
             const token = chunk.choices?.[0]?.delta?.content;
             const reasoningToken =
@@ -294,6 +300,11 @@ export async function consumeChatCompletionStream(
         ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),
         ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
         ...(toolCalls.length ? { toolCalls } : {}),
+        raw: {
+            model,
+            finish_reason: finishReason,
+            ...(usage ? { usage } : {}),
+        },
     };
 }
 

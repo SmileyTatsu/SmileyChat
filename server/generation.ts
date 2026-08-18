@@ -240,6 +240,117 @@ export async function generateWithSavedConnection(
     });
 }
 
+export function extractUsageTokens(raw: unknown): {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+} {
+    if (!raw || typeof raw !== "object") return {};
+    const record = raw as Record<string, unknown>;
+
+    const usage =
+        record.usage && typeof record.usage === "object"
+            ? (record.usage as Record<string, unknown>)
+            : undefined;
+    if (usage) {
+        const prompt =
+            typeof usage.prompt_tokens === "number"
+                ? usage.prompt_tokens
+                : typeof usage.input_tokens === "number"
+                  ? usage.input_tokens
+                  : typeof usage.promptTokens === "number"
+                    ? usage.promptTokens
+                    : undefined;
+        const completion =
+            typeof usage.completion_tokens === "number"
+                ? usage.completion_tokens
+                : typeof usage.output_tokens === "number"
+                  ? usage.output_tokens
+                  : typeof usage.completionTokens === "number"
+                    ? usage.completionTokens
+                    : undefined;
+        const total =
+            typeof usage.total_tokens === "number"
+                ? usage.total_tokens
+                : typeof usage.totalTokens === "number"
+                  ? usage.totalTokens
+                  : prompt !== undefined && completion !== undefined
+                    ? prompt + completion
+                    : undefined;
+
+        return {
+            ...(prompt !== undefined ? { promptTokens: prompt } : {}),
+            ...(completion !== undefined ? { completionTokens: completion } : {}),
+            ...(total !== undefined ? { totalTokens: total } : {}),
+        };
+    }
+
+    const usageMetadata =
+        record.usageMetadata && typeof record.usageMetadata === "object"
+            ? (record.usageMetadata as Record<string, unknown>)
+            : undefined;
+    if (usageMetadata) {
+        const prompt =
+            typeof usageMetadata.promptTokenCount === "number"
+                ? usageMetadata.promptTokenCount
+                : undefined;
+        const completion =
+            typeof usageMetadata.candidatesTokenCount === "number"
+                ? usageMetadata.candidatesTokenCount
+                : undefined;
+        const total =
+            typeof usageMetadata.totalTokenCount === "number"
+                ? usageMetadata.totalTokenCount
+                : prompt !== undefined && completion !== undefined
+                  ? prompt + completion
+                  : undefined;
+
+        return {
+            ...(prompt !== undefined ? { promptTokens: prompt } : {}),
+            ...(completion !== undefined ? { completionTokens: completion } : {}),
+            ...(total !== undefined ? { totalTokens: total } : {}),
+        };
+    }
+
+    return {};
+}
+
+export function extractFinishReason(raw: unknown): string {
+    if (!raw || typeof raw !== "object") return "stop";
+    const record = raw as Record<string, unknown>;
+
+    if (typeof record.finish_reason === "string") return record.finish_reason;
+    if (typeof record.stop_reason === "string") {
+        const reason = record.stop_reason;
+        if (reason === "end_turn" || reason === "stop_sequence") return "stop";
+        if (reason === "max_tokens") return "length";
+        if (reason === "tool_use") return "tool_calls";
+        return reason;
+    }
+    if (
+        Array.isArray(record.choices) &&
+        record.choices[0] &&
+        typeof record.choices[0] === "object"
+    ) {
+        const choice = record.choices[0] as Record<string, unknown>;
+        if (typeof choice.finish_reason === "string") return choice.finish_reason;
+    }
+    if (
+        Array.isArray(record.candidates) &&
+        record.candidates[0] &&
+        typeof record.candidates[0] === "object"
+    ) {
+        const candidate = record.candidates[0] as Record<string, unknown>;
+        if (typeof candidate.finishReason === "string") {
+            const reason = candidate.finishReason.toLowerCase();
+            if (reason === "stop") return "stop";
+            if (reason === "max_tokens") return "length";
+            return reason;
+        }
+    }
+    return "stop";
+}
+
 function logGenerationDone(
     result: ChatGenerationResult,
     startedAt: number,
@@ -248,16 +359,9 @@ function logGenerationDone(
 ) {
     const durationMs = Date.now() - startedAt;
     const estimatedTokens = Math.max(1, Math.ceil(result.message.length / 4));
-    const raw =
-        result.raw && typeof result.raw === "object"
-            ? (result.raw as Record<string, unknown>)
-            : {};
-    const usage =
-        raw.usage && typeof raw.usage === "object"
-            ? (raw.usage as Record<string, unknown>)
-            : {};
-    const finishReason =
-        typeof raw.finish_reason === "string" ? raw.finish_reason : "stop";
+    const finishReason = extractFinishReason(result.raw);
+    const usageTokens = extractUsageTokens(result.raw);
+
     logger.info(
         "generate",
         `DONE ${finishReason === "length" ? "[TRUNCATED] " : ""}${mode}`,
@@ -270,9 +374,7 @@ function logGenerationDone(
                 (estimatedTokens / Math.max(durationMs / 1000, 0.001)).toFixed(1),
             ),
             finishReason,
-            promptTokens: usage.prompt_tokens,
-            completionTokens: usage.completion_tokens,
-            totalTokens: usage.total_tokens,
+            ...usageTokens,
         },
     );
 }

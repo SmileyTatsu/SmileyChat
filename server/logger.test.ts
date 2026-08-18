@@ -57,6 +57,33 @@ describe("logger", () => {
         expect((cleaned.headers as string[])[0]).toBe("Authorization: [REDACTED]");
     });
 
+    test("omits undefined fields from detail and formatted lines", () => {
+        const obj = {
+            durationMs: 123,
+            promptTokens: undefined,
+            completionTokens: undefined,
+            totalTokens: undefined,
+        };
+
+        const cleaned = redactObject(obj);
+        expect(cleaned).toEqual({ durationMs: 123 });
+        expect("promptTokens" in cleaned).toBe(false);
+
+        log("generate", "info", "DONE sse", {
+            durationMs: 123,
+            promptTokens: undefined,
+            completionTokens: undefined,
+            totalTokens: undefined,
+        });
+
+        const recent = getRecentLogs();
+        const last = recent[recent.length - 1];
+        expect(last?.formatted).toContain("durationMs=123");
+        expect(last?.formatted).not.toContain("promptTokens=undefined");
+        expect(last?.formatted).not.toContain("completionTokens=undefined");
+        expect(last?.formatted).not.toContain("totalTokens=undefined");
+    });
+
     test("redacts and formats Error instances in detail objects", () => {
         const error = new Error("Failed with secret sk-proj-1234567890abcdef123456");
         const obj = { error };

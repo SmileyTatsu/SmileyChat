@@ -182,4 +182,48 @@ describe("xAI connection adapter", () => {
             model: "grok-4.5",
         });
     });
+
+    test("captures usage in streamed response when provided", async () => {
+        globalThis.fetch = (async () =>
+            new Response(
+                [
+                    'data: {"model":"grok-4.5","choices":[{"delta":{"content":"Hi"}}]}',
+                    "",
+                    'data: {"model":"grok-4.5","choices":[{"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12}}',
+                    "",
+                    "data: [DONE]",
+                    "",
+                ].join("\n"),
+                {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "text/event-stream",
+                    },
+                },
+            )) as unknown as typeof fetch;
+        const adapter = createXAIConnection({
+            baseUrl: "https://api.x.ai/v1",
+            model: { source: "default", id: "grok-4.5" },
+        });
+
+        const result = await adapter.generate({
+            messages: [],
+            promptMessages: [{ role: "user", content: "Hello" }],
+            stream: true,
+        });
+
+        expect(result).toMatchObject({
+            message: "Hi",
+            provider: "xai",
+            model: "grok-4.5",
+            raw: {
+                finish_reason: "stop",
+                usage: {
+                    prompt_tokens: 10,
+                    completion_tokens: 2,
+                    total_tokens: 12,
+                },
+            },
+        });
+    });
 });
