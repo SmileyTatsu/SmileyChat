@@ -67,3 +67,21 @@ SmileyChat accepts common SillyTavern Instruct Template JSON and combo-preset fi
 Imported context-limit and maximum-token settings are not adopted: SmileyChat uses the active connection's local context-token budget to trim requests safely. Provider credentials, URLs, and models remain Connection settings.
 
 For the remaining compatibility differences, see [SillyTavern Compatibility](../reference/sillytavern-compatibility.md).
+
+---
+
+## Message Composer Formatting & Hotkeys
+
+When typing in the chat composer or editing an existing message swipe, SmileyChat supports standard formatting shortcuts and inline markdown tags:
+
+| Shortcut                                 | Format          | Output Syntax      |
+| ---------------------------------------- | --------------- | ------------------ | --- | ---- | --- | --- |
+| `Ctrl + B` (or `Cmd + B`)                | Bold            | `**text**`         |
+| `Ctrl + I` (or `Cmd + I`)                | Italic          | `*text*`           |
+| `Ctrl + U` (or `Cmd + U`)                | Underline       | `<u>text</u>`      |
+| `Ctrl + Shift + X`                       | Strikethrough   | `~~text~~`         |
+| `Ctrl + Shift + C`                       | Inline Code     | `` `text` ``       |
+| `Ctrl + Shift + K`                       | Code Block      | ` ```\ntext\n``` ` |
+| `Ctrl + Shift + P`                       | Spoiler         | `                  |     | text |     | `   |
+| `Ctrl + Shift + 9` or `Alt + Q`          | Blockquote      | `> text`           |
+| `Ctrl + Shift + 2` or `Ctrl + Shift + '` | Dialogue Quotes | `"text"`           |

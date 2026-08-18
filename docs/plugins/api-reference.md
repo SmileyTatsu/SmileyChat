@@ -50,7 +50,7 @@ These permissions are currently checked:
 | `api.chat.registerOutputMiddleware`                                            | `chat:output`           |
 | `api.chat.registerMessageUpdateMiddleware`                                     | `chat:message-update`   |
 | `api.presets.registerMacro`, `api.presets.resolveMacros`                       | `presets:macros`        |
-| `api.connections.registerProvider`                                             | `connections:providers` |
+| `api.connections.registerProvider`, `api.formatting.*`                         | `connections:providers` |
 | `api.tools.registerTool`                                                       | `tools:register`        |
 | `api.events.on`, `api.events.emit`                                             | `events`                |
 
@@ -1050,4 +1050,4 @@ These routes are used by the app and plugin runtime:
 - `DELETE /api/plugins/{pluginId}/storage/{key}`: delete one plugin-owned JSON value.
 - `POST /api/plugins/{pluginId}/logs`: submit client-side plugin telemetry and diagnostics to the server logger.
 
-Provider calls should still go directly from the frontend to the configured provider URL. Do not add local API proxy routes for provider model listing or generation unless the project direction changes.
+Provider adapter testing and plugin providers run directly in the browser, while normal chat generation is routed securely through the local server's `/api/generate` endpoint to protect API keys during remote access.

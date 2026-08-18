@@ -17,7 +17,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `orphaned/`: Safely holds data from deleted chats to prevent accidental loss.
     - `index.json`: Tracks active chats per character and session metadata.
 - `userData/personas/`: Your personas (user profiles).
-    - `cards/`: JSON files for each persona.
+    - `cards/`: JSON files for each persona (name, description, dialogue highlight color).
     - `assets/`: Avatar images for personas.
     - `orphaned/`: Safely holds data from deleted personas to prevent accidental loss.
 - `userData/presets/`: Contains generation presets (context templates, macros).

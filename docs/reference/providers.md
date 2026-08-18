@@ -97,7 +97,7 @@ Defaults and endpoints:
 - Text Generation API: `POST {baseUrl}/ai/generate` or `POST {baseUrl}/ai/generate-stream` (used for `llama-3-erato-v1`, `kayra-v1`)
 - Chat Completions API: `POST {baseUrl}/oa/v1/chat/completions` (used for `xialong-v1`, `glm-4-6`, and custom model IDs)
 
-SmileyChat utilizes the NovelAI `/oa/v1/chat/completions` endpoint for instruct-based models to ensure instruct formatting templates are automatically applied by the NovelAI backend. For raw text models like Erato or Kayra, it uses the `/ai/generate` API and applies magic `logit_bias` arrays to automatically ban unwanted artifacts like dinkus and asterisms. Small text files are inlined directly into the prompt as NovelAI has no general files API.
+SmileyChat utilizes the NovelAI `/oa/v1/chat/completions` endpoint for instruct-based models to ensure instruct formatting templates are automatically applied by the NovelAI backend. For raw text models like Erato or Kayra, it uses the `/ai/generate` API with the shared text-completion formatting layer (supporting Story Strings, Story anchor aliases, and budgeting against serialized prompts) and applies magic `logit_bias` arrays to automatically ban unwanted artifacts like dinkus and asterisms. Small text files are inlined directly into the prompt as NovelAI has no general files API.
 
 ## xAI
 
@@ -136,7 +136,9 @@ SmileyChat manages prompt size locally before sending generation requests:
 
 - Each connection profile defines a **Context Token Budget** used for trimming history.
 - Profiles can specify per-model context limits and manual overrides.
-- Token counting is profile-aware, using local token estimation to prevent exceeding the model's context window.
+- **Local Tokenizer Service**: Token counting is profile-aware using local tokenizers (`js-tiktoken` dynamic rank loading and model-specific tokenizers) to calculate exact token counts and prevent context window overflow.
+- **Tokenizer Auto-Detection & Override**: The tokenizer algorithm defaults to `Auto` (which detects algorithms based on provider and model ID: `o200k_base`, `cl100k_base`, `p50k_base`, `r50k_base`, `llama3`, `llama2`, `mistral`, `yi`, `gemma`, `deepseek`, `nerdstash`, or `heuristic`). You can also manually select a specific tokenizer in the connection profile settings.
+- Character description, scenario, and personality textareas in the sidebar provide live token counts powered by the active connection's tokenizer.
 
 ## Streaming
 

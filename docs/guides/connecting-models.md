@@ -115,6 +115,15 @@ For cloud APIs that use the standard OpenAI Chat Completions format:
 6. Click **Test Connection**.
 7. Click **Save**.
 
+## Advanced Profile Settings
+
+Each connection profile provides additional settings:
+
+- **Context Token Budget**: Sets the total token limit used to calculate prompt space and trim older chat history.
+- **Tokenizer Selection**: Controls how SmileyChat counts prompt tokens locally before generation.
+    - **Auto**: Automatically selects the best tokenizer based on the provider and model name (`o200k_base` for GPT-4o, `cl100k_base` for GPT-4, `llama3`, `llama2`, `mistral`, `gemma`, `deepseek`, etc.).
+    - **Manual override**: Explicitly assign a tokenizer algorithm if using custom or proxied model names.
+
 ## Connection vs. Preset
 
 Connections decide where requests go and which model is used. Presets decide how the prompt is structured and which generation settings are sent.

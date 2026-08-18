@@ -25,9 +25,10 @@ SmileyChat is a local-first frontend application designed for interacting with A
 - **Provider Support**: Connect your favorite AI backends. We feature dedicated adapters for OpenAI-compatible APIs, OpenRouter, Google AI / Gemini, Anthropic / Claude, NovelAI, xAI, and KoboldCPP (with native instruct templates). Includes built-in support for response streaming.
 - **Character Cards & SillyTavern Sync**: Easily import Tavern-style V1, V2, and V3 JSON or PNG character cards via drag-and-drop. Migrate or sync your local SillyTavern library (characters, chats, group chats, personas, presets, and lorebooks) directly from Settings. View and edit character details in a dedicated sidebar.
 - **Advanced Presets & Prompts**: Full support for custom preset formats, SillyTavern preset imports, and comprehensive macro replacement (`{{char}}`, `{{user}}`, `{{last_message}}`, etc.) to heavily customize AI behavior.
-- **Personas**: Create and manage multiple user personas. Switch between them instantly and set custom visual statuses (Online, Away, Do Not Disturb).
+- **Personas & Dialogue Highlights**: Create and manage multiple user personas with customizable dialogue highlight colors. Switch between them instantly and set custom visual statuses (Online, Away, Do Not Disturb).
+- **Composer Formatting & Hotkeys**: Write effortlessly with built-in markdown, spoiler tags (`||spoiler||`), and keyboard shortcuts (`Ctrl+B`, `Ctrl+I`, `Ctrl+U`, `Ctrl+Shift+X`, `Ctrl+Shift+P`, `Alt+Q`) in the message composer and editor.
 - **Attachments & Multimodality**: Support for image and file attachments during chats, integrating directly with multimodal providers.
-- **Context Management**: Intelligent context trimming based on your local provider's token limits to ensure prompt stability and prevent token overflow.
+- **Context Management & Local Tokenizer**: Profile-aware local token counting with automatic model detection (GPT-4o, Claude, Llama 3, Mistral, Gemma, DeepSeek) and manual overrides to ensure prompt stability and prevent token overflow.
 - **Diagnostics & Logging**: In-app real-time diagnostics viewer, live SSE log streaming, granular subsystem filters, automatic secret scrubbing, and daily rotating log files.
 - **Extensible Plugin System**: Customize and extend the core functionality using local ESM plugins.
 
