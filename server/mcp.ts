@@ -114,7 +114,11 @@ export async function autoConnectMcpServers() {
         const settings = await readSettings();
         const secrets = await readSecrets();
         const enabledServers = settings.servers.filter((server) => server.enabled);
-        logger.info("mcp", `Connecting to ${enabledServers.length} enabled server(s)`);
+        const serverNames = enabledServers.map((server) => server.name).join(", ");
+        logger.info(
+            "mcp",
+            `Connecting to ${enabledServers.length} enabled server(s)${serverNames ? ` (${serverNames})` : ""}`,
+        );
 
         for (const server of enabledServers) {
             connect(server, secrets.servers[server.id] ?? {}).catch((error) => {
@@ -220,7 +224,7 @@ export function resolveStdioCommand(commandParts: string[]): {
     if (!commandParts || !commandParts.length) return { command: "", args: [] };
 
     let command = commandParts[0]!;
-    const args = commandParts.slice(1);
+    let args = commandParts.slice(1);
     const lowerCmd = command.toLowerCase();
 
     if (lowerCmd === "npx" || lowerCmd === "npx.cmd") {
@@ -230,7 +234,12 @@ export function resolveStdioCommand(commandParts: string[]): {
                 : true;
         if (!hasNpx) {
             command = "bunx";
+            // bunx does not take -y / --yes flags used by npx
+            args = args.filter((arg) => arg !== "-y" && arg !== "--yes");
         }
+    } else if (lowerCmd === "bunx" || lowerCmd === "bunx.exe") {
+        // Strip -y / --yes if the user copied an npx command and changed npx to bunx
+        args = args.filter((arg) => arg !== "-y" && arg !== "--yes");
     } else if (lowerCmd === "node" || lowerCmd === "node.exe") {
         const hasNode =
             typeof Bun !== "undefined" && typeof Bun.which === "function"
@@ -275,6 +284,35 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
     connections.set(server.id, connection);
 
     const startedAt = Date.now();
+    logger.info("mcp", "Connecting", {
+        server: server.name,
+        transport: server.transport,
+        ...(server.transport === "stdio"
+            ? { command: `${resolved.command} ${resolved.args.join(" ")}`.trim() }
+            : { url: server.url }),
+    });
+
+    const slowTimer = setTimeout(() => {
+        if (connection.connecting) {
+            logger.warn(
+                "mcp",
+                `Server "${server.name}" is taking longer than expected to initialize`,
+                {
+                    server: server.name,
+                    transport: server.transport,
+                    elapsedMs: Date.now() - startedAt,
+                    ...(server.transport === "stdio"
+                        ? {
+                              command:
+                                  `${resolved.command} ${resolved.args.join(" ")}`.trim(),
+                          }
+                        : { url: server.url }),
+                },
+            );
+        }
+    }, 5_000);
+    slowTimer.unref?.();
+
     try {
         await client.connect(transport);
         client.setNotificationHandler(
@@ -299,6 +337,8 @@ async function connect(server: McpServerConfig, secrets: Record<string, string>)
         });
         await close(server.id);
         throw error;
+    } finally {
+        clearTimeout(slowTimer);
     }
 }
 

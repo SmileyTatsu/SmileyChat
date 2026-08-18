@@ -68,7 +68,28 @@ function scheduleConnectionRefresh(api: SmileyPluginApi) {
     }, 1_000);
 }
 
+let activeToolsSignature = "";
+
+function computeToolsSignature(servers: McpServerRecord[] = []): string {
+    return servers
+        .map(
+            (s) =>
+                `${s.id}:${s.connected ? "1" : "0"}:${s.tools
+                    .map((t) => t.name)
+                    .sort()
+                    .join(",")}`,
+        )
+        .sort()
+        .join(";");
+}
+
 async function refreshTools(api: SmileyPluginApi) {
+    const nextSignature = computeToolsSignature(latest?.servers);
+    if (nextSignature === activeToolsSignature) {
+        return;
+    }
+    activeToolsSignature = nextSignature;
+
     clearTools();
     let count = 0;
     for (const server of latest?.servers ?? []) {
@@ -86,6 +107,7 @@ async function refreshTools(api: SmileyPluginApi) {
 }
 
 function clearTools() {
+    activeToolsSignature = "";
     for (const dispose of disposers.splice(0)) dispose();
 }
 

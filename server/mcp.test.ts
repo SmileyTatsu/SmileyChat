@@ -10,21 +10,40 @@ describe("MCP stdio command resolution", () => {
         });
     });
 
-    test("resolves npx to bunx when running in Bun if npx is unavailable", () => {
+    test("resolves npx command and handles bunx fallback", () => {
         const result = resolveStdioCommand([
             "npx",
             "-y",
             "@modelcontextprotocol/server-memory",
         ]);
         const hasNpx = Boolean(Bun.which("npx"));
-        const expectedCommand = hasNpx ? "npx" : "bunx";
+        if (hasNpx) {
+            expect(result).toEqual({
+                command: "npx",
+                args: ["-y", "@modelcontextprotocol/server-memory"],
+            });
+        } else {
+            expect(result).toEqual({
+                command: "bunx",
+                args: ["@modelcontextprotocol/server-memory"],
+            });
+        }
+    });
+
+    test("strips -y and --yes when bunx is specified", () => {
+        const result = resolveStdioCommand([
+            "bunx",
+            "-y",
+            "--yes",
+            "@modelcontextprotocol/server-memory",
+        ]);
         expect(result).toEqual({
-            command: expectedCommand,
-            args: ["-y", "@modelcontextprotocol/server-memory"],
+            command: "bunx",
+            args: ["@modelcontextprotocol/server-memory"],
         });
     });
 
-    test("resolves node to bun when running in Bun if node is unavailable", () => {
+    test("resolves node command and handles bun fallback", () => {
         const result = resolveStdioCommand(["node", "./mcp-server.js"]);
         const hasNode = Boolean(Bun.which("node"));
         const expectedCommand = hasNode ? "node" : "bun";
