@@ -269,33 +269,65 @@ function finalizeAssembledPromptBudget({
             : itemCosts.reduce((total, cost) => total + cost, 0);
     let tokenEstimate = estimate();
 
-    while (tokenEstimate > tokenBudget) {
-        const index = firstRemovableHistoryIndex(output, protectedHistoryId);
+    // Text-completion templates are serialized as one string, so their exact
+    // token count is not additive per message. Use the exact count as the
+    // starting point, then cheaply subtract the already-computed item costs
+    // while pruning. We re-check once per pruning pass below to account for
+    // template boundary tokens without repeatedly serializing the full prompt.
+    const trimHistory = () => {
+        let removedAny = false;
 
-        if (index < 0) {
-            break;
+        while (tokenEstimate > tokenBudget) {
+            const index = firstRemovableHistoryIndex(output, protectedHistoryId);
+
+            if (index < 0) {
+                break;
+            }
+
+            tokenEstimate -= removeHistoryPromptAt(output, itemCosts, index);
+            removedAny = true;
         }
 
-        const removedCost = removeHistoryPromptAt(output, itemCosts, index);
-        tokenEstimate = isTextCompletion ? estimate() : tokenEstimate - removedCost;
+        return removedAny;
+    };
+
+    const trimInjections = () => {
+        let removedAny = false;
+
+        while (tokenEstimate > tokenBudget) {
+            const index = firstRemovableInjectionIndex(output);
+
+            if (index < 0) {
+                break;
+            }
+
+            tokenEstimate -= itemCosts[index] ?? 0;
+            output.splice(index, 1);
+            itemCosts.splice(index, 1);
+            removedAny = true;
+        }
+
+        return removedAny;
+    };
+
+    // For chat-completion payloads, item costs are the final estimate. Text
+    // completion needs an exact re-check after each batch because templates can
+    // add or remove boundary tokens as adjacent turns change.
+    while (trimHistory() && isTextCompletion) {
+        tokenEstimate = estimate();
     }
 
-    while (tokenEstimate > tokenBudget) {
-        const index = firstRemovableInjectionIndex(output);
-
-        if (index < 0) {
-            break;
-        }
-
-        const removedCost = itemCosts[index] ?? 0;
-        output.splice(index, 1);
-        itemCosts.splice(index, 1);
-        tokenEstimate = isTextCompletion ? estimate() : tokenEstimate - removedCost;
+    while (trimInjections() && isTextCompletion) {
+        tokenEstimate = estimate();
     }
 
     const promptMessages = output.map((item) => item.message);
 
-    assertPromptMessagesWithinBudget(promptMessages, tokenBudget, tokenContext);
+    if (isTextCompletion) {
+        assertTextCompletionPromptWithinBudget(tokenEstimate, tokenBudget);
+    } else {
+        assertPromptMessagesWithinBudget(promptMessages, tokenBudget, tokenContext);
+    }
 
     const selectedMessageIds = new Set(
         output
@@ -309,6 +341,19 @@ function finalizeAssembledPromptBudget({
         promptMessages,
         tokenEstimate,
     };
+}
+
+function assertTextCompletionPromptWithinBudget(
+    tokenEstimate: number,
+    tokenBudget: number,
+) {
+    if (tokenEstimate <= tokenBudget) {
+        return;
+    }
+
+    throw new Error(
+        `Estimated prompt size (${tokenEstimate.toLocaleString()} tokens) exceeds the active context token limit (${tokenBudget.toLocaleString()} tokens). Shorten the latest message, remove large images or prompt content, or increase the active connection context limit.`,
+    );
 }
 
 function serializeTextCompletionPrompt(
