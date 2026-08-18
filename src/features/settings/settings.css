@@ -1121,7 +1121,7 @@
     margin-bottom: 12px;
 }
 
-.preset-text-completion-banner strong {
+.preset-text-completion-banner-title {
     display: block;
     color: #f1d293;
     font-size: 0.86rem;
@@ -1131,6 +1131,10 @@
 .preset-text-completion-banner p {
     margin: 0;
     color: #d1b88a;
+}
+
+.preset-text-completion-banner p strong {
+    color: #f1d293;
 }
 
 .preset-text-completion-banner code {

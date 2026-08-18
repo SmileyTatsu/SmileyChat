@@ -644,7 +644,7 @@ export function PresetSettings({
                                 >
                                     <AlertTriangle size={18} />
                                     <div>
-                                        <strong>
+                                        <strong className="preset-text-completion-banner-title">
                                             Text Completion provider active (
                                             {getActiveConnectionProfile(
                                                 connectionSettings,
