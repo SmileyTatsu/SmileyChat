@@ -38,6 +38,20 @@ describe("smiley chat formatter", () => {
         expect(findNodeByType([quote], "em")).toBeTruthy();
     });
 
+    test("keeps dialogue highlighting when the entire quote is inside emphasis", () => {
+        setFormatterSettings(defaultFormatterSettings);
+
+        const nodes = renderFormatted(api, '*"Stay with me."*', {
+            highlightQuotes: true,
+            italicizeMessages: true,
+        });
+        const quote = findNodeByClass(nodes, "message-quoted-text");
+
+        expect(quote).toBeTruthy();
+        expect(textFromNode(quote)).toBe('"Stay with me."');
+        expect(findNodeByType(nodes, "em")).toBeTruthy();
+    });
+
     test("uses the resolved character color for quoted dialogue", () => {
         setFormatterSettings(defaultFormatterSettings);
 

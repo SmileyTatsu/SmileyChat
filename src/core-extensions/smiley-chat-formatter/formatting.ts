@@ -58,7 +58,11 @@ function renderInlineContent(
         ? parseXmlNodeList(api, markdownNodes)
         : markdownNodes;
 
-    return highlightPlainTextNodes(api, parsedNodes, formatting, dialogueColor);
+    // Most inline markdown fragments do not contain dialogue. Avoid walking their
+    // VNode trees and scanning them for quotes while a streamed message updates.
+    return formatting.highlightQuotes && containsQuoteCandidate(content)
+        ? highlightQuotedInlineNodes(api, parsedNodes, dialogueColor)
+        : parsedNodes;
 }
 
 function highlightPlainTextNodes(
@@ -79,7 +83,10 @@ function highlightQuotedInlineNodes(
     nodes: FormatterNode[],
     dialogueColor?: string,
 ) {
-    const plainText = nodes.map(textFromNode).join("");
+    // Keep the extracted text for the range-splitting pass below. Re-reading it
+    // would recursively walk the same VNode tree a second time.
+    const nodeTexts = nodes.map(textFromNode);
+    const plainText = nodeTexts.join("");
     const quoteRanges = findQuotedTextRanges(plainText);
 
     if (!quoteRanges.length) {
@@ -119,8 +126,9 @@ function highlightQuotedInlineNodes(
         output.push(node);
     };
 
-    for (const node of nodes) {
-        const nodeText = textFromNode(node);
+    for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) {
+        const node = nodes[nodeIndex];
+        const nodeText = nodeTexts[nodeIndex];
 
         if (!nodeText) {
             pushNode(node, isPositionInRange(cursor, quoteRanges, rangeIndex));
@@ -177,6 +185,10 @@ function highlightQuotedInlineNodes(
     flushQuote();
 
     return output.length ? output : nodes;
+}
+
+function containsQuoteCandidate(content: string) {
+    return content.includes('"') || content.includes("\u201c");
 }
 
 function isPositionInRange(
