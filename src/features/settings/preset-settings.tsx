@@ -23,10 +23,6 @@ import {
 } from "#frontend/lib/connections/config";
 import { isClaudeOpus47OrLaterModel } from "#frontend/lib/connections/generation-settings";
 import { parseInstructTemplateJson } from "#frontend/lib/instruct";
-import {
-    compilePresetContext,
-    compilePresetMessages,
-} from "#frontend/lib/presets/compile";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type {
     PresetFormattingSettings,
@@ -135,30 +131,6 @@ export function PresetSettings({
               }))
               .filter((item): item is OrderedPrompt => Boolean(item.prompt))
         : [];
-    const compiledContextPreview = useMemo(
-        () =>
-            compilePresetContext(activePreset, {
-                character,
-                messages,
-                mode,
-                personaDescription: persona.description,
-                personaName: persona.name,
-                userStatus,
-            }),
-        [activePreset, character, messages, mode, persona, userStatus],
-    );
-    const compiledMessagesPreview = useMemo(
-        () =>
-            compilePresetMessages(activePreset, {
-                character,
-                messages,
-                mode,
-                personaDescription: persona.description,
-                personaName: persona.name,
-                userStatus,
-            }),
-        [activePreset, character, messages, mode, persona, userStatus],
-    );
     const presetWarnings = useMemo(
         () => collectPresetWarnings(activePreset),
         [activePreset],
@@ -769,8 +741,13 @@ export function PresetSettings({
                     {activeView === "preview" && (
                         <PresetPreview
                             activeView={activePreviewView}
-                            compiledContextPreview={compiledContextPreview}
-                            compiledMessagesPreview={compiledMessagesPreview}
+                            preset={activePreset}
+                            character={character}
+                            messages={messages}
+                            mode={mode}
+                            personaDescription={persona.description}
+                            personaName={persona.name}
+                            userStatus={userStatus}
                         />
                     )}
                 </>
