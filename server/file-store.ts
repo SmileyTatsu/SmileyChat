@@ -108,8 +108,18 @@ export async function readFileBackedIndex<TIndex>({
 }
 
 export async function writeFileBackedIndex<TIndex>(indexPath: string, index: TIndex) {
-    fileBackedIndexCache.delete(indexPath);
     await writeJsonAtomic(indexPath, index);
+
+    const writtenFile = await fileStat(indexPath);
+
+    if (writtenFile) {
+        fileBackedIndexCache.set(indexPath, {
+            lastModified: writtenFile.mtimeMs,
+            index: cacheIndex(index),
+        });
+    } else {
+        fileBackedIndexCache.delete(indexPath);
+    }
 }
 
 async function readAndRepairExistingIndex<TIndex>({

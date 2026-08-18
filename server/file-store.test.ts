@@ -63,4 +63,29 @@ describe("file-backed collection reads", () => {
             await rm(directory, { recursive: true, force: true });
         }
     });
+
+    test("keeps a written index cached without triggering repair on the next read", async () => {
+        const directory = await mkdtemp(join(tmpdir(), "smileychat-file-store-"));
+        const indexPath = join(directory, "index.json");
+        let repairCount = 0;
+
+        try {
+            await writeFileBackedIndex(indexPath, { ids: ["one"] });
+
+            const index = await readFileBackedIndex({
+                indexPath,
+                normalizeIndex: (value: unknown) => value as { ids: string[] },
+                repairIndex: async (value) => {
+                    repairCount += 1;
+                    return value;
+                },
+                rebuildIndex: async () => ({ ids: [] }),
+            });
+
+            expect(index).toEqual({ ids: ["one"] });
+            expect(repairCount).toBe(0);
+        } finally {
+            await rm(directory, { recursive: true, force: true });
+        }
+    });
 });
