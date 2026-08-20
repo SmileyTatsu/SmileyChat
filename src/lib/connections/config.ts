@@ -10,8 +10,9 @@ import type { AnthropicConnectionConfig } from "./anthropic/types";
 import { defaultGoogleAIConfig, normalizeGoogleAIConfig } from "./google-ai/config";
 import type { GoogleAIConnectionConfig } from "./google-ai/types";
 import { defaultNovelAIConfig, normalizeNovelAIConfig } from "./novelai/config";
-import { novelAITextBaseUrl } from "./novelai/constants";
+import { novelAITextBaseUrl, usesNovelAITextGenerationApi } from "./novelai/constants";
 import type { NovelAIConnectionConfig } from "./novelai/types";
+import { getPluginConnectionProvider } from "../plugins/registry";
 import {
     defaultOpenAICompatibleConfig,
     normalizeOpenAICompatibleConfig,
@@ -506,6 +507,28 @@ export function isKoboldCPPProfile(
     profile: ConnectionProfile | undefined,
 ): profile is KoboldCPPConnectionProfile {
     return profile?.provider === "koboldcpp";
+}
+
+export function isTextCompletionProfile(profile: ConnectionProfile | undefined): boolean {
+    if (!profile) return false;
+    if (isKoboldCPPProfile(profile)) return true;
+    if (
+        isNovelAIProfile(profile) &&
+        usesNovelAITextGenerationApi(profile.config.model.id)
+    ) {
+        return true;
+    }
+    const pluginProvider = getPluginConnectionProvider(profile.provider);
+    if (pluginProvider) {
+        if (pluginProvider.promptMode === "text-completion") return true;
+        try {
+            const adapter = pluginProvider.createAdapter(profile);
+            if (adapter?.promptMode === "text-completion") return true;
+        } catch {
+            return false;
+        }
+    }
+    return false;
 }
 
 function normalizeProfileSettings(settings: Record<string, unknown>): ConnectionSettings {

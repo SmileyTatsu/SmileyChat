@@ -358,6 +358,7 @@ export function OptionsModal({
                         {activeCategory === "formatting" && (
                             <FormattingSettings
                                 character={character}
+                                connectionSettings={connectionSettings}
                                 messages={messages}
                                 preferences={preferences}
                                 onPreferencesChange={onPreferencesChange}

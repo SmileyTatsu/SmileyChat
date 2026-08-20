@@ -819,6 +819,7 @@ export function usePromptGeneration({
             group: isGroupChat(promptChat)
                 ? { memberIds: promptChat.members?.map((member) => member.characterId) }
                 : undefined,
+            isTextCompletion,
             messages: sourceGenerationMessages,
             mode: sourceMode,
             personaDescription: persona.description,
@@ -876,17 +877,32 @@ export function usePromptGeneration({
                   }
                 : {}),
         };
-        const formattedPromptMessages =
-            !isTextCompletion && formatting?.alwaysAddCharacterName
-                ? materializedPromptMessages.map((message) =>
-                      message.role === "assistant" && typeof message.content === "string"
-                          ? {
-                                ...message,
-                                content: `${promptCharacter.data.name}: ${message.content}`,
-                            }
-                          : message,
-                  )
-                : materializedPromptMessages;
+        const shouldCollapseNewlines =
+            !isTextCompletion && rawFormatting.collapseConsecutiveNewlines !== false;
+        const formattedPromptMessages = shouldCollapseNewlines
+            ? materializedPromptMessages.map((message) => {
+                  if (typeof message.content === "string") {
+                      return {
+                          ...message,
+                          content: message.content.replace(/\n{3,}/g, "\n\n"),
+                      };
+                  }
+                  if (Array.isArray(message.content)) {
+                      return {
+                          ...message,
+                          content: message.content.map((part) =>
+                              part.type === "text"
+                                  ? {
+                                        ...part,
+                                        text: part.text.replace(/\n{3,}/g, "\n\n"),
+                                    }
+                                  : part,
+                          ),
+                      };
+                  }
+                  return message;
+              })
+            : materializedPromptMessages;
         const effectiveStops = resolveEffectiveStopSequences({
             generation: activePreset?.generation,
             formatting,
@@ -894,6 +910,7 @@ export function usePromptGeneration({
             personaName: persona.name,
             groupMemberNames: promptChat.members?.map((member) => member.name) ?? [],
             modelId: profileModelId,
+            isTextCompletion,
         });
 
         return {

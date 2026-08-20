@@ -449,6 +449,27 @@ describe("compilePresetMessages", () => {
         expect(texts[0]).toBe("CUSTOM_OVERRIDE: You are Luna");
         expect(texts).toContain("Hello!");
     });
+
+    test("does not fall back to formatting system prompt for chat completion", () => {
+        const customPreset = presetWithPrompts([
+            prompt("main", "Assistant Instructions", ""),
+            prompt("chat-history", "Chat History", "{{chat_history}}"),
+        ]);
+        const chatContext = {
+            ...context({
+                messages: [message("msg-1", "user", "Hello!")],
+            }),
+            isTextCompletion: false,
+            formatting: {
+                systemPrompt: "BUNDLED_FORMATTING_SYSTEM_PROMPT",
+            },
+        };
+
+        const compiled = compilePresetMessages(customPreset, chatContext);
+        const texts = textContents(compiled);
+
+        expect(texts).not.toContain("BUNDLED_FORMATTING_SYSTEM_PROMPT");
+    });
 });
 
 function context(overrides: { messages?: Message[] } = {}) {

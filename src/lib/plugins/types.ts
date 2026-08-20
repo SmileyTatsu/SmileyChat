@@ -323,6 +323,7 @@ export type PluginConnectionProvider = {
     id: string;
     label: string;
     defaultConfig?: Record<string, unknown>;
+    promptMode?: "chat" | "text-completion";
     createAdapter: (profile: ConnectionProfile) => ConnectionAdapter;
     renderSettings?: (props: {
         profile: ConnectionProfile;

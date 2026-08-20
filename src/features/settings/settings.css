@@ -972,6 +972,43 @@
     min-width: 0;
 }
 
+.formatting-chat-mode-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid #5d4a24;
+    border-radius: 8px;
+    background: #211d16;
+    padding: 10px 12px;
+    color: #f0c879;
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.formatting-chat-mode-warning svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: #f0c879;
+}
+
+.formatting-chat-mode-warning p {
+    margin: 0;
+}
+
+.formatting-settings-panel label:has(:disabled) {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.formatting-settings-panel label.checkbox-field.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.preset-formatting-card.raw-prompt-preview.is-disabled {
+    opacity: 0.55;
+}
+
 .formatting-actions {
     display: flex;
     flex-wrap: wrap;

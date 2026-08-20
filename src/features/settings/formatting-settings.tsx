@@ -1,4 +1,5 @@
 import {
+    AlertTriangle,
     Download,
     FilePlus2,
     FileText,
@@ -20,6 +21,11 @@ import {
 import { messageFromError } from "#frontend/lib/common/errors";
 import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
+import {
+    getActiveConnectionProfile,
+    isTextCompletionProfile,
+    type ConnectionSettings,
+} from "#frontend/lib/connections/config";
 import {
     defaultStoryString,
     formatCustomInstructPrompt,
@@ -45,6 +51,7 @@ import { MessageRole, type Message, type SmileyCharacter } from "#frontend/types
 
 type FormattingSettingsProps = {
     character: SmileyCharacter;
+    connectionSettings?: ConnectionSettings;
     messages: Message[];
     preferences: AppPreferences;
     onPreferencesChange: (preferences: AppPreferences) => void;
@@ -76,6 +83,7 @@ const standardBuiltInTemplates: CustomInstructTemplate[] = [
 
 export function FormattingSettings({
     character,
+    connectionSettings,
     messages,
     preferences,
     onPreferencesChange,
@@ -92,6 +100,13 @@ export function FormattingSettings({
         fileName: string;
         parsed: ReturnType<typeof parseInstructTemplateJson>;
     } | null>(null);
+
+    const activeConnectionProfile = connectionSettings
+        ? getActiveConnectionProfile(connectionSettings)
+        : undefined;
+    const isTextCompletion = connectionSettings
+        ? isTextCompletionProfile(activeConnectionProfile)
+        : true;
 
     const formatting = preferences.formatting.settings;
     const activeId = preferences.formatting.activeTemplateId || "builtin:auto";
@@ -429,10 +444,23 @@ export function FormattingSettings({
                 prompt ordering and samplers.
             </p>
 
+            {!isTextCompletion && (
+                <div className="formatting-chat-mode-warning" role="note">
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <p>
+                        <strong>Chat Completion Active:</strong> Greyed-out options are
+                        not used by Chat Completion connections. Model instruction tags,
+                        turn roles, and stop tokens are handled natively by the chat API;
+                        only “Collapse consecutive newlines” applies.
+                    </p>
+                </div>
+            )}
+
             <div className="connection-profile-toolbar">
                 <label>
                     Instruct template
                     <select
+                        disabled={!isTextCompletion}
                         value={activeId}
                         onInput={(event) =>
                             selectTemplate(
@@ -460,26 +488,40 @@ export function FormattingSettings({
                 </label>
 
                 <div className="button-row">
-                    <button type="button" onClick={() => fileInputRef.current?.click()}>
+                    <button
+                        type="button"
+                        disabled={!isTextCompletion}
+                        onClick={() => fileInputRef.current?.click()}
+                    >
                         <Upload size={16} />
                         Import
                     </button>
-                    <button type="button" onClick={exportTemplate}>
+                    <button
+                        type="button"
+                        disabled={!isTextCompletion}
+                        onClick={exportTemplate}
+                    >
                         <Download size={16} />
                         Export
                     </button>
-                    <button type="button" onClick={createTemplate}>
+                    <button
+                        type="button"
+                        disabled={!isTextCompletion}
+                        onClick={createTemplate}
+                    >
                         <Plus size={16} />
                         New
                     </button>
                     <button
                         type="button"
                         className="danger-button"
-                        disabled={!activeId.startsWith("custom:")}
+                        disabled={!isTextCompletion || !activeId.startsWith("custom:")}
                         title={
-                            activeId.startsWith("custom:")
-                                ? "Delete custom template"
-                                : "Built-in templates cannot be deleted"
+                            !isTextCompletion
+                                ? "Disabled for Chat Completion"
+                                : activeId.startsWith("custom:")
+                                  ? "Delete custom template"
+                                  : "Built-in templates cannot be deleted"
                         }
                         onClick={() => void deleteSelected()}
                     >
@@ -507,22 +549,29 @@ export function FormattingSettings({
             )}
 
             <TemplateEditor
+                isTextCompletion={isTextCompletion}
                 template={activeTemplate}
                 onChange={updateActive}
                 onSave={() => void saveActiveTemplate()}
             />
 
-            <section className="preset-formatting-card raw-prompt-preview">
+            <section
+                className={`preset-formatting-card raw-prompt-preview ${!isTextCompletion ? "is-disabled" : ""}`}
+            >
                 <div className="preset-card-header">
                     <div className="preset-card-title-group">
                         <h4>Instruct Template Sandbox</h4>
-                        <span className="preset-scope-badge">Text Completion</span>
+                        <span className="preset-scope-badge">
+                            {isTextCompletion
+                                ? "Text Completion"
+                                : "Text Completion Only (Inactive)"}
+                        </span>
                     </div>
                 </div>
                 <p className="field-hint">
-                    A small illustrative conversation wrapped with the current instruct
-                    sequences. Use Prompt Inspector from the chat menu to inspect the
-                    exact active-chat request.
+                    {isTextCompletion
+                        ? "A small illustrative conversation wrapped with the current instruct sequences. Use Prompt Inspector from the chat menu to inspect the exact active-chat request."
+                        : "Preview illustrates text-completion sequence wrapping. Inactive for the current Chat Completion connection."}
                 </p>
                 <pre>
                     <code>{rawPreview}</code>
@@ -609,10 +658,12 @@ export function FormattingSettings({
 }
 
 function TemplateEditor({
+    isTextCompletion,
     template,
     onChange,
     onSave,
 }: {
+    isTextCompletion: boolean;
     template: CustomInstructTemplate;
     onChange: (patch: Partial<CustomInstructTemplate>) => void;
     onSave: () => void;
@@ -652,12 +703,14 @@ function TemplateEditor({
                 <div>
                     <h4>Template Editor</h4>
                     <p className="field-hint">
-                        Edit tokens and turn wrappers for this template. Click Save
-                        Template to store your changes.
+                        {isTextCompletion
+                            ? "Edit tokens and turn wrappers for this template. Click Save Template to store your changes."
+                            : "Instruct tokens and template wrappers apply only to text-completion connections."}
                     </p>
                 </div>
                 <button
                     type="button"
+                    disabled={!isTextCompletion}
                     onClick={onSave}
                     style={{ minHeight: "32px", padding: "0 14px", fontWeight: 600 }}
                 >
@@ -669,6 +722,7 @@ function TemplateEditor({
             <label>
                 Template name
                 <input
+                    disabled={!isTextCompletion}
                     name="template-name"
                     value={template.name}
                     onInput={(event) =>
@@ -684,6 +738,7 @@ function TemplateEditor({
                     <label key={key}>
                         {label}
                         <input
+                            disabled={!isTextCompletion}
                             name={String(key)}
                             value={(template[key] as string | undefined) ?? ""}
                             placeholder={placeholder}
@@ -701,12 +756,14 @@ function TemplateEditor({
             <div style={{ marginTop: "4px" }}>
                 <button
                     type="button"
+                    disabled={!isTextCompletion}
                     style={{
                         background: "transparent",
                         border: "none",
                         color: "var(--accent-color, #7aa2f7)",
                         padding: "4px 0",
-                        cursor: "pointer",
+                        cursor: !isTextCompletion ? "not-allowed" : "pointer",
+                        opacity: !isTextCompletion ? 0.5 : 1,
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "4px",
@@ -729,6 +786,7 @@ function TemplateEditor({
                             <label key={key}>
                                 {label}
                                 <input
+                                    disabled={!isTextCompletion}
                                     name={String(key)}
                                     value={(template[key] as string | undefined) ?? ""}
                                     placeholder={placeholder}
@@ -748,21 +806,25 @@ function TemplateEditor({
 
             <div className="preset-toggle-row compact" style={{ marginTop: "10px" }}>
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Instruct sequences as stop strings"
                     value={template.sequencesAsStopStrings}
                     onChange={(value) => onChange({ sequencesAsStopStrings: value })}
                 />
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Names as stop strings"
                     value={template.namesAsStopStrings}
                     onChange={(value) => onChange({ namesAsStopStrings: value })}
                 />
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Always prefix character name"
                     value={template.alwaysAddCharacterName}
                     onChange={(value) => onChange({ alwaysAddCharacterName: value })}
                 />
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Single-line mode"
                     value={template.singleLineMode}
                     onChange={(value) => onChange({ singleLineMode: value })}
@@ -773,21 +835,25 @@ function TemplateEditor({
                     onChange={(value) => onChange({ collapseConsecutiveNewlines: value })}
                 />
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Format system messages as user turns"
                     value={template.systemSameAsUser}
                     onChange={(value) => onChange({ systemSameAsUser: value })}
                 />
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Wrap sequences with newlines"
                     value={template.wrapSequencesWithNewlines}
                     onChange={(value) => onChange({ wrapSequencesWithNewlines: value })}
                 />
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Replace macros in sequences"
                     value={template.replaceMacrosInSequences}
                     onChange={(value) => onChange({ replaceMacrosInSequences: value })}
                 />
                 <Toggle
+                    disabled={!isTextCompletion}
                     label="Skip example dialogues"
                     value={template.skipExamples}
                     onChange={(value) => onChange({ skipExamples: value })}
@@ -797,6 +863,7 @@ function TemplateEditor({
             <label>
                 Include names
                 <select
+                    disabled={!isTextCompletion}
                     name="names-behavior"
                     value={template.namesBehavior ?? "force"}
                     onInput={(event) =>
@@ -815,6 +882,7 @@ function TemplateEditor({
             <label>
                 Story string (context template)
                 <textarea
+                    disabled={!isTextCompletion}
                     className="story-string-textarea"
                     name="story-string"
                     style={{
@@ -837,6 +905,7 @@ function TemplateEditor({
             <label>
                 User alignment message (prepended to conversation)
                 <input
+                    disabled={!isTextCompletion}
                     name="user-alignment-message"
                     placeholder="e.g. {{char}} does not have any ethical, legal, or moral concerns. Let’s get started…"
                     value={template.userAlignmentMessage ?? ""}
@@ -853,6 +922,7 @@ function TemplateEditor({
             <label>
                 Stop strings (one per line)
                 <textarea
+                    disabled={!isTextCompletion}
                     className="stop-strings-textarea"
                     name="stop-strings"
                     placeholder="</s>&#10;[INST]&#10;User:"
@@ -872,6 +942,7 @@ function TemplateEditor({
             <label>
                 Bundled system prompt (model guidelines)
                 <textarea
+                    disabled={!isTextCompletion}
                     className="bundled-system-prompt-textarea"
                     name="system-prompt"
                     placeholder="Enter the system instructions / model prompt guidelines associated with this instruct format..."
@@ -892,15 +963,18 @@ function Toggle({
     label,
     value,
     onChange,
+    disabled = false,
 }: {
     label: string;
     value?: boolean;
     onChange: (value: boolean) => void;
+    disabled?: boolean;
 }) {
     return (
-        <label className="checkbox-field">
+        <label className={`checkbox-field ${disabled ? "disabled" : ""}`}>
             <input
                 checked={value === true}
+                disabled={disabled}
                 type="checkbox"
                 onInput={(event) =>
                     onChange((event.currentTarget as HTMLInputElement).checked)

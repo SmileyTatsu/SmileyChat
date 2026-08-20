@@ -19,6 +19,7 @@ export function resolveEffectiveStopSequences({
     personaName,
     groupMemberNames = [],
     modelId = "",
+    isTextCompletion = true,
 }: {
     generation?: PresetGenerationSettings;
     formatting?: PresetFormattingSettings;
@@ -26,8 +27,12 @@ export function resolveEffectiveStopSequences({
     personaName?: string;
     groupMemberNames?: string[];
     modelId?: string;
+    isTextCompletion?: boolean;
 }) {
     const stops = new Set(generation?.stopSequences?.filter(Boolean) ?? []);
+    if (!isTextCompletion) {
+        return stops.size ? [...stops] : undefined;
+    }
     if (formatting?.singleLineMode) {
         stops.add("\n");
         stops.add("\n\n");

@@ -61,6 +61,7 @@ function macroContextForCompile(context: CompilePresetContext) {
         formatting: context.formatting,
         generation: context.generation,
         group: context.group,
+        isTextCompletion: context.isTextCompletion,
         metadata: context.metadata,
         messages: context.messages,
         mode: context.mode,
@@ -247,7 +248,9 @@ function contentForPrompt(prompt: PresetPrompt, context: CompilePresetContext) {
 
     const rawContent = prompt.content.trim()
         ? prompt.content
-        : isMainSystemPrompt && context.formatting?.systemPrompt?.trim()
+        : isMainSystemPrompt &&
+            context.isTextCompletion &&
+            context.formatting?.systemPrompt?.trim()
           ? context.formatting.systemPrompt.trim()
           : emptyDynamicPromptContent(prompt.id, context);
 

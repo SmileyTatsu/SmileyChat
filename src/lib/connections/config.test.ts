@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
     createConnectionProfile,
+    isTextCompletionProfile,
     normalizeConnectionSettings,
     sanitizeConnectionSettings,
     switchProfileProvider,
@@ -543,5 +544,33 @@ describe("connection config normalization", () => {
                 effort: "xhigh",
             },
         });
+    });
+
+    test("correctly identifies text completion vs chat completion profiles", () => {
+        expect(isTextCompletionProfile(createConnectionProfile("koboldcpp"))).toBe(true);
+
+        const novelAIErato = createConnectionProfile("novelai");
+        novelAIErato.config = {
+            ...novelAIErato.config,
+            model: { source: "default", id: "llama-3-erato-v1" },
+        };
+        expect(isTextCompletionProfile(novelAIErato)).toBe(true);
+
+        const novelAIInstruct = createConnectionProfile("novelai");
+        novelAIInstruct.config = {
+            ...novelAIInstruct.config,
+            model: { source: "default", id: "novelai-instruct-v1" },
+        };
+        expect(isTextCompletionProfile(novelAIInstruct)).toBe(false);
+
+        expect(
+            isTextCompletionProfile(createConnectionProfile("openai-compatible")),
+        ).toBe(false);
+        expect(isTextCompletionProfile(createConnectionProfile("openrouter"))).toBe(
+            false,
+        );
+        expect(isTextCompletionProfile(createConnectionProfile("google-ai"))).toBe(false);
+        expect(isTextCompletionProfile(createConnectionProfile("anthropic"))).toBe(false);
+        expect(isTextCompletionProfile(createConnectionProfile("xai"))).toBe(false);
     });
 });

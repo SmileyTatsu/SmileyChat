@@ -18,6 +18,7 @@ export type MacroContext = {
         joinPrefix?: string;
         memberIds?: string[];
     };
+    isTextCompletion?: boolean;
     messages: Message[];
     mode: ChatMode;
     generation?: PromptGenerationContext;
@@ -243,7 +244,7 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
 
     const lower = key.toLowerCase().replace(/[\s_-]+/g, "");
 
-    // System prompt alias that checks formatting.systemPrompt fallback if character prompt is empty
+    // System prompt alias that checks formatting.systemPrompt fallback if character prompt is empty (text completion only)
     if (
         lower === "system" ||
         lower === "systemprompt" ||
@@ -252,7 +253,9 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
     ) {
         const val =
             context.character.data.system_prompt?.trim() ||
-            context.formatting?.systemPrompt?.trim();
+            (context.isTextCompletion
+                ? context.formatting?.systemPrompt?.trim()
+                : undefined);
         if (val) {
             return { recursive: true, value: val };
         }
