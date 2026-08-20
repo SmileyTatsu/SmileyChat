@@ -15,6 +15,7 @@ import type {
     AnthropicReasoningDetails,
     AnthropicRuntimeConfig,
     AnthropicThinkingConfig,
+    AnthropicTextBlock,
 } from "./types";
 import { defaultOutputTokenLimit } from "../output-tokens";
 import {
@@ -31,7 +32,7 @@ export function createAnthropicMessageBody(
     const promptMessages = request.promptMessages?.length
         ? request.promptMessages
         : legacyMessages(request);
-    const { systemText, conversationMessages } =
+    const { systemMessages, conversationMessages } =
         splitLeadingSystemMessages(promptMessages);
     const messages = mergeConsecutiveMessages(
         conversationMessages
@@ -65,7 +66,9 @@ export function createAnthropicMessageBody(
     return {
         model: config.model.id,
         max_tokens: maxTokens,
-        ...(systemText ? { system: systemText } : {}),
+        ...(systemMessages.length
+            ? { system: systemMessages.map(toAnthropicSystemBlock) }
+            : {}),
         messages,
         stream: request.stream === true,
         ...(cacheControl ? { cache_control: cacheControl } : {}),
@@ -307,10 +310,47 @@ function toAnthropicMessage(message: ChatGenerationMessage): AnthropicMessage {
         };
     }
 
+    if (
+        message.role === ChatGenerationMessageRole.System ||
+        message.role === ChatGenerationMessageRole.Developer
+    ) {
+        return {
+            role: "user",
+            content: toAnthropicInjectedInstructionContent(message),
+        };
+    }
+
     return {
         role: message.role === ChatGenerationMessageRole.Assistant ? "assistant" : "user",
         content: generationMessageContentToAnthropicContent(message.content),
     };
+}
+
+function toAnthropicSystemBlock(text: string): AnthropicTextBlock {
+    return { type: "text", text };
+}
+
+/**
+ * The Messages API has no in-history system/developer role. Keep an injected
+ * instruction at its compiled position, but label it rather than presenting it
+ * as ordinary user-authored chat text.
+ */
+function toAnthropicInjectedInstructionContent(message: ChatGenerationMessage) {
+    const role =
+        message.role === ChatGenerationMessageRole.Developer ? "developer" : "system";
+    const open = `<smileychat-instruction role="${role}">`;
+    const close = "</smileychat-instruction>";
+    const content = generationMessageContentToAnthropicContent(message.content);
+
+    if (typeof content === "string") {
+        return `${open}\n${content}\n${close}`;
+    }
+
+    return [
+        { type: "text" as const, text: open },
+        ...content,
+        { type: "text" as const, text: close },
+    ];
 }
 
 function generationMessageContentToAnthropicContent(

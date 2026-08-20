@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { createAnthropicMessageBody, normalizeAnthropicResponse } from "./mappers";
 
 describe("Anthropic connection mappers", () => {
-    test("moves system and developer messages into top-level system", () => {
+    test("preserves leading system and developer prompt boundaries in top-level system", () => {
         const body = createAnthropicMessageBody(
             {
                 promptMessages: [
@@ -19,7 +19,10 @@ describe("Anthropic connection mappers", () => {
             },
         );
 
-        expect(body.system).toBe("System prompt\n\nDeveloper prompt");
+        expect(body.system).toEqual([
+            { type: "text", text: "System prompt" },
+            { type: "text", text: "Developer prompt" },
+        ]);
         expect(body.max_tokens).toBe(1000);
         expect(body.messages).toEqual([
             {
@@ -273,7 +276,7 @@ describe("Anthropic connection mappers", () => {
         expect(body.top_p).toBe(0.9);
     });
 
-    test("keeps interspersed system and developer messages in history", () => {
+    test("labels interspersed system and developer messages as injected instruction context", () => {
         const body = createAnthropicMessageBody(
             {
                 promptMessages: [
@@ -292,11 +295,12 @@ describe("Anthropic connection mappers", () => {
             },
         );
 
-        expect(body.system).toBe("System prompt");
+        expect(body.system).toEqual([{ type: "text", text: "System prompt" }]);
         expect(body.messages).toEqual([
             {
                 role: "user",
-                content: "First user\nAuthor note",
+                content:
+                    'First user\n<smileychat-instruction role="system">\nAuthor note\n</smileychat-instruction>',
             },
             {
                 role: "assistant",
@@ -304,7 +308,8 @@ describe("Anthropic connection mappers", () => {
             },
             {
                 role: "user",
-                content: "Depth instruction\nSecond user",
+                content:
+                    '<smileychat-instruction role="developer">\nDepth instruction\n</smileychat-instruction>\nSecond user',
             },
         ]);
     });

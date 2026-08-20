@@ -50,11 +50,13 @@ export type AnthropicPromptCachingConfig =
           ttl: "5m" | "1h";
       };
 
+export type AnthropicTextBlock = {
+    type: "text";
+    text: string;
+};
+
 export type AnthropicContentBlock =
-    | {
-          type: "text";
-          text: string;
-      }
+    | AnthropicTextBlock
     | {
           type: "image";
           source:
@@ -121,7 +123,11 @@ export type AnthropicCreateMessageRequest = {
         ttl?: "1h";
     };
     stop_sequences?: string[];
-    system?: string;
+    /**
+     * Anthropic accepts a string or ordered text blocks for its top-level system
+     * prompt. Keeping blocks separate preserves compiled preset boundaries.
+     */
+    system?: string | AnthropicTextBlock[];
     temperature?: number;
     thinking?:
         | {
