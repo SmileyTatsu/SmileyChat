@@ -1,4 +1,5 @@
 import { Braces, Check, Copy, FileText, ListTree, X } from "lucide-preact";
+import type { ComponentChildren } from "preact";
 import { useMemo, useState } from "preact/hooks";
 
 import type { DebugGenerationPayload } from "#frontend/app/hooks/use-prompt-generation";
@@ -11,13 +12,13 @@ type ChatPayloadModalProps = {
     onClose: () => void;
 };
 
-type PayloadTab = "structured" | "raw" | "json";
+type PayloadTab = "context" | "final" | "request";
 
 const maxInlineMediaStringLength = 240;
 const base64PreviewLength = 96;
 
 export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
-    const [activeTab, setActiveTab] = useState<PayloadTab>("structured");
+    const [activeTab, setActiveTab] = useState<PayloadTab>("context");
     const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
     const promptMessages = data.request.promptMessages ?? [];
     const payloadJson = useMemo(
@@ -28,6 +29,12 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
         typeof (data.payload as { prompt?: unknown }).prompt === "string"
             ? (data.payload as { prompt: string }).prompt
             : undefined;
+    const debug = data.request.debug;
+    const storyStringIncluded = promptMessages.some(
+        (message) => message.formattingKind === "story",
+    );
+    const trimmedBlockCount = debug?.trimmedMessageIds.length ?? 0;
+    const copyText = activeTab === "final" ? rawTextPrompt : payloadJson;
 
     return (
         <div className="plugin-modal-backdrop" role="presentation" onClick={onClose}>
@@ -40,7 +47,7 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
             >
                 <header>
                     <div>
-                        <h2 id="chat-payload-modal-title">Prompt payload</h2>
+                        <h2 id="chat-payload-modal-title">Prompt Inspector</h2>
                         {data.request.formattingTemplate && (
                             <p className="field-hint">
                                 Template:{" "}
@@ -52,24 +59,20 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                             </p>
                         )}
                         <p>
-                            {promptMessages.length} compiled prompt blocks
+                            {promptMessages.length} compiled blocks
                             {data.tokenContext
                                 ? ` · ${data.tokenContext.modelId || "unknown model"}`
                                 : ""}
                         </p>
                     </div>
                     <div className="chat-payload-header-actions">
-                        {(activeTab === "json" || activeTab === "raw") && (
+                        {(activeTab === "request" || activeTab === "final") && (
                             <button
                                 className="secondary-button chat-payload-copy-button"
                                 type="button"
                                 onClick={() =>
                                     void navigator.clipboard
-                                        .writeText(
-                                            activeTab === "raw"
-                                                ? (rawTextPrompt ?? "")
-                                                : payloadJson,
-                                        )
+                                        .writeText(copyText ?? "")
                                         .then(() => {
                                             setCopyState("copied");
                                             window.setTimeout(
@@ -95,9 +98,9 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                                     ? "Copy failed"
                                     : copyState === "copied"
                                       ? "Copied"
-                                      : activeTab === "raw"
-                                        ? "Copy Raw Prompt"
-                                        : "Copy JSON"}
+                                      : activeTab === "final"
+                                        ? "Copy Final Prompt"
+                                        : "Copy Request JSON"}
                             </button>
                         )}
                         <button
@@ -112,71 +115,128 @@ export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
                 </header>
 
                 <div className="plugin-modal-body chat-payload-modal-body">
+                    <div className="prompt-inspector-summary" aria-label="Prompt summary">
+                        <span className="prompt-inspector-summary-item">
+                            <strong>Context</strong>
+                            {storyStringIncluded
+                                ? "Story String compiled"
+                                : "Preset prompt order compiled"}
+                        </span>
+                        {debug && (
+                            <span className="prompt-inspector-summary-item">
+                                <strong>Tokens</strong>
+                                {debug.tokenEstimate.toLocaleString()} /{" "}
+                                {debug.budget.tokenBudget.toLocaleString()}
+                            </span>
+                        )}
+                        {trimmedBlockCount > 0 && (
+                            <span className="prompt-inspector-summary-item warning">
+                                <strong>Trimmed</strong>
+                                {trimmedBlockCount} history{" "}
+                                {trimmedBlockCount === 1 ? "turn" : "turns"}
+                            </span>
+                        )}
+                    </div>
                     <div className="chat-payload-tabs" role="tablist">
                         <button
                             type="button"
-                            className={activeTab === "structured" ? "active" : ""}
+                            className={activeTab === "context" ? "active" : ""}
                             role="tab"
-                            aria-selected={activeTab === "structured"}
-                            onClick={() => setActiveTab("structured")}
+                            aria-selected={activeTab === "context"}
+                            onClick={() => setActiveTab("context")}
                         >
                             <ListTree size={15} />
-                            Structured
+                            1. Context
                         </button>
                         {rawTextPrompt !== undefined && (
                             <button
                                 type="button"
-                                className={activeTab === "raw" ? "active" : ""}
+                                className={activeTab === "final" ? "active" : ""}
                                 role="tab"
-                                aria-selected={activeTab === "raw"}
-                                onClick={() => setActiveTab("raw")}
+                                aria-selected={activeTab === "final"}
+                                onClick={() => setActiveTab("final")}
                             >
                                 <FileText size={15} />
-                                Raw Text Prompt
+                                2. Final Prompt
                             </button>
                         )}
                         <button
                             type="button"
-                            className={activeTab === "json" ? "active" : ""}
+                            className={activeTab === "request" ? "active" : ""}
                             role="tab"
-                            aria-selected={activeTab === "json"}
-                            onClick={() => setActiveTab("json")}
+                            aria-selected={activeTab === "request"}
+                            onClick={() => setActiveTab("request")}
                         >
                             <Braces size={15} />
-                            JSON
+                            {rawTextPrompt === undefined ? "2" : "3"}. Request
                         </button>
                     </div>
 
-                    {activeTab === "structured" ? (
-                        <div className="chat-payload-block-list">
-                            {promptMessages.length ? (
-                                promptMessages.map((message, index) => (
-                                    <PromptMessageCard
-                                        key={`${message.role}-${index}`}
-                                        index={index}
-                                        message={message}
-                                        debugBlock={data.request.debug?.blocks[index]}
-                                        tokenContext={data.tokenContext}
-                                    />
-                                ))
-                            ) : (
-                                <p className="chat-payload-empty">
-                                    No prompt messages were compiled.
-                                </p>
-                            )}
-                        </div>
-                    ) : activeTab === "raw" ? (
-                        <pre className="chat-payload-json">
-                            <code>{rawTextPrompt}</code>
-                        </pre>
+                    {activeTab === "context" ? (
+                        <PromptInspectorStage
+                            title="Resolved context"
+                            description="The compiled Story String or preset blocks, including resolved macros, lore, injections, and retained chat history."
+                        >
+                            <div className="chat-payload-block-list">
+                                {promptMessages.length ? (
+                                    promptMessages.map((message, index) => (
+                                        <PromptMessageCard
+                                            key={`${message.role}-${index}`}
+                                            index={index}
+                                            message={message}
+                                            debugBlock={data.request.debug?.blocks[index]}
+                                            tokenContext={data.tokenContext}
+                                        />
+                                    ))
+                                ) : (
+                                    <p className="chat-payload-empty">
+                                        No prompt messages were compiled.
+                                    </p>
+                                )}
+                            </div>
+                        </PromptInspectorStage>
+                    ) : activeTab === "final" ? (
+                        <PromptInspectorStage
+                            title="Final text-completion prompt"
+                            description="The exact prompt string after the active instruct template has applied its model-specific turn tokens."
+                        >
+                            <pre className="chat-payload-json">
+                                <code>{rawTextPrompt}</code>
+                            </pre>
+                        </PromptInspectorStage>
                     ) : (
-                        <pre className="chat-payload-json">
-                            <code>{payloadJson}</code>
-                        </pre>
+                        <PromptInspectorStage
+                            title="Outbound provider request"
+                            description="The request body prepared for the active provider. Large inline media is shortened only for safe display."
+                        >
+                            <pre className="chat-payload-json">
+                                <code>{payloadJson}</code>
+                            </pre>
+                        </PromptInspectorStage>
                     )}
                 </div>
             </section>
         </div>
+    );
+}
+
+function PromptInspectorStage({
+    children,
+    description,
+    title,
+}: {
+    children: ComponentChildren;
+    description: string;
+    title: string;
+}) {
+    return (
+        <section className="prompt-inspector-stage" aria-label={title}>
+            <header>
+                <h3>{title}</h3>
+                <p>{description}</p>
+            </header>
+            {children}
+        </section>
     );
 }
 

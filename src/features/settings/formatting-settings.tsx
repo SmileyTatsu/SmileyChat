@@ -515,13 +515,14 @@ export function FormattingSettings({
             <section className="preset-formatting-card raw-prompt-preview">
                 <div className="preset-card-header">
                     <div className="preset-card-title-group">
-                        <h4>Live Raw Text Prompt Preview</h4>
+                        <h4>Instruct Template Sandbox</h4>
                         <span className="preset-scope-badge">Text Completion</span>
                     </div>
                 </div>
                 <p className="field-hint">
-                    Real-time prompt assembled from the active character and chat history
-                    with the active instruct tokens applied.
+                    A small illustrative conversation wrapped with the current instruct
+                    sequences. Use Prompt Inspector from the chat menu to inspect the
+                    exact active-chat request.
                 </p>
                 <pre>
                     <code>{rawPreview}</code>

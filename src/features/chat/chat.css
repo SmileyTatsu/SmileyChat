@@ -1164,8 +1164,38 @@
 
 .chat-payload-modal-body {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 12px;
+}
+
+.prompt-inspector-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.prompt-inspector-summary-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    border: 1px solid var(--line-subtle);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: #b8c0d0;
+    padding: 5px 9px;
+    font-size: 0.75rem;
+}
+
+.prompt-inspector-summary-item strong {
+    color: #e2e6ef;
+    font-size: 0.71rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.prompt-inspector-summary-item.warning {
+    border-color: rgba(229, 192, 123, 0.4);
+    color: #e5c07b;
 }
 
 .chat-payload-tabs {
@@ -1199,6 +1229,34 @@
 .chat-payload-tabs button.active {
     background: var(--surface-active);
     color: #ececf1;
+}
+
+.prompt-inspector-stage {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+    gap: 10px;
+}
+
+.prompt-inspector-stage > header {
+    display: grid;
+    gap: 3px;
+}
+
+.prompt-inspector-stage > header h3,
+.prompt-inspector-stage > header p {
+    margin: 0;
+}
+
+.prompt-inspector-stage > header h3 {
+    color: #e3e6ee;
+    font-size: 0.88rem;
+}
+
+.prompt-inspector-stage > header p {
+    color: #9fa7ba;
+    font-size: 0.78rem;
+    line-height: 1.4;
 }
 
 .chat-payload-block-list {

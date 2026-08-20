@@ -588,7 +588,7 @@ export function ChatDetailsPanel({
                     onClick={onShowDebugPayload}
                 >
                     <Terminal size={15} />
-                    Show payload
+                    Open Prompt Inspector
                 </button>
             </section>
         </div>
