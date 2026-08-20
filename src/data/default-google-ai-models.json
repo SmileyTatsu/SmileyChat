@@ -101,11 +101,6 @@
                 "id": "gemini-3-pro-image-preview",
                 "label": "gemini-3-pro-image-preview",
                 "contextTokenLimit": 131072
-            },
-            {
-                "id": "nano-banana-pro-preview",
-                "label": "nano-banana-pro-preview",
-                "contextTokenLimit": 131072
             }
         ]
     },
@@ -131,22 +126,7 @@
             {
                 "id": "gemini-2.5-flash-image",
                 "label": "gemini-2.5-flash-image",
-                "contextTokenLimit": 32768
-            },
-            {
-                "id": "gemini-2.5-flash-preview-tts",
-                "label": "gemini-2.5-flash-preview-tts",
-                "contextTokenLimit": 8192
-            },
-            {
-                "id": "gemini-2.5-pro-preview-tts",
-                "label": "gemini-2.5-pro-preview-tts",
-                "contextTokenLimit": 8192
-            },
-            {
-                "id": "gemini-2.5-computer-use-preview-10-2025",
-                "label": "gemini-2.5-computer-use-preview-10-2025",
-                "contextTokenLimit": 131072
+                "contextTokenLimit": 65536
             }
         ]
     },

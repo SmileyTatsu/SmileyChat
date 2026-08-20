@@ -11,7 +11,7 @@ export const defaultXAIConfig: XAIConnectionConfig = {
     maxCompletionTokens: defaultOutputTokenLimit,
     model: {
         source: "default",
-        id: defaultXAIModels[0]?.models[0]?.id ?? "grok-4.5",
+        id: defaultXAIModels[0]?.models[0]?.id ?? "grok-4.6",
     },
 };
 
@@ -55,5 +55,10 @@ function normalizeXAIReasoningConfig(value: unknown): XAIReasoningConfig | undef
 function normalizeXAIReasoningEffort(
     value: unknown,
 ): Extract<XAIReasoningConfig, { enabled: true }>["effort"] | undefined {
-    return value === "low" || value === "medium" || value === "high" ? value : undefined;
+    return value === "low" ||
+        value === "medium" ||
+        value === "high" ||
+        value === "xhigh"
+        ? value
+        : undefined;
 }

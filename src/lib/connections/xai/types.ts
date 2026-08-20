@@ -31,7 +31,7 @@ export type XAIReasoningConfig =
       }
     | {
           enabled: true;
-          effort?: "low" | "medium" | "high";
+          effort?: "low" | "medium" | "high" | "xhigh";
       };
 
 export type XAIChatMessage = {

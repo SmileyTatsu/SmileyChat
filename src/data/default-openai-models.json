@@ -6,17 +6,17 @@
             {
                 "id": "gpt-5.6-sol",
                 "label": "gpt-5.6-sol",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 1050000
             },
             {
                 "id": "gpt-5.6-terra",
                 "label": "gpt-5.6-terra",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 1050000
             },
             {
                 "id": "gpt-5.6-luna",
                 "label": "gpt-5.6-luna",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 1050000
             }
         ]
     },
@@ -27,12 +27,12 @@
             {
                 "id": "gpt-5.5",
                 "label": "gpt-5.5",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 1050000
             },
             {
                 "id": "gpt-5.5-2026-04-23",
                 "label": "gpt-5.5-2026-04-23",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 1050000
             }
         ]
     },
@@ -43,12 +43,12 @@
             {
                 "id": "gpt-5.4",
                 "label": "gpt-5.4",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 1050000
             },
             {
                 "id": "gpt-5.4-2026-03-05",
                 "label": "gpt-5.4-2026-03-05",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 1050000
             },
             {
                 "id": "gpt-5.4-mini",
@@ -79,7 +79,7 @@
             {
                 "id": "gpt-5.3-chat-latest",
                 "label": "gpt-5.3-chat-latest",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 128000
             }
         ]
     },

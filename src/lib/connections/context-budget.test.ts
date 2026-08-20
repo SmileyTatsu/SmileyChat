@@ -33,6 +33,19 @@ describe("effective connection context budget", () => {
         expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(31768);
     });
 
+    test("uses the checked-in xAI limit for grok-4.6", () => {
+        const profile = createConnectionProfile("xai");
+        profile.config.model = { source: "default", id: "grok-4.6" };
+        profile.contextTokenBudget = 600_000;
+
+        expect(getEffectiveContextTokenBudget(profile)).toMatchObject({
+            source: "local-model",
+            totalTokenLimit: 500_000,
+            reservedOutputTokens: 1000,
+            tokenBudget: 499_000,
+        });
+    });
+
     test("falls back to 2M for API-only and custom models", () => {
         const profile = createConnectionProfile("xai");
         profile.config.model = { source: "api", id: "grok-private-preview" };

@@ -153,6 +153,7 @@ export function XAIConnection({
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
+                        <option value="xhigh">Extra High (xhigh)</option>
                     </select>
                 </label>
                 <p className="field-hint">

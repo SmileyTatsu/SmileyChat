@@ -511,4 +511,37 @@ describe("connection config normalization", () => {
             },
         });
     });
+
+    test("preserves xhigh xAI reasoning effort", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-xai",
+            profiles: [
+                {
+                    id: "profile-xai",
+                    name: "xAI",
+                    provider: "xai",
+                    config: {
+                        model: {
+                            source: "default",
+                            id: "grok-4.6",
+                        },
+                        reasoning: {
+                            enabled: true,
+                            effort: "xhigh",
+                        },
+                    },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.config).toMatchObject({
+            reasoning: {
+                enabled: true,
+                effort: "xhigh",
+            },
+        });
+    });
 });

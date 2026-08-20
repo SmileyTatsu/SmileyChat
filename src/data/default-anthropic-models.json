@@ -69,7 +69,7 @@
             {
                 "id": "claude-haiku-4-5-20251001",
                 "label": "Claude Haiku 4.5",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 200000
             }
         ]
     }

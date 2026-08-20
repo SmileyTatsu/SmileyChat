@@ -106,11 +106,11 @@ Use the xAI provider to access Grok directly.
 Defaults and endpoints:
 
 - Base URL: `https://api.x.ai/v1`
-- Default model: `grok-4.5`
+- Default model: `grok-4.6`
 - Model loading: `GET {baseUrl}/models`
 - Normal Generation: `POST {baseUrl}/chat/completions`
 
-When non-image files are attached, xAI uploads them with `purpose=assistants` and sends the turn through `POST {baseUrl}/responses`. The panel supports model catalog loading, a custom model ID, max completion tokens, and optional `reasoning_effort` values (`low`, `medium`, and `high`).
+When non-image files are attached, xAI uploads them with `purpose=assistants` and sends the turn through `POST {baseUrl}/responses`. The panel supports model catalog loading, a custom model ID, max completion tokens, and optional `reasoning_effort` values (`low`, `medium`, `high`, and `xhigh`).
 
 ## KoboldCPP
 
