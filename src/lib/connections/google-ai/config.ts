@@ -2,6 +2,7 @@ import defaultGoogleAIModels from "#frontend/data/default-google-ai-models.json"
 
 import { isRecord } from "../../common/guards";
 import { stringOrUndefined } from "../config-utils";
+import { trimTrailingSlash } from "../http";
 import { defaultOutputTokenLimit, normalizeOutputTokenLimit } from "../output-tokens";
 
 import type { GoogleAIConnectionConfig, GoogleAIThinkingConfig } from "./types";
@@ -15,6 +16,43 @@ export const defaultGoogleAIConfig: GoogleAIConnectionConfig = {
     },
 };
 
+export function normalizeGoogleAIBaseUrl(value: unknown): string {
+    if (typeof value !== "string" || !value.trim()) {
+        return defaultGoogleAIConfig.baseUrl;
+    }
+
+    const trimmed = trimTrailingSlash(value.trim());
+    if (!trimmed) {
+        return defaultGoogleAIConfig.baseUrl;
+    }
+
+    try {
+        const url = new URL(trimmed);
+        const path = trimTrailingSlash(url.pathname);
+
+        if (/\/v1$/i.test(path)) {
+            url.pathname = path.replace(/\/v1$/i, "/v1beta");
+            return trimTrailingSlash(url.toString());
+        }
+
+        if (/\/v\d+(?:(?:beta|alpha)\d*)?$/i.test(path)) {
+            url.pathname = path;
+            return trimTrailingSlash(url.toString());
+        }
+
+        url.pathname = path ? `${path}/v1beta` : "/v1beta";
+        return trimTrailingSlash(url.toString());
+    } catch {
+        if (/\/v1$/i.test(trimmed)) {
+            return trimmed.replace(/\/v1$/i, "/v1beta");
+        }
+        if (/\/v\d+(?:(?:beta|alpha)\d*)?$/i.test(trimmed)) {
+            return trimmed;
+        }
+        return `${trimmed}/v1beta`;
+    }
+}
+
 export function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfig {
     const config = isRecord(value) ? value : {};
     const model = isRecord(config.model) ? config.model : {};
@@ -23,10 +61,7 @@ export function normalizeGoogleAIConfig(value: unknown): GoogleAIConnectionConfi
     const thinking = normalizeGoogleAIThinkingConfig(config.thinking);
 
     return {
-        baseUrl:
-            typeof config.baseUrl === "string" && config.baseUrl.trim()
-                ? config.baseUrl
-                : defaultGoogleAIConfig.baseUrl,
+        baseUrl: normalizeGoogleAIBaseUrl(config.baseUrl),
         apiKey: stringOrUndefined(config.apiKey),
         maxOutputTokens: normalizeOutputTokenLimit(config.maxOutputTokens, 1),
         model: {

@@ -1,4 +1,5 @@
-import { fetchProviderApi, trimTrailingSlash } from "../http";
+import { fetchProviderApi } from "../http";
+import { normalizeGoogleAIBaseUrl } from "./config";
 
 import type { GoogleAIListModelsResponse, GoogleAIModel } from "./types";
 
@@ -9,7 +10,8 @@ export async function listGoogleAIModels({
     apiKey?: string;
     baseUrl: string;
 }): Promise<GoogleAIModel[]> {
-    const displayUrl = `${trimTrailingSlash(baseUrl)}/models`;
+    const normalizedBaseUrl = normalizeGoogleAIBaseUrl(baseUrl);
+    const displayUrl = `${normalizedBaseUrl}/models`;
     const targetUrl = withApiKey(displayUrl, apiKey);
     const data = await fetchProviderApi<GoogleAIListModelsResponse>(targetUrl, {
         errorPrefix: "Google AI model list failed",

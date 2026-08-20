@@ -2,6 +2,7 @@ import { filePartToBlob, mapFileContentParts } from "../images";
 import { safeResponseText, trimTrailingSlash } from "../http";
 import type { ChatGenerationRequest, ConnectionAdapter } from "../types";
 
+import { normalizeGoogleAIBaseUrl } from "./config";
 import { createGoogleAIGenerateBody, normalizeGoogleAIResponse } from "./mappers";
 import { readGoogleAIStream } from "./streaming";
 import type { GoogleAIGenerateContentResponse, GoogleAIRuntimeConfig } from "./types";
@@ -148,9 +149,8 @@ export function createGoogleAIGenerateUrl(
     stream: boolean,
 ) {
     const method = stream ? "streamGenerateContent" : "generateContent";
-    const target = new URL(
-        `${trimTrailingSlash(config.baseUrl)}/${modelResourceName(config.model.id)}:${method}`,
-    );
+    const baseUrl = normalizeGoogleAIBaseUrl(config.baseUrl);
+    const target = new URL(`${baseUrl}/${modelResourceName(config.model.id)}:${method}`);
 
     if (stream) {
         target.searchParams.set("alt", "sse");
@@ -248,15 +248,16 @@ async function uploadGoogleAIFile(
 }
 
 export function googleAIUploadBaseUrl(baseUrl: string) {
-    const trimmed = trimTrailingSlash(baseUrl);
+    const normalized = normalizeGoogleAIBaseUrl(baseUrl);
     try {
-        const url = new URL(trimmed);
-        const versionMatch = url.pathname.match(/\/(v\d+(?:beta)?)$/i);
+        const url = new URL(normalized);
+        const versionMatch = url.pathname.match(/\/(v\d+(?:(?:beta|alpha)\d*)?)$/i);
         const version = versionMatch?.[1] ?? "v1beta";
-        url.pathname = `/upload/${version}`;
+        const basePath = url.pathname.replace(/\/(v\d+(?:(?:beta|alpha)\d*)?)$/i, "");
+        url.pathname = `${basePath}/upload/${version}`;
         return trimTrailingSlash(url.toString());
     } catch {
-        return `${trimmed.replace(/\/(v\d+(?:beta)?)$/i, "")}/upload/v1beta`;
+        return `${normalized.replace(/\/(v\d+(?:(?:beta|alpha)\d*)?)$/i, "")}/upload/v1beta`;
     }
 }
 
@@ -298,7 +299,7 @@ async function waitForGoogleAIFile(
 }
 
 async function getGoogleAIFile(config: GoogleAIRuntimeConfig, fileName: string) {
-    const target = new URL(`${trimTrailingSlash(config.baseUrl)}/${fileName}`);
+    const target = new URL(`${normalizeGoogleAIBaseUrl(config.baseUrl)}/${fileName}`);
     if (config.apiKey?.trim()) {
         target.searchParams.set("key", config.apiKey.trim());
     }
@@ -339,7 +340,7 @@ function delay(ms: number) {
 async function deleteGoogleAIFiles(config: GoogleAIRuntimeConfig, fileNames: string[]) {
     await Promise.allSettled(
         fileNames.map((name) => {
-            const target = new URL(`${trimTrailingSlash(config.baseUrl)}/${name}`);
+            const target = new URL(`${normalizeGoogleAIBaseUrl(config.baseUrl)}/${name}`);
             if (config.apiKey?.trim()) {
                 target.searchParams.set("key", config.apiKey.trim());
             }

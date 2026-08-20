@@ -1,11 +1,86 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createGoogleAIConnection, googleAIUploadBaseUrl } from "./adapter";
+import {
+    createGoogleAIConnection,
+    createGoogleAIGenerateUrl,
+    googleAIUploadBaseUrl,
+} from "./adapter";
+import { normalizeGoogleAIBaseUrl } from "./config";
 
 const originalFetch = globalThis.fetch;
 
 describe("Google AI connection adapter", () => {
     afterEach(() => {
         globalThis.fetch = originalFetch;
+    });
+
+    test("normalizes base URLs by appending /v1beta or upgrading /v1", () => {
+        expect(normalizeGoogleAIBaseUrl("")).toBe(
+            "https://generativelanguage.googleapis.com/v1beta",
+        );
+        expect(normalizeGoogleAIBaseUrl(undefined)).toBe(
+            "https://generativelanguage.googleapis.com/v1beta",
+        );
+        expect(
+            normalizeGoogleAIBaseUrl("https://generativelanguage.googleapis.com"),
+        ).toBe("https://generativelanguage.googleapis.com/v1beta");
+        expect(
+            normalizeGoogleAIBaseUrl("https://generativelanguage.googleapis.com/"),
+        ).toBe("https://generativelanguage.googleapis.com/v1beta");
+        expect(
+            normalizeGoogleAIBaseUrl("https://generativelanguage.googleapis.com/v1"),
+        ).toBe("https://generativelanguage.googleapis.com/v1beta");
+        expect(
+            normalizeGoogleAIBaseUrl("https://generativelanguage.googleapis.com/v1/"),
+        ).toBe("https://generativelanguage.googleapis.com/v1beta");
+        expect(
+            normalizeGoogleAIBaseUrl("https://generativelanguage.googleapis.com/v1beta"),
+        ).toBe("https://generativelanguage.googleapis.com/v1beta");
+        expect(
+            normalizeGoogleAIBaseUrl("https://generativelanguage.googleapis.com/v1alpha"),
+        ).toBe("https://generativelanguage.googleapis.com/v1alpha");
+        expect(normalizeGoogleAIBaseUrl("https://example.com/custom/google-ai")).toBe(
+            "https://example.com/custom/google-ai/v1beta",
+        );
+        expect(normalizeGoogleAIBaseUrl("https://example.com/custom/google-ai/")).toBe(
+            "https://example.com/custom/google-ai/v1beta",
+        );
+        expect(normalizeGoogleAIBaseUrl("https://example.com/custom/google-ai/v1")).toBe(
+            "https://example.com/custom/google-ai/v1beta",
+        );
+        expect(normalizeGoogleAIBaseUrl("https://example.com/custom/google-ai/v1/")).toBe(
+            "https://example.com/custom/google-ai/v1beta",
+        );
+        expect(
+            normalizeGoogleAIBaseUrl("https://example.com/custom/google-ai/v1beta"),
+        ).toBe("https://example.com/custom/google-ai/v1beta");
+        expect(
+            normalizeGoogleAIBaseUrl("https://example.com/custom/google-ai/v1alpha"),
+        ).toBe("https://example.com/custom/google-ai/v1alpha");
+    });
+
+    test("creates generate URLs with normalized /v1beta path", () => {
+        const url = createGoogleAIGenerateUrl(
+            {
+                baseUrl: "https://generativelanguage.googleapis.com",
+                model: { source: "default", id: "gemini-3.1-pro-preview" },
+            },
+            false,
+        );
+        expect(url).toBe(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
+        );
+
+        const urlFromV1 = createGoogleAIGenerateUrl(
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1",
+                model: { source: "default", id: "gemini-3.1-pro-preview" },
+                apiKey: "my-key",
+            },
+            true,
+        );
+        expect(urlFromV1).toBe(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:streamGenerateContent?alt=sse&key=my-key",
+        );
     });
 
     test("streams thought summaries and answer tokens separately", async () => {
@@ -72,8 +147,19 @@ describe("Google AI connection adapter", () => {
         expect(
             googleAIUploadBaseUrl("https://generativelanguage.googleapis.com/v1beta"),
         ).toBe("https://generativelanguage.googleapis.com/upload/v1beta");
+        expect(googleAIUploadBaseUrl("https://generativelanguage.googleapis.com")).toBe(
+            "https://generativelanguage.googleapis.com/upload/v1beta",
+        );
         expect(googleAIUploadBaseUrl("https://example.com/v1")).toBe(
-            "https://example.com/upload/v1",
+            "https://example.com/upload/v1beta",
+        );
+        expect(
+            googleAIUploadBaseUrl(
+                "https://generativelanguage.googleapis.com/custom/path",
+            ),
+        ).toBe("https://generativelanguage.googleapis.com/custom/path/upload/v1beta");
+        expect(googleAIUploadBaseUrl("https://example.com/v1alpha")).toBe(
+            "https://example.com/upload/v1alpha",
         );
     });
 });
