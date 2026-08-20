@@ -89,6 +89,10 @@ Supported shared parameter names are:
 - `presencePenalty`
 - `frequencyPenalty`
 
+Google AI models can additionally declare:
+
+- `thinking` — includes `supported`, optional `default` (e.g. `On (medium)`, `On (high)`, `On (minimal)`, `On`, `Off`), and `levels` (supported discrete levels such as `["low", "medium", "high"]`, `["minimal", "low", "medium", "high"]`, `["minimal", "high"]`, or `["low", "high"]`).
+
 NovelAI native-generation models can additionally declare:
 
 - `typicalP`

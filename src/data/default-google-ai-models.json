@@ -21,6 +21,11 @@
                     "topK": {
                         "supported": false,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (medium)",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             }
@@ -48,6 +53,11 @@
                     "topK": {
                         "supported": false,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (medium)",
+                        "levels": ["minimal", "low", "medium", "high"]
                     }
                 }
             }
@@ -80,6 +90,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (medium)",
+                        "levels": ["minimal", "low", "medium", "high"]
                     }
                 }
             },
@@ -106,6 +121,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (minimal)",
+                        "levels": ["minimal", "low", "medium", "high"]
                     }
                 }
             }
@@ -138,6 +158,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (high)",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             },
@@ -164,6 +189,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (high)",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             },
@@ -190,6 +220,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (minimal)",
+                        "levels": ["minimal", "low", "medium", "high"]
                     }
                 }
             },
@@ -216,6 +251,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (minimal)",
+                        "levels": ["minimal", "low", "medium", "high"]
                     }
                 }
             },
@@ -242,6 +282,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             },
@@ -268,6 +311,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             },
@@ -294,6 +340,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (minimal)",
+                        "levels": ["minimal", "high"]
                     }
                 }
             },
@@ -320,6 +371,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             }
@@ -352,6 +406,42 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (high)",
+                        "levels": ["minimal", "low", "medium", "high"]
+                    }
+                }
+            },
+            {
+                "id": "gemini-3-pro-preview",
+                "label": "gemini-3-pro-preview",
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (high)",
+                        "levels": ["low", "high"]
                     }
                 }
             },
@@ -378,6 +468,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             },
@@ -404,6 +497,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             }
@@ -436,6 +532,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             },
@@ -462,6 +563,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             },
@@ -488,6 +594,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "Off",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             },
@@ -514,6 +625,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             }
@@ -546,6 +660,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             },
@@ -572,6 +691,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "Off",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             },
@@ -598,6 +722,11 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On",
+                        "levels": ["low", "medium", "high"]
                     }
                 }
             }
@@ -630,6 +759,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             },
@@ -656,6 +788,9 @@
                         "supported": true,
                         "min": 1,
                         "integer": true
+                    },
+                    "thinking": {
+                        "supported": false
                     }
                 }
             }

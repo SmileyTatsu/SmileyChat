@@ -1,9 +1,11 @@
 import defaultModelCategories from "#frontend/data/default-google-ai-models.json";
 import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
+import { parseDefaultThinkingLevel } from "#frontend/lib/connections/request-validation";
 import type {
     GoogleAIConnectionConfig,
     GoogleAIModel,
     GoogleAIThinkingConfig,
+    GoogleAIThinkingLevel,
 } from "#frontend/lib/connections/google-ai/types";
 
 import {
@@ -23,6 +25,27 @@ type GoogleAIConnectionProps = {
     onLoadModels: () => void;
     onTest: () => void;
 };
+
+type GoogleAICatalogModel = {
+    id: string;
+    label?: string;
+    contextTokenLimit?: number;
+    requestValidation?: {
+        inputTokenLimit?: number;
+        maxOutputTokens?: number | null;
+        thinking?: {
+            supported?: boolean;
+            default?: string;
+            levels?: GoogleAIThinkingLevel[];
+        };
+    };
+};
+
+const allThinkingLevels: GoogleAIThinkingLevel[] = ["minimal", "low", "medium", "high"];
+
+const catalogModels: GoogleAICatalogModel[] = (
+    defaultModelCategories as unknown as Array<{ models?: GoogleAICatalogModel[] }>
+).flatMap((category) => category.models ?? []);
 
 export function GoogleAIConnection({
     config,
@@ -47,6 +70,19 @@ export function GoogleAIConnection({
         });
     }
 
+    const selectedCatalogModel = catalogModels.find(
+        (model) => model.id === config.model.id,
+    );
+    const selectedApiModel = models.find(
+        (model) => (model.baseModelId ?? model.name) === config.model.id,
+    );
+
+    const thinkingMeta = selectedCatalogModel?.requestValidation?.thinking;
+    const supportedLevels =
+        thinkingMeta?.supported !== false && thinkingMeta?.levels?.length
+            ? thinkingMeta.levels
+            : allThinkingLevels;
+
     return (
         <section className="connection-provider-panel">
             <h3>Google AI</h3>
@@ -67,7 +103,37 @@ export function GoogleAIConnection({
                 disabled={disabled}
                 modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
-                onChange={(model) => updateConfig({ model })}
+                onChange={(model) => {
+                    const nextCatalogModel = catalogModels.find(
+                        (candidate) => candidate.id === model.id,
+                    );
+                    const nextThinkingMeta =
+                        nextCatalogModel?.requestValidation?.thinking;
+                    let nextThinking = config.thinking;
+                    if (
+                        nextThinkingMeta?.levels?.length &&
+                        config.thinking?.thinkingLevel &&
+                        !nextThinkingMeta.levels.includes(config.thinking.thinkingLevel)
+                    ) {
+                        const parsed = parseDefaultThinkingLevel(
+                            nextThinkingMeta.default,
+                        );
+                        const fallbackLevel =
+                            parsed && nextThinkingMeta.levels.includes(parsed)
+                                ? parsed
+                                : nextThinkingMeta.levels[0];
+                        nextThinking = {
+                            ...config.thinking,
+                            thinkingLevel: fallbackLevel,
+                        };
+                    }
+                    updateConfig({
+                        model,
+                        ...(nextThinking !== config.thinking
+                            ? { thinking: nextThinking }
+                            : {}),
+                    });
+                }}
                 onLoadModels={onLoadModels}
                 getApiModelId={(model) => model.baseModelId ?? model.name}
                 getApiModelLabel={modelLabel}
@@ -82,6 +148,30 @@ export function GoogleAIConnection({
                     onCommit={(maxOutputTokens) => updateConfig({ maxOutputTokens })}
                 />
             </label>
+            {(selectedCatalogModel || selectedApiModel) && (
+                <dl className="openrouter-model-meta">
+                    <div>
+                        <dt>Input</dt>
+                        <dd>
+                            {selectedCatalogModel?.requestValidation?.inputTokenLimit?.toLocaleString() ??
+                                selectedApiModel?.inputTokenLimit?.toLocaleString() ??
+                                "Unknown"}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Output</dt>
+                        <dd>
+                            {selectedCatalogModel?.requestValidation?.maxOutputTokens?.toLocaleString() ??
+                                selectedApiModel?.outputTokenLimit?.toLocaleString() ??
+                                "Unknown"}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Thinking</dt>
+                        <dd>{thinkingSupportLabel(thinkingMeta)}</dd>
+                    </div>
+                </dl>
+            )}
             <fieldset className="connection-fieldset">
                 <legend>Thinking</legend>
                 <label className="checkbox-field">
@@ -116,7 +206,10 @@ export function GoogleAIConnection({
                 <label>
                     Thinking level
                     <select
-                        value={config.thinking?.thinkingLevel ?? "low"}
+                        value={
+                            config.thinking?.thinkingLevel ??
+                            (supportedLevels[0] || "low")
+                        }
                         disabled={(config.thinking?.mode ?? "auto") !== "level"}
                         onInput={(event) =>
                             updateThinking({
@@ -125,10 +218,11 @@ export function GoogleAIConnection({
                             })
                         }
                     >
-                        <option value="minimal">Minimal</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
+                        {supportedLevels.map((lvl) => (
+                            <option key={lvl} value={lvl}>
+                                {levelLabel(lvl)}
+                            </option>
+                        ))}
                     </select>
                 </label>
                 <label>
@@ -152,4 +246,36 @@ export function GoogleAIConnection({
 function modelLabel(model: GoogleAIModel) {
     const id = model.baseModelId ?? model.name;
     return model.displayName ? `${model.displayName} (${id})` : id;
+}
+
+function thinkingSupportLabel(thinkingMeta?: {
+    supported?: boolean;
+    default?: string;
+    levels?: GoogleAIThinkingLevel[];
+}) {
+    if (!thinkingMeta) return "Supported";
+    if (thinkingMeta.supported === false) return "Unsupported";
+    const defaultText = thinkingMeta.default ? `Default: ${thinkingMeta.default}` : "";
+    const levelsText = thinkingMeta.levels?.length
+        ? `Levels: ${thinkingMeta.levels.join(", ")}`
+        : "";
+    if (defaultText && levelsText) {
+        return `${defaultText} • ${levelsText}`;
+    }
+    return defaultText || levelsText || "Supported";
+}
+
+function levelLabel(level: GoogleAIThinkingLevel) {
+    switch (level) {
+        case "minimal":
+            return "Minimal";
+        case "low":
+            return "Low";
+        case "medium":
+            return "Medium";
+        case "high":
+            return "High";
+        default:
+            return level;
+    }
 }

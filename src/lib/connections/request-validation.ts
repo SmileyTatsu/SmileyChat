@@ -6,6 +6,11 @@ import defaultXAIModels from "#frontend/data/default-xai-models.json";
 
 import type { PresetGenerationSettings } from "../presets/types";
 import type { ConnectionProfile } from "./config";
+import type {
+    GoogleAIConnectionConfig,
+    GoogleAIThinkingConfig,
+    GoogleAIThinkingLevel,
+} from "./google-ai/types";
 import { defaultOutputTokenLimit } from "./output-tokens";
 import type { ChatGenerationRequest } from "./types";
 
@@ -16,15 +21,22 @@ type ValidationParameter = {
     integer?: boolean;
 };
 
+type ThinkingValidation = {
+    supported: boolean;
+    default?: string;
+    levels?: string[];
+};
+
 type RequestValidation = {
     inputTokenLimit?: number;
     maxOutputTokens?: number | null;
+    thinking?: ThinkingValidation;
     [parameter: string]: unknown;
 };
 
 type CatalogModel = { id: string; requestValidation?: RequestValidation };
 type CatalogCategory = { models?: CatalogModel[] };
-type Catalog = CatalogCategory | CatalogCategory[];
+type Catalog = unknown;
 
 export type RequestValidationChange = {
     field: string;
@@ -141,7 +153,8 @@ export function prepareGenerationRequest(
 ): PreparedGenerationRequest {
     const { metadata, source } = getRequestValidation(profile);
     const changes: RequestValidationChange[] = [];
-    const normalizedProfile = normalizeOutputLimit(profile, metadata, changes);
+    let normalizedProfile = normalizeOutputLimit(profile, metadata, changes);
+    normalizedProfile = normalizeGoogleAIThinking(normalizedProfile, metadata, changes);
     const generation = normalizeGeneration(request.generation, metadata, changes);
     const inputTokenLimit = getRequestInputTokenLimit(profile);
 
@@ -173,6 +186,120 @@ function normalizeOutputLimit(
 
     changes.push({ field: key!, requested: current, applied: cap, reason: "maximum" });
     return { ...profile, config: { ...config, [key!]: cap } } as ConnectionProfile;
+}
+
+function normalizeGoogleAIThinking(
+    profile: ConnectionProfile,
+    metadata: RequestValidation | undefined,
+    changes: RequestValidationChange[],
+): ConnectionProfile {
+    if (profile.provider !== "google-ai" || !metadata?.thinking) return profile;
+    const thinkingMeta = asThinkingParameter(metadata.thinking);
+    if (!thinkingMeta) return profile;
+
+    const config = profile.config as GoogleAIConnectionConfig;
+    const thinking = config.thinking;
+    if (!thinking) return profile;
+
+    if (!thinkingMeta.supported) {
+        if (
+            thinking.mode === "level" ||
+            thinking.mode === "budget" ||
+            thinking.thinkingLevel ||
+            thinking.thinkingBudget !== undefined
+        ) {
+            changes.push({
+                field: "thinking",
+                requested: thinking,
+                applied: undefined,
+                reason: "unsupported",
+            });
+            const {
+                mode: _mode,
+                thinkingLevel: _level,
+                thinkingBudget: _budget,
+                ...restThinking
+            } = thinking;
+            const nextThinking = Object.keys(restThinking).length
+                ? restThinking
+                : undefined;
+            return {
+                ...profile,
+                config: {
+                    ...config,
+                    ...(nextThinking
+                        ? { thinking: nextThinking }
+                        : { thinking: undefined }),
+                },
+            } as ConnectionProfile;
+        }
+        return profile;
+    }
+
+    if (
+        thinking.mode === "level" &&
+        thinking.thinkingLevel &&
+        Array.isArray(thinkingMeta.levels) &&
+        thinkingMeta.levels.length > 0
+    ) {
+        if (!thinkingMeta.levels.includes(thinking.thinkingLevel)) {
+            const parsedDefault = parseDefaultThinkingLevel(thinkingMeta.default);
+            const fallbackLevel =
+                parsedDefault && thinkingMeta.levels.includes(parsedDefault)
+                    ? parsedDefault
+                    : (thinkingMeta.levels[0] as GoogleAIThinkingConfig["thinkingLevel"]);
+
+            changes.push({
+                field: "thinkingLevel",
+                requested: thinking.thinkingLevel,
+                applied: fallbackLevel,
+                reason: "unsupported",
+            });
+
+            return {
+                ...profile,
+                config: {
+                    ...config,
+                    thinking: {
+                        ...thinking,
+                        thinkingLevel: fallbackLevel,
+                    },
+                },
+            } as ConnectionProfile;
+        }
+    }
+
+    return profile;
+}
+
+export function parseDefaultThinkingLevel(
+    defaultStr?: unknown,
+): GoogleAIThinkingConfig["thinkingLevel"] | undefined {
+    if (typeof defaultStr !== "string") return undefined;
+    const match = defaultStr.toLowerCase().match(/\b(minimal|low|medium|high)\b/);
+    return match ? (match[1] as GoogleAIThinkingConfig["thinkingLevel"]) : undefined;
+}
+
+function asThinkingParameter(value: unknown): ThinkingValidation | undefined {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const param = value as Record<string, unknown>;
+    if (typeof param.supported !== "boolean") return undefined;
+    return {
+        supported: param.supported,
+        ...(typeof param.default === "string" ? { default: param.default } : {}),
+        ...(Array.isArray(param.levels)
+            ? {
+                  levels: param.levels.filter(
+                      (l): l is GoogleAIThinkingLevel =>
+                          typeof l === "string" &&
+                          (l === "minimal" ||
+                              l === "low" ||
+                              l === "medium" ||
+                              l === "high"),
+                  ),
+              }
+            : {}),
+    };
 }
 
 function outputTokenKey(provider: ConnectionProfile["provider"]) {

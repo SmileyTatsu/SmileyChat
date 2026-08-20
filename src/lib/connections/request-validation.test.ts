@@ -109,4 +109,102 @@ describe("request validation", () => {
         expect(prepared.request.generation).toEqual({ temperature: Number.NaN });
         expect(prepared.changes).toEqual([]);
     });
+
+    test("adjusts unsupported Google AI thinking level to default level for gemini-3.7-flash", () => {
+        const profile = createConnectionProfile("google-ai");
+        profile.config.model = { source: "default", id: "gemini-3.7-flash" };
+        (profile.config as Record<string, unknown>).thinking = {
+            mode: "level",
+            thinkingLevel: "minimal",
+        };
+
+        const prepared = prepareGenerationRequest(profile, { messages: [] });
+
+        expect((prepared.profile.config as Record<string, unknown>).thinking).toEqual({
+            mode: "level",
+            thinkingLevel: "medium",
+        });
+        expect(prepared.changes).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    field: "thinkingLevel",
+                    requested: "minimal",
+                    applied: "medium",
+                    reason: "unsupported",
+                }),
+            ]),
+        );
+    });
+
+    test("adjusts unsupported Google AI thinking level for gemini-3.1-flash-lite-image", () => {
+        const profile = createConnectionProfile("google-ai");
+        profile.config.model = { source: "default", id: "gemini-3.1-flash-lite-image" };
+        (profile.config as Record<string, unknown>).thinking = {
+            mode: "level",
+            thinkingLevel: "low",
+        };
+
+        const prepared = prepareGenerationRequest(profile, { messages: [] });
+
+        expect((prepared.profile.config as Record<string, unknown>).thinking).toEqual({
+            mode: "level",
+            thinkingLevel: "minimal",
+        });
+    });
+
+    test("adjusts unsupported Google AI thinking level for gemini-3-pro-preview", () => {
+        const profile = createConnectionProfile("google-ai");
+        profile.config.model = { source: "default", id: "gemini-3-pro-preview" };
+        (profile.config as Record<string, unknown>).thinking = {
+            mode: "level",
+            thinkingLevel: "medium",
+        };
+
+        const prepared = prepareGenerationRequest(profile, { messages: [] });
+
+        expect((prepared.profile.config as Record<string, unknown>).thinking).toEqual({
+            mode: "level",
+            thinkingLevel: "high",
+        });
+    });
+
+    test("preserves supported Google AI thinking level", () => {
+        const profile = createConnectionProfile("google-ai");
+        profile.config.model = { source: "default", id: "gemini-3.7-flash" };
+        (profile.config as Record<string, unknown>).thinking = {
+            mode: "level",
+            thinkingLevel: "high",
+        };
+
+        const prepared = prepareGenerationRequest(profile, { messages: [] });
+
+        expect((prepared.profile.config as Record<string, unknown>).thinking).toEqual({
+            mode: "level",
+            thinkingLevel: "high",
+        });
+        expect(prepared.changes.filter((c) => c.field === "thinkingLevel")).toEqual([]);
+    });
+
+    test("removes active thinking on Google AI models that do not support thinking", () => {
+        const profile = createConnectionProfile("google-ai");
+        profile.config.model = { source: "default", id: "gemma-4-31b-it" };
+        (profile.config as Record<string, unknown>).thinking = {
+            mode: "level",
+            thinkingLevel: "low",
+        };
+
+        const prepared = prepareGenerationRequest(profile, { messages: [] });
+
+        expect(
+            (prepared.profile.config as Record<string, unknown>).thinking,
+        ).toBeUndefined();
+        expect(prepared.changes).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    field: "thinking",
+                    reason: "unsupported",
+                }),
+            ]),
+        );
+    });
 });

@@ -8,10 +8,12 @@ export type GoogleAIConnectionConfig = {
 
 export type GoogleAIRuntimeConfig = GoogleAIConnectionConfig;
 
+export type GoogleAIThinkingLevel = "minimal" | "low" | "medium" | "high";
+
 export type GoogleAIThinkingConfig = {
     includeThoughts?: boolean;
     mode?: "auto" | "level" | "budget";
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
+    thinkingLevel?: GoogleAIThinkingLevel;
     thinkingBudget?: number;
 };
 
