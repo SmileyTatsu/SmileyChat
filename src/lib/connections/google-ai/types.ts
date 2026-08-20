@@ -94,6 +94,7 @@ export type GoogleAIGenerateContentRequest = {
         }>;
     }>;
     generationConfig?: {
+        candidateCount?: number;
         frequencyPenalty?: number;
         maxOutputTokens?: number;
         presencePenalty?: number;

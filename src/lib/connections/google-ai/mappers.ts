@@ -30,7 +30,11 @@ export function createGoogleAIGenerateBody(
     const messages = request.promptMessages?.length
         ? request.promptMessages
         : legacyMessages(request);
-    const { systemText, conversationMessages } = splitLeadingSystemMessages(messages);
+    const { leadingSystemMessages, conversationMessages } =
+        splitLeadingSystemMessages(messages);
+    const systemParts = leadingSystemMessages
+        .flatMap((message) => generationMessageContentToGoogleAIParts(message.content))
+        .filter(hasVisiblePart);
     const contents = mergeConsecutiveContents(
         conversationMessages
             .map(toGoogleAIContent)
@@ -38,6 +42,7 @@ export function createGoogleAIGenerateBody(
     );
     const thinkingConfig = cleanThinkingConfig(config.thinking);
     const generationConfig: GoogleAIGenerateContentRequest["generationConfig"] = {
+        candidateCount: 1,
         maxOutputTokens: config.maxOutputTokens ?? defaultOutputTokenLimit,
         ...(typeof request.generation?.temperature === "number"
             ? { temperature: request.generation.temperature }
@@ -54,8 +59,10 @@ export function createGoogleAIGenerateBody(
         ...(typeof request.generation?.frequencyPenalty === "number"
             ? { frequencyPenalty: request.generation.frequencyPenalty }
             : {}),
-        ...(typeof request.generation?.seed === "number"
-            ? { seed: request.generation.seed }
+        ...(typeof request.generation?.seed === "number" &&
+        Number.isFinite(request.generation.seed) &&
+        request.generation.seed >= 0
+            ? { seed: Math.floor(request.generation.seed) }
             : {}),
         ...(stopSequencesForGeneration(request.generation)
             ? { stopSequences: stopSequencesForGeneration(request.generation) }
@@ -70,10 +77,10 @@ export function createGoogleAIGenerateBody(
     }
 
     return {
-        ...(systemText
+        ...(systemParts.length > 0
             ? {
                   systemInstruction: {
-                      parts: [{ text: systemText }],
+                      parts: systemParts,
                   },
               }
             : {}),

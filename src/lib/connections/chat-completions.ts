@@ -85,6 +85,7 @@ type StreamOptions = NormalizeResponseOptions & {
 
 export function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
     const systemMessages: string[] = [];
+    const leadingSystemMessages: ChatGenerationMessage[] = [];
     const conversationMessages: ChatGenerationMessage[] = [];
     let conversationStarted = false;
 
@@ -105,6 +106,7 @@ export function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
             const text = messageContentToText(message.content).trim();
             if (text) {
                 systemMessages.push(text);
+                leadingSystemMessages.push(message);
             }
             continue;
         }
@@ -113,6 +115,8 @@ export function splitLeadingSystemMessages(messages: ChatGenerationMessage[]) {
     }
 
     return {
+        leadingSystemMessages,
+        systemMessages,
         systemText: systemMessages.join("\n\n"),
         conversationMessages,
     };

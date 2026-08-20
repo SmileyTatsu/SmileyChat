@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { createGoogleAIGenerateBody, normalizeGoogleAIResponse } from "./mappers";
 
 describe("Google AI connection mappers", () => {
-    test("moves system and developer messages into systemInstruction", () => {
+    test("moves leading system and developer messages into systemInstruction parts", () => {
         const body = createGoogleAIGenerateBody(
             {
                 promptMessages: [
@@ -19,9 +19,11 @@ describe("Google AI connection mappers", () => {
             },
         );
 
-        expect(body.systemInstruction?.parts[0]?.text).toBe(
-            "System prompt\n\nDeveloper prompt",
-        );
+        expect(body.systemInstruction?.parts).toEqual([
+            { text: "System prompt" },
+            { text: "Developer prompt" },
+        ]);
+        expect(body.generationConfig?.candidateCount).toBe(1);
         expect(body.generationConfig?.maxOutputTokens).toBe(1000);
         expect(body.contents).toEqual([
             {
@@ -70,6 +72,7 @@ describe("Google AI connection mappers", () => {
         );
 
         expect(body.generationConfig).toMatchObject({
+            candidateCount: 1,
             frequencyPenalty: 0.2,
             maxOutputTokens: 250,
             presencePenalty: 0.4,
@@ -79,6 +82,64 @@ describe("Google AI connection mappers", () => {
             topK: 40,
             topP: 0.9,
         });
+    });
+
+    test("omits negative seed values such as -1", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                generation: {
+                    seed: -1,
+                },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.generationConfig?.seed).toBeUndefined();
+    });
+
+    test("preserves multiple system instruction parts and assistant prefill turn", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [
+                    { role: "system", content: "Instructions" },
+                    { role: "system", content: "World Info" },
+                    { role: "system", content: "Character Definition" },
+                    { role: "assistant", content: "Hello! First greeting." },
+                    { role: "user", content: "User question." },
+                    { role: "assistant", content: "<think>Model prefill" },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.1-flash-lite" },
+            },
+        );
+
+        expect(body.systemInstruction?.parts).toEqual([
+            { text: "Instructions" },
+            { text: "World Info" },
+            { text: "Character Definition" },
+        ]);
+        expect(body.contents).toEqual([
+            {
+                role: "model",
+                parts: [{ text: "Hello! First greeting." }],
+            },
+            {
+                role: "user",
+                parts: [{ text: "User question." }],
+            },
+            {
+                role: "model",
+                parts: [{ text: "<think>Model prefill" }],
+            },
+        ]);
     });
 
     test("keeps interspersed system and developer messages in history", () => {
