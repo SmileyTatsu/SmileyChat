@@ -159,6 +159,33 @@ describe("xAI connection mappers", () => {
         expect(body.reasoning).toEqual({ effort: "high" });
     });
 
+    test("preserves developer prompts as system input in Responses requests", () => {
+        const body = createXAIResponsesBody(
+            {
+                messages: [],
+                promptMessages: [
+                    { role: "developer", content: "Follow the house style." },
+                    { role: "user", content: "Read this attachment." },
+                ],
+            },
+            {
+                baseUrl: "https://api.x.ai/v1",
+                model: { source: "default", id: "grok-4.5" },
+            },
+        );
+
+        expect(body.input).toEqual([
+            {
+                role: "system",
+                content: [{ type: "input_text", text: "Follow the house style." }],
+            },
+            {
+                role: "user",
+                content: [{ type: "input_text", text: "Read this attachment." }],
+            },
+        ]);
+    });
+
     test("normalizes assistant responses", () => {
         const result = normalizeXAIChatCompletion({
             id: "chatcmpl-test",

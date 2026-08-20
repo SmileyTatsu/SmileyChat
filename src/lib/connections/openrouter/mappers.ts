@@ -95,7 +95,8 @@ export function createOpenRouterResponsesBody(
             role:
                 message.role === ChatGenerationMessageRole.Assistant
                     ? ("assistant" as const)
-                    : message.role === ChatGenerationMessageRole.System
+                    : message.role === ChatGenerationMessageRole.System ||
+                        message.role === ChatGenerationMessageRole.Developer
                       ? ("system" as const)
                       : ("user" as const),
             content:

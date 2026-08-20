@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { createOpenRouterChatCompletionBody } from "./mappers";
+import {
+    createOpenRouterChatCompletionBody,
+    createOpenRouterResponsesBody,
+} from "./mappers";
 import { createConnectionProfile } from "../config";
 import { prepareGenerationRequest } from "../request-validation";
 
@@ -119,5 +122,33 @@ describe("OpenRouter connection mappers", () => {
 
         expect(body.stream).toBeTrue();
         expect(body).not.toHaveProperty("streaming");
+    });
+
+    test("preserves developer prompts as system input in Responses requests", () => {
+        const body = createOpenRouterResponsesBody(
+            {
+                messages: [],
+                promptMessages: [
+                    { role: "developer", content: "Follow the house style." },
+                    { role: "user", content: "Summarize this attachment." },
+                ],
+            },
+            {
+                maxCompletionTokens: 250,
+                model: { source: "api", id: "openai/gpt-5.5" },
+                providerPreferences: {},
+            },
+        );
+
+        expect(body.input).toEqual([
+            {
+                role: "system",
+                content: [{ type: "input_text", text: "Follow the house style." }],
+            },
+            {
+                role: "user",
+                content: [{ type: "input_text", text: "Summarize this attachment." }],
+            },
+        ]);
     });
 });
