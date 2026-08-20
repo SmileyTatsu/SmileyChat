@@ -146,6 +146,7 @@ export function OptionsModal({
         () => window.matchMedia("(max-width: 820px)").matches,
     );
     const modalRef = useRef<HTMLElement>(null);
+    const isBackdropMouseDownRef = useRef(false);
     const isSettingsNavCollapsed = settingsNavCollapsed && !isMobileSettingsLayout;
 
     useEffect(() => {
@@ -230,8 +231,25 @@ export function OptionsModal({
         onClose();
     }
 
+    function handleBackdropMouseDown(event: MouseEvent) {
+        isBackdropMouseDownRef.current =
+            event.target === event.currentTarget && event.button === 0;
+    }
+
+    function handleBackdropClick(event: MouseEvent) {
+        if (isBackdropMouseDownRef.current && event.target === event.currentTarget) {
+            handleClose();
+        }
+        isBackdropMouseDownRef.current = false;
+    }
+
     return (
-        <div className="modal-backdrop" role="presentation">
+        <div
+            className="modal-backdrop"
+            role="presentation"
+            onMouseDown={handleBackdropMouseDown}
+            onClick={handleBackdropClick}
+        >
             <section
                 className={`settings-modal ${isSettingsModalExpanded ? "expanded" : ""}`}
                 ref={modalRef}
