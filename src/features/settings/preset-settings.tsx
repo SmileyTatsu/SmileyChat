@@ -19,9 +19,11 @@ import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
 import {
     getActiveConnectionProfile,
+    isNovelAIProfile,
     type ConnectionSettings,
 } from "#frontend/lib/connections/config";
 import { isClaudeOpus47OrLaterModel } from "#frontend/lib/connections/generation-settings";
+import { usesNovelAITextGenerationApi } from "#frontend/lib/connections/novelai/constants";
 import { parseInstructTemplateJson } from "#frontend/lib/instruct";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type {
@@ -114,6 +116,11 @@ export function PresetSettings({
             ) ?? collection.presets[0],
         [collection],
     );
+    const activeConnectionProfile = getActiveConnectionProfile(connectionSettings);
+    const isTextCompletionProvider =
+        activeConnectionProfile?.provider === "koboldcpp" ||
+        (isNovelAIProfile(activeConnectionProfile) &&
+            usesNovelAITextGenerationApi(activeConnectionProfile.config.model.id));
 
     const selectedPrompt = activePreset?.prompts.find(
         (prompt) => prompt.id === selectedPromptId,
@@ -636,8 +643,7 @@ export function PresetSettings({
 
                     {activeView === "editor" && (
                         <div>
-                            {getActiveConnectionProfile(connectionSettings)?.provider ===
-                                "koboldcpp" && (
+                            {isTextCompletionProvider && (
                                 <div
                                     className="preset-text-completion-banner"
                                     role="status"
@@ -646,9 +652,8 @@ export function PresetSettings({
                                     <div>
                                         <strong className="preset-text-completion-banner-title">
                                             Text Completion provider active (
-                                            {getActiveConnectionProfile(
-                                                connectionSettings,
-                                            )?.name || "KoboldCPP"}
+                                            {activeConnectionProfile?.name ||
+                                                "Text Completion"}
                                             )
                                         </strong>
                                         <p>
@@ -704,8 +709,7 @@ export function PresetSettings({
                             )}
                             <div
                                 className={
-                                    getActiveConnectionProfile(connectionSettings)
-                                        ?.provider === "koboldcpp" &&
+                                    isTextCompletionProvider &&
                                     preferences?.formatting.settings
                                         .overridePresetPromptOrder !== true
                                         ? "preset-editor-dimmed"
