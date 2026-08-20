@@ -6,7 +6,23 @@
             {
                 "id": "gemini-3.7-flash",
                 "label": "gemini-3.7-flash",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -17,7 +33,23 @@
             {
                 "id": "gemini-3.6-flash",
                 "label": "gemini-3.6-flash",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -28,12 +60,54 @@
             {
                 "id": "gemini-3.5-flash",
                 "label": "gemini-3.5-flash",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.5-flash-lite",
                 "label": "gemini-3.5-flash-lite",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -44,42 +118,210 @@
             {
                 "id": "gemini-3.1-pro-preview",
                 "label": "gemini-3.1-pro-preview",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.1-pro-preview-customtools",
                 "label": "gemini-3.1-pro-preview-customtools",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.1-flash-lite",
                 "label": "gemini-3.1-flash-lite",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.1-flash-lite-preview",
                 "label": "gemini-3.1-flash-lite-preview",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.1-flash-image",
                 "label": "gemini-3.1-flash-image",
-                "contextTokenLimit": 65536
+                "contextTokenLimit": 65536,
+                "requestValidation": {
+                    "inputTokenLimit": 131072,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.1-flash-image-preview",
                 "label": "gemini-3.1-flash-image-preview",
-                "contextTokenLimit": 65536
+                "contextTokenLimit": 65536,
+                "requestValidation": {
+                    "inputTokenLimit": 131072,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.1-flash-lite-image",
                 "label": "gemini-3.1-flash-lite-image",
-                "contextTokenLimit": 65536
+                "contextTokenLimit": 65536,
+                "requestValidation": {
+                    "inputTokenLimit": 65536,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3.1-flash-tts-preview",
                 "label": "gemini-3.1-flash-tts-preview",
-                "contextTokenLimit": 8192
+                "contextTokenLimit": 8192,
+                "requestValidation": {
+                    "inputTokenLimit": 8192,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -90,17 +332,80 @@
             {
                 "id": "gemini-3-flash-preview",
                 "label": "gemini-3-flash-preview",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3-pro-image",
                 "label": "gemini-3-pro-image",
-                "contextTokenLimit": 131072
+                "contextTokenLimit": 131072,
+                "requestValidation": {
+                    "inputTokenLimit": 65536,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-3-pro-image-preview",
                 "label": "gemini-3-pro-image-preview",
-                "contextTokenLimit": 131072
+                "contextTokenLimit": 131072,
+                "requestValidation": {
+                    "inputTokenLimit": 65536,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -111,22 +416,106 @@
             {
                 "id": "gemini-2.5-pro",
                 "label": "gemini-2.5-pro",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-2.5-flash",
                 "label": "gemini-2.5-flash",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-2.5-flash-lite",
                 "label": "gemini-2.5-flash-lite",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-2.5-flash-image",
                 "label": "gemini-2.5-flash-image",
-                "contextTokenLimit": 65536
+                "contextTokenLimit": 65536,
+                "requestValidation": {
+                    "inputTokenLimit": 65536,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -137,17 +526,80 @@
             {
                 "id": "gemini-flash-latest",
                 "label": "gemini-flash-latest",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-flash-lite-latest",
                 "label": "gemini-flash-lite-latest",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemini-pro-latest",
                 "label": "gemini-pro-latest",
-                "contextTokenLimit": 1048576
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -158,12 +610,54 @@
             {
                 "id": "gemma-4-31b-it",
                 "label": "gemma-4-31b-it",
-                "contextTokenLimit": 262144
+                "contextTokenLimit": 262144,
+                "requestValidation": {
+                    "inputTokenLimit": 262144,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gemma-4-26b-a4b-it",
                 "label": "gemma-4-26b-a4b-it",
-                "contextTokenLimit": 262144
+                "contextTokenLimit": 262144,
+                "requestValidation": {
+                    "inputTokenLimit": 262144,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.95
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 1,
+                        "integer": true
+                    }
+                }
             }
         ]
     }

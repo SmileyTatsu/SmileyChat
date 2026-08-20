@@ -6,7 +6,31 @@
             {
                 "id": "claude-fable-5",
                 "label": "Claude Fable 5",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             }
         ]
     },
@@ -17,27 +41,155 @@
             {
                 "id": "claude-opus-5",
                 "label": "Claude Opus 5",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             },
             {
                 "id": "claude-opus-4-8",
                 "label": "Claude Opus 4.8",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             },
             {
                 "id": "claude-opus-4-7",
                 "label": "Claude Opus 4.7",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             },
             {
                 "id": "claude-opus-4-6",
                 "label": "Claude Opus 4.6",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 0,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             },
             {
                 "id": "claude-opus-4-5-20251101",
                 "label": "Claude Opus 4.5",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 64000,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 0,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             }
         ]
     },
@@ -48,17 +200,97 @@
             {
                 "id": "claude-sonnet-5",
                 "label": "Claude Sonnet 5",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             },
             {
                 "id": "claude-sonnet-4-6",
                 "label": "Claude Sonnet 4.6",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 0,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             },
             {
                 "id": "claude-sonnet-4-5-20250929",
                 "label": "Claude Sonnet 4.5",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 64000,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 0,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             }
         ]
     },
@@ -69,7 +301,35 @@
             {
                 "id": "claude-haiku-4-5-20251001",
                 "label": "Claude Haiku 4.5",
-                "contextTokenLimit": 200000
+                "contextTokenLimit": 200000,
+                "requestValidation": {
+                    "inputTokenLimit": 200000,
+                    "maxOutputTokens": 64000,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1
+                    },
+                    "topK": {
+                        "supported": true,
+                        "min": 0,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
             }
         ]
     }

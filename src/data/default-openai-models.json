@@ -6,17 +6,89 @@
             {
                 "id": "gpt-5.6-sol",
                 "label": "gpt-5.6-sol",
-                "contextTokenLimit": 1050000
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.6-terra",
                 "label": "gpt-5.6-terra",
-                "contextTokenLimit": 1050000
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.6-luna",
                 "label": "gpt-5.6-luna",
-                "contextTokenLimit": 1050000
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -27,12 +99,60 @@
             {
                 "id": "gpt-5.5",
                 "label": "gpt-5.5",
-                "contextTokenLimit": 1050000
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.5-2026-04-23",
                 "label": "gpt-5.5-2026-04-23",
-                "contextTokenLimit": 1050000
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -43,32 +163,176 @@
             {
                 "id": "gpt-5.4",
                 "label": "gpt-5.4",
-                "contextTokenLimit": 1050000
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.4-2026-03-05",
                 "label": "gpt-5.4-2026-03-05",
-                "contextTokenLimit": 1050000
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.4-mini",
                 "label": "gpt-5.4-mini",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.4-mini-2026-03-17",
                 "label": "gpt-5.4-mini-2026-03-17",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.4-nano",
                 "label": "gpt-5.4-nano",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.4-nano-2026-03-17",
                 "label": "gpt-5.4-nano-2026-03-17",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -79,7 +343,31 @@
             {
                 "id": "gpt-5.3-chat-latest",
                 "label": "gpt-5.3-chat-latest",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -90,17 +378,89 @@
             {
                 "id": "gpt-5.2",
                 "label": "gpt-5.2",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.2-2025-12-11",
                 "label": "gpt-5.2-2025-12-11",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.2-chat-latest",
                 "label": "gpt-5.2-chat-latest",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -111,17 +471,89 @@
             {
                 "id": "gpt-5.1",
                 "label": "gpt-5.1",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.1-2025-11-13",
                 "label": "gpt-5.1-2025-11-13",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5.1-chat-latest",
                 "label": "gpt-5.1-chat-latest",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -132,37 +564,205 @@
             {
                 "id": "gpt-5",
                 "label": "gpt-5",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5-2025-08-07",
                 "label": "gpt-5-2025-08-07",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5-chat-latest",
                 "label": "gpt-5-chat-latest",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5-mini",
                 "label": "gpt-5-mini",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5-mini-2025-08-07",
                 "label": "gpt-5-mini-2025-08-07",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5-nano",
                 "label": "gpt-5-nano",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-5-nano-2025-08-07",
                 "label": "gpt-5-nano-2025-08-07",
-                "contextTokenLimit": 400000
+                "contextTokenLimit": 400000,
+                "requestValidation": {
+                    "inputTokenLimit": 400000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -173,27 +773,187 @@
             {
                 "id": "gpt-4o",
                 "label": "gpt-4o",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 16384,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4o-2024-11-20",
                 "label": "gpt-4o-2024-11-20",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 16384,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4o-2024-08-06",
                 "label": "gpt-4o-2024-08-06",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 16384,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4o-2024-05-13",
                 "label": "gpt-4o-2024-05-13",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 4096,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "chatgpt-4o-latest",
                 "label": "chatgpt-4o-latest",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 16384,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -204,12 +964,76 @@
             {
                 "id": "gpt-4o-mini",
                 "label": "gpt-4o-mini",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 16384,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4o-mini-2024-07-18",
                 "label": "gpt-4o-mini-2024-07-18",
-                "contextTokenLimit": 128000
+                "contextTokenLimit": 128000,
+                "requestValidation": {
+                    "inputTokenLimit": 128000,
+                    "maxOutputTokens": 16384,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     },
@@ -220,32 +1044,224 @@
             {
                 "id": "gpt-4.1",
                 "label": "gpt-4.1",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4.1-2025-04-14",
                 "label": "gpt-4.1-2025-04-14",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4.1-mini",
                 "label": "gpt-4.1-mini",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4.1-mini-2025-04-14",
                 "label": "gpt-4.1-mini-2025-04-14",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4.1-nano",
                 "label": "gpt-4.1-nano",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             },
             {
                 "id": "gpt-4.1-nano-2025-04-14",
                 "label": "gpt-4.1-nano-2025-04-14",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": 32768,
+                    "temperature": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 2,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": true,
+                        "min": 0,
+                        "max": 1,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": true,
+                        "min": -2,
+                        "max": 2,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
             }
         ]
     }

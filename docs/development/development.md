@@ -17,7 +17,7 @@ Use this page for day-to-day development commands and project orientation. Produ
 - `src/features/`: UI components organized by feature area, such as chat, characters, personas, settings, plugins, and sidebar.
 - `src/lib/`: Core logic that does not directly depend on UI. This includes API clients, normalizers, preset compilation, provider adapters, plugin runtime code, and storage types.
 - `src/core-extensions/`: Built-in features implemented through the plugin API format.
-- `src/data/`: Default static data, such as model catalogs and default characters.
+- `src/data/`: Default static data, such as model catalogs and default characters. See [Built-In Model Catalogs](../reference/model-catalogs.md) for the catalog and request-validation metadata contract.
 - `src/styles/`: Shared styling entry points.
 - `server/`: Bun server routes and filesystem persistence.
 - `scripts/`: Windows and Termux launcher/update scripts.
@@ -86,6 +86,7 @@ When behavior changes, update the nearest relevant doc:
 
 - User workflows: `docs/guides/`
 - Provider behavior: `docs/reference/providers.md`
+- Built-in model catalog metadata: `docs/reference/model-catalogs.md`
 - Storage shape: `docs/reference/user-data.md`
 - Security behavior: `docs/reference/security.md`
 - Plugin APIs: `docs/plugins/`

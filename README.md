@@ -138,6 +138,7 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 ### Technical Details
 
 - [Providers & AI Setup](docs/reference/providers.md)
+- [Built-In Model Catalogs](docs/reference/model-catalogs.md)
 - [Preset Macros](docs/reference/macros.md)
 - [SillyTavern Compatibility](docs/reference/sillytavern-compatibility.md)
 - [User Data & Storage](docs/reference/user-data.md)

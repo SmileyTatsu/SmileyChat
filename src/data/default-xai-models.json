@@ -6,22 +6,102 @@
             {
                 "id": "grok-4.6",
                 "label": "Grok 4.6",
-                "contextTokenLimit": 500000
+                "contextTokenLimit": 500000,
+                "requestValidation": {
+                    "inputTokenLimit": 500000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             },
             {
                 "id": "grok-4.6-latest",
                 "label": "Grok 4.6 Latest",
-                "contextTokenLimit": 500000
+                "contextTokenLimit": 500000,
+                "requestValidation": {
+                    "inputTokenLimit": 500000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             },
             {
                 "id": "grok-4.5",
                 "label": "Grok 4.5",
-                "contextTokenLimit": 500000
+                "contextTokenLimit": 500000,
+                "requestValidation": {
+                    "inputTokenLimit": 500000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             },
             {
                 "id": "grok-4.5-latest",
                 "label": "Grok 4.5 Latest",
-                "contextTokenLimit": 500000
+                "contextTokenLimit": 500000,
+                "requestValidation": {
+                    "inputTokenLimit": 500000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             }
         ]
     },
@@ -32,17 +112,77 @@
             {
                 "id": "grok-4.20-0309-reasoning",
                 "label": "Grok 4.20 Reasoning",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             },
             {
                 "id": "grok-4.20-0309-non-reasoning",
                 "label": "Grok 4.20 Non-Reasoning",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             },
             {
                 "id": "grok-4.20-multi-agent-0309",
                 "label": "Grok 4.20 Multi-Agent",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             }
         ]
     },
@@ -53,7 +193,27 @@
             {
                 "id": "grok-4.3",
                 "label": "Grok 4.3",
-                "contextTokenLimit": 1000000
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             }
         ]
     },
@@ -64,7 +224,27 @@
             {
                 "id": "grok-build-0.1",
                 "label": "Grok Build 0.1",
-                "contextTokenLimit": 256000
+                "contextTokenLimit": 256000,
+                "requestValidation": {
+                    "inputTokenLimit": 256000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": true
+                    },
+                    "topP": {
+                        "supported": true
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": true
+                    },
+                    "frequencyPenalty": {
+                        "supported": true
+                    }
+                }
             }
         ]
     }

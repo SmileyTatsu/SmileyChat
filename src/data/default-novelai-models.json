@@ -1,28 +1,186 @@
-[
-    {
-        "id": "novelai",
-        "label": "NovelAI",
-        "models": [
-            {
-                "id": "xialong-v1",
-                "label": "Xiaolong",
-                "contextTokenLimit": 28672
-            },
-            {
-                "id": "glm-4-6",
-                "label": "GLM 4.6",
-                "contextTokenLimit": 28672
-            },
-            {
-                "id": "llama-3-erato-v1",
-                "label": "Erato",
-                "contextTokenLimit": 32768
-            },
-            {
-                "id": "kayra-v1",
-                "label": "Kayra",
-                "contextTokenLimit": 8192
+{
+    "id": "novelai",
+    "label": "NovelAI",
+    "models": [
+        {
+            "id": "xialong-v1",
+            "label": "Xiaolong",
+            "contextTokenLimit": 28672,
+            "requestValidation": {
+                "inputTokenLimit": 28672,
+                "maxOutputTokens": null,
+                "temperature": {
+                    "supported": true,
+                    "default": 1
+                },
+                "topP": {
+                    "supported": true
+                },
+                "topK": {
+                    "supported": true,
+                    "integer": true,
+                    "default": 0
+                },
+                "presencePenalty": {
+                    "supported": true,
+                    "default": 0
+                },
+                "frequencyPenalty": {
+                    "supported": true,
+                    "default": 0
+                },
+                "typicalP": {
+                    "supported": false,
+                    "default": 1
+                },
+                "tailFreeSampling": {
+                    "supported": false,
+                    "default": 1
+                },
+                "repetitionPenalty": {
+                    "supported": false,
+                    "default": 1
+                },
+                "repetitionPenaltySlope": {
+                    "supported": false,
+                    "default": 0
+                }
             }
-        ]
-    }
-]
+        },
+        {
+            "id": "glm-4-6",
+            "label": "GLM 4.6",
+            "contextTokenLimit": 28672,
+            "requestValidation": {
+                "inputTokenLimit": 28672,
+                "maxOutputTokens": null,
+                "temperature": {
+                    "supported": true,
+                    "default": 1
+                },
+                "topP": {
+                    "supported": true
+                },
+                "topK": {
+                    "supported": true,
+                    "integer": true,
+                    "default": 0
+                },
+                "presencePenalty": {
+                    "supported": true,
+                    "default": 0
+                },
+                "frequencyPenalty": {
+                    "supported": true,
+                    "default": 0
+                },
+                "typicalP": {
+                    "supported": false,
+                    "default": 1
+                },
+                "tailFreeSampling": {
+                    "supported": false,
+                    "default": 1
+                },
+                "repetitionPenalty": {
+                    "supported": false,
+                    "default": 1
+                },
+                "repetitionPenaltySlope": {
+                    "supported": false,
+                    "default": 0
+                }
+            }
+        },
+        {
+            "id": "llama-3-erato-v1",
+            "label": "Erato",
+            "contextTokenLimit": 32768,
+            "requestValidation": {
+                "inputTokenLimit": 32768,
+                "maxOutputTokens": null,
+                "temperature": {
+                    "supported": true,
+                    "default": 1
+                },
+                "topP": {
+                    "supported": true
+                },
+                "topK": {
+                    "supported": true,
+                    "integer": true,
+                    "default": 0
+                },
+                "presencePenalty": {
+                    "supported": false,
+                    "default": 0
+                },
+                "frequencyPenalty": {
+                    "supported": false,
+                    "default": 0
+                },
+                "typicalP": {
+                    "supported": true,
+                    "default": 1
+                },
+                "tailFreeSampling": {
+                    "supported": true,
+                    "default": 1
+                },
+                "repetitionPenalty": {
+                    "supported": true,
+                    "default": 1
+                },
+                "repetitionPenaltySlope": {
+                    "supported": true,
+                    "default": 0
+                }
+            }
+        },
+        {
+            "id": "kayra-v1",
+            "label": "Kayra",
+            "contextTokenLimit": 8192,
+            "requestValidation": {
+                "inputTokenLimit": 8192,
+                "maxOutputTokens": null,
+                "temperature": {
+                    "supported": true,
+                    "default": 1
+                },
+                "topP": {
+                    "supported": true
+                },
+                "topK": {
+                    "supported": true,
+                    "integer": true,
+                    "default": 0
+                },
+                "presencePenalty": {
+                    "supported": false,
+                    "default": 0
+                },
+                "frequencyPenalty": {
+                    "supported": false,
+                    "default": 0
+                },
+                "typicalP": {
+                    "supported": true,
+                    "default": 1
+                },
+                "tailFreeSampling": {
+                    "supported": true,
+                    "default": 1
+                },
+                "repetitionPenalty": {
+                    "supported": true,
+                    "default": 1
+                },
+                "repetitionPenaltySlope": {
+                    "supported": true,
+                    "default": 0
+                }
+            }
+        }
+    ]
+}

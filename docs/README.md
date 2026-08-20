@@ -17,6 +17,7 @@ This folder contains user guides, reference material, plugin documentation, and 
 ## Reference
 
 - [Providers & AI Setup](reference/providers.md)
+- [Built-In Model Catalogs](reference/model-catalogs.md)
 - [Preset Macros](reference/macros.md)
 - [SillyTavern Compatibility](reference/sillytavern-compatibility.md)
 - [User Data & Storage](reference/user-data.md)
