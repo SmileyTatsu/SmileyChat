@@ -55,10 +55,7 @@ function normalizeXAIReasoningConfig(value: unknown): XAIReasoningConfig | undef
 function normalizeXAIReasoningEffort(
     value: unknown,
 ): Extract<XAIReasoningConfig, { enabled: true }>["effort"] | undefined {
-    return value === "low" ||
-        value === "medium" ||
-        value === "high" ||
-        value === "xhigh"
+    return value === "low" || value === "medium" || value === "high" || value === "xhigh"
         ? value
         : undefined;
 }
