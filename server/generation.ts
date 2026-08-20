@@ -34,6 +34,7 @@ import type {
     ConnectionAdapter,
     ToolDefinition,
 } from "#frontend/lib/connections/types";
+import { prepareGenerationRequest } from "#frontend/lib/connections/request-validation";
 
 import { BadRequestError, HttpError, json } from "./http";
 import { readConnectionSecrets, readConnectionSettings } from "./settings";
@@ -59,13 +60,25 @@ export async function generateWithSavedConnection(
     value: unknown,
     signal: AbortSignal,
 ): Promise<Response> {
-    const payload = parseGenerationPayload(value);
+    let payload = parseGenerationPayload(value);
     const [settings, secrets] = await Promise.all([
         readConnectionSettings(),
         readConnectionSecrets(),
     ]);
     const privateSettings = applyConnectionSecrets(settings, secrets);
-    const profile = resolveProfile(privateSettings, payload.profileId);
+    const sourceProfile = resolveProfile(privateSettings, payload.profileId);
+    const prepared = prepareGenerationRequest(sourceProfile, {
+        generation: payload.generation,
+        messages: [],
+        promptMessages: payload.promptMessages,
+        stream: payload.stream,
+        tools: payload.tools,
+    });
+    const profile = prepared.profile;
+    payload = {
+        ...payload,
+        generation: prepared.request.generation,
+    };
     const adapter = createBuiltInAdapter(profile);
     const startedAt = Date.now();
 
@@ -90,6 +103,15 @@ export async function generateWithSavedConnection(
         toolNames: payload.tools?.map((tool) => tool.name).join(",") || "none",
     });
     logger.debug("generate", "SAMPLING", generationDiagnostics(payload.generation));
+    logger.debug("generate", "VALIDATION", {
+        provider: profile.provider,
+        model: configuredModel(profile),
+        metadataSource: prepared.metadataSource,
+        ...(prepared.inputTokenLimit
+            ? { inputTokenLimit: prepared.inputTokenLimit }
+            : {}),
+        changes: prepared.changes,
+    });
     sensitiveLog("generate", "RAW PROMPT", { messages: payload.promptMessages });
 
     // A completed provider request does not need an SSE transport. Returning

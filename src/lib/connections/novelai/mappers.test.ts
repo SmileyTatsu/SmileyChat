@@ -112,7 +112,7 @@ describe("NovelAI connection mappers", () => {
             input: "<|start_header_id|>system<|end_header_id|>\n\nStay in character.<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\nHello.<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\nHi.<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
             parameters: {
                 use_string: true,
-                max_length: 250,
+                max_length: 400,
                 min_length: 1,
                 temperature: 0.8,
                 top_p: 0.95,

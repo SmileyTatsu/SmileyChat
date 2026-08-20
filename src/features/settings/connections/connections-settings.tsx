@@ -29,34 +29,20 @@ import {
     getEffectiveContextTokenBudget,
     getModelMaxContextLimit,
 } from "#frontend/lib/connections/context-budget";
-import {
-    createAnthropicConnection,
-    createAnthropicMessagesUrl,
-} from "#frontend/lib/connections/anthropic/adapter";
+import { createAnthropicMessagesUrl } from "#frontend/lib/connections/anthropic/adapter";
 import { listAnthropicModels } from "#frontend/lib/connections/anthropic/models";
 import type { AnthropicModel } from "#frontend/lib/connections/anthropic/types";
-import {
-    createGoogleAIConnection,
-    createGoogleAIGenerateUrl,
-} from "#frontend/lib/connections/google-ai/adapter";
+import { createGoogleAIGenerateUrl } from "#frontend/lib/connections/google-ai/adapter";
 import { listGoogleAIModels } from "#frontend/lib/connections/google-ai/models";
 import type { GoogleAIModel } from "#frontend/lib/connections/google-ai/types";
 import { trimTrailingSlash } from "#frontend/lib/connections/http";
 import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
-import {
-    createNovelAIConnection,
-    createNovelAICompletionUrl,
-} from "#frontend/lib/connections/novelai/adapter";
-import { createOpenAICompatibleConnection } from "#frontend/lib/connections/openai-compatible/adapter";
+import { createNovelAICompletionUrl } from "#frontend/lib/connections/novelai/adapter";
 import { listOpenAICompatibleModels } from "#frontend/lib/connections/openai-compatible/models";
 import type { OpenAICompatibleModel } from "#frontend/lib/connections/openai-compatible/types";
-import { createOpenRouterConnection } from "#frontend/lib/connections/openrouter/adapter";
 import { listOpenRouterModels } from "#frontend/lib/connections/openrouter/models";
 import type { OpenRouterModel } from "#frontend/lib/connections/openrouter/types";
-import {
-    createXAIChatCompletionsUrl,
-    createXAIConnection,
-} from "#frontend/lib/connections/xai/adapter";
+import { createXAIChatCompletionsUrl } from "#frontend/lib/connections/xai/adapter";
 import { listXAIModels } from "#frontend/lib/connections/xai/models";
 import type { XAIModel } from "#frontend/lib/connections/xai/types";
 import { createUserMessage } from "#frontend/lib/messages";
@@ -86,10 +72,10 @@ import { NovelAIConnection } from "./providers/novelai-connection";
 import { XAIConnection } from "./providers/xai-connection";
 import { KoboldCPPConnection } from "./providers/koboldcpp-connection";
 import {
-    createKoboldCPPConnection,
     createKoboldCPPContextUrl,
     createKoboldCPPModelUrl,
 } from "#frontend/lib/connections/koboldcpp/adapter";
+import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
@@ -278,10 +264,7 @@ export function ConnectionsSettings({
                 );
 
                 try {
-                    const adapter = createOpenRouterConnection({
-                        ...activeProfile.config,
-                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    });
+                    const adapter = getAdapterForSettings(settings, activeProfile.id);
                     const result = await adapter.generate({
                         context: "Reply briefly to confirm the connection works.",
                         messages: [createUserMessage("hello", defaultPersona)],
@@ -314,10 +297,7 @@ export function ConnectionsSettings({
                 setStatusMessage(`Testing POST ${targetUrl}`);
 
                 try {
-                    const adapter = createGoogleAIConnection({
-                        ...activeProfile.config,
-                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    });
+                    const adapter = getAdapterForSettings(settings, activeProfile.id);
                     const result = await adapter.generate({
                         context: "Reply briefly to confirm the connection works.",
                         messages: [createUserMessage("hello", defaultPersona)],
@@ -344,10 +324,7 @@ export function ConnectionsSettings({
                 setStatusMessage(`Testing POST ${targetUrl}`);
 
                 try {
-                    const adapter = createAnthropicConnection({
-                        ...activeProfile.config,
-                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    });
+                    const adapter = getAdapterForSettings(settings, activeProfile.id);
                     const result = await adapter.generate({
                         context: "Reply briefly to confirm the connection works.",
                         messages: [createUserMessage("hello", defaultPersona)],
@@ -377,10 +354,7 @@ export function ConnectionsSettings({
                 setStatusMessage(`Testing POST ${targetUrl}`);
 
                 try {
-                    const adapter = createNovelAIConnection({
-                        ...activeProfile.config,
-                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    });
+                    const adapter = getAdapterForSettings(settings, activeProfile.id);
                     const result = await adapter.generate({
                         context: "Reply briefly to confirm the connection works.",
                         messages: [createUserMessage("hello", defaultPersona)],
@@ -407,10 +381,7 @@ export function ConnectionsSettings({
                 setStatusMessage(`Testing POST ${targetUrl}`);
 
                 try {
-                    const adapter = createXAIConnection({
-                        ...activeProfile.config,
-                        apiKey: activeProfile.config.apiKey?.trim() || undefined,
-                    });
+                    const adapter = getAdapterForSettings(settings, activeProfile.id);
                     const result = await adapter.generate({
                         context: "Reply briefly to confirm the connection works.",
                         messages: [createUserMessage("hello", defaultPersona)],
@@ -434,8 +405,9 @@ export function ConnectionsSettings({
                     `Testing POST ${createKoboldCPPModelUrl(activeProfile.config).replace(/\/api\/v1\/model$/, "/api/v1/generate")}`,
                 );
                 try {
-                    const result = await createKoboldCPPConnection(
-                        activeProfile.config,
+                    const result = await getAdapterForSettings(
+                        settings,
+                        activeProfile.id,
                     ).generate({
                         context: "",
                         messages: [
@@ -487,10 +459,7 @@ export function ConnectionsSettings({
         );
 
         try {
-            const adapter = createOpenAICompatibleConnection({
-                ...activeProfile.config,
-                apiKey: activeProfile.config.apiKey?.trim() || undefined,
-            });
+            const adapter = getAdapterForSettings(settings, activeProfile.id);
             const result = await adapter.generate({
                 context: "Reply briefly to confirm the connection works.",
                 messages: [createUserMessage("hello", defaultPersona)],

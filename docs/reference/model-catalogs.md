@@ -33,11 +33,11 @@ Each file is an ordered array of display categories. Keep category IDs, labels, 
 ]
 ```
 
-`contextTokenLimit` is the existing, authoritative local prompt-trimming budget. It is not replaced by `requestValidation.inputTokenLimit`. The two values can legitimately differ when a provider documents a different request-input limit than the app's local budgeting limit.
+`contextTokenLimit` remains SmileyChat's local prompt-trimming budget. At request time, a documented `requestValidation.inputTokenLimit` is an additional hard ceiling, so the effective prompt budget is the lower applicable value. The two values can legitimately differ when a provider documents a different request-input limit than the app's local budgeting limit.
 
 ## `requestValidation`
 
-Every built-in model entry has a `requestValidation` object. It is provider/model metadata intended for future validation of generation controls. It currently does **not** change the request payload, presets, connection settings, prompt trimming, or UI behavior.
+Every built-in model entry has a `requestValidation` object. Before generation, SmileyChat uses it to transiently validate the active request: documented output caps are enforced, unsupported controls are omitted, documented numeric bounds are clamped, and documented integer controls are rounded. Saved presets and connection settings are never rewritten.
 
 ```json
 {
@@ -100,7 +100,7 @@ The catalog records the capability of the model/API path used by SmileyChat. For
 
 ## Ownership and Runtime Boundaries
 
-Generation values remain preset-owned. A connection profile chooses the provider, model, endpoint, authentication, and local context budget; a preset supplies generation behavior such as temperature, top-p, top-k, output length, and penalties. `requestValidation` only describes whether those preset controls can eventually be validated for a selected built-in model.
+Generation values remain preset-owned. A connection profile chooses the provider, model, endpoint, authentication, and local context budget; a preset supplies generation behavior such as temperature, top-p, top-k, output length, and penalties. `requestValidation` constrains the transient request for a selected built-in model; it never persists normalized values back into either owner.
 
 Do not write API keys, provider URLs, sampling values, request history, pricing, or non-validation presentation metadata into `requestValidation`.
 

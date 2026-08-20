@@ -4,7 +4,7 @@ SmileyChat uses connection profiles to talk to AI providers. Each profile has a 
 
 Generation behavior such as temperature, top-p, top-k, max output tokens, and penalties belongs to presets, not connections. Connections are for routing, model selection, provider-specific options, and authentication.
 
-The built-in provider catalogs can also declare per-model request-validation metadata for future settings validation. That metadata is informational today: it does not alter generated requests, preset ownership, or the connection profile's local context budget. See [Built-In Model Catalogs](model-catalogs.md).
+The built-in provider catalogs can declare per-model request-validation metadata. SmileyChat applies documented request caps and sampling capabilities transiently at generation time while preserving preset ownership and saved connection settings. See [Built-In Model Catalogs](model-catalogs.md).
 
 ## Built-In Providers
 

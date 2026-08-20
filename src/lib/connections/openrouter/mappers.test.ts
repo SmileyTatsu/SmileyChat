@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { createOpenRouterChatCompletionBody } from "./mappers";
+import { createConnectionProfile } from "../config";
+import { prepareGenerationRequest } from "../request-validation";
 
 describe("OpenRouter connection mappers", () => {
     test("adds max_completion_tokens", () => {
@@ -60,29 +62,37 @@ describe("OpenRouter connection mappers", () => {
         });
     });
 
-    test("filters sampler settings by selected model supported parameters", () => {
-        const body = createOpenRouterChatCompletionBody(
-            {
-                generation: {
-                    frequencyPenalty: 0.2,
-                    minP: 0.05,
-                    temperature: 0.75,
-                    topK: 40,
-                    topP: 0.9,
-                },
-                messages: [],
-                promptMessages: [{ role: "user", content: "Hello" }],
+    test("formats sampler settings prepared by the shared selected-model validator", () => {
+        const profile = createConnectionProfile("openrouter");
+        profile.config = {
+            maxCompletionTokens: 250,
+            model: {
+                source: "api",
+                id: "openai/gpt-5.5",
+                supportedParameters: ["temperature", "top_p"],
             },
-            {
-                maxCompletionTokens: 250,
-                model: {
-                    source: "api",
-                    id: "openai/gpt-5.5",
-                    supportedParameters: ["temperature", "top_p"],
-                },
-                providerPreferences: {},
+            providerPreferences: {},
+        };
+        const request = prepareGenerationRequest(profile, {
+            generation: {
+                frequencyPenalty: 0.2,
+                minP: 0.05,
+                temperature: 0.75,
+                topK: 40,
+                topP: 0.9,
             },
-        );
+            messages: [],
+            promptMessages: [{ role: "user", content: "Hello" }],
+        }).request;
+        const body = createOpenRouterChatCompletionBody(request, {
+            maxCompletionTokens: 250,
+            model: {
+                source: "api",
+                id: "openai/gpt-5.5",
+                supportedParameters: ["temperature", "top_p"],
+            },
+            providerPreferences: {},
+        });
 
         expect(body.max_completion_tokens).toBe(250);
         expect(body.temperature).toBe(0.75);

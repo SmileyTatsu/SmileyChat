@@ -1,11 +1,14 @@
 import defaultNovelAIModelCategories from "#frontend/data/default-novelai-models.json";
+import { flattenCatalogModels } from "../request-validation";
 
-export const novelAIDefaultModels = defaultNovelAIModelCategories.flatMap(
-    (category) => category.models,
-);
+export const novelAIDefaultModels = flattenCatalogModels(
+    defaultNovelAIModelCategories,
+) as Array<{
+    id: string;
+    label: string;
+}>;
 
 export const novelAITextBaseUrl = "https://text.novelai.net";
-export const novelAITextGenerationMaxOutputTokens = 250;
 
 export const kayraLogitBias: Record<string, number> = {
     "23": -100,

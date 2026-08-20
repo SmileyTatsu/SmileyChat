@@ -9,14 +9,15 @@ import {
 } from "#frontend/lib/presets/context-budget-constants";
 
 import type { ConnectionProfile } from "./config";
+import {
+    getEffectiveOutputTokenLimit,
+    getRequestInputTokenLimit,
+} from "./request-validation";
+import { flattenCatalogModels } from "./request-validation";
 
 type LocalModel = {
     id: string;
     contextTokenLimit?: number;
-};
-
-type LocalModelCategory = {
-    models: LocalModel[];
 };
 
 export type EffectiveContextTokenBudget = {
@@ -26,14 +27,12 @@ export type EffectiveContextTokenBudget = {
     reservedOutputTokens: number;
 };
 
-const localCatalogs: Partial<
-    Record<ConnectionProfile["provider"], LocalModelCategory[]>
-> = {
-    "openai-compatible": defaultOpenAIModels,
-    "google-ai": defaultGoogleAIModels,
-    anthropic: defaultAnthropicModels,
-    novelai: defaultNovelAIModels,
-    xai: defaultXAIModels,
+const localCatalogs: Partial<Record<ConnectionProfile["provider"], LocalModel[]>> = {
+    "openai-compatible": flattenCatalogModels(defaultOpenAIModels),
+    "google-ai": flattenCatalogModels(defaultGoogleAIModels),
+    anthropic: flattenCatalogModels(defaultAnthropicModels),
+    novelai: flattenCatalogModels(defaultNovelAIModels),
+    xai: flattenCatalogModels(defaultXAIModels),
 };
 
 export function getModelMaxContextLimit(profile: ConnectionProfile | undefined): number {
@@ -66,19 +65,28 @@ export function getEffectiveContextTokenBudget(
     profile: ConnectionProfile | undefined,
 ): EffectiveContextTokenBudget {
     const rawBudget = normalizeContextTokenBudget(profile?.contextTokenBudget);
+    const requestInputLimit = getRequestInputTokenLimit(profile);
 
     if (profile?.overrideModelContext) {
+        const totalTokenLimit = Math.min(
+            rawBudget,
+            requestInputLimit ?? Number.POSITIVE_INFINITY,
+        );
         const reservedOutputTokens = getReservedOutputTokens(profile);
         return {
             source: "custom",
-            totalTokenLimit: rawBudget,
+            totalTokenLimit,
             reservedOutputTokens,
-            tokenBudget: Math.max(0, rawBudget - reservedOutputTokens),
+            tokenBudget: Math.max(0, totalTokenLimit - reservedOutputTokens),
         };
     }
 
     const modelMax = getModelMaxContextLimit(profile);
-    const tokenBudget = Math.min(modelMax, rawBudget);
+    const tokenBudget = Math.min(
+        modelMax,
+        rawBudget,
+        requestInputLimit ?? Number.POSITIVE_INFINITY,
+    );
     const reservedOutputTokens = getReservedOutputTokens(profile);
 
     const model = getSelectedModel(profile);
@@ -99,7 +107,10 @@ function getReservedOutputTokens(profile: ConnectionProfile | undefined) {
     if (!profile) return 0;
     const config = profile.config as Record<string, unknown>;
     const configured =
-        config.maxCompletionTokens ?? config.maxOutputTokens ?? config.maxTokens;
+        getEffectiveOutputTokenLimit(profile) ??
+        config.maxCompletionTokens ??
+        config.maxOutputTokens ??
+        config.maxTokens;
     const outputTokens =
         typeof configured === "number" && Number.isFinite(configured)
             ? Math.max(0, Math.floor(configured))
@@ -144,9 +155,7 @@ export function getLocalModelContextTokenLimit(
     modelId: string,
 ) {
     const categories = provider ? localCatalogs[provider] : undefined;
-    const value = categories
-        ?.flatMap((category) => category.models)
-        .find((model) => model.id === modelId)?.contextTokenLimit;
+    const value = categories?.find((model) => model.id === modelId)?.contextTokenLimit;
 
     return typeof value === "number" && Number.isFinite(value) && value > 0
         ? Math.round(value)

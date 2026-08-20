@@ -30,7 +30,7 @@ describe("effective connection context budget", () => {
         profile.config.model = { source: "default", id: "llama-3-erato-v1" };
         profile.contextTokenBudget = 32768;
 
-        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(31768);
+        expect(getEffectiveContextTokenBudget(profile).tokenBudget).toBe(32518);
     });
 
     test("uses the checked-in xAI limit for grok-4.6", () => {
@@ -69,9 +69,9 @@ describe("effective connection context budget", () => {
 
         expect(getEffectiveContextTokenBudget(profile)).toMatchObject({
             source: "custom",
-            totalTokenLimit: 2_000_000,
+            totalTokenLimit: 1_048_576,
             reservedOutputTokens: 1000,
-            tokenBudget: 1_999_000,
+            tokenBudget: 1_047_576,
         });
     });
 });

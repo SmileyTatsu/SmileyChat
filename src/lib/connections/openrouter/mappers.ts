@@ -2,10 +2,7 @@ import { MessageRole } from "#frontend/types";
 import { ChatGenerationMessageRole } from "../types";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 import { defaultOutputTokenLimit } from "../output-tokens";
-import {
-    filterOpenRouterGenerationParameters,
-    stopSequencesForGeneration,
-} from "../generation-settings";
+import { stopSequencesForGeneration } from "../generation-settings";
 import {
     chatCompletionTools,
     createChatCompletionMessages,
@@ -38,10 +35,7 @@ export function createOpenRouterChatCompletionBody(
     });
     const provider = cleanProviderPreferences(config.providerPreferences);
     const reasoning = cleanReasoningConfig(config.reasoning);
-    const generation = filterOpenRouterGenerationParameters(
-        request.generation,
-        config.model.supportedParameters,
-    );
+    const generation = request.generation;
 
     return {
         model: config.model.id,
@@ -91,10 +85,7 @@ export function createOpenRouterResponsesBody(
     request: ChatGenerationRequest,
     config: OpenRouterConnectionConfig,
 ): OpenRouterResponsesRequest {
-    const generation = filterOpenRouterGenerationParameters(
-        request.generation,
-        config.model.supportedParameters,
-    );
+    const generation = request.generation;
     const provider = cleanProviderPreferences(config.providerPreferences);
     const reasoning = cleanReasoningConfig(config.reasoning);
 

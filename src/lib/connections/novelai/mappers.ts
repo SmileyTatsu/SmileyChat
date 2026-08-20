@@ -10,11 +10,7 @@ import { ChatGenerationMessageRole } from "../types";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 import { formatCustomInstructPrompt, formatInstructPrompt } from "../../instruct";
 
-import {
-    eratoLogitBias,
-    kayraLogitBias,
-    novelAITextGenerationMaxOutputTokens,
-} from "./constants";
+import { eratoLogitBias, kayraLogitBias } from "./constants";
 import type {
     NovelAIChatMessage,
     NovelAICompletionResponse,
@@ -71,7 +67,7 @@ export function createNovelAITextGenerationBody(
         input,
         parameters: {
             use_string: true,
-            max_length: Math.min(maxTokens, novelAITextGenerationMaxOutputTokens),
+            max_length: maxTokens,
             min_length: 1,
             ...(typeof generation?.temperature === "number"
                 ? { temperature: generation.temperature }

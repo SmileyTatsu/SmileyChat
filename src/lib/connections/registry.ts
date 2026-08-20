@@ -1,4 +1,5 @@
 import { createAdapterFromPluginProvider } from "../plugins/registry";
+import { clientLogger } from "../logging/client-logger";
 
 import {
     type ConnectionProfile,
@@ -19,6 +20,8 @@ import { createOpenAICompatibleConnection } from "./openai-compatible/adapter";
 import { createOpenRouterConnection } from "./openrouter/adapter";
 import { createXAIConnection } from "./xai/adapter";
 import { createKoboldCPPConnection } from "./koboldcpp/adapter";
+import { prepareGenerationRequest } from "./request-validation";
+import type { ConnectionAdapter } from "./types";
 
 export function getAdapterForSettings(
     settings: ConnectionSettings,
@@ -28,95 +31,147 @@ export function getAdapterForSettings(
     const sourceProfile = profileId
         ? settings.profiles.find((candidate) => candidate.id === profileId)
         : getActiveConnectionProfile(settings);
-    const profile = applyTemporaryModelOverride(sourceProfile, options.modelId);
+    const source = applyTemporaryModelOverride(sourceProfile, options.modelId);
 
-    if (!profile) {
+    if (!source) {
         throw new Error(
             profileId
                 ? `Connection profile ${profileId} is not configured.`
                 : "No connection profile is configured.",
         );
     }
+    const adapterProfile = prepareGenerationRequest(source, { messages: [] }).profile;
 
-    if (isOpenAICompatibleProfile(profile)) {
-        if (!profile.config.model.id.trim()) {
-            throw new Error(`${profile.name} needs a model.`);
+    if (isOpenAICompatibleProfile(adapterProfile)) {
+        if (!adapterProfile.config.model.id.trim()) {
+            throw new Error(`${adapterProfile.name} needs a model.`);
         }
 
-        return createOpenAICompatibleConnection({
-            ...profile.config,
-            apiKey: profile.config.apiKey?.trim() || undefined,
-        });
+        return withRequestValidation(
+            source,
+            createOpenAICompatibleConnection({
+                ...adapterProfile.config,
+                apiKey: adapterProfile.config.apiKey?.trim() || undefined,
+            }),
+        );
     }
 
-    if (isOpenRouterProfile(profile)) {
-        if (!profile.config.model.id.trim()) {
-            throw new Error(`${profile.name} needs a model.`);
+    if (isOpenRouterProfile(adapterProfile)) {
+        if (!adapterProfile.config.model.id.trim()) {
+            throw new Error(`${adapterProfile.name} needs a model.`);
         }
 
-        return createOpenRouterConnection({
-            ...profile.config,
-            apiKey: profile.config.apiKey?.trim() || undefined,
-        });
+        return withRequestValidation(
+            source,
+            createOpenRouterConnection({
+                ...adapterProfile.config,
+                apiKey: adapterProfile.config.apiKey?.trim() || undefined,
+            }),
+        );
     }
 
-    if (isGoogleAIProfile(profile)) {
-        if (!profile.config.model.id.trim()) {
-            throw new Error(`${profile.name} needs a model.`);
+    if (isGoogleAIProfile(adapterProfile)) {
+        if (!adapterProfile.config.model.id.trim()) {
+            throw new Error(`${adapterProfile.name} needs a model.`);
         }
 
-        return createGoogleAIConnection({
-            ...profile.config,
-            apiKey: profile.config.apiKey?.trim() || undefined,
-        });
+        return withRequestValidation(
+            source,
+            createGoogleAIConnection({
+                ...adapterProfile.config,
+                apiKey: adapterProfile.config.apiKey?.trim() || undefined,
+            }),
+        );
     }
 
-    if (isAnthropicProfile(profile)) {
-        if (!profile.config.model.id.trim()) {
-            throw new Error(`${profile.name} needs a model.`);
+    if (isAnthropicProfile(adapterProfile)) {
+        if (!adapterProfile.config.model.id.trim()) {
+            throw new Error(`${adapterProfile.name} needs a model.`);
         }
 
-        return createAnthropicConnection({
-            ...profile.config,
-            apiKey: profile.config.apiKey?.trim() || undefined,
-        });
+        return withRequestValidation(
+            source,
+            createAnthropicConnection({
+                ...adapterProfile.config,
+                apiKey: adapterProfile.config.apiKey?.trim() || undefined,
+            }),
+        );
     }
 
-    if (isNovelAIProfile(profile)) {
-        if (!profile.config.model.id.trim()) {
-            throw new Error(`${profile.name} needs a model.`);
+    if (isNovelAIProfile(adapterProfile)) {
+        if (!adapterProfile.config.model.id.trim()) {
+            throw new Error(`${adapterProfile.name} needs a model.`);
         }
 
-        return createNovelAIConnection({
-            ...profile.config,
-            apiKey: profile.config.apiKey?.trim() || undefined,
-        });
+        return withRequestValidation(
+            source,
+            createNovelAIConnection({
+                ...adapterProfile.config,
+                apiKey: adapterProfile.config.apiKey?.trim() || undefined,
+            }),
+        );
     }
 
-    if (isXAIProfile(profile)) {
-        if (!profile.config.model.id.trim()) {
-            throw new Error(`${profile.name} needs a model.`);
+    if (isXAIProfile(adapterProfile)) {
+        if (!adapterProfile.config.model.id.trim()) {
+            throw new Error(`${adapterProfile.name} needs a model.`);
         }
 
-        return createXAIConnection({
-            ...profile.config,
-            apiKey: profile.config.apiKey?.trim() || undefined,
-        });
+        return withRequestValidation(
+            source,
+            createXAIConnection({
+                ...adapterProfile.config,
+                apiKey: adapterProfile.config.apiKey?.trim() || undefined,
+            }),
+        );
     }
-    if (isKoboldCPPProfile(profile)) {
-        return createKoboldCPPConnection({
-            ...profile.config,
-            contextTokenBudget: profile.contextTokenBudget,
-        });
+    if (isKoboldCPPProfile(adapterProfile)) {
+        return withRequestValidation(
+            source,
+            createKoboldCPPConnection({
+                ...adapterProfile.config,
+                contextTokenBudget: adapterProfile.contextTokenBudget,
+            }),
+        );
     }
 
-    const pluginAdapter = createAdapterFromPluginProvider(profile.provider, profile);
+    const pluginAdapter = createAdapterFromPluginProvider(
+        adapterProfile.provider,
+        adapterProfile,
+    );
 
     if (!pluginAdapter) {
-        throw new Error(`Unsupported connection provider: ${profile.provider}`);
+        throw new Error(`Unsupported connection provider: ${source.provider}`);
     }
 
-    return pluginAdapter;
+    return withRequestValidation(source, pluginAdapter);
+}
+
+function withRequestValidation(
+    profile: ConnectionProfile,
+    adapter: ConnectionAdapter,
+): ConnectionAdapter {
+    const prepare = (request: Parameters<ConnectionAdapter["generate"]>[0]) => {
+        const prepared = prepareGenerationRequest(profile, request);
+        if (prepared.changes.length) {
+            clientLogger.info("VALIDATION", {
+                provider: profile.provider,
+                model: (profile.config as { model?: { id?: string } }).model?.id,
+                metadataSource: prepared.metadataSource,
+                ...(prepared.inputTokenLimit
+                    ? { inputTokenLimit: prepared.inputTokenLimit }
+                    : {}),
+                changes: prepared.changes,
+            });
+        }
+        return prepared.request;
+    };
+
+    return {
+        ...adapter,
+        buildPayload: (request) => adapter.buildPayload(prepare(request)),
+        generate: (request) => adapter.generate(prepare(request)),
+    };
 }
 
 function applyTemporaryModelOverride(

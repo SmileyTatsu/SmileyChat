@@ -134,6 +134,24 @@ describe("Anthropic connection mappers", () => {
         });
     });
 
+    test("keeps the thinking wire contract when normalized sampling includes top_p", () => {
+        const body = createAnthropicMessageBody(
+            {
+                generation: { temperature: 0.7, topP: 0.99 },
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-opus-4-6" },
+                thinking: { mode: "enabled", budgetTokens: 512 },
+            },
+        );
+
+        expect(body.temperature).toBe(1);
+        expect(body.top_p).toBeUndefined();
+    });
+
     test("allows temperature 1.0 and top_p >= 0.99 for backwards compatibility on post-Opus 4.6 models", () => {
         const temp1Body = createAnthropicMessageBody(
             {

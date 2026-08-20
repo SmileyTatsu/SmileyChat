@@ -292,7 +292,10 @@ function shouldLog(
         if (!subsystems.generation) return false;
         if (message.startsWith("PROMPT") && !subsystems.generationPromptDetails)
             return false;
-        if (message.startsWith("SAMPLING") && !subsystems.generationSamplingDetails)
+        if (
+            (message.startsWith("SAMPLING") || message.startsWith("VALIDATION")) &&
+            !subsystems.generationSamplingDetails
+        )
             return false;
         return true;
     }
@@ -339,6 +342,11 @@ function shouldLogFile(
     if (subsystem === "security") return true;
 
     if (subsystem === "generate") {
+        if (
+            (message.startsWith("SAMPLING") || message.startsWith("VALIDATION")) &&
+            !subsystems.generationSamplingDetails
+        )
+            return false;
         return subsystems.generation;
     }
 

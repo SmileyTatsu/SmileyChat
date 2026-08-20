@@ -44,7 +44,10 @@ export function createAnthropicMessageBody(
         maxTokens,
         config.model.id,
     );
-    const sampling = cleanAnthropicSamplingConfig(request.generation, config.model.id);
+    const sampling = enforceAnthropicThinkingSampling(
+        cleanAnthropicSamplingConfig(request.generation, config.model.id),
+        thinking,
+    );
     const cacheControl =
         config.promptCaching?.mode === "auto"
             ? {
@@ -239,6 +242,16 @@ function cleanAnthropicSamplingConfig(
     }
 
     return output;
+}
+
+/** Anthropic's Messages API forbids top_p with thinking and only permits temperature 1. */
+function enforceAnthropicThinkingSampling(
+    sampling: Pick<AnthropicCreateMessageRequest, "temperature" | "top_k" | "top_p">,
+    thinking: AnthropicCreateMessageRequest["thinking"],
+) {
+    if (!thinking) return sampling;
+    const { top_p: _topP, ...safe } = sampling;
+    return safe.temperature === undefined ? safe : { ...safe, temperature: 1 };
 }
 
 function toAnthropicMessage(message: ChatGenerationMessage): AnthropicMessage {
