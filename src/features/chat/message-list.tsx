@@ -11,6 +11,7 @@ import {
     getPluginMessageActions,
     subscribeToPluginRegistry,
 } from "#frontend/lib/plugins/registry";
+import { findStreamingMessageDraftSignal } from "#frontend/lib/streaming-message-drafts";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { TimeFormat } from "#frontend/lib/preferences/types";
 import type { ChatMode, Message } from "#frontend/types";
@@ -148,6 +149,10 @@ export const MessageList = memo(function MessageList({
         [messages, showToolActivity],
     );
     const isStreamActive = Boolean(isTyping || pendingSwipeMessageId);
+    const lastDisplayMessage = displayMessages[displayMessages.length - 1];
+    const isStreamingActiveInList = Boolean(
+        lastDisplayMessage && findStreamingMessageDraftSignal(lastDisplayMessage.id),
+    );
     const keyboardSwipeTarget = useMemo(
         () => findKeyboardSwipeTarget(displayMessages),
         [displayMessages],
@@ -538,7 +543,7 @@ export const MessageList = memo(function MessageList({
                     ),
                     Footer: () => (
                         <>
-                            {isTyping && (
+                            {isTyping && !isStreamingActiveInList && (
                                 <TypingIndicator
                                     characterName={characterName}
                                     generatingSpeakerName={generatingSpeakerName}

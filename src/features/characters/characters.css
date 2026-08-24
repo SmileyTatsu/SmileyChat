@@ -986,6 +986,14 @@
     font-size: 0.76rem;
 }
 
+.group-talkativeness.disabled {
+    opacity: 0.45;
+}
+
+.group-talkativeness.disabled input {
+    cursor: not-allowed;
+}
+
 .group-talkativeness input {
     width: 100%;
     padding: 0;

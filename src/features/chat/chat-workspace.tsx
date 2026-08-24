@@ -245,6 +245,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
             {!emptyState && (
                 <MessageComposer
                     characterName={characterName}
+                    isGroup={Boolean(groupMembers?.length)}
                     disabled={
                         isLoading ||
                         pluginComposerState?.disabled ||

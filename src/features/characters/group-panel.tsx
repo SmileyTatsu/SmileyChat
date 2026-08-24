@@ -637,20 +637,24 @@ export function GroupPanel({
                                                 >
                                                     <Trash2 size={15} />
                                                 </button>
-                                                <label className="group-talkativeness">
+                                                <label
+                                                    className={`group-talkativeness ${member.muted ? "disabled" : ""}`}
+                                                >
                                                     <span>
                                                         Talkativeness{" "}
-                                                        {Math.round(
-                                                            (member.talkativeness ??
-                                                                0.5) * 100,
-                                                        )}
-                                                        %
+                                                        {member.muted
+                                                            ? "(Muted)"
+                                                            : `${Math.round(
+                                                                  (member.talkativeness ??
+                                                                      0.5) * 100,
+                                                              )}%`}
                                                     </span>
                                                     <input
                                                         type="range"
                                                         min="0"
                                                         max="1"
                                                         step="0.05"
+                                                        disabled={member.muted}
                                                         value={
                                                             member.talkativeness ?? 0.5
                                                         }

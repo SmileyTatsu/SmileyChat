@@ -15,6 +15,7 @@ import {
 import { memo } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
+import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import { cn } from "#frontend/lib/common/style";
 import {
     getTextFormattingHotkeyResult,
@@ -172,7 +173,10 @@ export const MessageItem = memo(function MessageItem({
     const avatar =
         message.role === "character"
             ? {
-                  path: message.authorAvatarPath ?? characterAvatarPath,
+                  path:
+                      message.authorAvatarPath ??
+                      characterAvatarPath ??
+                      characterInitialAvatar(message.author || characterName),
                   alt:
                       message.metadata?.displayRole === "system"
                           ? "System Avatar"

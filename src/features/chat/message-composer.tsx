@@ -40,6 +40,7 @@ import {
 
 type MessageComposerProps = {
     characterName: string;
+    isGroup?: boolean;
     disabled?: boolean;
     enterToSend: boolean;
     isGenerating?: boolean;
@@ -69,6 +70,7 @@ type PluginComposerActionsProps = {
 
 export const MessageComposer = memo(function MessageComposer({
     characterName,
+    isGroup,
     disabled,
     enterToSend,
     isGenerating,
@@ -412,7 +414,9 @@ export const MessageComposer = memo(function MessageComposer({
                     placeholder={
                         placeholder ||
                         (mode === "chat"
-                            ? `Message ${characterName}...`
+                            ? isGroup
+                                ? "Message group..."
+                                : `Message ${characterName}...`
                             : "Write your next line, action, or narration...")
                     }
                     onInput={(event) =>
