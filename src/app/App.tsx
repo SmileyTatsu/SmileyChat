@@ -1194,6 +1194,7 @@ export function App() {
                 groupCharacters={activeChatIsGroup ? groupCharacters : undefined}
                 groupMembers={activeChatIsGroup ? activeChat?.members : undefined}
                 errorMessage={chatSession.chatError}
+                generatingSpeakerName={chatSession.generatingSpeaker?.name}
                 isLoading={isChatLoading}
                 chatLoadRequestId={chatLoadRequestId}
                 isSending={chatSession.isSending}

@@ -59,6 +59,7 @@ type ChatWorkspaceProps = {
     groupCharacters?: SmileyCharacter[];
     groupMembers?: ChatGroupMember[];
     errorMessage?: string;
+    generatingSpeakerName?: string;
     isLoading?: boolean;
     chatLoadRequestId?: number;
     isSending?: boolean;
@@ -106,6 +107,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     groupCharacters,
     groupMembers,
     errorMessage,
+    generatingSpeakerName,
     isLoading,
     chatLoadRequestId = 0,
     isSending,
@@ -208,6 +210,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     characterDialogueColors={characterDialogueColors}
                     personaDialogueColors={personaDialogueColors}
                     characterName={characterName}
+                    generatingSpeakerName={generatingSpeakerName}
                     defaultCharacterDialogueColor={defaultCharacterDialogueColor}
                     errorMessage={errorMessage}
                     isTyping={isSending}

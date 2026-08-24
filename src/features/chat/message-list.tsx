@@ -23,6 +23,7 @@ type MessageListProps = {
     characterDialogueColors: Readonly<Record<string, string | null>>;
     personaDialogueColors: Readonly<Record<string, string | null>>;
     characterName: string;
+    generatingSpeakerName?: string;
     chatId: string;
     chatLoadRequestId?: number;
     defaultCharacterDialogueColor?: string;
@@ -62,6 +63,7 @@ export const MessageList = memo(function MessageList({
     characterDialogueColors,
     personaDialogueColors,
     characterName,
+    generatingSpeakerName,
     chatId,
     chatLoadRequestId = 0,
     defaultCharacterDialogueColor,
@@ -539,6 +541,7 @@ export const MessageList = memo(function MessageList({
                             {isTyping && (
                                 <TypingIndicator
                                     characterName={characterName}
+                                    generatingSpeakerName={generatingSpeakerName}
                                     mode={mode}
                                 />
                             )}
@@ -750,16 +753,20 @@ function findKeyboardSwipeTarget(messages: Message[]) {
 
 function TypingIndicator({
     characterName,
+    generatingSpeakerName,
     mode,
 }: {
     characterName: string;
+    generatingSpeakerName?: string;
     mode: ChatMode;
 }) {
+    const effectiveName = generatingSpeakerName || characterName;
+
     if (mode === "rp") {
         return (
             <div
                 className="rp-typing-indicator"
-                aria-label={`${characterName} is responding`}
+                aria-label={`${effectiveName} is responding`}
             >
                 <span />
                 <i />
@@ -770,13 +777,13 @@ function TypingIndicator({
     }
 
     return (
-        <div className="chat-typing-line" aria-label={`${characterName} is writing`}>
+        <div className="chat-typing-line" aria-label={`${effectiveName} is writing`}>
             <div className="typing-dots">
                 <i />
                 <i />
                 <i />
             </div>
-            <span>{characterName} is writing</span>
+            <span>{effectiveName} is writing</span>
         </div>
     );
 }

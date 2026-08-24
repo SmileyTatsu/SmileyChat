@@ -95,6 +95,7 @@ export function useChatSession({
         endChatPending,
         endGenerationController,
         getActiveGeneration,
+        generatingSpeakers,
         isChatPending,
         pendingChatIds,
         pendingSwipeMessageIds,
@@ -208,6 +209,14 @@ export function useChatSession({
             messages: sourceMessages,
             sourceChat,
         });
+
+        if (!generationCharacter) {
+            setChatError(
+                "All group members are muted. Unmute at least one member to generate a response.",
+            );
+            return;
+        }
+
         const text = await applyInputMiddlewares(
             resolveChatMacros(draft.trim(), sourceMessages, generationCharacter),
             sourceMessages,
@@ -280,7 +289,10 @@ export function useChatSession({
         let streamedContent = "";
         const streamedImages: string[] = [];
         setChatError("");
-        beginChatPending(chatId);
+        beginChatPending(chatId, undefined, {
+            characterId: generationCharacter.id,
+            name: generationCharacter.data.name,
+        });
         const abortController = beginGenerationController(chatId, {
             streamingMessageId: streamingReply?.id,
         });
@@ -481,17 +493,31 @@ export function useChatSession({
             0,
             Math.max(0, targetIndex),
         );
+
+        if (!isMessageAuthorUnmuted(targetMessage, sourceChat)) {
+            setChatError("Cannot swipe: that character is currently muted.");
+            return;
+        }
+
         const generationCharacter =
-            groupCharacters.find((item) => item.id === targetMessage.authorCharacterId) ??
-            selectGenerationCharacter({
-                character,
-                groupCharacters,
-                messages: historyBeforeTarget,
-                sourceChat,
-            });
+            (targetMessage.authorCharacterId
+                ? groupCharacters.find(
+                      (item) => item.id === targetMessage.authorCharacterId,
+                  )
+                : undefined) ??
+            groupCharacters.find((item) => item.data.name === targetMessage.author) ??
+            (isGroupChat(sourceChat) ? undefined : character);
+
+        if (!generationCharacter) {
+            setChatError("That group member no longer has a saved character card.");
+            return;
+        }
 
         setChatError("");
-        beginChatPending(chatId, messageId);
+        beginChatPending(chatId, messageId, {
+            characterId: generationCharacter.id,
+            name: generationCharacter.data.name,
+        });
         const abortController = beginGenerationController(chatId, {
             swipeMessageId: streamGeneration ? messageId : undefined,
         });
@@ -666,21 +692,37 @@ export function useChatSession({
             return;
         }
 
+        if (!isMessageAuthorUnmuted(lastMessage, sourceChat)) {
+            setChatError(
+                "Cannot continue generation: that character is currently muted.",
+            );
+            return;
+        }
+
         const generationCharacter =
-            groupCharacters.find((item) => item.id === lastMessage.authorCharacterId) ??
-            selectGenerationCharacter({
-                character,
-                groupCharacters,
-                messages: sourceChat.messages.slice(0, -1),
-                sourceChat,
-            });
+            (lastMessage.authorCharacterId
+                ? groupCharacters.find(
+                      (item) => item.id === lastMessage.authorCharacterId,
+                  )
+                : undefined) ??
+            groupCharacters.find((item) => item.data.name === lastMessage.author) ??
+            (isGroupChat(sourceChat) ? undefined : character);
+
+        if (!generationCharacter) {
+            setChatError("That group member no longer has a saved character card.");
+            return;
+        }
+
         const priorActivities = activeSwipe.toolActivities ?? [];
         const priorTimeline = activeSwipe.timeline ?? [];
         const chatId = sourceChat.id;
         let streamedContent = "";
 
         setChatError("");
-        beginChatPending(chatId, messageId);
+        beginChatPending(chatId, messageId, {
+            characterId: generationCharacter.id,
+            name: generationCharacter.data.name,
+        });
         const abortController = beginGenerationController(chatId, {
             swipeMessageId: streamGeneration ? messageId : undefined,
         });
@@ -760,6 +802,10 @@ export function useChatSession({
             messages: sourceChat.messages,
             sourceChat,
         });
+
+        if (!generationCharacter) {
+            throw new Error("All group members are muted.");
+        }
 
         return buildDebugPayload(
             sourceChat.messages,
@@ -1033,6 +1079,7 @@ export function useChatSession({
         createUserSwipe,
         deleteMessage,
         editMessage,
+        generatingSpeaker: activeChatId ? generatingSpeakers[activeChatId] : undefined,
         getDebugPayload,
         isSending: activeChatId ? pendingChatIds.includes(activeChatId) : false,
         uploadingAttachmentCount,
@@ -1110,4 +1157,23 @@ function latestChatValue(
     }
 
     return next.updatedAt >= current.updatedAt ? next : current;
+}
+
+export function isMessageAuthorUnmuted(
+    message: Message,
+    sourceChat: ChatSession | undefined,
+): boolean {
+    if (!sourceChat || !isGroupChat(sourceChat)) {
+        return true;
+    }
+
+    const members = sourceChat.members ?? [];
+
+    if (message.authorCharacterId) {
+        const member = members.find((m) => m.characterId === message.authorCharacterId);
+        return member ? !member.muted : false;
+    }
+
+    const memberByName = members.find((m) => m.name === message.author);
+    return memberByName ? !memberByName.muted : false;
 }

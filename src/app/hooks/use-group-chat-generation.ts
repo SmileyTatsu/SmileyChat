@@ -15,7 +15,7 @@ export function selectGenerationCharacter({
     groupCharacters: SmileyCharacter[];
     messages: Message[];
     sourceChat: ChatSession;
-}) {
+}): SmileyCharacter | undefined {
     if (!isGroupChat(sourceChat) || groupCharacters.length === 0) {
         return character;
     }
@@ -24,27 +24,36 @@ export function selectGenerationCharacter({
         return groupCharacters.find((item) => item.id === forcedCharacterId) ?? character;
     }
 
+    const unmutedCharacters = (sourceChat.members ?? [])
+        .slice()
+        .sort((left, right) => left.order - right.order)
+        .filter((member) => !member.muted)
+        .map((member) => groupCharacters.find((item) => item.id === member.characterId))
+        .filter((item): item is SmileyCharacter => item !== undefined);
+
+    if (unmutedCharacters.length === 0) {
+        return undefined;
+    }
+
     const availableCharacters = eligibleGroupCharacters({
         groupCharacters,
         messages,
         sourceChat,
     });
 
-    if (availableCharacters.length === 0) {
-        return groupCharacters[0] ?? character;
-    }
-
+    const candidates =
+        availableCharacters.length > 0 ? availableCharacters : unmutedCharacters;
     const replyOrder = sourceChat.group?.replyOrder ?? "natural";
 
     if (replyOrder === "pooled") {
-        return selectPooledGroupCharacter(availableCharacters, messages);
+        return selectPooledGroupCharacter(unmutedCharacters, candidates, messages);
     }
 
     if (replyOrder === "natural") {
-        return selectNaturalGroupCharacter(availableCharacters, messages, sourceChat);
+        return selectNaturalGroupCharacter(candidates, messages, sourceChat);
     }
 
-    return selectListGroupCharacter(availableCharacters, messages);
+    return selectListGroupCharacter(unmutedCharacters, candidates, messages);
 }
 
 export function eligibleGroupCharacters({
@@ -81,36 +90,87 @@ export function eligibleGroupCharacters({
 }
 
 function selectListGroupCharacter(
+    unmutedCharacters: SmileyCharacter[],
     availableCharacters: SmileyCharacter[],
     messages: Message[],
 ) {
+    if (unmutedCharacters.length <= 1) {
+        return unmutedCharacters[0];
+    }
+
     const lastCharacterMessage = [...messages]
         .reverse()
         .find((message) => message.role === "character");
-    const lastIndex = availableCharacters.findIndex(
+
+    if (!lastCharacterMessage) {
+        return availableCharacters[0] ?? unmutedCharacters[0];
+    }
+
+    const lastIndex = unmutedCharacters.findIndex(
         (item) =>
-            item.id === lastCharacterMessage?.authorCharacterId ||
-            item.data.name === lastCharacterMessage?.author,
+            item.id === lastCharacterMessage.authorCharacterId ||
+            item.data.name === lastCharacterMessage.author,
     );
 
-    return availableCharacters[(lastIndex + 1) % availableCharacters.length];
+    if (lastIndex === -1) {
+        return availableCharacters[0] ?? unmutedCharacters[0];
+    }
+
+    for (let step = 1; step <= unmutedCharacters.length; step += 1) {
+        const candidateIndex = (lastIndex + step) % unmutedCharacters.length;
+        const candidate = unmutedCharacters[candidateIndex];
+        if (availableCharacters.some((item) => item.id === candidate.id)) {
+            return candidate;
+        }
+    }
+
+    return unmutedCharacters[(lastIndex + 1) % unmutedCharacters.length];
 }
 
 function selectPooledGroupCharacter(
+    unmutedCharacters: SmileyCharacter[],
     availableCharacters: SmileyCharacter[],
     messages: Message[],
 ) {
-    const lastUserIndex = findLastIndex(messages, (message) => message.role === "user");
-    const spokenSinceUser = new Set(
-        messages
-            .slice(lastUserIndex + 1)
-            .filter((message) => message.role === "character")
-            .map((message) => message.authorCharacterId || message.author),
-    );
+    if (unmutedCharacters.length <= 1) {
+        return unmutedCharacters[0];
+    }
+
+    const unmutedIdSet = new Set(unmutedCharacters.map((c) => c.id));
+    const nameToId = new Map(unmutedCharacters.map((c) => [c.data.name, c.id]));
+    const currentCycleSpoken = new Set<string>();
+
+    for (const msg of messages) {
+        if (msg.role !== "character") {
+            continue;
+        }
+
+        const canonicalId =
+            (msg.authorCharacterId && unmutedIdSet.has(msg.authorCharacterId)
+                ? msg.authorCharacterId
+                : undefined) ?? nameToId.get(msg.author);
+
+        if (!canonicalId) {
+            continue;
+        }
+
+        if (currentCycleSpoken.has(canonicalId)) {
+            // Member repeated before round completed; start new cycle with this member
+            currentCycleSpoken.clear();
+        }
+
+        currentCycleSpoken.add(canonicalId);
+
+        if (currentCycleSpoken.size >= unmutedCharacters.length) {
+            // Full round completed; reset for the next cycle
+            currentCycleSpoken.clear();
+        }
+    }
+
     const unspoken = availableCharacters.filter(
-        (item) => !spokenSinceUser.has(item.id) && !spokenSinceUser.has(item.data.name),
+        (item) => !currentCycleSpoken.has(item.id),
     );
-    const pool = unspoken.length ? unspoken : availableCharacters;
+    const pool = unspoken.length > 0 ? unspoken : availableCharacters;
 
     return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -147,7 +207,39 @@ function characterNameMentioned(content: string, characterName: string) {
         return false;
     }
 
-    return new RegExp(`\\b${escapeRegExp(safeName)}\\b`, "i").test(content);
+    if (matchesNameWithBoundaries(content, safeName)) {
+        return true;
+    }
+
+    const cleanedName = safeName.replace(/[\(\[\{].*?[\)\]\}]/g, "").trim();
+    if (
+        cleanedName &&
+        cleanedName !== safeName &&
+        matchesNameWithBoundaries(content, cleanedName)
+    ) {
+        return true;
+    }
+
+    const firstName = (cleanedName || safeName).split(/\s+/)[0]?.trim();
+    if (
+        firstName &&
+        firstName.length >= 3 &&
+        firstName !== safeName &&
+        matchesNameWithBoundaries(content, firstName)
+    ) {
+        return true;
+    }
+
+    return false;
+}
+
+function matchesNameWithBoundaries(content: string, name: string) {
+    const escaped = escapeRegExp(name);
+    const pattern = new RegExp(
+        `(^|[^\\p{L}\\p{N}_])${escaped}(?=$|[^\\p{L}\\p{N}_])`,
+        "iu",
+    );
+    return pattern.test(content);
 }
 
 export function promptCharacterForGeneration({

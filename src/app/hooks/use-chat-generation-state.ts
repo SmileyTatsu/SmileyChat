@@ -1,5 +1,10 @@
 import { useRef, useState } from "preact/hooks";
 
+export type ActiveGeneratingSpeaker = {
+    characterId: string;
+    name: string;
+};
+
 export type ActiveGeneration = {
     controller: AbortController;
     streamingMessageId?: string;
@@ -11,12 +16,17 @@ export function useChatGenerationState() {
     const [pendingSwipeMessageIds, setPendingSwipeMessageIds] = useState<
         Record<string, string>
     >({});
+    const [generatingSpeakers, setGeneratingSpeakers] = useState<
+        Record<string, ActiveGeneratingSpeaker>
+    >({});
     const pendingChatIdsRef = useRef<string[]>([]);
     const pendingSwipeMessageIdsRef = useRef<Record<string, string>>({});
+    const generatingSpeakersRef = useRef<Record<string, ActiveGeneratingSpeaker>>({});
     const activeGenerationsRef = useRef<Record<string, ActiveGeneration>>({});
 
     pendingChatIdsRef.current = pendingChatIds;
     pendingSwipeMessageIdsRef.current = pendingSwipeMessageIds;
+    generatingSpeakersRef.current = generatingSpeakers;
 
     function isChatPending(chatId: string) {
         return (
@@ -25,7 +35,11 @@ export function useChatGenerationState() {
         );
     }
 
-    function beginChatPending(chatId: string, swipeMessageId = "") {
+    function beginChatPending(
+        chatId: string,
+        swipeMessageId = "",
+        speaker?: ActiveGeneratingSpeaker,
+    ) {
         setPendingChatIds((current) => {
             const next = current.includes(chatId) ? current : [...current, chatId];
             pendingChatIdsRef.current = next;
@@ -39,6 +53,17 @@ export function useChatGenerationState() {
                     [chatId]: swipeMessageId,
                 };
                 pendingSwipeMessageIdsRef.current = next;
+                return next;
+            });
+        }
+
+        if (speaker) {
+            setGeneratingSpeakers((current) => {
+                const next = {
+                    ...current,
+                    [chatId]: speaker,
+                };
+                generatingSpeakersRef.current = next;
                 return next;
             });
         }
@@ -58,6 +83,16 @@ export function useChatGenerationState() {
             const next = { ...current };
             delete next[chatId];
             pendingSwipeMessageIdsRef.current = next;
+            return next;
+        });
+        setGeneratingSpeakers((current) => {
+            if (!current[chatId]) {
+                return current;
+            }
+
+            const next = { ...current };
+            delete next[chatId];
+            generatingSpeakersRef.current = next;
             return next;
         });
     }
@@ -97,6 +132,7 @@ export function useChatGenerationState() {
         endChatPending,
         endGenerationController,
         getActiveGeneration,
+        generatingSpeakers,
         isChatPending,
         pendingChatIds,
         pendingSwipeMessageIds,
