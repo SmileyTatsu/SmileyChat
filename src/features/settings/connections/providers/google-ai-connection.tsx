@@ -78,8 +78,9 @@ export function GoogleAIConnection({
     );
 
     const thinkingMeta = selectedCatalogModel?.requestValidation?.thinking;
+    const isThinkingSupported = thinkingMeta?.supported !== false;
     const supportedLevels =
-        thinkingMeta?.supported !== false && thinkingMeta?.levels?.length
+        isThinkingSupported && thinkingMeta?.levels?.length
             ? thinkingMeta.levels
             : allThinkingLevels;
 
@@ -109,8 +110,11 @@ export function GoogleAIConnection({
                     );
                     const nextThinkingMeta =
                         nextCatalogModel?.requestValidation?.thinking;
-                    let nextThinking = config.thinking;
-                    if (
+                    let nextThinking: GoogleAIThinkingConfig | undefined =
+                        config.thinking;
+                    if (nextThinkingMeta?.supported === false) {
+                        nextThinking = undefined;
+                    } else if (
                         nextThinkingMeta?.levels?.length &&
                         config.thinking?.thinkingLevel &&
                         !nextThinkingMeta.levels.includes(config.thinking.thinkingLevel)
@@ -129,9 +133,7 @@ export function GoogleAIConnection({
                     }
                     updateConfig({
                         model,
-                        ...(nextThinking !== config.thinking
-                            ? { thinking: nextThinking }
-                            : {}),
+                        thinking: nextThinking,
                     });
                 }}
                 onLoadModels={onLoadModels}
@@ -172,8 +174,13 @@ export function GoogleAIConnection({
                     </div>
                 </dl>
             )}
-            <fieldset className="connection-fieldset">
-                <legend>Thinking</legend>
+            <fieldset
+                className="connection-fieldset"
+                disabled={disabled || !isThinkingSupported}
+            >
+                <legend>
+                    Thinking {!isThinkingSupported ? "(Unsupported by model)" : ""}
+                </legend>
                 <label className="checkbox-field">
                     <input
                         type="checkbox"

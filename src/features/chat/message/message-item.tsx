@@ -727,11 +727,14 @@ function ThoughtProcess({
     const hasRunningTool = entries.some(
         (entry) => entry.type === "tool" && entry.activity.status === "running",
     );
-    const hasRunningEntry = entries.some((entry) => {
-        const timedEntry = entry.type === "thought" ? entry : entry.activity;
-        return timedEntry.startedAt !== undefined && timedEntry.durationMs === undefined;
-    });
-    const [isOpen, setIsOpen] = useState(false);
+    const hasRunningThought = entries.some(
+        (entry) =>
+            entry.type === "thought" &&
+            entry.startedAt !== undefined &&
+            entry.durationMs === undefined,
+    );
+    const hasRunningEntry = hasRunningTool || hasRunningThought;
+    const [userToggled, setUserToggled] = useState<boolean | null>(null);
     const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
@@ -745,11 +748,9 @@ function ThoughtProcess({
         return () => window.clearInterval(interval);
     }, [hasRunningEntry]);
 
-    useEffect(() => {
-        if (hasRunningTool) setIsOpen(true);
-    }, [hasRunningTool]);
-
     if (!show || !entries.length) return null;
+
+    const isOpen = userToggled !== null ? userToggled : hasRunningEntry;
 
     const timedEntries = entries.filter((entry) =>
         entry.type === "thought"
@@ -767,20 +768,27 @@ function ThoughtProcess({
             (durationMs ?? (startedAt === undefined ? 0 : Math.max(0, now - startedAt)))
         );
     }, 0);
-    const summary = timedEntries.length
-        ? `Thought Process (${formatDuration(totalDurationMs)})`
-        : "Thought Process";
+    const summary = hasRunningThought
+        ? `Thinking... (${formatDuration(totalDurationMs)})`
+        : timedEntries.length
+          ? `Thought Process (${formatDuration(totalDurationMs)})`
+          : "Thought Process";
 
     return (
         <details
             className="message-reasoning thought-process"
-            open={hasRunningTool || isOpen}
+            open={isOpen}
             onToggle={(event) => {
-                if (!hasRunningTool) setIsOpen(event.currentTarget.open);
+                setUserToggled(event.currentTarget.open);
                 onVisibleContentChange();
             }}
         >
-            <summary>{summary}</summary>
+            <summary>
+                {hasRunningEntry && (
+                    <span className="tool-activity-spinner" aria-hidden="true" />
+                )}
+                {summary}
+            </summary>
             <div className="thought-process-timeline">
                 {entries.map((entry) =>
                     entry.type === "thought" ? (

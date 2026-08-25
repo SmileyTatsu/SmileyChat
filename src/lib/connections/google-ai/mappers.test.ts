@@ -102,6 +102,26 @@ describe("Google AI connection mappers", () => {
         expect(body.generationConfig?.seed).toBeUndefined();
     });
 
+    test("omits thinking config for models that do not support thinking", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [{ role: "user", content: "Hello" }],
+                messages: [],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemma-4-31b-it" },
+                thinking: {
+                    mode: "level",
+                    thinkingLevel: "low",
+                    includeThoughts: true,
+                },
+            },
+        );
+
+        expect(body.generationConfig?.thinkingConfig).toBeUndefined();
+    });
+
     test("preserves multiple system instruction parts and assistant prefill turn", () => {
         const body = createGoogleAIGenerateBody(
             {

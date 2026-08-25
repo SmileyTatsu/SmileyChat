@@ -202,38 +202,19 @@ function normalizeGoogleAIThinking(
     if (!thinking) return profile;
 
     if (!thinkingMeta.supported) {
-        if (
-            thinking.mode === "level" ||
-            thinking.mode === "budget" ||
-            thinking.thinkingLevel ||
-            thinking.thinkingBudget !== undefined
-        ) {
-            changes.push({
-                field: "thinking",
-                requested: thinking,
-                applied: undefined,
-                reason: "unsupported",
-            });
-            const {
-                mode: _mode,
-                thinkingLevel: _level,
-                thinkingBudget: _budget,
-                ...restThinking
-            } = thinking;
-            const nextThinking = Object.keys(restThinking).length
-                ? restThinking
-                : undefined;
-            return {
-                ...profile,
-                config: {
-                    ...config,
-                    ...(nextThinking
-                        ? { thinking: nextThinking }
-                        : { thinking: undefined }),
-                },
-            } as ConnectionProfile;
-        }
-        return profile;
+        changes.push({
+            field: "thinking",
+            requested: thinking,
+            applied: undefined,
+            reason: "unsupported",
+        });
+        return {
+            ...profile,
+            config: {
+                ...config,
+                thinking: undefined,
+            },
+        } as ConnectionProfile;
     }
 
     if (

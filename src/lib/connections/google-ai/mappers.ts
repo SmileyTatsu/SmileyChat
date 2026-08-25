@@ -1,3 +1,5 @@
+import defaultModelCategories from "#frontend/data/default-google-ai-models.json";
+
 import type {
     ChatGenerationMessage,
     ChatGenerationRequest,
@@ -23,6 +25,24 @@ import type {
 
 type GoogleAIRole = "user" | "model";
 
+const unsupportedThinkingModelIds = new Set(
+    (
+        defaultModelCategories as unknown as Array<{
+            models?: Array<{
+                id: string;
+                requestValidation?: { thinking?: { supported?: boolean } };
+            }>;
+        }>
+    ).flatMap(
+        (category) =>
+            category.models
+                ?.filter(
+                    (model) => model.requestValidation?.thinking?.supported === false,
+                )
+                .map((model) => model.id) ?? [],
+    ),
+);
+
 export function createGoogleAIGenerateBody(
     request: ChatGenerationRequest,
     config: GoogleAIRuntimeConfig,
@@ -40,7 +60,10 @@ export function createGoogleAIGenerateBody(
             .map(toGoogleAIContent)
             .filter((content) => content.parts.some(hasVisiblePart)),
     );
-    const thinkingConfig = cleanThinkingConfig(config.thinking);
+    const isThinkingSupported = !unsupportedThinkingModelIds.has(config.model.id);
+    const thinkingConfig = isThinkingSupported
+        ? cleanThinkingConfig(config.thinking)
+        : undefined;
     const generationConfig: GoogleAIGenerateContentRequest["generationConfig"] = {
         candidateCount: 1,
         maxOutputTokens: config.maxOutputTokens ?? defaultOutputTokenLimit,
