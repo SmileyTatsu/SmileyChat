@@ -1,5 +1,4 @@
 import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
-import Handlebars from "handlebars";
 
 import { getCharacterTagline } from "../characters/normalize";
 import { formatDate, formatDateTime, formatShortTime } from "../common/time";
@@ -62,38 +61,170 @@ export function renderStoryString(content: string, context: MacroContext) {
     const examples = context.formatting?.skipExamples
         ? ""
         : examplesRaw.replace(/<START>/gi, exampleSeparator);
-    const template = Handlebars.compile(source, {
-        noEscape: true,
-        strict: false,
-        knownHelpersOnly: false,
+    const rendered = renderStoryTemplate(source, {
+        anchorBefore: context.anchorBefore ?? "",
+        anchorAfter: context.anchorAfter ?? "",
+        anchorTop: context.anchorBefore ?? "",
+        anchorBottom: context.anchorAfter ?? "",
+        char: context.character.data.name,
+        description: context.character.data.description,
+        personality: context.character.data.personality,
+        scenario: context.character.data.scenario,
+        system,
+        persona: context.personaDescription,
+        user: context.personaName,
+        wiBefore: context.worldInfoBefore ?? "",
+        loreBefore: context.worldInfoBefore ?? "",
+        wiAfter: context.worldInfoAfter ?? "",
+        loreAfter: context.worldInfoAfter ?? "",
+        mesExamples: examples,
+        mesExamplesRaw: examplesRaw,
+        trim: "",
     });
-    const rendered = template(
-        {
-            anchorBefore: context.anchorBefore ?? "",
-            anchorAfter: context.anchorAfter ?? "",
-            anchorTop: context.anchorBefore ?? "",
-            anchorBottom: context.anchorAfter ?? "",
-            char: context.character.data.name,
-            description: context.character.data.description,
-            personality: context.character.data.personality,
-            scenario: context.character.data.scenario,
-            system,
-            persona: context.personaDescription,
-            user: context.personaName,
-            wiBefore: context.worldInfoBefore ?? "",
-            loreBefore: context.worldInfoBefore ?? "",
-            wiAfter: context.worldInfoAfter ?? "",
-            loreAfter: context.worldInfoAfter ?? "",
-            mesExamples: examples,
-            mesExamplesRaw: examplesRaw,
-        },
-        {
-            helpers: {
-                trim: () => "",
-            },
-        },
-    );
     return resolvePresetMacros(rendered, context);
+}
+
+type StoryTemplateValue =
+    | string
+    | number
+    | boolean
+    | StoryTemplateValue[]
+    | StoryTemplateData;
+type StoryTemplateData = { [key: string]: StoryTemplateValue | undefined };
+type StoryTemplateNode =
+    | { type: "text"; value: string }
+    | { type: "value"; value: string }
+    | {
+          type: "block";
+          block: "if" | "unless" | "each";
+          value: string;
+          truthy: StoryTemplateNode[];
+          falsy: StoryTemplateNode[];
+      };
+
+/**
+ * CSP-safe subset of Handlebars used by SillyTavern Story Strings. Handlebars'
+ * runtime compiler uses `new Function`, which production CSP intentionally
+ * blocks. Story Strings are user editable, so they cannot be precompiled.
+ */
+function renderStoryTemplate(source: string, data: StoryTemplateData) {
+    const root: StoryTemplateNode[] = [];
+    const stack: Array<{
+        node: Extract<StoryTemplateNode, { type: "block" }>;
+        branch: "truthy" | "falsy";
+    }> = [];
+    const currentNodes = () => {
+        const current = stack[stack.length - 1];
+        return current ? current.node[current.branch] : root;
+    };
+    const tokenPattern = /\{\{([\s\S]*?)\}\}/g;
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = tokenPattern.exec(source))) {
+        if (match.index > cursor) {
+            currentNodes().push({
+                type: "text",
+                value: source.slice(cursor, match.index),
+            });
+        }
+        cursor = tokenPattern.lastIndex;
+        const token = match[1].trim();
+        const blockMatch = /^#(if|unless|each)\s+(.+)$/.exec(token);
+        if (blockMatch) {
+            const node: Extract<StoryTemplateNode, { type: "block" }> = {
+                type: "block",
+                block: blockMatch[1] as "if" | "unless" | "each",
+                value: blockMatch[2].trim(),
+                truthy: [],
+                falsy: [],
+            };
+            currentNodes().push(node);
+            stack.push({ node, branch: "truthy" });
+        } else if (token === "else" && stack.length) {
+            stack[stack.length - 1].branch = "falsy";
+        } else if (/^\/(if|unless|each)$/.test(token) && stack.length) {
+            stack.pop();
+        } else {
+            currentNodes().push({ type: "value", value: token });
+        }
+    }
+    if (cursor < source.length) {
+        root.push({ type: "text", value: source.slice(cursor) });
+    }
+
+    return renderStoryNodes(root, data, undefined, undefined, undefined);
+}
+
+function renderStoryNodes(
+    nodes: StoryTemplateNode[],
+    data: StoryTemplateData,
+    current: StoryTemplateValue | undefined,
+    index: number | undefined,
+    key: string | undefined,
+): string {
+    return nodes
+        .map((node) => {
+            if (node.type === "text") return node.value;
+            if (node.type === "value") {
+                const value = storyTemplateValue(node.value, data, current, index, key);
+                return value === undefined ? `{{${node.value}}}` : String(value);
+            }
+            const value = storyTemplateValue(node.value, data, current, index, key);
+            if (node.block === "each") {
+                if (Array.isArray(value)) {
+                    return value
+                        .map((item, itemIndex) =>
+                            renderStoryNodes(
+                                node.truthy,
+                                data,
+                                item,
+                                itemIndex,
+                                String(itemIndex),
+                            ),
+                        )
+                        .join("");
+                }
+                if (value && typeof value === "object") {
+                    return Object.entries(value)
+                        .map(([itemKey, item]) =>
+                            renderStoryNodes(node.truthy, data, item, undefined, itemKey),
+                        )
+                        .join("");
+                }
+                return renderStoryNodes(node.falsy, data, current, index, key);
+            }
+            const truthy = Boolean(value) && (!Array.isArray(value) || value.length > 0);
+            const includeTruthy = node.block === "if" ? truthy : !truthy;
+            return renderStoryNodes(
+                includeTruthy ? node.truthy : node.falsy,
+                data,
+                current,
+                index,
+                key,
+            );
+        })
+        .join("");
+}
+
+function storyTemplateValue(
+    expression: string,
+    data: StoryTemplateData,
+    current: StoryTemplateValue | undefined,
+    index: number | undefined,
+    key: string | undefined,
+): StoryTemplateValue | undefined {
+    if (expression === "this") return current;
+    if (expression === "@index") return index;
+    if (expression === "@key") return key;
+    if (expression.includes(" ")) return undefined;
+    const parts = expression.split(".");
+    let value: unknown = parts[0] === "this" ? current : data[parts[0]];
+    for (const part of parts.slice(1)) {
+        if (!value || typeof value !== "object" || !(part in value)) return undefined;
+        value = (value as Record<string, unknown>)[part];
+    }
+    return value as StoryTemplateValue | undefined;
 }
 
 /**

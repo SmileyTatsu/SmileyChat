@@ -20,7 +20,6 @@
         "@preact/signals": "^2.9.2",
         "adm-zip": "^0.5.17",
         "clsx": "^2.1.1",
-        "handlebars": "^4.7.9",
         "js-tiktoken": "^1.0.21",
         "lucide-preact": "^1.21.0",
         "preact": "^10.29.2",
