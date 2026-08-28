@@ -124,7 +124,7 @@ describe("buildPromptForGeneration", () => {
             typeof item.content === "string" ? item.content : "",
         );
         const depthIndex = contents.indexOf("Depth lore");
-        const lastUserIndex = contents.indexOf("Remember this");
+        const lastUserIndex = contents.indexOf("Anon: Remember this");
 
         expect(depthIndex).toBeGreaterThan(-1);
         expect(lastUserIndex).toBeGreaterThan(-1);

@@ -7,6 +7,7 @@ describe("app preference normalization", () => {
         const preferences = normalizeAppPreferences({ appearance: {} });
 
         expect(preferences.appearance.timeFormat).toBe("12h");
+        expect(preferences.appearance.hideNamePrefixInMessages).toBe(true);
         expect(preferences.appearance.codeblockFontFamily).toBe("");
         expect(preferences.appearance.customCss).toBe("");
     });
@@ -43,6 +44,13 @@ describe("app preference normalization", () => {
         expect(preferences.appearance.timeFormat).toBe(
             defaultAppPreferences.appearance.timeFormat,
         );
+    });
+
+    test("preserves hideNamePrefixInMessages preference", () => {
+        const preferences = normalizeAppPreferences({
+            appearance: { hideNamePrefixInMessages: false },
+        });
+        expect(preferences.appearance.hideNamePrefixInMessages).toBe(false);
     });
 
     test("normalizes the tool iteration limit", () => {

@@ -17,6 +17,7 @@ export type AppPreferences = {
         fontScale: FontScale;
         highlightQuotedTextInChat: boolean;
         highlightQuotedTextInRp: boolean;
+        hideNamePrefixInMessages: boolean;
         italicizeChatMessages: boolean;
         italicizeRpMessages: boolean;
         uiFontFamily: string;
@@ -85,6 +86,7 @@ export const defaultAppPreferences: AppPreferences = {
         fontScale: "default",
         highlightQuotedTextInChat: true,
         highlightQuotedTextInRp: true,
+        hideNamePrefixInMessages: true,
         italicizeChatMessages: true,
         italicizeRpMessages: true,
         uiFontFamily: "",
@@ -107,7 +109,7 @@ export const defaultAppPreferences: AppPreferences = {
     },
     formatting: {
         activeTemplateId: "builtin:auto",
-        settings: { instructTemplate: "auto" },
+        settings: { instructTemplate: "auto", namesBehavior: "always" },
     },
     sillytavern: {
         enabled: true,
@@ -183,6 +185,10 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             highlightQuotedTextInRp: booleanOrFallback(
                 appearance.highlightQuotedTextInRp,
                 defaultAppPreferences.appearance.highlightQuotedTextInRp,
+            ),
+            hideNamePrefixInMessages: booleanOrFallback(
+                appearance.hideNamePrefixInMessages,
+                defaultAppPreferences.appearance.hideNamePrefixInMessages,
             ),
             italicizeChatMessages: booleanOrFallback(
                 appearance.italicizeChatMessages,

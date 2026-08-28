@@ -180,6 +180,15 @@ export function GeneralSettings({
                 />
 
                 <ToggleRow
+                    checked={preferences.appearance.hideNamePrefixInMessages !== false}
+                    description="Automatically hide leading character and user name prefixes (e.g. 'Character:' or 'User:') from the message view."
+                    label="Hide name prefixes in messages"
+                    onChange={(hideNamePrefixInMessages) =>
+                        updateAppearance({ hideNamePrefixInMessages })
+                    }
+                />
+
+                <ToggleRow
                     checked={preferences.appearance.highlightQuotedTextInRp}
                     description='Use a subtle accent color for text inside "quotes" in Roleplaying mode.'
                     label="Highlight quoted text in RP mode"

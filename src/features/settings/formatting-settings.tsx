@@ -185,6 +185,9 @@ export function FormattingSettings({
                   .replace(/\{\{user\}\}/gi, userName)
             : `You are ${charName}. Adhere to the roleplay scenario and stay in character.`;
 
+        const behavior = formatting.namesBehavior ?? "always";
+        const isAlways = behavior === "always";
+
         const turns = messages.length
             ? messages.slice(-4).map((message) => {
                   const swipe =
@@ -194,11 +197,8 @@ export function FormattingSettings({
                   const text = (swipe?.content ?? "")
                       .replace(/\{\{char\}\}/gi, charName)
                       .replace(/\{\{user\}\}/gi, userName);
-                  const author =
-                      formatting.alwaysAddCharacterName &&
-                      message.role === MessageRole.Character
-                          ? `${charName}: `
-                          : "";
+                  const isChar = message.role === MessageRole.Character;
+                  const author = isAlways ? `${isChar ? charName : userName}: ` : "";
                   return {
                       role:
                           message.role === MessageRole.Character
@@ -210,11 +210,11 @@ export function FormattingSettings({
             : [
                   {
                       role: "user" as const,
-                      content: `Hello, ${charName}!`,
+                      content: `${isAlways ? `${userName}: ` : ""}Hello, ${charName}!`,
                   },
                   {
                       role: "assistant" as const,
-                      content: `${formatting.alwaysAddCharacterName ? `${charName}: ` : ""}Greetings! How can I help you today?`,
+                      content: `${isAlways ? `${charName}: ` : ""}Greetings! How can I help you today?`,
                   },
               ];
 
@@ -451,7 +451,8 @@ export function FormattingSettings({
                         <strong>Chat Completion Active:</strong> Greyed-out options are
                         not used by Chat Completion connections. Model instruction tags,
                         turn roles, and stop tokens are handled natively by the chat API;
-                        only “Collapse consecutive newlines” applies.
+                        “Include names in prompts” and “Collapse consecutive newlines”
+                        apply.
                     </p>
                 </div>
             )}
@@ -861,11 +862,10 @@ function TemplateEditor({
             </div>
 
             <label>
-                Include names
+                Include names in prompts
                 <select
-                    disabled={!isTextCompletion}
                     name="names-behavior"
-                    value={template.namesBehavior ?? "force"}
+                    value={template.namesBehavior ?? "always"}
                     onInput={(event) =>
                         onChange({
                             namesBehavior: (event.currentTarget as HTMLSelectElement)
@@ -873,9 +873,9 @@ function TemplateEditor({
                         })
                     }
                 >
+                    <option value="always">Always (User: / Char: on all turns)</option>
+                    <option value="force">Groups &amp; past personas only</option>
                     <option value="never">Never</option>
-                    <option value="force">Groups &amp; past personas</option>
-                    <option value="always">Always</option>
                 </select>
             </label>
 

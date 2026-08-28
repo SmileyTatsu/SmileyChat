@@ -13,7 +13,7 @@ import {
 import { dynamicPromptIds } from "./defaults";
 import { defaultStoryString } from "../instruct";
 import { formatCharacterBook, renderStoryString, resolvePresetMacros } from "./macros";
-import { messageAuthorForPrompt } from "./message-format";
+import { messageTextForHistory as formatMessageTextForHistory } from "./message-format";
 import type { PresetFormattingSettings, PresetPrompt, SmileyPreset } from "./types";
 import type { AnchoredPromptMessage } from "../prompt/injections";
 import { isMessageIncludedInPrompt } from "../prompt/message-utils";
@@ -275,7 +275,7 @@ function emptyDynamicPromptContent(promptId: string, context: CompilePresetConte
         case dynamicPromptIds.chatHistory:
             return historyMessagesForCompile(context)
                 .filter(isMessageIncludedInPrompt)
-                .map((message) => messageTextForHistory(message, context))
+                .map((message) => messageTextForGeneration(message, context))
                 .join("\n");
         default:
             return "";
@@ -615,10 +615,6 @@ function messageContentForPrompt(message: Message, context: CompilePresetContext
     );
 }
 
-function messageTextForHistory(message: Message, context: CompilePresetContext) {
-    return `${messageAuthorForPrompt(message, context.group)}${messageContentForPrompt(message, context)}`;
-}
-
 function messageContentWithAttachments(
     message: Message,
     context: CompilePresetContext,
@@ -662,26 +658,5 @@ function messageTextForGeneration(message: Message, context: CompilePresetContex
         return content;
     }
 
-    if (context.isTextCompletion) {
-        const behavior = context.formatting?.namesBehavior ?? "force";
-        const isGroupCharacter =
-            message.role === "character" &&
-            Boolean(
-                message.authorCharacterId &&
-                context.group?.memberIds?.includes(message.authorCharacterId),
-            );
-        const isPastPersona =
-            message.role === "user" &&
-            Boolean(message.author && message.author !== context.personaName);
-        const includeName =
-            behavior === "always" ||
-            (behavior === "force" && (isGroupCharacter || isPastPersona));
-        return includeName ? `${message.author}: ${content}` : content;
-    }
-
-    return message.role === "character" &&
-        message.authorCharacterId &&
-        context.group?.memberIds?.includes(message.authorCharacterId)
-        ? `${messageAuthorForPrompt(message, context.group)}${content}`
-        : content;
+    return formatMessageTextForHistory(message, context, content);
 }

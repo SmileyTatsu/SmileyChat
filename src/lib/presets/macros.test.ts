@@ -117,6 +117,40 @@ describe("resolvePresetMacros", () => {
             }),
         ).toBe("Top|Bottom");
     });
+
+    test("resolves {{chat_history}} respecting namesBehavior setting", () => {
+        const messages = [
+            message("m1", "user", "Hello there"),
+            message("m2", "character", "Greetings"),
+        ];
+
+        // Default / 'always'
+        const alwaysCtx = createMacroContext({
+            messages,
+            formatting: { namesBehavior: "always" },
+        });
+        expect(resolvePresetMacros("{{chat_history}}", alwaysCtx)).toBe(
+            "Anon: Hello there\nLuna: Greetings",
+        );
+
+        // 'never'
+        const neverCtx = createMacroContext({
+            messages,
+            formatting: { namesBehavior: "never" },
+        });
+        expect(resolvePresetMacros("{{chat_history}}", neverCtx)).toBe(
+            "Hello there\nGreetings",
+        );
+
+        // 'force' in 1-on-1 chat
+        const forceCtx = createMacroContext({
+            messages,
+            formatting: { namesBehavior: "force" },
+        });
+        expect(resolvePresetMacros("{{chat_history}}", forceCtx)).toBe(
+            "Hello there\nGreetings",
+        );
+    });
 });
 
 function createMacroContext(overrides: Partial<MacroContext> = {}): MacroContext {

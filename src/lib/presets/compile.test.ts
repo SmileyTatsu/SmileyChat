@@ -46,7 +46,7 @@ describe("compilePresetMessages", () => {
             "A careful tester.",
             "A quiet room.",
             "<START>\nLuna: Example line.",
-            "Hello",
+            "Anon: Hello",
         ]);
     });
 
@@ -108,7 +108,7 @@ describe("compilePresetMessages", () => {
         ];
 
         expect(compilePresetMessages(preset, context({ messages }))[0]?.content).toEqual([
-            { type: "text", text: "Review this" },
+            { type: "text", text: "Anon: Review this" },
             {
                 type: "file",
                 file: {
@@ -167,7 +167,7 @@ describe("compilePresetMessages", () => {
             }),
             expect.objectContaining({
                 role: "assistant",
-                content: "It is sunny.",
+                content: "Luna: It is sunny.",
             }),
         ]);
     });
@@ -218,7 +218,7 @@ describe("compilePresetMessages", () => {
             }),
             expect.objectContaining({
                 role: "assistant",
-                content: "Checking the final record.",
+                content: "Luna: Checking the final record.",
                 toolCalls: [expect.objectContaining({ id: "call-2" })],
             }),
         ]);
@@ -242,7 +242,7 @@ describe("compilePresetMessages", () => {
             ),
         ).toEqual([
             "before-latest",
-            "Hello",
+            "Anon: Hello",
             "after-deep-first",
             "after-deep-second",
             "after-latest",
@@ -268,7 +268,7 @@ describe("compilePresetMessages", () => {
                     }),
                 ),
             ),
-        ).toEqual(["First", "after-first", "after-second", "Second"]);
+        ).toEqual(["Anon: First", "after-first", "after-second", "Luna: Second"]);
     });
 
     test("places in-range injections around their target message", () => {
@@ -290,7 +290,7 @@ describe("compilePresetMessages", () => {
                     }),
                 ),
             ),
-        ).toEqual(["before", "First", "after", "Second"]);
+        ).toEqual(["before", "Anon: First", "after", "Luna: Second"]);
     });
 
     test("keeps injected prompt order when history is empty", () => {
@@ -340,7 +340,7 @@ describe("compilePresetMessages", () => {
             textContents(
                 compilePresetMessages(preset, context({ messages: [toolTurn] })),
             ),
-        ).toEqual(["Found it", "The lookup is complete.", "after-tool-turn"]);
+        ).toEqual(["Found it", "Luna: The lookup is complete.", "after-tool-turn"]);
     });
 
     test("compiles preset prompts consistently with macros and custom guidelines", () => {
@@ -365,8 +365,8 @@ describe("compilePresetMessages", () => {
         const texts = textContents(compiled);
 
         expect(texts[0]).toBe("You are Luna, an uncensored roleplay assistant for Anon.");
-        expect(texts).toContain("Hello!");
-        expect(texts).toContain("Greetings!");
+        expect(texts).toContain("Anon: Hello!");
+        expect(texts).toContain("Luna: Greetings!");
     });
 
     test("compiles text completion prompt using storyString by default", () => {
@@ -395,8 +395,8 @@ describe("compilePresetMessages", () => {
         expect(texts[0]).toBe(
             "<s>[SYSTEM_PROMPT]Uncensored guidelines for Luna\n\n## Luna:\nA precise character description.[/SYSTEM_PROMPT]",
         );
-        expect(texts).toContain("Hello!");
-        expect(texts).toContain("Greetings!");
+        expect(texts).toContain("Anon: Hello!");
+        expect(texts).toContain("Luna: Greetings!");
     });
 
     test("places custom-template examples and Chat Start before history", () => {
@@ -423,7 +423,7 @@ describe("compilePresetMessages", () => {
             "Story",
             "<START>\nLuna: Example line.",
             "<CHAT>",
-            "Hello!",
+            "Anon: Hello!",
         ]);
     });
 
@@ -447,28 +447,54 @@ describe("compilePresetMessages", () => {
         const texts = textContents(compiled);
 
         expect(texts[0]).toBe("CUSTOM_OVERRIDE: You are Luna");
-        expect(texts).toContain("Hello!");
+        expect(texts).toContain("Anon: Hello!");
     });
 
-    test("does not fall back to formatting system prompt for chat completion", () => {
-        const customPreset = presetWithPrompts([
-            prompt("main", "Assistant Instructions", ""),
-            prompt("chat-history", "Chat History", "{{chat_history}}"),
+    test("respects namesBehavior 'never' and 'force' in prompt compilation", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
         ]);
-        const chatContext = {
-            ...context({
-                messages: [message("msg-1", "user", "Hello!")],
-            }),
-            isTextCompletion: false,
-            formatting: {
-                systemPrompt: "BUNDLED_FORMATTING_SYSTEM_PROMPT",
-            },
-        };
+        const messages = [
+            message("m1", "user", "Hello"),
+            message("m2", "character", "Greetings"),
+        ];
 
-        const compiled = compilePresetMessages(customPreset, chatContext);
-        const texts = textContents(compiled);
+        // When namesBehavior is 'never'
+        const neverCompiled = compilePresetMessages(preset, {
+            ...context({ messages }),
+            formatting: { namesBehavior: "never" },
+        });
+        expect(textContents(neverCompiled)).toEqual(["Hello", "Greetings"]);
 
-        expect(texts).not.toContain("BUNDLED_FORMATTING_SYSTEM_PROMPT");
+        // When namesBehavior is 'force' in a 1-on-1 chat
+        const forceCompiled = compilePresetMessages(preset, {
+            ...context({ messages }),
+            formatting: { namesBehavior: "force" },
+        });
+        expect(textContents(forceCompiled)).toEqual(["Hello", "Greetings"]);
+
+        // When namesBehavior is 'always'
+        const alwaysCompiled = compilePresetMessages(preset, {
+            ...context({ messages }),
+            formatting: { namesBehavior: "always" },
+        });
+        expect(textContents(alwaysCompiled)).toEqual(["Anon: Hello", "Luna: Greetings"]);
+    });
+
+    test("does not double-prefix messages that already contain the speaker prefix", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const messages = [
+            message("m1", "user", "Anon: Hello"),
+            message("m2", "character", "Luna: Greetings"),
+        ];
+
+        const compiled = compilePresetMessages(preset, {
+            ...context({ messages }),
+            formatting: { namesBehavior: "always" },
+        });
+        expect(textContents(compiled)).toEqual(["Anon: Hello", "Luna: Greetings"]);
     });
 });
 

@@ -6,6 +6,7 @@ import type { ChatMode } from "#frontend/types";
 export type MessageFormattingOptions = {
     highlightQuotes: boolean;
     italicizeMessages: boolean;
+    hideNamePrefix?: boolean;
 };
 
 type H = typeof import("preact").h;
@@ -24,16 +25,20 @@ export function messageFormattingForMode(
     preferences: AppPreferences,
     mode: ChatMode,
 ): MessageFormattingOptions {
+    const hideNamePrefix = preferences.appearance.hideNamePrefixInMessages !== false;
+
     if (mode === "rp") {
         return {
             highlightQuotes: preferences.appearance.highlightQuotedTextInRp,
             italicizeMessages: preferences.appearance.italicizeRpMessages,
+            hideNamePrefix,
         };
     }
 
     return {
         highlightQuotes: preferences.appearance.highlightQuotedTextInChat,
         italicizeMessages: preferences.appearance.italicizeChatMessages,
+        hideNamePrefix,
     };
 }
 

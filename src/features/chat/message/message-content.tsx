@@ -6,6 +6,7 @@ import {
 } from "#frontend/lib/message-formatting/quote-highlighting";
 import type { MessageRenderer } from "#frontend/lib/plugins/types";
 import { applyMessageDisplayMiddlewares } from "#frontend/lib/plugins/registry";
+import { stripLeadingSpeakerPrefix } from "#frontend/lib/presets/message-format";
 import type { ChatMode, Message } from "#frontend/types";
 
 import {
@@ -26,11 +27,18 @@ type MessageContentProps = {
 };
 
 export function MessageContent(props: MessageContentProps) {
-    const content = applyMessageDisplayMiddlewares(props.content, {
+    const rawContent = props.messageFormatting.hideNamePrefix
+        ? stripLeadingSpeakerPrefix(props.content, [
+              props.characterName,
+              props.message.author,
+          ])
+        : props.content;
+
+    const content = applyMessageDisplayMiddlewares(rawContent, {
         characterAvatarPath: props.characterAvatarPath,
         characterDialogueColor: props.characterDialogueColor,
         characterName: props.characterName,
-        content: props.content,
+        content: rawContent,
         message: props.message,
         messageFormatting: props.messageFormatting,
         mode: props.mode,
