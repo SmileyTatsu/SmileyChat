@@ -1,7 +1,7 @@
 import { chatDisplayTitle, isGroupChat } from "#frontend/lib/chats/normalize";
 import type { ChatGroup, ChatGroupMember } from "#frontend/lib/chats/types";
 
-import { safeFileStem } from "./character-file-paths";
+import { safeDisplayFileStem } from "./entity-id";
 import { createChat, readChatById } from "./chat-store";
 import { BadRequestError } from "./http";
 
@@ -44,7 +44,7 @@ export async function exportGroupChatDefinition(chatId: string) {
             group,
         },
     };
-    const fileStem = safeFileStem(chatDisplayTitle(chat) || chat.id);
+    const fileStem = safeDisplayFileStem(chatDisplayTitle(chat) || chat.id, "character");
 
     return new Response(`${JSON.stringify(definition, null, 2)}\n`, {
         headers: {

@@ -68,11 +68,6 @@ export function isLegacyGeneratedImageUrl(url: string | undefined) {
     }
 }
 
-/** @deprecated Use isLegacyGeneratedImageUrl — same scheme rules. */
-export function isSafeGeneratedImageFetchUrl(url: string | undefined) {
-    return isLegacyGeneratedImageUrl(url);
-}
-
 /** Attachment allowed in stored chat JSON / UI after soft sanitize. */
 export function isAllowedChatAttachmentUrl(
     type: "image" | "file" | undefined,

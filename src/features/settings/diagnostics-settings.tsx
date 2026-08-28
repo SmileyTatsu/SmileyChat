@@ -18,12 +18,16 @@ import {
     Sliders,
     Trash2,
 } from "lucide-preact";
-import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { localApiFetch, localApiPath } from "#frontend/lib/api/client";
 import type { AppPreferences, LogLevel } from "#frontend/lib/preferences/types";
-import { DeferredNumberInput } from "./deferred-number-input";
+import {
+    NumberInput,
+    SegmentedControl,
+    SettingField,
+    ToggleRow as SharedToggleRow,
+} from "./settings-controls";
 
 type DiagnosticsSettingsProps = {
     loadError?: string;
@@ -827,26 +831,6 @@ export function DiagnosticsSettings({
     );
 }
 
-function SettingField({
-    children,
-    description,
-    label,
-}: {
-    children: ComponentChildren;
-    description?: string;
-    label: string;
-}) {
-    return (
-        <div className="settings-field">
-            <span>
-                <strong>{label}</strong>
-                {description && <small>{description}</small>}
-            </span>
-            {children}
-        </div>
-    );
-}
-
 function ToggleRow({
     checked,
     description,
@@ -859,78 +843,13 @@ function ToggleRow({
     onChange: (checked: boolean) => void;
 }) {
     return (
-        <label className="setting-row preference-toggle-row diagnostics-toggle-row">
-            <span className="toggle-label-wrap">
-                <strong>{label}</strong>
-                {description && <small>{description}</small>}
-            </span>
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={(event) =>
-                    onChange((event.currentTarget as HTMLInputElement).checked)
-                }
-            />
-        </label>
-    );
-}
-
-function NumberInput({
-    max,
-    min,
-    step,
-    value,
-    onChange,
-}: {
-    max: number;
-    min: number;
-    step: number;
-    value: number;
-    onChange: (value: number) => void;
-}) {
-    return (
-        <DeferredNumberInput
-            className="settings-number-input"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            integer
-            onCommit={(nextValue) => onChange(nextValue ?? value)}
+        <SharedToggleRow
+            checked={checked}
+            className="diagnostics-toggle-row"
+            description={description}
+            label={label}
+            labelClassName="toggle-label-wrap"
+            onChange={onChange}
         />
-    );
-}
-
-function SegmentedControl<T extends string>({
-    ariaLabel,
-    options,
-    value,
-    onChange,
-}: {
-    ariaLabel?: string;
-    options: Array<{ value: T; label: string }>;
-    value: T;
-    onChange: (value: T) => void;
-}) {
-    return (
-        <div
-            aria-label={ariaLabel}
-            className="settings-segmented-control"
-            role={ariaLabel ? "group" : undefined}
-            style={{
-                gridTemplateColumns: `repeat(${options.length}, minmax(0, auto))`,
-            }}
-        >
-            {options.map((option) => (
-                <button
-                    className={option.value === value ? "active" : ""}
-                    key={option.value}
-                    type="button"
-                    onClick={() => onChange(option.value)}
-                >
-                    <span>{option.label}</span>
-                </button>
-            ))}
-        </div>
     );
 }

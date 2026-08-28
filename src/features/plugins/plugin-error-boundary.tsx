@@ -2,6 +2,7 @@ import { Component, type ComponentChildren } from "preact";
 
 import { clientLogger } from "#frontend/lib/logging/client-logger";
 import { getPluginDisplayName } from "#frontend/lib/plugins/registry";
+import { pluginIdFromScopedId } from "#frontend/lib/plugins/ids";
 
 type PluginErrorBoundaryProps = {
     children: ComponentChildren;
@@ -94,6 +95,4 @@ function PluginRenderInvocation({ render }: { render: () => ComponentChildren })
     return <>{render()}</>;
 }
 
-export function pluginIdFromScopedId(id: string) {
-    return id.split(":")[0] || id;
-}
+export { pluginIdFromScopedId } from "#frontend/lib/plugins/ids";

@@ -15,15 +15,6 @@ type AnchoredPromptMessage = {
     tokenBudgetBehavior?: PromptInjection["tokenBudgetBehavior"];
 };
 
-export function applyPromptInjections(
-    messages: AnchoredPromptMessage[],
-    injections: PromptInjection[],
-) {
-    return applyPromptInjectionsWithMetadata(messages, injections).map(
-        (item) => item.message,
-    );
-}
-
 export function applyPromptInjectionsWithMetadata(
     messages: AnchoredPromptMessage[],
     injections: PromptInjection[],

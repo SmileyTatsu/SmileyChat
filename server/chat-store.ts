@@ -18,6 +18,8 @@ import type {
 } from "#frontend/lib/chats/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
+import { timestampMs } from "./time";
+
 import {
     copyChatMessageAssets,
     deleteChatAssetDirectory,
@@ -513,11 +515,6 @@ function replaceChatSummary(summaries: ChatSummary[], summary: ChatSummary) {
 
 function moveChatIdToFront(chatIds: string[], chatId: string) {
     return [chatId, ...chatIds.filter((item) => item !== chatId)];
-}
-
-function timestampMs(value: string) {
-    const ms = Date.parse(value);
-    return Number.isFinite(ms) ? ms : 0;
 }
 
 function asString(value: unknown) {

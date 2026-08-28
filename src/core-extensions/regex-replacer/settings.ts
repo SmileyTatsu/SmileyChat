@@ -1,4 +1,9 @@
 import { createId } from "#frontend/lib/common/ids";
+import {
+    booleanValue,
+    isPlainRecord as isRecord,
+    stringValue,
+} from "#frontend/lib/common/guards";
 import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
 
 /** Reserved for future ordering around other text-transforming extensions. */
@@ -169,18 +174,6 @@ function normalizeRegexRule(value: unknown): RegexRule | undefined {
         maxDepth: integerValue(value.maxDepth, -1, 100000, -1),
         targets: normalizeTargets(value.targets),
     };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function stringValue(value: unknown) {
-    return typeof value === "string" ? value : "";
-}
-
-function booleanValue(value: unknown, fallback: boolean) {
-    return typeof value === "boolean" ? value : fallback;
 }
 
 function defaultRegexTargets(): RegexTargets {

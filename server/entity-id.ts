@@ -12,3 +12,7 @@ export function safeEntityFileStem(value: string, label: string) {
     assertSafeEntityId(value, label);
     return value;
 }
+
+export function safeDisplayFileStem(value: string, fallback: string) {
+    return value.replace(/[^a-zA-Z0-9_.-]/g, "_") || fallback;
+}

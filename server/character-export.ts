@@ -1,4 +1,4 @@
-import { safeFileStem } from "./character-file-paths";
+import { safeDisplayFileStem } from "./entity-id";
 import { characterAvatarFilePath } from "./character-images";
 import { readCharacterById } from "./character-store";
 import { BadRequestError } from "./http";
@@ -26,7 +26,10 @@ export async function exportCharacterCard(characterId: string, format: "json" | 
             },
         },
     };
-    const fileStem = safeFileStem(character.data.name || character.id);
+    const fileStem = safeDisplayFileStem(
+        character.data.name || character.id,
+        "character",
+    );
 
     if (format === "json") {
         return new Response(`${JSON.stringify(card, null, 2)}\n`, {

@@ -40,10 +40,6 @@ export function characterFolderName(name: string, characterId: string) {
     return `${slug}-${shortCharacterId(characterId)}`;
 }
 
-export function safeFileStem(value: string) {
-    return value.replace(/[^a-zA-Z0-9_.-]/g, "_") || "character";
-}
-
 function slugCharacterName(value: string) {
     const slug = value
         .trim()

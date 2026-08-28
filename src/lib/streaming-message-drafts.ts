@@ -50,29 +50,11 @@ export function setStreamingMessageContent(
     });
 }
 
-export function setStreamingToolActivities(
-    messageId: string,
-    toolActivities: MessageToolActivity[],
-) {
-    setStreamingMessageDraft(messageId, { toolActivities });
-}
-
 export function setStreamingMessageTimeline(
     messageId: string,
     timeline: SwipeTimelineEntry[],
 ) {
     setStreamingMessageDraft(messageId, { timeline });
-}
-
-export function setStreamingMessageReasoning(
-    messageId: string,
-    reasoning: string,
-    reasoningDetails?: unknown,
-) {
-    setStreamingMessageDraft(messageId, {
-        reasoning,
-        ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
-    });
 }
 
 export function setStreamingGeneratedImageCount(messageId: string, count: number) {

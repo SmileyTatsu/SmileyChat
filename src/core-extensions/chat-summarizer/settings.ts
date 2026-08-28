@@ -1,4 +1,9 @@
 import type { ChatGenerationMessageRole } from "#frontend/lib/connections/types";
+import {
+    booleanValue,
+    isPlainRecord as isRecord,
+    stringValue,
+} from "#frontend/lib/common/guards";
 
 export type SummarizerTriggerMode = "message-count" | "manual";
 export type SummaryRunMode = "unsummarized" | "full";
@@ -185,19 +190,7 @@ function integerValue(
     return Math.min(maximum, Math.max(minimum, Math.round(number)));
 }
 
-function booleanValue(value: unknown, fallback: boolean) {
-    return typeof value === "boolean" ? value : fallback;
-}
-
-function stringValue(value: unknown) {
-    return typeof value === "string" ? value : "";
-}
-
 function optionalString(value: unknown) {
     const text = stringValue(value).trim();
     return text ? text : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

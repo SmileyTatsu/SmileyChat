@@ -11,6 +11,7 @@ import type { FunctionComponent } from "preact";
 
 import { BUILT_IN_PROFILES, type PluginProfile } from "#frontend/lib/plugins/profiles";
 import type { PluginCategory } from "#frontend/lib/plugins/types";
+export { pluginIdFromScopedId } from "#frontend/lib/plugins/ids";
 
 export type RequestState = "idle" | "loading" | "success" | "error";
 export type InstalledFilter = "all" | "installed" | "not-installed";
@@ -28,10 +29,6 @@ export const CATEGORY_ICONS: Record<
     "memory-lore": BookOpen,
     other: Boxes,
 };
-
-export function pluginIdFromScopedId(id: string) {
-    return id.split(":")[0] || id;
-}
 
 function slugify(value: string) {
     return value

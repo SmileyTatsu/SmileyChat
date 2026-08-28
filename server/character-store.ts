@@ -16,6 +16,8 @@ import type {
 } from "#frontend/lib/characters/types";
 import { isRecord } from "#frontend/lib/common/guards";
 
+import { timestampMs } from "./time";
+
 import { archiveCharacterIdentity } from "./character-archive";
 import {
     characterBaseDirectoryPath,
@@ -672,11 +674,6 @@ function indexEntryToSummary(entry: CharacterIndexEntry) {
         ...(entry.isFavorite ? { isFavorite: entry.isFavorite } : {}),
         updatedAt: entry.updatedAt,
     };
-}
-
-function timestampMs(value: string) {
-    const ms = Date.parse(value);
-    return Number.isFinite(ms) ? ms : 0;
 }
 
 async function directoryExists(pathname: string) {

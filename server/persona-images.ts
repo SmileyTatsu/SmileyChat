@@ -9,8 +9,8 @@ import {
     type AvatarType,
 } from "./character-images";
 import { BadRequestError } from "./http";
+import { safeDisplayFileStem } from "./entity-id";
 import { maxAvatarBytes, personaAssetsDir } from "./paths";
-import { safeFileStem } from "./persona-file-paths";
 
 export async function servePersonaAsset(url: URL) {
     const fileName = decodeURIComponent(url.pathname.split("/").pop() ?? "");
@@ -52,7 +52,7 @@ export async function writePersonaAvatarAssetBytes(
     const extension = avatarType === "jpeg" ? "jpg" : avatarType;
     const hash = new Bun.CryptoHasher("sha256").update(bytes).digest("hex").slice(0, 12);
     const fileName = await uniquePersonaAvatarFileName(
-        `${safeFileStem(personaId)}-${Date.now()}-${hash}.${extension}`,
+        `${safeDisplayFileStem(personaId, "persona")}-${Date.now()}-${hash}.${extension}`,
     );
 
     await Bun.write(join(personaAssetsDir, fileName), bytes);
