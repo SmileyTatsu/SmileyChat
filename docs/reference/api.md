@@ -118,7 +118,7 @@ _See [Plugin API Reference](../plugins/api-reference.md) for full context on plu
 - `GET /api/plugins/:pluginId/storage/:key`: Load plugin-owned JSON storage value.
 - `PUT /api/plugins/:pluginId/storage/:key`: Save plugin-owned JSON storage value.
 - `DELETE /api/plugins/:pluginId/storage/:key`: Delete plugin-owned JSON storage value.
-- `POST /api/plugins/:pluginId/logs`: Submit client-side telemetry / plugin log entries to the server logger.
+- `POST /api/plugins/:pluginId/logs`: Submit client-side telemetry / plugin log entries to the server logger. Accepts either one entry or a batch of up to 32 entries in an `{ entries: [...] }` payload.
 
 ## Diagnostics & Logging
 

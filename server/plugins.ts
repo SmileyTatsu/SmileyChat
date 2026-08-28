@@ -181,18 +181,68 @@ export async function logPluginTelemetry(pluginId: string, body: unknown) {
             return json({ error: "Plugin not found." }, 404);
         }
     }
-    if (!body || typeof body !== "object" || Array.isArray(body))
+    const entries = normalizePluginTelemetryEntries(body);
+    if (!entries) {
         return json({ error: "Invalid plugin log payload." }, 400);
+    }
+
+    for (const entry of entries) {
+        logger[entry.level](
+            "plugins",
+            `[${pluginId}] ${entry.message}`,
+            entry.detail
+                ? { ...entry.detail, clientTelemetry: true }
+                : { clientTelemetry: true },
+        );
+    }
+
+    return json({ ok: true, accepted: entries.length });
+}
+
+type PluginTelemetryEntry = {
+    level: Exclude<LogLevel, "trace">;
+    message: string;
+    detail?: Record<string, unknown>;
+};
+
+function normalizePluginTelemetryEntries(
+    body: unknown,
+): PluginTelemetryEntry[] | undefined {
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return undefined;
+    }
+
     const value = body as Record<string, unknown>;
-    const level = value.level;
+    const rawEntries = Array.isArray(value.entries) ? value.entries : [value];
+
+    if (rawEntries.length === 0 || rawEntries.length > 32) {
+        return undefined;
+    }
+
+    const entries = rawEntries.map(normalizePluginTelemetryEntry);
+    return entries.every((entry): entry is PluginTelemetryEntry => Boolean(entry))
+        ? entries
+        : undefined;
+}
+
+function normalizePluginTelemetryEntry(value: unknown): PluginTelemetryEntry | undefined {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return undefined;
+    }
+
+    const entry = value as Record<string, unknown>;
+    const level = entry.level;
     const message =
-        typeof value.message === "string" ? value.message.trim().slice(0, 2048) : "";
-    if (!message || !["debug", "info", "warn", "error"].includes(String(level)))
-        return json({ error: "Invalid plugin log payload." }, 400);
+        typeof entry.message === "string" ? entry.message.trim().slice(0, 2048) : "";
+
+    if (!message || !["debug", "info", "warn", "error"].includes(String(level))) {
+        return undefined;
+    }
+
     const detail =
-        value.detail && typeof value.detail === "object" && !Array.isArray(value.detail)
+        entry.detail && typeof entry.detail === "object" && !Array.isArray(entry.detail)
             ? Object.fromEntries(
-                  Object.entries(value.detail as Record<string, unknown>)
+                  Object.entries(entry.detail as Record<string, unknown>)
                       .slice(0, 30)
                       .map(([key, item]) => [
                           key.slice(0, 80),
@@ -200,12 +250,12 @@ export async function logPluginTelemetry(pluginId: string, body: unknown) {
                       ]),
               )
             : undefined;
-    logger[level as Exclude<LogLevel, "trace">](
-        "plugins",
-        `[${pluginId}] ${message}`,
-        detail ? { ...detail, clientTelemetry: true } : { clientTelemetry: true },
-    );
-    return json({ ok: true });
+
+    return {
+        level: level as PluginTelemetryEntry["level"],
+        message,
+        ...(detail ? { detail } : {}),
+    };
 }
 
 export async function readPluginRegistry() {
@@ -1645,6 +1695,7 @@ export const pluginInstallTestInternals = {
     extractPluginArchive,
     installPluginArtifact,
     normalizePluginRegistry,
+    normalizePluginTelemetryEntries,
     normalizeHttpsArtifactUrl,
     resolveArchiveEntryPath,
     resolveInstallSource,

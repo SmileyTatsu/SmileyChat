@@ -51,6 +51,34 @@ test("server knows bundled post-processing core extension", () => {
     );
 });
 
+test("telemetry accepts bounded batches and retains single-entry compatibility", () => {
+    expect(
+        pluginInstallTestInternals.normalizePluginTelemetryEntries({
+            entries: [
+                { level: "debug", message: "first" },
+                { level: "warn", message: "second", detail: { value: "kept" } },
+            ],
+        }),
+    ).toEqual([
+        { level: "debug", message: "first" },
+        { level: "warn", message: "second", detail: { value: "kept" } },
+    ]);
+    expect(
+        pluginInstallTestInternals.normalizePluginTelemetryEntries({
+            level: "info",
+            message: "legacy entry",
+        }),
+    ).toEqual([{ level: "info", message: "legacy entry" }]);
+    expect(
+        pluginInstallTestInternals.normalizePluginTelemetryEntries({
+            entries: Array.from({ length: 33 }, () => ({
+                level: "info",
+                message: "too many",
+            })),
+        }),
+    ).toBeUndefined();
+});
+
 test("registry rejects invalid category, status, id, and artifact URL", () => {
     expect(() =>
         pluginInstallTestInternals.normalizePluginRegistry({
