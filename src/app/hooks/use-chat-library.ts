@@ -4,6 +4,7 @@ import {
     createChat as createChatRequest,
     deleteChatAttachment,
     deleteChat as deleteChatRequest,
+    deleteChatWorkspace,
     forkChat as forkChatRequest,
     loadChat,
     loadChatSummaries,
@@ -1145,18 +1146,14 @@ export function useChatLibrary({
 
     async function deleteGroup(workspaceId: string) {
         await flushPendingChatAutosaveWithoutStateUpdate();
-        const ids = latestChatSummariesRef.current.chats
-            .filter(
-                (chat) =>
-                    chat.id === workspaceId || groupWorkspaceId(chat) === workspaceId,
-            )
-            .map((chat) => chat.id);
         try {
-            for (const id of ids) {
-                await deleteChatRequest(id);
-                invalidateCachedChat(id);
+            const result = await deleteChatWorkspace(workspaceId);
+            const summaries = normalizeChatSummaryCollection(result.chats);
+            for (const chat of latestChatSummariesRef.current.chats) {
+                if (chat.id === workspaceId || groupWorkspaceId(chat) === workspaceId) {
+                    invalidateCachedChat(chat.id);
+                }
             }
-            const summaries = normalizeChatSummaryCollection(await loadChatSummaries());
             setChatSummaries(summaries);
             if (
                 latestChatRef.current &&

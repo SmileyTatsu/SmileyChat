@@ -592,6 +592,16 @@ export function deleteChat(chatId: string) {
     });
 }
 
+export function deleteChatWorkspace(workspaceId: string) {
+    return requestJson<{
+        ok: true;
+        deleted: number;
+        chats: ChatSummaryCollection;
+    }>(`/api/chats/workspaces/${encodeURIComponent(workspaceId)}`, {
+        method: "DELETE",
+    });
+}
+
 export function importChatFile(formData: FormData) {
     return requestJson<{
         ok: true;

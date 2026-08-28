@@ -29,6 +29,7 @@ import {
     createChat,
     deleteChatById,
     deleteChatsByCharacterId,
+    deleteGroupWorkspaceById,
     forkChatAtMessage,
     readChatById,
     readChatSummaryCollection,
@@ -678,6 +679,17 @@ const createServer = () =>
                     );
 
                     return json({ ok: true, ...result });
+                }),
+            },
+
+            "/api/chats/workspaces/:workspaceId": {
+                DELETE: api(async (request) => {
+                    const result = await deleteGroupWorkspaceById(
+                        request.params.workspaceId,
+                    );
+                    return result
+                        ? json({ ok: true, ...result })
+                        : json({ error: "Group workspace not found." }, 404);
                 }),
             },
 

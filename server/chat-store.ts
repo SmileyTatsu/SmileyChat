@@ -5,6 +5,8 @@ import {
     chatDisplayTitle,
     chatToSummary,
     isGroupChat,
+    isGroupWorkspace,
+    groupWorkspaceId,
     normalizeChat,
     normalizeChatSummary,
     normalizeChatSummaryCollection,
@@ -267,6 +269,44 @@ export async function deleteChatById(chatId: string) {
     };
 }
 
+/**
+ * Deletes a group workspace and every conversation that belongs to it as one
+ * index transaction. Group conversations share a workspace ID in their
+ * metadata, so deleting them through the single-chat route would otherwise
+ * rewrite the chat index once for every conversation.
+ */
+export async function deleteGroupWorkspaceById(workspaceId: string) {
+    const index = await readChatIndex();
+    const workspace = index.summaries.find((summary) => summary.id === workspaceId);
+
+    if (!workspace || !isGroupWorkspace(workspace)) {
+        return undefined;
+    }
+
+    const deleteIds = new Set(groupWorkspaceChatIds(index.summaries, workspaceId));
+
+    await deleteChatRecords(deleteIds);
+
+    const activeChatIdsByCharacter = Object.fromEntries(
+        Object.entries(index.activeChatIdsByCharacter).filter(
+            ([, chatId]) => !deleteIds.has(chatId),
+        ),
+    );
+    const nextIndex = {
+        version: 1 as const,
+        activeChatIdsByCharacter,
+        chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
+        summaries: index.summaries.filter((summary) => !deleteIds.has(summary.id)),
+    };
+
+    await writeFileBackedIndex(chatIndexPath, nextIndex);
+
+    return {
+        deleted: deleteIds.size,
+        chats: toChatSummaryCollection(nextIndex),
+    };
+}
+
 export async function deleteChatsByCharacterId(characterId: string) {
     const index = await readChatIndex();
     const deleteIds = new Set(
@@ -288,10 +328,7 @@ export async function deleteChatsByCharacterId(characterId: string) {
         };
     }
 
-    for (const chatId of deleteIds) {
-        await rm(chatFilePath(chatId), { force: true });
-        await deleteChatAssetDirectory(chatId);
-    }
+    await deleteChatRecords(deleteIds);
 
     const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };
     delete activeChatIdsByCharacter[characterId];
@@ -307,6 +344,44 @@ export async function deleteChatsByCharacterId(characterId: string) {
         deleted: deleteIds.size,
         chats: await readChatSummaryCollection(),
     };
+}
+
+export function groupWorkspaceChatIds(summaries: ChatSummary[], workspaceId: string) {
+    return summaries
+        .filter((summary) => groupWorkspaceId(summary) === workspaceId)
+        .map((summary) => summary.id);
+}
+
+const chatDeletionConcurrency = 8;
+
+async function deleteChatRecords(chatIds: Set<string>) {
+    const ids = [...chatIds];
+    let nextIndex = 0;
+    const workerCount = Math.min(chatDeletionConcurrency, ids.length);
+
+    await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+            while (nextIndex < ids.length) {
+                const chatId = ids[nextIndex];
+                nextIndex += 1;
+
+                if (!chatId) continue;
+
+                await Promise.all([
+                    rm(chatFilePath(chatId), { force: true }),
+                    deleteChatAssetDirectory(chatId),
+                ]);
+            }
+        }),
+    );
+}
+
+function toChatSummaryCollection(index: ChatIndex): ChatSummaryCollection {
+    return normalizeChatSummaryCollection({
+        version: 1,
+        activeChatIdsByCharacter: index.activeChatIdsByCharacter,
+        chats: sortChatSummaries(index.summaries),
+    });
 }
 
 export async function updateChatIndex(value: unknown) {

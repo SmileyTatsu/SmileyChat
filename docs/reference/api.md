@@ -28,6 +28,7 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `PUT /api/chats/:chatId`: Update a chat session.
 - `PATCH /api/chats/:chatId/metadata`: Patch a chat session's title, mode, and metadata without modifying messages.
 - `DELETE /api/chats/:chatId`: Delete a saved chat session.
+- `DELETE /api/chats/workspaces/:workspaceId`: Delete a group workspace and all of its saved conversations in one operation.
 - `POST /api/chats/:chatId/fork`: Fork an existing chat at a specific message ID.
 - `PUT /api/chats/index`: Save active chat selection metadata.
 - `POST /api/chats/import`: Import a general chat payload as a new saved chat.
