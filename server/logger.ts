@@ -152,7 +152,11 @@ export function log(
     }
 
     if (shouldFile) {
-        void appendLogLine(`[${iso}] ${line}`).catch(() => undefined);
+        appendLogLine(
+            `[${iso}] ${line}`,
+            undefined,
+            level === "warn" || level === "error",
+        );
     }
 }
 

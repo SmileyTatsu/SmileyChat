@@ -59,7 +59,7 @@ import {
     writeLorebookById,
 } from "./lorebook-store";
 import { logsDir, userDataDir } from "./paths";
-import { clearLogFiles, getLogStats } from "./log-file-manager";
+import { clearLogFiles, flushLogLines, getLogStats } from "./log-file-manager";
 import {
     getRecentLogs,
     log,
@@ -170,6 +170,7 @@ const shutdown = async (signal: string) => {
             error: error instanceof Error ? error.message : String(error),
         });
     }
+    await flushLogLines();
     process.exit(0);
 };
 

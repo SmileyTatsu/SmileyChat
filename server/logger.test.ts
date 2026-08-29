@@ -10,6 +10,7 @@ import {
 import {
     appendLogLine,
     clearLogFiles,
+    flushLogLines,
     getActiveLogPath,
     getLogStats,
     resetActiveLogFile,
@@ -144,14 +145,14 @@ describe("logger", () => {
         expect(hasHttp).toBe(true);
     });
 
-    test("registers debug logs in buffer and writes them to file", async () => {
-        await Bun.sleep(25);
+    test("registers debug HTTP logs in the viewer and writes them to file", async () => {
+        await flushLogLines();
         await clearLogFiles();
         resetActiveLogFile();
 
         // Emit a debug-level log message (e.g. routine /api/* call)
         log("http", "debug", "GET /api/characters -> 200", { durationMs: 1 });
-        await Bun.sleep(25);
+        await flushLogLines();
 
         // In-memory buffer captures all events so in-app viewer can filter them
         const recent = getRecentLogs();
@@ -162,10 +163,46 @@ describe("logger", () => {
         );
         expect(hasDebugInViewer).toBe(true);
 
-        // And the log file on disk also captures it!
+        // Disk logs retain the normal HTTP audit trail without enabling debug console output.
         const stats = await getLogStats();
-        expect(stats.fileCount).toBeGreaterThanOrEqual(1);
+        expect(stats.fileCount).toBe(1);
         expect(stats.totalSizeBytes).toBeGreaterThan(0);
+
+        await clearLogFiles();
+    });
+
+    test("flushes queued logs when a warning is emitted", async () => {
+        await clearLogFiles();
+        resetActiveLogFile();
+
+        log("server", "info", "Queued before warning");
+        log("server", "warn", "Warning requiring immediate persistence");
+        await flushLogLines();
+
+        const stats = await getLogStats();
+        expect(stats.fileCount).toBe(1);
+        expect(stats.totalSizeBytes).toBeGreaterThan(
+            Buffer.byteLength(
+                "Queued before warning\nWarning requiring immediate persistence\n",
+            ),
+        );
+
+        await clearLogFiles();
+    });
+
+    test("batches queued log lines into one disk flush", async () => {
+        await clearLogFiles();
+        resetActiveLogFile();
+
+        appendLogLine("Queued line 1");
+        appendLogLine("Queued line 2");
+        await flushLogLines();
+
+        const stats = await getLogStats();
+        expect(stats.fileCount).toBe(1);
+        expect(stats.totalSizeBytes).toBe(
+            Buffer.byteLength("Queued line 1\nQueued line 2\n"),
+        );
 
         await clearLogFiles();
     });
@@ -180,22 +217,27 @@ describe("logger", () => {
 
         // Line 1 (20 bytes) -> base file (size 20 < 50)
         await appendLogLine("Short line 1", maxBytes);
+        await flushLogLines();
         const path1 = await getActiveLogPath(new Date(), maxBytes);
         expect(path1).toMatch(/smileychat-\d{4}-\d{2}-\d{2}\.log$/);
 
         // Line 2 (40 bytes) -> pushes base file to 60 bytes (>= 50)
         await appendLogLine("Line 2 that fills base log past limit", maxBytes);
+        await flushLogLines();
 
         // Line 3 (20 bytes) -> rotates to -1.log (size 20 < 50)
         await appendLogLine("Short line 3", maxBytes);
+        await flushLogLines();
         const path2 = await getActiveLogPath(new Date(), maxBytes);
         expect(path2).toMatch(/smileychat-\d{4}-\d{2}-\d{2}-1\.log$/);
 
         // Line 4 (40 bytes) -> pushes -1.log to 60 bytes (>= 50)
         await appendLogLine("Line 4 that fills first sibling past limit", maxBytes);
+        await flushLogLines();
 
         // Line 5 (20 bytes) -> rotates to -2.log (size 20 < 50)
         await appendLogLine("Short line 5", maxBytes);
+        await flushLogLines();
         const path3 = await getActiveLogPath(new Date(), maxBytes);
         expect(path3).toMatch(/smileychat-\d{4}-\d{2}-\d{2}-2\.log$/);
 
