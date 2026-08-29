@@ -1,4 +1,4 @@
-import { localApiFetch } from "#frontend/lib/api/client";
+import { loadLorebook, localApiFetch } from "#frontend/lib/api/client";
 import { createBlankCharacter } from "#frontend/lib/characters/normalize";
 import type { ChatSession, ChatSummary, SmileyCharacter } from "#frontend/types";
 import type { Lorebook } from "#frontend/lib/lorebooks/types";
@@ -542,19 +542,6 @@ export function activate(api: SmileyPluginApi) {
         });
     });
     return () => disposers.forEach((dispose) => dispose());
-}
-
-async function loadLorebook(lorebookId: string) {
-    const response = await localApiFetch(
-        `/api/lorebooks/${encodeURIComponent(lorebookId)}`,
-    );
-    if (!response.ok) {
-        const error = (await response.json().catch(() => undefined)) as
-            | { error?: string }
-            | undefined;
-        throw new Error(error?.error ?? `Could not load lorebook (${response.status}).`);
-    }
-    return response.json() as Promise<Lorebook>;
 }
 
 async function loadPersonas() {

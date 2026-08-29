@@ -33,6 +33,7 @@ const defaultApiBasePath = "/api";
 export const localApiErrorEventName = "smileychat:local-api-error";
 
 let csrfToken: string | undefined;
+const lorebookCache = new Map<string, Promise<Lorebook>>();
 
 export function localApiPath(path: string) {
     if (/^https?:\/\//i.test(path)) {
@@ -436,16 +437,32 @@ export function loadLorebookSummaries() {
 }
 
 export function loadLorebook(lorebookId: string) {
-    return requestJson<Lorebook>(`/api/lorebooks/${encodeURIComponent(lorebookId)}`);
+    const cached = lorebookCache.get(lorebookId);
+    if (cached) {
+        return cached;
+    }
+
+    const request = requestJson<Lorebook>(
+        `/api/lorebooks/${encodeURIComponent(lorebookId)}`,
+    );
+    lorebookCache.set(lorebookId, request);
+    void request.catch(() => {
+        if (lorebookCache.get(lorebookId) === request) {
+            lorebookCache.delete(lorebookId);
+        }
+    });
+    return request;
 }
 
 export function createLorebook(data: Partial<Lorebook>) {
-    return requestJson<{
-        ok: true;
-        lorebook: Lorebook;
-        summary: import("../lorebooks/types").LorebookSummary;
-        lorebooks?: LorebookCollection;
-    }>("/api/lorebooks", jsonInit("POST", data));
+    return cacheLorebookResult(
+        requestJson<{
+            ok: true;
+            lorebook: Lorebook;
+            summary: import("../lorebooks/types").LorebookSummary;
+            lorebooks?: LorebookCollection;
+        }>("/api/lorebooks", jsonInit("POST", data)),
+    );
 }
 
 export function patchLorebook(
@@ -454,16 +471,20 @@ export function patchLorebook(
         Pick<Lorebook, "title" | "description" | "settings" | "metadata" | "extensions">
     >,
 ) {
-    return requestJson<{ ok: true; lorebook: Lorebook; lorebooks?: LorebookCollection }>(
-        `/api/lorebooks/${encodeURIComponent(lorebookId)}`,
-        jsonInit("PATCH", patch),
+    return cacheLorebookResult(
+        requestJson<{ ok: true; lorebook: Lorebook; lorebooks?: LorebookCollection }>(
+            `/api/lorebooks/${encodeURIComponent(lorebookId)}`,
+            jsonInit("PATCH", patch),
+        ),
     );
 }
 
 export function addLorebookEntry(lorebookId: string, entry: Partial<LorebookEntry>) {
-    return requestJson<{ ok: true; lorebook: Lorebook }>(
-        `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries`,
-        jsonInit("POST", entry),
+    return cacheLorebookResult(
+        requestJson<{ ok: true; lorebook: Lorebook }>(
+            `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries`,
+            jsonInit("POST", entry),
+        ),
     );
 }
 
@@ -472,41 +493,68 @@ export function updateLorebookEntry(
     entryId: string,
     patch: Partial<LorebookEntry>,
 ) {
-    return requestJson<{ ok: true; lorebook: Lorebook }>(
-        `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries/${encodeURIComponent(entryId)}`,
-        jsonInit("PUT", patch),
+    return cacheLorebookResult(
+        requestJson<{ ok: true; lorebook: Lorebook }>(
+            `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries/${encodeURIComponent(entryId)}`,
+            jsonInit("PUT", patch),
+        ),
     );
 }
 
 export function deleteLorebookEntry(lorebookId: string, entryId: string) {
-    return requestJson<{ ok: true; lorebook: Lorebook }>(
-        `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries/${encodeURIComponent(entryId)}`,
-        { method: "DELETE" },
+    return cacheLorebookResult(
+        requestJson<{ ok: true; lorebook: Lorebook }>(
+            `/api/lorebooks/${encodeURIComponent(lorebookId)}/entries/${encodeURIComponent(entryId)}`,
+            { method: "DELETE" },
+        ),
     );
 }
 
 export function saveLorebook(lorebook: Lorebook) {
-    return requestJson<{
-        ok: true;
-        lorebook: Lorebook;
-        lorebooks?: LorebookCollection;
-    }>(`/api/lorebooks/${encodeURIComponent(lorebook.id)}`, jsonInit("PUT", lorebook));
+    return cacheLorebookResult(
+        requestJson<{
+            ok: true;
+            lorebook: Lorebook;
+            lorebooks?: LorebookCollection;
+        }>(
+            `/api/lorebooks/${encodeURIComponent(lorebook.id)}`,
+            jsonInit("PUT", lorebook),
+        ),
+    );
 }
 
-export function deleteLorebook(lorebookId: string) {
-    return requestJson<{
+export async function deleteLorebook(lorebookId: string) {
+    const result = await requestJson<{
         ok: true;
         lorebooks?: LorebookCollection;
     }>(`/api/lorebooks/${encodeURIComponent(lorebookId)}`, {
         method: "DELETE",
     });
+    lorebookCache.delete(lorebookId);
+    return result;
 }
 
-export function importLorebookFiles(formData: FormData) {
-    return requestJson<LorebookImportResult & { ok: true }>("/api/lorebooks/import", {
-        method: "POST",
-        body: formData,
+export async function importLorebookFiles(formData: FormData) {
+    const result = await requestJson<LorebookImportResult & { ok: true }>(
+        "/api/lorebooks/import",
+        {
+            method: "POST",
+            body: formData,
+        },
+    );
+    lorebookCache.clear();
+    return result;
+}
+
+function cacheLorebookResult<T extends { lorebook: Lorebook }>(request: Promise<T>) {
+    return request.then((result) => {
+        lorebookCache.set(result.lorebook.id, Promise.resolve(result.lorebook));
+        return result;
     });
+}
+
+export function clearLorebookCache() {
+    lorebookCache.clear();
 }
 
 export async function exportLorebook(lorebookId: string, format: "json" | "smiley") {

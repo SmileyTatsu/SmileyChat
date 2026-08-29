@@ -11,6 +11,7 @@ import {
     loadAppPreferences,
     loadConnectionSecrets,
     loadConnectionSettings as loadConnectionSettingsRequest,
+    clearLorebookCache,
     loadLorebookSummaries,
     loadPluginManifests,
     loadPresetCollection as loadPresetCollectionRequest,
@@ -666,6 +667,7 @@ export function App() {
     }
 
     async function refreshSillyTavernSyncData() {
+        clearLorebookCache();
         await refreshImportedData();
         await Promise.all([
             loadPersonaCollection(),
