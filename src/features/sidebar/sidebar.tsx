@@ -17,7 +17,7 @@ import {
     X,
 } from "lucide-preact";
 import type { RefObject } from "preact";
-import { useMemo, useRef, useState } from "preact/hooks";
+import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
@@ -26,6 +26,7 @@ import {
     isGroupChat,
     isGroupWorkspace,
 } from "#frontend/lib/chats/normalize";
+import { clampMenuPosition } from "#frontend/lib/dom/positioning";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type {
     CharacterSummary,
@@ -389,6 +390,110 @@ export function Sidebar({
           }
         | undefined
     >();
+    const characterMenuRef = useRef<HTMLDivElement>(null);
+    const chatMenuRef = useRef<HTMLDivElement>(null);
+
+    useLayoutEffect(() => {
+        if (!contextMenu || !characterMenuRef.current) {
+            return;
+        }
+
+        const reposition = () => {
+            if (!characterMenuRef.current) {
+                return;
+            }
+            const rect = characterMenuRef.current.getBoundingClientRect();
+            const vv = typeof window !== "undefined" ? window.visualViewport : undefined;
+            const bounds = vv
+                ? {
+                      width: vv.width,
+                      height: vv.height,
+                      left: vv.offsetLeft,
+                      top: vv.offsetTop,
+                  }
+                : undefined;
+            const clamped = clampMenuPosition(
+                contextMenu.x,
+                contextMenu.y,
+                rect.width,
+                rect.height,
+                12,
+                bounds,
+            );
+            characterMenuRef.current.style.left = `${clamped.x}px`;
+            characterMenuRef.current.style.top = `${clamped.y}px`;
+        };
+
+        reposition();
+
+        window.addEventListener("resize", reposition);
+        window.visualViewport?.addEventListener("resize", reposition);
+        window.visualViewport?.addEventListener("scroll", reposition);
+
+        let resizeObserver: ResizeObserver | undefined;
+        if (typeof ResizeObserver !== "undefined") {
+            resizeObserver = new ResizeObserver(reposition);
+            resizeObserver.observe(characterMenuRef.current);
+        }
+
+        return () => {
+            window.removeEventListener("resize", reposition);
+            window.visualViewport?.removeEventListener("resize", reposition);
+            window.visualViewport?.removeEventListener("scroll", reposition);
+            resizeObserver?.disconnect();
+        };
+    }, [contextMenu]);
+
+    useLayoutEffect(() => {
+        if (!chatContextMenu || !chatMenuRef.current) {
+            return;
+        }
+
+        const reposition = () => {
+            if (!chatMenuRef.current) {
+                return;
+            }
+            const rect = chatMenuRef.current.getBoundingClientRect();
+            const vv = typeof window !== "undefined" ? window.visualViewport : undefined;
+            const bounds = vv
+                ? {
+                      width: vv.width,
+                      height: vv.height,
+                      left: vv.offsetLeft,
+                      top: vv.offsetTop,
+                  }
+                : undefined;
+            const clamped = clampMenuPosition(
+                chatContextMenu.x,
+                chatContextMenu.y,
+                rect.width,
+                rect.height,
+                12,
+                bounds,
+            );
+            chatMenuRef.current.style.left = `${clamped.x}px`;
+            chatMenuRef.current.style.top = `${clamped.y}px`;
+        };
+
+        reposition();
+
+        window.addEventListener("resize", reposition);
+        window.visualViewport?.addEventListener("resize", reposition);
+        window.visualViewport?.addEventListener("scroll", reposition);
+
+        let resizeObserver: ResizeObserver | undefined;
+        if (typeof ResizeObserver !== "undefined") {
+            resizeObserver = new ResizeObserver(reposition);
+            resizeObserver.observe(chatMenuRef.current);
+        }
+
+        return () => {
+            window.removeEventListener("resize", reposition);
+            window.visualViewport?.removeEventListener("resize", reposition);
+            window.visualViewport?.removeEventListener("scroll", reposition);
+            resizeObserver?.disconnect();
+        };
+    }, [chatContextMenu]);
     const [avatarDeleteCandidate, setAvatarDeleteCandidate] = useState<
         CharacterSummary | undefined
     >();
@@ -947,6 +1052,7 @@ export function Sidebar({
                     }}
                 >
                     <div
+                        ref={characterMenuRef}
                         className="character-context-menu"
                         role="menu"
                         style={{
@@ -1136,6 +1242,7 @@ export function Sidebar({
                     }}
                 >
                     <div
+                        ref={chatMenuRef}
                         className="character-context-menu"
                         role="menu"
                         style={{

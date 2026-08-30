@@ -815,6 +815,9 @@
     z-index: 141;
     display: grid;
     min-width: 156px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
     border: 1px solid #303440;
     border-radius: 8px;
     background: #191b21;
