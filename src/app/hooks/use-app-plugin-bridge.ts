@@ -28,6 +28,7 @@ import {
     createLorebook,
     createPersona,
     deleteLorebookEntry,
+    loadLorebook,
     saveCharacterIndex,
     updateLorebookEntry,
 } from "#frontend/lib/api/client";
@@ -210,6 +211,7 @@ export function useAppPluginBridge({
                 await loadersRef.current.loadLorebookCollection();
                 return result.summary;
             },
+            getLorebook: loadLorebook,
             addLorebookEntry: async (id, entry) => {
                 await addLorebookEntry(id, entry);
                 await loadersRef.current.loadLorebookCollection();

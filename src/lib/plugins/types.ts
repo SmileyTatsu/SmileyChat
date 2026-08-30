@@ -418,6 +418,7 @@ export type PluginActionsApi = {
     createPersona(persona: SmileyPersona): Promise<SmileyPersona>;
     updatePersona(personaId: string, patch: Partial<SmileyPersona>): Promise<void>;
     createLorebook(data: Partial<Lorebook>): Promise<LorebookSummary>;
+    getLorebook(lorebookId: string): Promise<Lorebook>;
     addLorebookEntry(lorebookId: string, entry: Partial<LorebookEntry>): Promise<void>;
     updateLorebookEntry(
         lorebookId: string,

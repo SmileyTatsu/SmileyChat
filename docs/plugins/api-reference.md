@@ -194,8 +194,9 @@ await api.actions.updateChatMetadata("chat-id", {
     metadata: { storyAct: 2 },
 });
 
-// Manage Lorebooks
+// Manage and read Lorebooks
 const newBook = await api.actions.createLorebook({ title: "Campaign Notes" });
+const fullBook = await api.actions.getLorebook(newBook.id);
 await api.actions.addLorebookEntry(newBook.id, {
     title: "The Artifact",
     keys: ["artifact", "relic"],

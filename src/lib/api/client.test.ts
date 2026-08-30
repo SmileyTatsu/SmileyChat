@@ -4,6 +4,7 @@ import {
     clearLorebookCache,
     importLorebookFiles,
     loadLorebook,
+    resetCsrfTokenForTests,
     saveLorebook,
 } from "./client";
 import type { Lorebook } from "../lorebooks/types";
@@ -37,6 +38,7 @@ const lorebook: Lorebook = {
 afterEach(() => {
     globalThis.fetch = originalFetch;
     clearLorebookCache();
+    resetCsrfTokenForTests();
 });
 
 describe("LoreBook API cache", () => {

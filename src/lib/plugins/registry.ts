@@ -112,6 +112,7 @@ type PluginAppActionHandlers = Pick<
     | "createPersona"
     | "updatePersona"
     | "createLorebook"
+    | "getLorebook"
     | "addLorebookEntry"
     | "updateLorebookEntry"
     | "deleteLorebookEntry"
@@ -1061,6 +1062,12 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             if (!handler)
                 throw new Error("Plugin createLorebook action is not available.");
             return handler(data);
+        },
+        async getLorebook(lorebookId) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.getLorebook;
+            if (!handler) throw new Error("Plugin getLorebook action is not available.");
+            return handler(lorebookId);
         },
         async addLorebookEntry(lorebookId, entry) {
             requireDeclaredPluginPermission(manifest, "actions");

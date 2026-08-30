@@ -557,6 +557,10 @@ export function clearLorebookCache() {
     lorebookCache.clear();
 }
 
+export function resetCsrfTokenForTests() {
+    csrfToken = undefined;
+}
+
 export async function exportLorebook(lorebookId: string, format: "json" | "smiley") {
     const suffix = format === "smiley" ? "export.smiley.json" : "export.json";
     const response = await localApiFetch(

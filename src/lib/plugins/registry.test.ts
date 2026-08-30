@@ -14,6 +14,7 @@ import {
     getPluginModalInstances,
     setPluginModelHandlers,
     setPluginPresetHandlers,
+    setPluginAppActionHandlers,
     setPluginEnabledState,
     setPluginSnapshot,
     subscribeToPluginRegistry,
@@ -350,6 +351,28 @@ describe("plugin registry runtime isolation", () => {
                 { instructTemplate: "none" },
             ),
         ).toBe("Hello");
+    });
+
+    test("getLorebook action enforces permission and delegates to app handler", async () => {
+        const unpermittedApi = pluginApi(uniqueId("actions-denied"), []);
+        expect(() => unpermittedApi.actions.getLorebook("lorebook-1")).toThrow(
+            'needs "actions" permission',
+        );
+
+        const permittedApi = pluginApi(uniqueId("actions-permitted"), ["actions"]);
+        let requestedId = "";
+        setPluginAppActionHandlers({
+            getLorebook: async (id) => {
+                requestedId = id;
+                return { id, title: "Test Lorebook" } as never;
+            },
+        });
+
+        const result = await permittedApi.actions.getLorebook("lorebook-123");
+        expect(requestedId).toBe("lorebook-123");
+        expect(result.title).toBe("Test Lorebook");
+
+        setPluginAppActionHandlers({});
     });
 });
 
