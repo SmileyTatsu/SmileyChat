@@ -13,6 +13,11 @@ type UsePresetAutosaveOptions = {
     onCollectionChange: (collection: PresetCollection) => void;
 };
 
+type QueuedPresetSave = {
+    source: PresetCollection;
+    normalized: PresetCollection;
+};
+
 export function usePresetAutosave({
     collection,
     loadError,
@@ -20,13 +25,11 @@ export function usePresetAutosave({
 }: UsePresetAutosaveOptions) {
     const autosaveTimerRef = useRef<number | undefined>(undefined);
     const successTimerRef = useRef<number | undefined>(undefined);
-    const lastSavedSnapshotRef = useRef(
-        JSON.stringify(normalizePresetCollection(collection)),
-    );
+    const lastSavedCollectionRef = useRef(collection);
     const latestCollectionRef = useRef(collection);
     const mountedRef = useRef(true);
     const onCollectionChangeRef = useRef(onCollectionChange);
-    const queuedSaveRef = useRef<PresetCollection | undefined>(undefined);
+    const queuedSaveRef = useRef<QueuedPresetSave | undefined>(undefined);
     const saveInFlightRef = useRef(false);
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
@@ -75,11 +78,9 @@ export function usePresetAutosave({
                 window.clearTimeout(successTimerRef.current);
             }
 
-            const latestCollection = normalizePresetCollection(
-                latestCollectionRef.current,
-            );
+            const latestCollection = latestCollectionRef.current;
 
-            if (JSON.stringify(latestCollection) !== lastSavedSnapshotRef.current) {
+            if (latestCollection !== lastSavedCollectionRef.current) {
                 void saveCollection(latestCollection, false);
             }
         },
@@ -87,9 +88,7 @@ export function usePresetAutosave({
     );
 
     useEffect(() => {
-        const snapshot = JSON.stringify(normalizePresetCollection(collection));
-
-        if (snapshot === lastSavedSnapshotRef.current) {
+        if (collection === lastSavedCollectionRef.current) {
             return;
         }
 
@@ -115,7 +114,10 @@ export function usePresetAutosave({
         nextCollection = latestCollectionRef.current,
         updateUi = true,
     ) {
-        queuedSaveRef.current = normalizePresetCollection(nextCollection);
+        queuedSaveRef.current = {
+            source: nextCollection,
+            normalized: normalizePresetCollection(nextCollection),
+        };
 
         if (saveInFlightRef.current) {
             if (updateUi && mountedRef.current) {
@@ -132,40 +134,49 @@ export function usePresetAutosave({
             setRequestState("loading");
         }
 
+        let queuedSaveAfterFailure: QueuedPresetSave | undefined;
+
         try {
             while (queuedSaveRef.current) {
-                const collectionToSave = queuedSaveRef.current;
+                const { source, normalized: collectionToSave } = queuedSaveRef.current;
                 queuedSaveRef.current = undefined;
                 const result = await savePresetCollection(collectionToSave);
                 const savedCollection = normalizePresetCollection(result.presets);
-                const savedSnapshot = JSON.stringify(savedCollection);
 
-                lastSavedSnapshotRef.current = savedSnapshot;
+                lastSavedCollectionRef.current = source;
 
                 if (
                     updateUi &&
                     mountedRef.current &&
-                    savedSnapshot ===
-                        JSON.stringify(
-                            normalizePresetCollection(latestCollectionRef.current),
-                        )
+                    latestCollectionRef.current === source
                 ) {
                     latestCollectionRef.current = savedCollection;
+                    lastSavedCollectionRef.current = savedCollection;
                     onCollectionChangeRef.current(savedCollection);
                 }
             }
 
-            if (updateUi && mountedRef.current) {
+            if (
+                updateUi &&
+                mountedRef.current &&
+                latestCollectionRef.current === lastSavedCollectionRef.current
+            ) {
                 setStatusMessage("Preset changes saved.");
                 setRequestState("success");
             }
         } catch (error) {
+            queuedSaveAfterFailure = queuedSaveRef.current;
+
             if (mountedRef.current) {
                 setStatusMessage(messageFromError(error, "Unexpected preset error."));
                 setRequestState("error");
             }
         } finally {
             saveInFlightRef.current = false;
+
+            if (queuedSaveAfterFailure) {
+                void saveCollection(queuedSaveAfterFailure.source, updateUi);
+            }
         }
     }
 
