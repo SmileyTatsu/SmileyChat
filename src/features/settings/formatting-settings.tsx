@@ -12,6 +12,7 @@ import {
 } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import defaultInstructTemplates from "#frontend/data/default-instruct-templates";
 import {
     deleteInstructTemplate,
@@ -95,6 +96,8 @@ export function FormattingSettings({
     const previousFocusRef = useRef<HTMLElement | null>(null);
     const [templates, setTemplates] = useState<CustomInstructTemplate[]>([]);
     const [status, setStatus] = useState("");
+    const [templateToDelete, setTemplateToDelete] =
+        useState<CustomInstructTemplate | null>(null);
     const [pendingImport, setPendingImport] = useState<{
         raw: Record<string, unknown>;
         fileName: string;
@@ -376,19 +379,26 @@ export function FormattingSettings({
         }
     }
 
-    async function deleteSelected() {
+    function deleteSelected() {
         if (!activeId.startsWith("custom:")) return;
         const customId = activeId.slice(7);
         const toDelete = templates.find((t) => t.id === customId) ?? activeTemplate;
-        if (!window.confirm(`Delete “${toDelete.name}” from userData/instruct?`)) return;
+        if (toDelete) {
+            setTemplateToDelete(toDelete as CustomInstructTemplate);
+        }
+    }
+
+    async function confirmDeleteTemplate() {
+        if (!templateToDelete) return;
         try {
-            const result = await deleteInstructTemplate(customId);
+            const result = await deleteInstructTemplate(templateToDelete.id);
             setTemplates(result.templates ?? []);
             setFormatting("builtin:auto", {
                 instructTemplate: "auto",
                 storyString: defaultStoryString,
             });
-            setStatus(`Deleted “${toDelete.name}”.`);
+            setStatus(`Deleted “${templateToDelete.name}”.`);
+            setTemplateToDelete(null);
         } catch (error) {
             setStatus(messageFromError(error, "Could not delete template."));
         }
@@ -580,79 +590,62 @@ export function FormattingSettings({
             </section>
 
             {pendingImport && (
-                <div
-                    className="message-confirm-backdrop"
-                    role="presentation"
-                    onClick={() => setPendingImport(null)}
-                >
-                    <section
-                        className="message-confirm-dialog"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Preset Settings Detected"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <header>
-                            <Sparkles
-                                size={20}
-                                style={{ color: "var(--accent-color, #7aa2f7)" }}
-                            />
-                            <h2>Preset Settings Detected</h2>
-                        </header>
-                        <p>
-                            “{pendingImport.fileName}” contains generation samplers
-                            (temperature, DRY, min P, etc.) and roleplay context prompts
-                            in addition to instruct tokens.
-                        </p>
+                <ConfirmDialog
+                    title="Preset Settings Detected"
+                    icon={
+                        <Sparkles
+                            size={20}
+                            style={{ color: "var(--accent-color, #7aa2f7)" }}
+                        />
+                    }
+                    message={`“${pendingImport.fileName}” contains generation samplers (temperature, DRY, min P, etc.) and roleplay context prompts in addition to instruct tokens.`}
+                    body={
                         <p className="field-hint" style={{ marginTop: "-4px" }}>
                             Would you like to import the samplers and story context as an
                             active Preset as well?
                         </p>
-                        <div
-                            className="message-confirm-actions"
-                            style={{ marginTop: "16px" }}
-                        >
-                            <button
-                                ref={importCancelRef}
-                                type="button"
-                                onClick={() => setPendingImport(null)}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const { parsed, fileName } = pendingImport;
-                                    setPendingImport(null);
-                                    void finalizeInstructImport(parsed, fileName, false);
-                                }}
-                            >
-                                Import Instruct Only
-                            </button>
-                            <button
-                                type="button"
-                                style={{
-                                    background: "var(--accent-color, #3d59a1)",
-                                    color: "#fff",
-                                    fontWeight: 600,
-                                }}
-                                onClick={() => {
-                                    const { parsed, fileName, raw } = pendingImport;
-                                    setPendingImport(null);
-                                    void finalizeInstructImport(
-                                        parsed,
-                                        fileName,
-                                        true,
-                                        raw,
-                                    );
-                                }}
-                            >
-                                <Sparkles size={14} />
-                                Import Both (Recommended)
-                            </button>
-                        </div>
-                    </section>
-                </div>
+                    }
+                    onClose={() => setPendingImport(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const { parsed, fileName } = pendingImport;
+                            setPendingImport(null);
+                            void finalizeInstructImport(parsed, fileName, false);
+                        }}
+                    >
+                        Import Instruct Only
+                    </button>
+                    <button
+                        type="button"
+                        className="primary-button"
+                        style={{
+                            background: "var(--accent-color, #3d59a1)",
+                            color: "#fff",
+                            fontWeight: 600,
+                        }}
+                        onClick={() => {
+                            const { parsed, fileName, raw } = pendingImport;
+                            setPendingImport(null);
+                            void finalizeInstructImport(parsed, fileName, true, raw);
+                        }}
+                    >
+                        <Sparkles size={14} />
+                        Import Both (Recommended)
+                    </button>
+                </ConfirmDialog>
+            )}
+
+            {templateToDelete && (
+                <ConfirmDialog
+                    title="Delete instruct template?"
+                    message={`Delete “${templateToDelete.name}” from userData/instruct? This cannot be undone.`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmDeleteTemplate}
+                    onClose={() => setTemplateToDelete(null)}
+                />
             )}
         </section>
     );

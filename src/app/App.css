@@ -2,6 +2,7 @@
 @import "../features/chat/chat.css";
 @import "../features/characters/characters.css";
 @import "../features/settings/settings.css";
+@import "../styles/dialogs.css";
 
 .app-startup-screen {
     --startup-surface: #101114;

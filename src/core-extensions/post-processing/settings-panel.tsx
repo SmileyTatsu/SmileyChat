@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-preact";
 import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import type { PluginAppSnapshot, SmileyPluginApi } from "#frontend/lib/plugins/types";
 import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 
@@ -26,6 +27,7 @@ export function PostProcessingSettingsPanel({ api, snapshot }: SettingsPanelProp
         activePipeline(settings)?.passes[0]?.id ?? "",
     );
     const [status, setStatus] = useState("");
+    const [passToDelete, setPassToDelete] = useState<PipelinePass | null>(null);
     const pipeline = activePipeline(settings);
     const selectedPass =
         pipeline?.passes.find((pass) => pass.id === selectedPassId) ??
@@ -87,24 +89,26 @@ export function PostProcessingSettingsPanel({ api, snapshot }: SettingsPanelProp
         setSelectedPassId(pass.id);
     }
 
-    async function deletePass(passId: string) {
+    function deletePass(passId: string) {
         if (!pipeline) {
             return;
         }
 
         const pass = pipeline.passes.find((item) => item.id === passId);
+        if (pass) {
+            setPassToDelete(pass);
+        }
+    }
 
-        if (
-            !window.confirm(
-                `Delete "${pass?.name || "Untitled Pass"}" from this pipeline?`,
-            )
-        ) {
+    async function confirmDeletePass() {
+        if (!pipeline || !passToDelete) {
             return;
         }
 
-        const nextPasses = pipeline.passes.filter((p) => p.id !== passId);
+        const nextPasses = pipeline.passes.filter((p) => p.id !== passToDelete.id);
         await updatePipeline({ passes: nextPasses });
         setSelectedPassId(nextPasses[0]?.id ?? "");
+        setPassToDelete(null);
     }
 
     async function movePass(passId: string, direction: -1 | 1) {
@@ -278,6 +282,17 @@ export function PostProcessingSettingsPanel({ api, snapshot }: SettingsPanelProp
             <p className="spp-status" aria-live="polite">
                 {status}
             </p>
+
+            {passToDelete && (
+                <ConfirmDialog
+                    title="Delete pass?"
+                    message={`Delete "${passToDelete.name || "Untitled Pass"}" from this pipeline?`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmDeletePass}
+                    onClose={() => setPassToDelete(null)}
+                />
+            )}
         </section>
     );
 }

@@ -1,8 +1,9 @@
-import { AlertTriangle, ArrowDown, Trash2 } from "lucide-preact";
+import { ArrowDown, Trash2 } from "lucide-preact";
 import { memo } from "preact/compat";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import { useEventCallback } from "#frontend/app/hooks/use-event-callback";
 import { getMessageContent } from "#frontend/lib/messages";
 import type { MessageFormattingOptions } from "#frontend/lib/message-formatting/quote-highlighting";
@@ -564,108 +565,48 @@ export const MessageList = memo(function MessageList({
                 </button>
             )}
             {deleteCandidate && (
-                <div
-                    className="message-confirm-backdrop"
-                    role="presentation"
-                    onClick={() => setDeleteCandidate(undefined)}
+                <ConfirmDialog
+                    title="Delete message?"
+                    message={
+                        deleteCandidate.swipes.length > 1
+                            ? "This removes the message from the current chat, or only the currently selected swipe."
+                            : "This removes the message from the current chat."
+                    }
+                    body={<blockquote>{getMessageContent(deleteCandidate)}</blockquote>}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmDeleteMessage}
+                    onClose={() => setDeleteCandidate(undefined)}
                 >
-                    <section
-                        className="message-confirm-dialog"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Delete message"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <header>
-                            <AlertTriangle size={19} />
-                            <h2>Delete message?</h2>
-                        </header>
-
-                        <p>
-                            This removes the message from the current chat
-                            {deleteCandidate.swipes.length > 1
-                                ? ", or only the currently selected swipe."
-                                : "."}
-                        </p>
-                        <blockquote>{getMessageContent(deleteCandidate)}</blockquote>
-
-                        <div className="message-confirm-actions">
-                            <button
-                                type="button"
-                                onClick={() => setDeleteCandidate(undefined)}
-                            >
-                                Cancel
-                            </button>
-
-                            {deleteCandidate.swipes.length > 1 && (
-                                <button
-                                    className="danger-button subtle-danger-button"
-                                    type="button"
-                                    onClick={confirmDeleteSwipe}
-                                >
-                                    <Trash2 size={15} />
-                                    Delete swipe
-                                </button>
-                            )}
-
-                            <button
-                                className="danger-button"
-                                type="button"
-                                onClick={confirmDeleteMessage}
-                            >
-                                <Trash2 size={15} />
-                                Delete
-                            </button>
-                        </div>
-                    </section>
-                </div>
+                    {deleteCandidate.swipes.length > 1 && (
+                        <button
+                            className="danger-button subtle-danger-button"
+                            type="button"
+                            onClick={confirmDeleteSwipe}
+                        >
+                            <Trash2 size={15} />
+                            Delete swipe
+                        </button>
+                    )}
+                </ConfirmDialog>
             )}
             {attachmentRemovalCandidate && (
-                <div
-                    className="message-confirm-backdrop"
-                    role="presentation"
-                    onClick={() => setAttachmentRemovalCandidate(undefined)}
-                >
-                    <section
-                        className="message-confirm-dialog compact"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Remove attachment"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <header>
-                            <AlertTriangle size={19} />
-                            <h2>
-                                {attachmentRemovalCandidate.kind === "one"
-                                    ? "Remove attachment?"
-                                    : "Remove all attachments?"}
-                            </h2>
-                        </header>
-
-                        <p>
-                            {attachmentRemovalCandidate.kind === "one"
-                                ? "This removes the attachment from the current swipe and deletes the local file when possible."
-                                : "This removes every attachment from the current swipe and deletes local files when possible."}
-                        </p>
-
-                        <div className="message-confirm-actions">
-                            <button
-                                type="button"
-                                onClick={() => setAttachmentRemovalCandidate(undefined)}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="danger-button"
-                                type="button"
-                                onClick={confirmRemoveAttachments}
-                            >
-                                <Trash2 size={15} />
-                                Remove
-                            </button>
-                        </div>
-                    </section>
-                </div>
+                <ConfirmDialog
+                    title={
+                        attachmentRemovalCandidate.kind === "one"
+                            ? "Remove attachment?"
+                            : "Remove all attachments?"
+                    }
+                    message={
+                        attachmentRemovalCandidate.kind === "one"
+                            ? "This removes the attachment from the current swipe and deletes the local file when possible."
+                            : "This removes every attachment from the current swipe and deletes local files when possible."
+                    }
+                    confirmLabel="Remove"
+                    variant="danger"
+                    onConfirm={confirmRemoveAttachments}
+                    onClose={() => setAttachmentRemovalCandidate(undefined)}
+                />
             )}
         </div>
     );

@@ -1,6 +1,7 @@
 import { ImageOff, ImagePlus, Plus, Trash2 } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import { uploadPersonaAvatar } from "#frontend/lib/api/client";
 import { getPersonaDialogueColor } from "#frontend/lib/personas/normalize";
 import type { PersonaSummaryCollection, SmileyPersona } from "#frontend/types";
@@ -319,47 +320,17 @@ export function PersonasSettings({
             {loadError && <p className="connection-status error">{loadError}</p>}
 
             {deleteCandidate && (
-                <div
-                    className="message-confirm-backdrop"
-                    role="presentation"
-                    onClick={() => setDeleteCandidateId("")}
-                >
-                    <section
-                        className="message-confirm-dialog compact"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Delete persona"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <header>
-                            <Trash2 size={19} />
-                            <h2>Delete persona?</h2>
-                        </header>
-                        <p>
-                            Delete {deleteCandidate.name} from userData? This cannot be
-                            undone.
-                        </p>
-                        <div className="message-confirm-actions">
-                            <button
-                                type="button"
-                                onClick={() => setDeleteCandidateId("")}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="danger-button"
-                                type="button"
-                                onClick={() => {
-                                    onDeletePersona(deleteCandidate.id);
-                                    setDeleteCandidateId("");
-                                }}
-                            >
-                                <Trash2 size={15} />
-                                Delete
-                            </button>
-                        </div>
-                    </section>
-                </div>
+                <ConfirmDialog
+                    title="Delete persona?"
+                    message={`Delete ${deleteCandidate.name} from userData? This cannot be undone.`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={() => {
+                        onDeletePersona(deleteCandidate.id);
+                        setDeleteCandidateId("");
+                    }}
+                    onClose={() => setDeleteCandidateId("")}
+                />
             )}
         </section>
     );

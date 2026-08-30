@@ -20,6 +20,7 @@ import {
 } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import { localApiFetch, localApiPath } from "#frontend/lib/api/client";
 import type { AppPreferences, LogLevel } from "#frontend/lib/preferences/types";
 import {
@@ -86,6 +87,7 @@ export function DiagnosticsSettings({
     const [copied, setCopied] = useState(false);
     const [stats, setStats] = useState<LogStats | null>(null);
     const [clearing, setClearing] = useState(false);
+    const [isClearLogsConfirmOpen, setIsClearLogsConfirmOpen] = useState(false);
     const [connected, setConnected] = useState(false);
 
     // Set of HIDDEN subsystems and levels. By default, hides levels below the configured log level.
@@ -316,9 +318,7 @@ export function DiagnosticsSettings({
         URL.revokeObjectURL(url);
     };
 
-    const handleClearLogs = async () => {
-        if (!window.confirm("Delete all saved SmileyChat log files in userData/logs?"))
-            return;
+    const handleConfirmClearLogs = async () => {
         setClearing(true);
         try {
             const res = await localApiFetch("/api/logs", { method: "DELETE" });
@@ -326,6 +326,7 @@ export function DiagnosticsSettings({
                 const data = await res.json();
                 if (data.stats) setStats(data.stats);
             }
+            setIsClearLogsConfirmOpen(false);
         } finally {
             setClearing(false);
         }
@@ -791,7 +792,7 @@ export function DiagnosticsSettings({
                         className="secondary-button danger"
                         type="button"
                         disabled={clearing}
-                        onClick={handleClearLogs}
+                        onClick={() => setIsClearLogsConfirmOpen(true)}
                     >
                         <Trash2 size={14} style={{ marginRight: 6 }} />
                         {clearing ? "Clearing..." : "Clear all log files"}
@@ -827,6 +828,18 @@ export function DiagnosticsSettings({
                     </p>
                 </div>
             </section>
+
+            {isClearLogsConfirmOpen && (
+                <ConfirmDialog
+                    title="Clear log files?"
+                    message="Delete all saved SmileyChat log files in userData/logs? This cannot be undone."
+                    confirmLabel="Clear logs"
+                    variant="danger"
+                    isBusy={clearing}
+                    onConfirm={handleConfirmClearLogs}
+                    onClose={() => setIsClearLogsConfirmOpen(false)}
+                />
+            )}
         </section>
     );
 }

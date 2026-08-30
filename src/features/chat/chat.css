@@ -903,6 +903,10 @@
     display: flex;
     align-items: center;
     gap: 9px;
+    color: #ececf1;
+}
+
+.message-confirm-dialog.variant-danger header {
     color: #ffd0d5;
 }
 

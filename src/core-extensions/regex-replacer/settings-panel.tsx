@@ -2,6 +2,7 @@ import { Plus, Trash2 } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ComponentChildren, JSX } from "preact";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import { messageFromError } from "#frontend/lib/common/errors";
 import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
 
@@ -20,6 +21,11 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
     const [settings, setSettings] = useState(getRegexSettings());
     const [testInput, setTestInput] = useState("");
     const [status, setStatus] = useState("");
+    const [isDeleteProfileConfirmOpen, setIsDeleteProfileConfirmOpen] = useState(false);
+    const [ruleToDelete, setRuleToDelete] = useState<{
+        index: number;
+        rule: RegexRule;
+    } | null>(null);
     const [profileModal, setProfileModal] = useState<{
         type: "add" | "rename";
         initialName: string;
@@ -62,16 +68,32 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
         setProfileModal({ type: "add", initialName: "New Profile" });
     }
 
-    async function deleteProfile() {
+    function deleteProfile() {
         if (!activeProfile || settings.profiles.length <= 1) return;
-        if (!window.confirm(`Delete regex profile "${activeProfile.name}"?`)) return;
+        setIsDeleteProfileConfirmOpen(true);
+    }
 
+    async function confirmDeleteProfile() {
+        if (!activeProfile || settings.profiles.length <= 1) return;
         const nextProfiles = settings.profiles.filter((p) => p.id !== activeProfile.id);
         await persist({
             ...settings,
             profiles: nextProfiles,
             activeProfileId: nextProfiles[0].id,
         });
+        setIsDeleteProfileConfirmOpen(false);
+    }
+
+    async function confirmDeleteRule() {
+        if (!ruleToDelete || !activeProfile) return;
+        const nextRules = activeProfile.rules.filter((_, i) => i !== ruleToDelete.index);
+        await persist({
+            ...settings,
+            profiles: settings.profiles.map((p) =>
+                p.id === activeProfile.id ? { ...p, rules: nextRules } : p,
+            ),
+        });
+        setRuleToDelete(null);
     }
 
     function renameProfile() {
@@ -194,13 +216,7 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
                                     index={index}
                                     error={testResult.errors.get(rule.id)}
                                     onChange={(patch) => updateRule(rule.id, patch)}
-                                    onDelete={() =>
-                                        void updateProfile({
-                                            rules: activeProfile.rules.filter(
-                                                (item) => item.id !== rule.id,
-                                            ),
-                                        })
-                                    }
+                                    onDelete={() => setRuleToDelete({ index, rule })}
                                 />
                             ))}
                         </div>
@@ -258,6 +274,28 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
                     onSubmit={handleProfileModalSubmit}
                 />
             )}
+
+            {isDeleteProfileConfirmOpen && activeProfile && (
+                <ConfirmDialog
+                    title="Delete profile?"
+                    message={`Delete regex profile "${activeProfile.name}"? This cannot be undone.`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmDeleteProfile}
+                    onClose={() => setIsDeleteProfileConfirmOpen(false)}
+                />
+            )}
+
+            {ruleToDelete && (
+                <ConfirmDialog
+                    title="Delete regex rule?"
+                    message={`Delete ${ruleToDelete.rule.description || `Rule ${ruleToDelete.index + 1}`}?`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmDeleteRule}
+                    onClose={() => setRuleToDelete(null)}
+                />
+            )}
         </section>
     );
 }
@@ -275,11 +313,6 @@ function RuleEditor({
     onDelete: () => void;
     rule: RegexRule;
 }) {
-    function confirmDelete() {
-        if (window.confirm(`Delete ${rule.description || `rule ${index + 1}`}?`))
-            onDelete();
-    }
-
     return (
         <article className={error ? "rr-rule invalid" : "rr-rule"}>
             <div className="rr-rule-header">
@@ -300,7 +333,7 @@ function RuleEditor({
                         className="danger-button"
                         aria-label="Delete rule"
                         title="Delete rule"
-                        onClick={confirmDelete}
+                        onClick={onDelete}
                     >
                         <Trash2 size={15} aria-hidden="true" />
                     </button>

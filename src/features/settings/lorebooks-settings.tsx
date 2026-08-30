@@ -10,6 +10,7 @@ import {
 } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
     deleteLorebook,
     exportLorebook,
@@ -41,6 +42,7 @@ export function LorebooksSettings({
     const [status, setStatus] = useState("");
     const [titleDraft, setTitleDraft] = useState("");
     const [isBusy, setIsBusy] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [expandedEntries, setExpandedEntries] = useState<Record<string, boolean>>({});
@@ -167,14 +169,8 @@ export function LorebooksSettings({
         }
     }
 
-    async function handleDelete() {
+    async function confirmDeleteLorebook() {
         if (!activeLorebook) {
-            return;
-        }
-
-        const confirmed = window.confirm(`Delete "${activeLorebook.title}"?`);
-
-        if (!confirmed) {
             return;
         }
 
@@ -190,6 +186,7 @@ export function LorebooksSettings({
                 },
             );
             setActiveLorebook(undefined);
+            setIsDeleteConfirmOpen(false);
             setStatus("Deleted LoreBook.");
         } catch (error) {
             setStatus(messageFromError(error, "Delete failed."));
@@ -531,7 +528,7 @@ export function LorebooksSettings({
                                     className="danger-button"
                                     type="button"
                                     disabled={isBusy}
-                                    onClick={() => void handleDelete()}
+                                    onClick={() => setIsDeleteConfirmOpen(true)}
                                 >
                                     <Trash2 size={16} />
                                     Delete
@@ -547,6 +544,17 @@ export function LorebooksSettings({
                     )}
                 </section>
             </div>
+
+            {isDeleteConfirmOpen && activeLorebook && (
+                <ConfirmDialog
+                    title="Delete LoreBook?"
+                    message={`Delete "${activeLorebook.title}" from userData? This cannot be undone.`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmDeleteLorebook}
+                    onClose={() => setIsDeleteConfirmOpen(false)}
+                />
+            )}
         </section>
     );
 }

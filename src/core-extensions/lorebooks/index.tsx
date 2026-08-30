@@ -4,6 +4,7 @@ import styles from "./styles.css?raw";
 import { BookOpen, Plus, Save, Search, Trash2 } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
     addLorebookEntry,
     deleteLorebookEntry,
@@ -99,6 +100,7 @@ function LorebookManager({
     const [status, setStatus] = useState("");
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [entryToDeleteWin, setEntryToDeleteWin] = useState<LorebookEntry | null>(null);
     const entrySaveTimersRef = useRef(new Map<string, number>());
     const entryRevisionRef = useRef(new Map<string, number>());
 
@@ -274,19 +276,19 @@ function LorebookManager({
         }
 
         const entry = activeLorebook.entries.find((item) => item.id === entryId);
-
         if (!entry) {
             return;
         }
 
-        const confirmed = window.confirm(
-            `Delete "${entry.title || "Untitled entry"}" from this LoreBook? Save the LoreBook to make this permanent.`,
-        );
+        setEntryToDeleteWin(entry);
+    }
 
-        if (!confirmed) {
+    function confirmDeleteEntry() {
+        if (!activeLorebook || !entryToDeleteWin) {
             return;
         }
 
+        const entryId = entryToDeleteWin.id;
         const nextEntries = activeLorebook.entries.filter((item) => item.id !== entryId);
         const deletedIndex = activeLorebook.entries.findIndex(
             (item) => item.id === entryId,
@@ -304,6 +306,7 @@ function LorebookManager({
         setSelection(nextSelection);
         setEntryTab("content");
         setStatus("Entry deleted. Save the LoreBook to keep this change.");
+        setEntryToDeleteWin(null);
     }
 
     async function persist() {
@@ -485,6 +488,17 @@ function LorebookManager({
                     <div className="lbm-empty-editor">Select an entry to edit.</div>
                 )}
             </main>
+
+            {entryToDeleteWin && (
+                <ConfirmDialog
+                    title="Delete entry?"
+                    message={`Delete "${entryToDeleteWin.title || "Untitled entry"}" from this LoreBook? Save the LoreBook to make this permanent.`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmDeleteEntry}
+                    onClose={() => setEntryToDeleteWin(null)}
+                />
+            )}
         </div>
     );
 }

@@ -19,6 +19,7 @@ import {
 import type { RefObject } from "preact";
 import { useMemo, useRef, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
     chatDisplayTitle,
     defaultGroupTitle,
@@ -1177,123 +1178,65 @@ export function Sidebar({
             )}
 
             {avatarDeleteCandidate && (
-                <div
-                    className="message-confirm-backdrop"
-                    role="presentation"
-                    onClick={() => setAvatarDeleteCandidate(undefined)}
-                >
-                    <section
-                        className="message-confirm-dialog compact"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Remove character image"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <header>
-                            <AlertTriangle size={19} />
-                            <h2>Remove image?</h2>
-                        </header>
-                        <p>
-                            This clears the image for {avatarDeleteCandidate.name}. The
-                            character data stays intact.
-                        </p>
-                        <div className="message-confirm-actions">
-                            <button
-                                type="button"
-                                onClick={() => setAvatarDeleteCandidate(undefined)}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="danger-button"
-                                type="button"
-                                onClick={confirmAvatarDelete}
-                            >
-                                <Trash2 size={15} />
-                                Remove
-                            </button>
-                        </div>
-                    </section>
-                </div>
+                <ConfirmDialog
+                    title="Remove image?"
+                    message={`This clears the image for ${avatarDeleteCandidate.name}. The character data stays intact.`}
+                    confirmLabel="Remove"
+                    variant="danger"
+                    onConfirm={confirmAvatarDelete}
+                    onClose={() => setAvatarDeleteCandidate(undefined)}
+                />
             )}
 
             {characterDeleteCandidate && (
-                <div
-                    className="message-confirm-backdrop"
-                    role="presentation"
-                    onClick={() => setCharacterDeleteCandidate(undefined)}
-                >
-                    <section
-                        className="message-confirm-dialog compact character-delete-dialog"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Delete character"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <header>
-                            <AlertTriangle size={19} />
-                            <h2>Delete character?</h2>
-                        </header>
-                        <p>
-                            {chatCountsByCharacterId[characterDeleteCandidate.id]
-                                ? `This deletes ${characterDeleteCandidate.name} from userData. It has ${formatChatCount(
-                                      chatCountsByCharacterId[
-                                          characterDeleteCandidate.id
-                                      ],
-                                  )}.`
-                                : `This deletes ${characterDeleteCandidate.name} from userData. This cannot be undone.`}
-                        </p>
-                        {Boolean(
-                            chatCountsByCharacterId[characterDeleteCandidate.id],
-                        ) && (
+                <ConfirmDialog
+                    title="Delete character?"
+                    message={
+                        chatCountsByCharacterId[characterDeleteCandidate.id]
+                            ? `This deletes ${characterDeleteCandidate.name} from userData. It has ${formatChatCount(
+                                  chatCountsByCharacterId[characterDeleteCandidate.id],
+                              )}.`
+                            : `This deletes ${characterDeleteCandidate.name} from userData. This cannot be undone.`
+                    }
+                    body={
+                        Boolean(chatCountsByCharacterId[characterDeleteCandidate.id]) ? (
                             <p>
                                 Keep chats to archive them under this character ID. If you
                                 import the character again later, SmileyChat will
                                 reconnect matching archived chats when it can restore the
                                 same ID.
                             </p>
-                        )}
-                        <div className="message-confirm-actions">
+                        ) : undefined
+                    }
+                    variant="danger"
+                    confirmLabel="Delete"
+                    onConfirm={
+                        !chatCountsByCharacterId[characterDeleteCandidate.id]
+                            ? confirmCharacterDelete
+                            : undefined
+                    }
+                    onClose={() => setCharacterDeleteCandidate(undefined)}
+                    className="character-delete-dialog"
+                >
+                    {chatCountsByCharacterId[characterDeleteCandidate.id] && (
+                        <>
                             <button
                                 type="button"
-                                onClick={() => setCharacterDeleteCandidate(undefined)}
+                                onClick={() => confirmCharacterDeleteWithChats(false)}
                             >
-                                Cancel
+                                Keep chats
                             </button>
-                            {chatCountsByCharacterId[characterDeleteCandidate.id] ? (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            confirmCharacterDeleteWithChats(false)
-                                        }
-                                    >
-                                        Keep chats
-                                    </button>
-                                    <button
-                                        className="danger-button"
-                                        type="button"
-                                        onClick={() =>
-                                            confirmCharacterDeleteWithChats(true)
-                                        }
-                                    >
-                                        <Trash2 size={15} />
-                                        Delete all
-                                    </button>
-                                </>
-                            ) : (
-                                <button
-                                    className="danger-button"
-                                    type="button"
-                                    onClick={confirmCharacterDelete}
-                                >
-                                    <Trash2 size={15} />
-                                    Delete
-                                </button>
-                            )}
-                        </div>
-                    </section>
-                </div>
+                            <button
+                                className="danger-button"
+                                type="button"
+                                onClick={() => confirmCharacterDeleteWithChats(true)}
+                            >
+                                <Trash2 size={15} />
+                                Delete all
+                            </button>
+                        </>
+                    )}
+                </ConfirmDialog>
             )}
 
             {renameCandidate && (
@@ -1345,49 +1288,22 @@ export function Sidebar({
             )}
 
             {chatDeleteCandidate && (
-                <div
-                    className="message-confirm-backdrop"
-                    role="presentation"
-                    onClick={() => setChatDeleteCandidate(undefined)}
-                >
-                    <section
-                        className="message-confirm-dialog compact"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Delete chat"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <header>
-                            <AlertTriangle size={19} />
-                            <h2>
-                                {isGroupWorkspace(chatDeleteCandidate)
-                                    ? "Delete group?"
-                                    : "Delete chat?"}
-                            </h2>
-                        </header>
-                        <p>
-                            {isGroupWorkspace(chatDeleteCandidate)
-                                ? `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and every conversation in the group from userData. This cannot be undone.`
-                                : `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and its saved messages from userData. This cannot be undone.`}
-                        </p>
-                        <div className="message-confirm-actions">
-                            <button
-                                type="button"
-                                onClick={() => setChatDeleteCandidate(undefined)}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="danger-button"
-                                type="button"
-                                onClick={confirmChatDelete}
-                            >
-                                <Trash2 size={15} />
-                                Delete
-                            </button>
-                        </div>
-                    </section>
-                </div>
+                <ConfirmDialog
+                    title={
+                        isGroupWorkspace(chatDeleteCandidate)
+                            ? "Delete group?"
+                            : "Delete chat?"
+                    }
+                    message={
+                        isGroupWorkspace(chatDeleteCandidate)
+                            ? `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and every conversation in the group from userData. This cannot be undone.`
+                            : `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and its saved messages from userData. This cannot be undone.`
+                    }
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={confirmChatDelete}
+                    onClose={() => setChatDeleteCandidate(undefined)}
+                />
             )}
         </aside>
     );

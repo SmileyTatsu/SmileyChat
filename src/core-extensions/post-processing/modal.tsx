@@ -1,6 +1,7 @@
 import { Trash2 } from "lucide-preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
     acceptPipelineReview,
     cancelPipelineRun,
@@ -21,6 +22,10 @@ type ReviewSelection = "final" | number;
 export function PostProcessingModal({ close }: PostProcessingModalProps) {
     const [state, setState] = useState<PipelineRunState>(getPipelineRunState());
     const [reviewSelection, setReviewSelection] = useState<ReviewSelection>("final");
+    const [truncateTarget, setTruncateTarget] = useState<{
+        index: number;
+        passName: string;
+    } | null>(null);
 
     useEffect(
         () =>
@@ -244,7 +249,10 @@ export function PostProcessingModal({ close }: PostProcessingModalProps) {
                                 aria-label={`Delete ${snapshot.passName} and following passes from this review`}
                                 title="Delete this and following passes"
                                 onClick={() =>
-                                    truncateReviewFrom(index, snapshot.passName)
+                                    setTruncateTarget({
+                                        index,
+                                        passName: snapshot.passName,
+                                    })
                                 }
                             >
                                 <Trash2 size={14} aria-hidden="true" />
@@ -275,20 +283,22 @@ export function PostProcessingModal({ close }: PostProcessingModalProps) {
                     Reject
                 </button>
             </footer>
+
+            {truncateTarget && (
+                <ConfirmDialog
+                    title="Delete passes from review?"
+                    message={`Delete "${truncateTarget.passName}" and every following pass from this review? The accepted result will revert to the text before that pass.`}
+                    confirmLabel="Delete"
+                    variant="danger"
+                    onConfirm={() => {
+                        truncatePipelineReviewFrom(truncateTarget.index);
+                        setTruncateTarget(null);
+                    }}
+                    onClose={() => setTruncateTarget(null)}
+                />
+            )}
         </section>
     );
-}
-
-function truncateReviewFrom(snapshotIndex: number, passName: string) {
-    if (
-        !window.confirm(
-            `Delete "${passName}" and every following pass from this review? The accepted result will revert to the text before that pass.`,
-        )
-    ) {
-        return;
-    }
-
-    truncatePipelineReviewFrom(snapshotIndex);
 }
 
 function DiffLine({
