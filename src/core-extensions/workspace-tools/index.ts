@@ -1,4 +1,4 @@
-import { loadLorebook, localApiFetch } from "#frontend/lib/api/client";
+import { localApiFetch } from "#frontend/lib/api/client";
 import { createBlankCharacter } from "#frontend/lib/characters/normalize";
 import type { ChatSession, ChatSummary, SmileyCharacter } from "#frontend/types";
 import type { Lorebook } from "#frontend/lib/lorebooks/types";
@@ -305,7 +305,7 @@ export function activate(api: SmileyPluginApi) {
                     .toLocaleLowerCase();
                 if (!keyword) throw new Error("keyword must not be empty.");
 
-                const lorebook = await loadLorebook(lorebookId);
+                const lorebook = await api.actions.getLorebook(lorebookId);
                 const matches = lorebook.entries
                     .filter((entry) => entryMatches(entry, keyword))
                     .map(({ id, title, keys, content }) => ({

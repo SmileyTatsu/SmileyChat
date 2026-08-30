@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
     addLorebookEntry,
     deleteLorebookEntry,
-    loadLorebook,
     patchLorebook,
     updateLorebookEntry,
 } from "#frontend/lib/api/client";
@@ -119,7 +118,8 @@ function LorebookManager({
 
         setLoading(true);
         setStatus("");
-        loadLorebook(selectedLorebookId)
+        api.actions
+            .getLorebook(selectedLorebookId)
             .then((lorebook) => {
                 if (!cancelled) {
                     setActiveLorebook(lorebook);
