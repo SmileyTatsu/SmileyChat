@@ -394,19 +394,22 @@ export async function updateChatIndex(value: unknown) {
         ? record.chatIds.filter((item): item is string => typeof item === "string")
         : [];
     const activeChatIdsByCharacter = { ...current.activeChatIdsByCharacter };
+    const summariesById = new Map(
+        current.summaries.map((summary) => [summary.id, summary]),
+    );
+    const currentChatIds = new Set(current.chatIds);
 
     for (const [characterId, chatId] of Object.entries(requestedActive)) {
-        if (typeof chatId !== "string" || !current.chatIds.includes(chatId)) {
+        if (typeof chatId !== "string" || !currentChatIds.has(chatId)) {
             continue;
         }
 
-        const chat = current.summaries.find((summary) => summary.id === chatId);
+        const chat = summariesById.get(chatId);
 
         if (chat && !isGroupChat(chat)) {
             activeChatIdsByCharacter[characterId] = chatId;
         }
     }
-    const currentChatIds = new Set(current.chatIds);
     const requestedChatIdsSet = new Set<string>();
     const chatIds = [
         ...requestedChatIds.filter((chatId) => {
@@ -425,7 +428,7 @@ export async function updateChatIndex(value: unknown) {
         activeChatIdsByCharacter,
         chatIds,
         summaries: chatIds.flatMap((chatId) => {
-            const summary = current.summaries.find((item) => item.id === chatId);
+            const summary = summariesById.get(chatId);
             return summary ? [summary] : [];
         }),
     };
