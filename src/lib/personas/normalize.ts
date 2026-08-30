@@ -96,6 +96,7 @@ export function normalizePersonaIndex(value: unknown): PersonaIndex {
             version: 1,
             activePersonaId: defaultPersona.id,
             personaIds: [defaultPersona.id],
+            summaries: [personaToSummary(defaultPersona)],
         };
     }
 
@@ -109,6 +110,12 @@ export function normalizePersonaIndex(value: unknown): PersonaIndex {
           )
         : [];
     const safePersonaIds = personaIds.length ? personaIds : [defaultPersona.id];
+    const summariesById = new Map(
+        normalizeArray(value.summaries, normalizePersonaSummary).map((summary) => [
+            summary.id,
+            summary,
+        ]),
+    );
 
     return {
         version: 1,
@@ -118,6 +125,10 @@ export function normalizePersonaIndex(value: unknown): PersonaIndex {
             defaultPersona.id,
         ),
         personaIds: safePersonaIds,
+        summaries: safePersonaIds.flatMap((id) => {
+            const summary = summariesById.get(id);
+            return summary ? [summary] : [];
+        }),
     };
 }
 

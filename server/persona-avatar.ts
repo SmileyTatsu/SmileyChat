@@ -1,13 +1,16 @@
 import { personaToSummary } from "#frontend/lib/personas/defaults";
 
-import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
-import { personaFilePath } from "./persona-file-paths";
+import { BadRequestError, NotFoundError } from "./http";
 import {
     deletePersonaAvatarAsset,
     personaAvatarTypeForContentType,
     writePersonaAvatarAssetBytes,
 } from "./persona-images";
-import { readPersonaById, readPersonaSummaryCollection } from "./persona-store";
+import {
+    readPersonaById,
+    readPersonaSummaryCollection,
+    writePersonaById,
+} from "./persona-store";
 
 export async function writePersonaAvatar(personaId: string, request: Request) {
     const contentType = request.headers.get("Content-Type")?.split(";")[0].trim() ?? "";
@@ -31,8 +34,7 @@ export async function writePersonaAvatar(personaId: string, request: Request) {
         updatedAt: new Date().toISOString(),
     };
 
-    await writeJsonAtomic(personaFilePath(personaId), updatedPersona);
-    await deletePersonaAvatarAsset(persona);
+    await writePersonaById(personaId, updatedPersona);
 
     return {
         avatar,

@@ -9,6 +9,7 @@ import {
 } from "#frontend/lib/personas/normalize";
 import type {
     PersonaIndex,
+    PersonaSummary,
     PersonaSummaryCollection,
     SmileyPersona,
 } from "#frontend/lib/personas/types";
@@ -28,12 +29,11 @@ import { withResourceLock } from "./resource-lock";
 
 export async function readPersonaSummaryCollection(): Promise<PersonaSummaryCollection> {
     const index = await readPersonaIndex();
-    const personas = await readPersonasFromIndex(index);
 
     return normalizePersonaSummaryCollection({
         version: 1,
         activePersonaId: index.activePersonaId,
-        personas: personas.map(personaToSummary),
+        personas: index.summaries,
     });
 }
 
@@ -68,6 +68,7 @@ export async function createPersona(value: unknown) {
         version: 1,
         activePersonaId: index.activePersonaId,
         personaIds,
+        summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
     });
 
     return {
@@ -102,13 +103,14 @@ async function writePersonaByIdUnlocked(personaId: string, value: unknown) {
 
     const index = await readPersonaIndex();
 
-    if (!index.personaIds.includes(persona.id)) {
-        await writeFileBackedIndex(personaIndexPath, {
-            version: 1,
-            activePersonaId: index.activePersonaId,
-            personaIds: [...index.personaIds, persona.id],
-        });
-    }
+    await writeFileBackedIndex(personaIndexPath, {
+        version: 1,
+        activePersonaId: index.activePersonaId,
+        personaIds: index.personaIds.includes(persona.id)
+            ? index.personaIds
+            : [...index.personaIds, persona.id],
+        summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
+    });
 
     return persona;
 }
@@ -140,6 +142,14 @@ export async function patchPersonaById(personaId: string, value: unknown) {
         if (existingPersona.avatar?.path !== persona.avatar?.path) {
             await deletePersonaAvatarAsset(existingPersona);
         }
+
+        const index = await readPersonaIndex();
+        await writeFileBackedIndex(personaIndexPath, {
+            version: 1,
+            activePersonaId: index.activePersonaId,
+            personaIds: index.personaIds,
+            summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
+        });
 
         return persona;
     });
@@ -180,6 +190,10 @@ export async function updatePersonaIndex(value: unknown) {
         version: 1 as const,
         activePersonaId,
         personaIds,
+        summaries: personaIds.flatMap((id) => {
+            const summary = current.summaries.find((item) => item.id === id);
+            return summary ? [summary] : [];
+        }),
     };
 
     await writeFileBackedIndex(personaIndexPath, index);
@@ -207,6 +221,7 @@ export async function deletePersonaById(personaId: string) {
         activePersonaId:
             index.activePersonaId === personaId ? personaIds[0] : index.activePersonaId,
         personaIds,
+        summaries: index.summaries.filter((item) => item.id !== personaId),
     };
 
     await writeFileBackedIndex(personaIndexPath, nextIndex);
@@ -234,8 +249,16 @@ async function readPersonaIndex(): Promise<PersonaIndex> {
 
 async function repairPersonaIndex(index: PersonaIndex): Promise<PersonaIndex> {
     const personaIds = await readExistingIdsInOrder(index.personaIds, personaFilePath);
+    const summariesById = new Map(
+        index.summaries.map((summary) => [summary.id, summary]),
+    );
+    const hasAllSummaries = personaIds.every((id) => summariesById.has(id));
 
-    if (personaIds.length === index.personaIds.length && personaIds.length > 0) {
+    if (
+        personaIds.length === index.personaIds.length &&
+        hasAllSummaries &&
+        personaIds.length > 0
+    ) {
         return index;
     }
 
@@ -244,12 +267,19 @@ async function repairPersonaIndex(index: PersonaIndex): Promise<PersonaIndex> {
         return collectionToIndex([defaultPersona], defaultPersona.id);
     }
 
+    const summaries = hasAllSummaries
+        ? personaIds.flatMap((id) => {
+              const summary = summariesById.get(id);
+              return summary ? [summary] : [];
+          })
+        : (await readPersonasFromIndex({ ...index, personaIds })).map(personaToSummary);
     const repairedIndex = {
         version: 1 as const,
         activePersonaId: personaIds.includes(index.activePersonaId)
             ? index.activePersonaId
             : personaIds[0],
         personaIds,
+        summaries,
     };
     await writeFileBackedIndex(personaIndexPath, repairedIndex);
     return repairedIndex;
@@ -271,6 +301,7 @@ async function rebuildPersonaIndexFromCards(): Promise<PersonaIndex> {
             version: 1,
             activePersonaId: "",
             personaIds: [],
+            summaries: [],
         };
     }
 
@@ -307,5 +338,17 @@ function collectionToIndex(personas: SmileyPersona[], activePersonaId: string) {
         version: 1 as const,
         activePersonaId,
         personaIds: personas.map((persona) => persona.id),
+        summaries: personas.map(personaToSummary),
     };
+}
+
+function replacePersonaSummary(summaries: PersonaSummary[], summary: PersonaSummary) {
+    const existingIndex = summaries.findIndex((item) => item.id === summary.id);
+    if (existingIndex < 0) {
+        return [...summaries, summary];
+    }
+
+    const next = [...summaries];
+    next[existingIndex] = summary;
+    return next;
 }

@@ -28,6 +28,7 @@ export type PersonaIndex = {
     version: 1;
     activePersonaId: string;
     personaIds: string[];
+    summaries: PersonaSummary[];
 };
 
 export type PersonaSummaryCollection = {
