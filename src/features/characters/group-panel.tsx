@@ -1,10 +1,13 @@
 import {
-    ChevronUp,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
     ImagePlus,
     Megaphone,
     Plus,
     Star,
+    Tag,
     Trash2,
     Volume2,
     VolumeX,
@@ -34,6 +37,7 @@ import { ContextTabs, panelId, tabId, type ContextTab } from "./context-tabs";
 import { GroupAvatar } from "../chat/group-avatar";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import { useSortableList } from "../sidebar/hooks/use-sortable-list";
+import { CharacterHighlight, CharacterSearchInput, useCharacterSearch } from "./search";
 
 type GroupPanelProps = {
     characters: CharacterSummary[];
@@ -133,7 +137,7 @@ export function GroupPanel({
     function addMember(characterId: string) {
         const character = characters.find((item) => item.id === characterId);
 
-        if (!character) {
+        if (!character || memberCharacterIds.has(characterId)) {
             return;
         }
 
@@ -677,44 +681,11 @@ export function GroupPanel({
                                     </div>
                                 </section>
 
-                                <label>
-                                    Add member
-                                    <select
-                                        value=""
-                                        disabled={availableCharacters.length === 0}
-                                        onChange={(event) =>
-                                            addMember(event.currentTarget.value)
-                                        }
-                                    >
-                                        <option value="">
-                                            {availableCharacters.length
-                                                ? "Choose character"
-                                                : "All characters are already members"}
-                                        </option>
-                                        {availableCharacters.map((character) => (
-                                            <option
-                                                key={character.id}
-                                                value={character.id}
-                                            >
-                                                {character.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-
-                                <button
-                                    className="secondary-button"
-                                    type="button"
-                                    disabled={availableCharacters.length === 0}
-                                    onClick={() => {
-                                        if (availableCharacters[0]) {
-                                            addMember(availableCharacters[0].id);
-                                        }
-                                    }}
-                                >
-                                    <Plus size={15} />
-                                    Add next available
-                                </button>
+                                <GroupAddMemberSection
+                                    key={chat.id}
+                                    availableCharacters={availableCharacters}
+                                    onAddMember={addMember}
+                                />
                             </div>
                         </section>
 
@@ -737,6 +708,242 @@ export function GroupPanel({
                 </div>
             )}
         </aside>
+    );
+}
+
+type GroupAddMemberSectionProps = {
+    availableCharacters: CharacterSummary[];
+    onAddMember: (characterId: string) => void;
+};
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20] as const;
+
+function GroupAddMemberSection({
+    availableCharacters,
+    onAddMember,
+}: GroupAddMemberSectionProps) {
+    const [pageSize, setPageSize] = useState<number>(5);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+
+    const { query, setQuery, results } = useCharacterSearch({
+        characters: availableCharacters,
+    });
+
+    const totalCount = results.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+    // Persist the clamp so removing a member cannot restore an obsolete page.
+    if (currentPage !== safeCurrentPage) setCurrentPage(safeCurrentPage);
+    const startIndex = (safeCurrentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    const visibleResults = results.slice(startIndex, endIndex);
+
+    const handleQueryChange = (val: string) => {
+        setQuery(val);
+        setCurrentPage(1);
+    };
+
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
+        setCurrentPage(1);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+        if (
+            event.key === "Enter" &&
+            !event.isComposing &&
+            !event.defaultPrevented &&
+            !event.repeat &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.altKey
+        ) {
+            event.preventDefault();
+            if (results[0]) {
+                onAddMember(results[0].item.id);
+            }
+        }
+    };
+
+    return (
+        <section className="group-panel-section group-add-member-section">
+            <div className="group-add-member-header">
+                <h3>Add member</h3>
+                <span className="group-add-member-count-badge">
+                    {availableCharacters.length} available
+                </span>
+            </div>
+
+            {availableCharacters.length === 0 ? (
+                <div className="group-add-member-empty" role="status">
+                    <p>All characters are already members of this group.</p>
+                </div>
+            ) : (
+                <>
+                    <CharacterSearchInput
+                        value={query}
+                        onChange={handleQueryChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Search characters to add..."
+                        resultCount={results.length}
+                    />
+
+                    {totalCount === 0 ? (
+                        <div className="group-add-member-empty" role="status">
+                            <p>No characters matching "{query}"</p>
+                            <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => handleQueryChange("")}
+                            >
+                                Clear search
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="group-add-member-list">
+                                {visibleResults.map((result) => {
+                                    const { item } = result;
+                                    const avatarUrl =
+                                        item.avatar?.path ||
+                                        characterInitialAvatar(item.name);
+
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            className="group-add-member-row"
+                                            onClick={() => onAddMember(item.id)}
+                                            aria-label={`Add ${item.name} to group`}
+                                            title={`Add ${item.name} to group`}
+                                        >
+                                            <img
+                                                className="avatar group-add-member-avatar"
+                                                src={avatarUrl}
+                                                alt=""
+                                                loading="lazy"
+                                                width={34}
+                                                height={34}
+                                            />
+                                            <span className="group-add-member-info">
+                                                <span className="group-add-member-name-row">
+                                                    <strong className="group-add-member-name">
+                                                        <CharacterHighlight
+                                                            text={item.name}
+                                                            ranges={result.nameMatches}
+                                                        />
+                                                    </strong>
+                                                    {item.isFavorite && (
+                                                        <span
+                                                            className="group-add-member-star"
+                                                            title="Favorite"
+                                                        >
+                                                            <Star
+                                                                size={12}
+                                                                fill="currentColor"
+                                                            />
+                                                        </span>
+                                                    )}
+                                                    {result.matchedTag && (
+                                                        <span
+                                                            className="group-add-member-tag"
+                                                            title={`Matched tag: ${result.matchedTag}`}
+                                                        >
+                                                            <Tag size={10} />
+                                                            <span>
+                                                                {result.matchedTag}
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                {item.tagline && (
+                                                    <span className="group-add-member-tagline">
+                                                        <CharacterHighlight
+                                                            text={item.tagline}
+                                                            ranges={result.taglineMatches}
+                                                        />
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span
+                                                className="group-add-member-action-btn"
+                                                aria-hidden="true"
+                                            >
+                                                <Plus size={15} />
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="group-add-member-pagination">
+                                <div className="group-add-member-page-summary">
+                                    <span role="status">
+                                        {startIndex + 1}–{endIndex} of {totalCount}
+                                    </span>
+                                    <label className="group-add-member-size-label">
+                                        <span>Show</span>
+                                        <select
+                                            className="group-add-member-size-select"
+                                            aria-label="Characters per page"
+                                            value={pageSize}
+                                            onChange={(event) =>
+                                                handlePageSizeChange(
+                                                    Number(
+                                                        (
+                                                            event.currentTarget as HTMLSelectElement
+                                                        ).value,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            {PAGE_SIZE_OPTIONS.map((size) => (
+                                                <option key={size} value={size}>
+                                                    {size}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                </div>
+                                <div className="group-add-member-page-nav">
+                                    <button
+                                        type="button"
+                                        className="group-add-member-page-btn"
+                                        disabled={safeCurrentPage <= 1}
+                                        onClick={() =>
+                                            setCurrentPage(
+                                                Math.max(1, safeCurrentPage - 1),
+                                            )
+                                        }
+                                        title="Previous page"
+                                        aria-label="Previous page"
+                                    >
+                                        <ChevronLeft size={15} />
+                                    </button>
+                                    <span className="group-add-member-page-number">
+                                        {safeCurrentPage} / {totalPages}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="group-add-member-page-btn"
+                                        disabled={safeCurrentPage >= totalPages}
+                                        onClick={() =>
+                                            setCurrentPage(
+                                                Math.min(totalPages, safeCurrentPage + 1),
+                                            )
+                                        }
+                                        title="Next page"
+                                        aria-label="Next page"
+                                    >
+                                        <ChevronRight size={15} />
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </>
+            )}
+        </section>
     );
 }
 
