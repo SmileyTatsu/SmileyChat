@@ -4,6 +4,35 @@
         "label": "Claude Fable",
         "models": [
             {
+                "id": "claude-fable-5-1",
+                "label": "Claude Fable 5.1",
+                "contextTokenLimit": 1000000,
+                "requestValidation": {
+                    "inputTokenLimit": 1000000,
+                    "maxOutputTokens": null,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    }
+                }
+            },
+            {
                 "id": "claude-fable-5",
                 "label": "Claude Fable 5",
                 "contextTokenLimit": 1000000,

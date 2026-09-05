@@ -1,5 +1,37 @@
 [
     {
+        "id": "gemini-3.8",
+        "label": "Gemini 3.8",
+        "models": [
+            {
+                "id": "gemini-3.8-flash",
+                "label": "gemini-3.8-flash",
+                "contextTokenLimit": 1048576,
+                "requestValidation": {
+                    "inputTokenLimit": 1048576,
+                    "maxOutputTokens": 65536,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    },
+                    "thinking": {
+                        "supported": true,
+                        "default": "On (medium)",
+                        "levels": ["low", "medium", "high"]
+                    }
+                }
+            }
+        ]
+    },
+    {
         "id": "gemini-3.7",
         "label": "Gemini 3.7",
         "models": [

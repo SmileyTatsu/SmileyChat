@@ -1,5 +1,40 @@
 [
     {
+        "id": "gpt-6",
+        "label": "GPT-6",
+        "models": [
+            {
+                "id": "gpt-6-astra",
+                "label": "gpt-6-astra",
+                "contextTokenLimit": 1050000,
+                "requestValidation": {
+                    "inputTokenLimit": 1050000,
+                    "maxOutputTokens": 128000,
+                    "temperature": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "topP": {
+                        "supported": false,
+                        "default": 1
+                    },
+                    "presencePenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "frequencyPenalty": {
+                        "supported": false,
+                        "default": 0
+                    },
+                    "topK": {
+                        "supported": false,
+                        "integer": true
+                    }
+                }
+            }
+        ]
+    },
+    {
         "id": "gpt-5.6",
         "label": "GPT-5.6",
         "models": [
