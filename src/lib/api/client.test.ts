@@ -5,11 +5,32 @@ import {
     importLorebookFiles,
     loadLorebook,
     resetCsrfTokenForTests,
+    saveChatIndex,
     saveLorebook,
 } from "./client";
 import type { Lorebook } from "../lorebooks/types";
 
 const originalFetch = globalThis.fetch;
+
+test("chat index updates explicitly persist or clear the active selection", async () => {
+    const bodies: unknown[] = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (String(url).endsWith("/api/csrf")) {
+            return jsonResponse({ token: "test-csrf-token" });
+        }
+        bodies.push(JSON.parse(String(init?.body)));
+        return jsonResponse({ ok: true });
+    }) as typeof fetch;
+
+    const summaries = { version: 1 as const, activeChatIdsByCharacter: {}, chats: [] };
+    await saveChatIndex({ ...summaries, lastActiveChatId: "group-1" });
+    await saveChatIndex(summaries);
+
+    expect(bodies).toEqual([
+        { activeChatIdsByCharacter: {}, chatIds: [], lastActiveChatId: "group-1" },
+        { activeChatIdsByCharacter: {}, chatIds: [], lastActiveChatId: null },
+    ]);
+});
 
 const lorebook: Lorebook = {
     id: "lorebook-1",

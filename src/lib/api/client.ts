@@ -697,6 +697,7 @@ export function saveChatIndex(chats: ChatSummaryCollection) {
         "/api/chats/index",
         jsonInit("PUT", {
             activeChatIdsByCharacter: chats.activeChatIdsByCharacter,
+            lastActiveChatId: chats.lastActiveChatId ?? null,
             chatIds: chats.chats.map((chat) => chat.id),
         }),
     );

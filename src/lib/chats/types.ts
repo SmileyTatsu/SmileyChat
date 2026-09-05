@@ -108,12 +108,14 @@ export type ChatSummary = {
 export type ChatSummaryCollection = {
     version: 1;
     activeChatIdsByCharacter: Record<string, string>;
+    lastActiveChatId?: string;
     chats: ChatSummary[];
 };
 
 export type ChatIndex = {
     version: 1;
     activeChatIdsByCharacter: Record<string, string>;
+    lastActiveChatId?: string;
     chatIds: string[];
     /** Compact metadata used to populate the chat rail without reading sessions. */
     summaries: ChatSummary[];

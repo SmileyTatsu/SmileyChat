@@ -121,12 +121,13 @@ export function normalizeChatSummaryCollection(value: unknown): ChatSummaryColle
               .map(normalizeChatSummary)
               .filter((chat): chat is ChatSummary => Boolean(chat))
         : [];
-    const chatIds = new Set(
+    const allChatIds = new Set(chats.map((chat) => chat.id));
+    const directChatIds = new Set(
         chats.filter((chat) => !isGroupChat(chat)).map((chat) => chat.id),
     );
     const activeChatIdsByCharacter = normalizeActiveChatIds(
         value.activeChatIdsByCharacter,
-        chatIds,
+        directChatIds,
     );
 
     for (const chat of chats.filter((chat) => !isGroupChat(chat))) {
@@ -135,9 +136,16 @@ export function normalizeChatSummaryCollection(value: unknown): ChatSummaryColle
         }
     }
 
+    const lastActiveChatId =
+        typeof value.lastActiveChatId === "string" &&
+        allChatIds.has(value.lastActiveChatId)
+            ? value.lastActiveChatId
+            : undefined;
+
     return {
         version: 1,
         activeChatIdsByCharacter,
+        ...(lastActiveChatId ? { lastActiveChatId } : {}),
         chats,
     };
 }

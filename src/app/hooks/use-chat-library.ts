@@ -242,6 +242,23 @@ export function useChatLibrary({
         const summaries = normalizeChatSummaryCollection(await loadChatSummaries());
         setChatSummaries(summaries);
 
+        if (summaries.lastActiveChatId) {
+            const targetSummary = summaries.chats.find(
+                (chat) => chat.id === summaries.lastActiveChatId,
+            );
+            if (targetSummary && isGroupChat(targetSummary)) {
+                let loadedChat = await loadNormalizedChat(summaries.lastActiveChatId);
+                if (loadedChat) {
+                    loadedChat = await hydrateGroupConversation(loadedChat);
+                    setActiveChat(loadedChat);
+                    await activateGroupCharactersForChat(loadedChat);
+                    setMode(loadedChat.mode);
+                    setChatLoadError("");
+                    return { summaries, activeChat: loadedChat };
+                }
+            }
+        }
+
         if (
             !latestCharacterSummariesRef.current.characters.some(
                 (item) => item.id === sourceCharacter.id,
@@ -279,6 +296,7 @@ export function useChatLibrary({
             : characterChats[0]?.id;
 
         if (!activeChatId) {
+            clearLastActiveChat(summaries);
             setActiveChat(undefined);
             setGroupCharacters([]);
             setMode(defaultNewChatMode);
@@ -298,6 +316,7 @@ export function useChatLibrary({
                 : undefined;
 
             if (!fallbackChat) {
+                clearLastActiveChat(summaries);
                 setActiveChat(undefined);
                 setGroupCharacters([]);
                 setMode(defaultNewChatMode);
@@ -311,6 +330,14 @@ export function useChatLibrary({
             setMode(fallbackChat.mode);
             setChatLoadError("");
             if (chatLoadRequestId) setChatLoadTarget(chatLoadRequestId, fallbackChat.id);
+            if (summaries.lastActiveChatId !== fallbackChat.id) {
+                const nextSummaries = normalizeChatSummaryCollection({
+                    ...summaries,
+                    lastActiveChatId: fallbackChat.id,
+                });
+                setChatSummaries(nextSummaries);
+                queueChatIndexSave(nextSummaries);
+            }
             return fallbackChat;
         }
 
@@ -319,7 +346,24 @@ export function useChatLibrary({
         setMode(loadedChat.mode);
         setChatLoadError("");
         if (chatLoadRequestId) setChatLoadTarget(chatLoadRequestId, loadedChat.id);
+        if (summaries.lastActiveChatId !== loadedChat.id) {
+            const nextSummaries = normalizeChatSummaryCollection({
+                ...summaries,
+                lastActiveChatId: loadedChat.id,
+            });
+            setChatSummaries(nextSummaries);
+            queueChatIndexSave(nextSummaries);
+        }
         return loadedChat;
+    }
+
+    function clearLastActiveChat(summaries: ChatSummaryCollection) {
+        const nextSummaries = normalizeChatSummaryCollection({
+            ...summaries,
+            lastActiveChatId: undefined,
+        });
+        setChatSummaries(nextSummaries);
+        queueChatIndexSave(nextSummaries);
     }
 
     async function activateGroupCharactersForChat(
@@ -845,6 +889,7 @@ export function useChatLibrary({
                           ...latestChatSummariesRef.current.activeChatIdsByCharacter,
                           [loadedChat.characterId]: loadedChat.id,
                       },
+                lastActiveChatId: loadedChat.id,
             });
 
             setChatSummaries(nextSummaries);
@@ -1130,6 +1175,12 @@ export function useChatLibrary({
                         setActiveChat(nextChat);
                         await activateGroupCharactersForChat(nextChat);
                         setMode(nextChat.mode);
+                        const nextSummaries = normalizeChatSummaryCollection({
+                            ...summaries,
+                            lastActiveChatId: nextChat.id,
+                        });
+                        setChatSummaries(nextSummaries);
+                        queueChatIndexSave(nextSummaries);
                     }
                 } else {
                     setActiveChat(undefined);

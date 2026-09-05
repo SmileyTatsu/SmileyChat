@@ -44,6 +44,7 @@ export async function readChatSummaryCollection(): Promise<ChatSummaryCollection
     return normalizeChatSummaryCollection({
         version: 1,
         activeChatIdsByCharacter: index.activeChatIdsByCharacter,
+        ...(index.lastActiveChatId ? { lastActiveChatId: index.lastActiveChatId } : {}),
         chats: sortChatSummaries(index.summaries),
     });
 }
@@ -84,6 +85,7 @@ export async function createChat(value: unknown) {
                   ...index.activeChatIdsByCharacter,
                   [chat.characterId]: chat.id,
               },
+        lastActiveChatId: chat.id,
         chatIds,
         summaries: replaceChatSummary(index.summaries, chatToSummary(chat)),
     };
@@ -199,6 +201,7 @@ async function writeChatByIdUnlocked(chatId: string, value: unknown) {
                       ? {}
                       : { [chat.characterId]: chat.id }),
               },
+        ...(index.lastActiveChatId ? { lastActiveChatId: index.lastActiveChatId } : {}),
         chatIds,
         summaries: replaceChatSummary(index.summaries, chatToSummary(chat)),
     });
@@ -257,9 +260,13 @@ export async function deleteChatById(chatId: string) {
         }
     }
 
+    const lastActiveChatId =
+        index.lastActiveChatId === chatId ? undefined : index.lastActiveChatId;
+
     await writeFileBackedIndex(chatIndexPath, {
         version: 1,
         activeChatIdsByCharacter,
+        ...(lastActiveChatId ? { lastActiveChatId } : {}),
         chatIds: index.chatIds.filter((item) => item !== chatId),
         summaries: index.summaries.filter((summary) => summary.id !== chatId),
     });
@@ -292,9 +299,14 @@ export async function deleteGroupWorkspaceById(workspaceId: string) {
             ([, chatId]) => !deleteIds.has(chatId),
         ),
     );
+    const lastActiveChatId =
+        index.lastActiveChatId && deleteIds.has(index.lastActiveChatId)
+            ? undefined
+            : index.lastActiveChatId;
     const nextIndex = {
         version: 1 as const,
         activeChatIdsByCharacter,
+        ...(lastActiveChatId ? { lastActiveChatId } : {}),
         chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
         summaries: index.summaries.filter((summary) => !deleteIds.has(summary.id)),
     };
@@ -332,10 +344,15 @@ export async function deleteChatsByCharacterId(characterId: string) {
 
     const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };
     delete activeChatIdsByCharacter[characterId];
+    const lastActiveChatId =
+        index.lastActiveChatId && deleteIds.has(index.lastActiveChatId)
+            ? undefined
+            : index.lastActiveChatId;
 
     await writeFileBackedIndex(chatIndexPath, {
         version: 1,
         activeChatIdsByCharacter,
+        ...(lastActiveChatId ? { lastActiveChatId } : {}),
         chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
         summaries: index.summaries.filter((summary) => !deleteIds.has(summary.id)),
     });
@@ -380,6 +397,7 @@ function toChatSummaryCollection(index: ChatIndex): ChatSummaryCollection {
     return normalizeChatSummaryCollection({
         version: 1,
         activeChatIdsByCharacter: index.activeChatIdsByCharacter,
+        ...(index.lastActiveChatId ? { lastActiveChatId: index.lastActiveChatId } : {}),
         chats: sortChatSummaries(index.summaries),
     });
 }
@@ -423,9 +441,21 @@ export async function updateChatIndex(value: unknown) {
         ...current.chatIds.filter((chatId) => !requestedChatIdsSet.has(chatId)),
     ];
 
-    const nextIndex = {
+    const requestedLastActive =
+        record.lastActiveChatId === null
+            ? undefined
+            : typeof record.lastActiveChatId === "string"
+              ? record.lastActiveChatId
+              : current.lastActiveChatId;
+    const lastActiveChatId =
+        requestedLastActive && currentChatIds.has(requestedLastActive)
+            ? requestedLastActive
+            : undefined;
+
+    const nextIndex: ChatIndex = {
         version: 1 as const,
         activeChatIdsByCharacter,
+        ...(lastActiveChatId ? { lastActiveChatId } : {}),
         chatIds,
         summaries: chatIds.flatMap((chatId) => {
             const summary = summariesById.get(chatId);
@@ -474,9 +504,15 @@ async function repairChatIndex(index: ChatIndex): Promise<ChatIndex> {
             directChatIds.has(chatId),
         ),
     );
+    const lastActiveChatId =
+        typeof index.lastActiveChatId === "string" &&
+        hydratedSummaries.some((summary) => summary.id === index.lastActiveChatId)
+            ? index.lastActiveChatId
+            : undefined;
     const repairedIndex = {
         version: 1 as const,
         activeChatIdsByCharacter,
+        ...(lastActiveChatId ? { lastActiveChatId } : {}),
         chatIds,
         summaries: hydratedSummaries,
     };
@@ -503,6 +539,7 @@ async function rebuildChatIndexFromSessions(): Promise<ChatIndex> {
     const index = {
         version: 1 as const,
         activeChatIdsByCharacter: await readActiveChatIds(sortedChats),
+        ...(sortedChats[0] ? { lastActiveChatId: sortedChats[0].id } : {}),
         chatIds: sortedChats.map((chat) => chat.id),
         summaries: sortedChats.map(chatToSummary),
     };
@@ -562,10 +599,16 @@ function normalizeChatIndex(value: unknown): ChatIndex {
               .filter((summary): summary is ChatSummary => Boolean(summary))
               .filter((summary) => chatIdsSet.has(summary.id))
         : [];
+    const lastActiveChatId =
+        typeof value.lastActiveChatId === "string" &&
+        chatIdsSet.has(value.lastActiveChatId)
+            ? value.lastActiveChatId
+            : undefined;
 
     return {
         version: 1,
         activeChatIdsByCharacter,
+        ...(lastActiveChatId ? { lastActiveChatId } : {}),
         chatIds,
         summaries,
     };
