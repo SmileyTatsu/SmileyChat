@@ -2,10 +2,25 @@ import { describe, expect, test } from "bun:test";
 
 import { defaultCharacter } from "./defaults";
 import {
+    characterToSummary,
     getCharacterDialogueColor,
     normalizeTavernCardData,
     setCharacterDialogueColor,
 } from "./normalize";
+
+describe("character search summaries", () => {
+    test("keeps populated and empty tag arrays in serialized summaries", () => {
+        for (const tags of [[], ["fantasy", "moon"]]) {
+            const character = {
+                ...defaultCharacter,
+                data: { ...defaultCharacter.data, tags },
+            };
+            const summary = characterToSummary(character);
+            expect(JSON.parse(JSON.stringify(summary)).tags).toEqual(tags);
+            expect(summary.tags).not.toBe(tags);
+        }
+    });
+});
 
 describe("character dialogue colors", () => {
     test("stores a normalized color in the SmileyChat card extension", () => {

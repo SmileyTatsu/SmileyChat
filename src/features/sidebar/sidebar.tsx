@@ -17,7 +17,7 @@ import {
     X,
 } from "lucide-preact";
 import type { RefObject } from "preact";
-import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
@@ -39,6 +39,7 @@ import type {
 
 import { PersonaBar } from "../personas/persona-bar";
 import { PluginSidebarPanels } from "../plugins/plugin-surfaces";
+import { CharacterSearchPanel } from "../characters/search";
 import { ChatList } from "./components/chat-list";
 import { GroupChatCreator } from "./components/group-chat-creator";
 import { GroupAvatar } from "../chat/group-avatar";
@@ -103,6 +104,7 @@ type CharacterRailProps = {
     characters: RailCharacter[];
     importInputRef: RefObject<HTMLInputElement>;
     isCharacterDropActive: boolean;
+    isSearchOpen?: boolean;
     pendingCharacterId?: string;
     onCharacterDragEnter: (event: DragEvent) => void;
     onCharacterDragLeave: (event: DragEvent) => void;
@@ -114,6 +116,7 @@ type CharacterRailProps = {
     onOpenCharacterMenu: (event: MouseEvent, character: RailCharacter) => void;
     onReorderCharacters: (characters: RailCharacter[]) => void;
     onSelectCharacter: (characterId: string) => void;
+    onToggleSearch?: () => void;
 };
 
 function CharacterRailAvatar({
@@ -176,6 +179,7 @@ function CharacterRail({
     characters,
     importInputRef,
     isCharacterDropActive,
+    isSearchOpen,
     pendingCharacterId,
     onCharacterDragEnter,
     onCharacterDragLeave,
@@ -187,6 +191,7 @@ function CharacterRail({
     onOpenCharacterMenu,
     onReorderCharacters,
     onSelectCharacter,
+    onToggleSearch,
 }: CharacterRailProps) {
     const activeRowCharacterId = pendingCharacterId || activeCharacterId;
     const favorites = characters.filter((c) => c.isFavorite);
@@ -223,8 +228,20 @@ function CharacterRail({
             onDragLeave={onCharacterDragLeave}
             onDrop={onCharacterDrop}
         >
-            <div className="character-rail-brand" title="SmileyChat">
-                <Sparkles size={20} />
+            <div className="character-rail-top">
+                <div className="character-rail-brand" title="SmileyChat">
+                    <Sparkles size={20} />
+                </div>
+                <button
+                    className={`character-rail-action ${isSearchOpen ? "active" : ""}`}
+                    type="button"
+                    title="Find character (Ctrl+K)"
+                    aria-label="Find character"
+                    aria-pressed={isSearchOpen}
+                    onClick={onToggleSearch}
+                >
+                    <Search size={19} />
+                </button>
             </div>
             <div className="character-rail-divider" />
             <div className="character-rail-roster" role="list">
@@ -392,6 +409,36 @@ export function Sidebar({
     >();
     const characterMenuRef = useRef<HTMLDivElement>(null);
     const chatMenuRef = useRef<HTMLDivElement>(null);
+    const [characterSearchOpen, setCharacterSearchOpen] = useState(false);
+
+    useEffect(() => {
+        function handleGlobalKeyDown(event: KeyboardEvent) {
+            if (
+                event.defaultPrevented ||
+                event.isComposing ||
+                event.repeat ||
+                event.altKey
+            )
+                return;
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+                event.preventDefault();
+                onOpenChange(true);
+                setCharacterSearchOpen((open) => !isOpen || !open);
+            }
+        }
+
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [isOpen, onOpenChange]);
+
+    function toggleSearch() {
+        if (!isOpen) {
+            onOpenChange(true);
+            setCharacterSearchOpen(true);
+        } else {
+            setCharacterSearchOpen((open) => !open);
+        }
+    }
 
     useLayoutEffect(() => {
         if (!contextMenu || !characterMenuRef.current) {
@@ -789,6 +836,7 @@ export function Sidebar({
                     characters={railCharacters}
                     importInputRef={importInputRef}
                     isCharacterDropActive={isCharacterDropActive}
+                    isSearchOpen={characterSearchOpen}
                     pendingCharacterId={pendingCharacterId}
                     onCharacterDragEnter={handleCharacterDragEnter}
                     onCharacterDragLeave={handleCharacterDragLeave}
@@ -810,6 +858,7 @@ export function Sidebar({
                         else onSelectCharacter(characterId);
                         onOpenChange(true);
                     }}
+                    onToggleSearch={toggleSearch}
                 />
             </aside>
         );
@@ -822,6 +871,7 @@ export function Sidebar({
                 characters={railCharacters}
                 importInputRef={importInputRef}
                 isCharacterDropActive={isCharacterDropActive}
+                isSearchOpen={characterSearchOpen}
                 pendingCharacterId={pendingCharacterId}
                 onCharacterDragEnter={handleCharacterDragEnter}
                 onCharacterDragLeave={handleCharacterDragLeave}
@@ -842,192 +892,233 @@ export function Sidebar({
                     if (group) onSelectGroup?.(group.id);
                     else onSelectCharacter(characterId);
                 }}
+                onToggleSearch={toggleSearch}
             />
 
             <div className="left-rail open">
-                <div className="chat-rail-header">
-                    <div className="chat-rail-title-block">
-                        <span>Chats with</span>
-                        <strong>
-                            {activeGroupId
-                                ? (railCharacters.find(
-                                      (item) => item.id === activeGroupId,
-                                  )?.name ?? "Group")
-                                : (activeCharacter?.name ?? "No character selected")}
-                        </strong>
-                    </div>
-                    <button
-                        className="rail-icon-button sidebar-mobile-close-btn"
-                        type="button"
-                        title="Close sidebar"
-                        aria-label="Close sidebar"
-                        onClick={() => onOpenChange(false)}
-                    >
-                        <X size={15} />
-                    </button>
-                </div>
-
-                <div className="chat-rail-actions">
-                    <button
-                        className="new-chat-button"
-                        type="button"
-                        title={
-                            activeGroupId
-                                ? "Start a new conversation in this group"
-                                : "Start a new chat with the active character"
-                        }
-                        disabled={!hasCharacters}
-                        onClick={onNewChat}
-                    >
-                        <MessageSquare size={16} />
-                        New chat
-                    </button>
-                    <button
-                        className="new-chat-button secondary"
-                        type="button"
-                        title="Start a group chat"
-                        disabled={!hasCharacters}
-                        onClick={openGroupCreate}
-                    >
-                        <Users size={16} />
-                        New group
-                    </button>
-                </div>
-
-                <input
-                    ref={chatImportInputRef}
-                    hidden
-                    type="file"
-                    accept=".jsonl,.json,application/json"
-                    onChange={(event) => {
-                        const input = event.currentTarget as HTMLInputElement;
-                        const file = input.files?.[0];
-
-                        if (file) {
-                            onImportChatFile(file);
-                        }
-
-                        input.value = "";
-                    }}
-                />
-                <input
-                    ref={groupAvatarInputRef}
-                    hidden
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(event) => {
-                        const input = event.currentTarget as HTMLInputElement;
-                        const file = input.files?.[0];
-
-                        if (file && groupAvatarTarget) {
-                            onChangeGroupAvatar(groupAvatarTarget.id, file);
-                        }
-
-                        setGroupAvatarTarget(undefined);
-                        input.value = "";
-                    }}
-                />
-
-                {groupCreateOpen && (
-                    <GroupChatCreator
-                        characters={characters}
-                        groupDefaultTitle={groupDefaultTitle}
-                        groupGreetingMode={groupGreetingMode}
-                        groupTitleDraft={groupTitleDraft}
-                        selectedGroupCharacterIds={selectedGroupCharacterIds}
-                        selectedGroupMembers={selectedGroupMembers}
-                        onClose={closeGroupCreate}
-                        onGroupGreetingModeChange={setGroupGreetingMode}
-                        onGroupTitleDraftChange={setGroupTitleDraft}
-                        onSubmit={submitGroupCreate}
-                        onToggleGroupCharacter={toggleGroupCharacter}
+                {characterSearchOpen ? (
+                    <CharacterSearchPanel
+                        characters={railCharacters}
+                        chatCountsByCharacterId={chatCountsByCharacterId}
+                        onSelectCharacter={(characterId) => {
+                            const group = railCharacters.find(
+                                (item) => item.id === characterId,
+                            )?.groupChat;
+                            if (group) onSelectGroup?.(group.id);
+                            else onSelectCharacter(characterId);
+                            setCharacterSearchOpen(false);
+                        }}
+                        onClose={() => setCharacterSearchOpen(false)}
+                        onCreateCharacter={() => {
+                            onCreateCharacter();
+                            setCharacterSearchOpen(false);
+                        }}
                     />
-                )}
-
-                {!groupCreateOpen && (
+                ) : (
                     <>
-                        <div className="sidebar-filter-bar">
-                            <Search size={15} aria-hidden="true" />
-                            <input
-                                type="search"
-                                value={chatFilter}
-                                placeholder="Search chats"
-                                aria-label="Search chats"
-                                onInput={(event) =>
-                                    setChatFilter(
-                                        (event.currentTarget as HTMLInputElement).value,
-                                    )
-                                }
-                            />
-                            {chatFilter && (
+                        <div className="chat-rail-header">
+                            <div className="chat-rail-title-block">
+                                <span>Chats with</span>
+                                <strong>
+                                    {activeGroupId
+                                        ? (railCharacters.find(
+                                              (item) => item.id === activeGroupId,
+                                          )?.name ?? "Group")
+                                        : (activeCharacter?.name ??
+                                          "No character selected")}
+                                </strong>
+                            </div>
+                            <div className="chat-rail-header-actions">
                                 <button
+                                    className="rail-icon-button"
                                     type="button"
-                                    title="Clear search"
-                                    aria-label="Clear chat search"
-                                    onClick={() => setChatFilter("")}
+                                    title="Find character (Ctrl+K)"
+                                    aria-label="Find character"
+                                    onClick={() => setCharacterSearchOpen(true)}
                                 >
-                                    <X size={14} />
+                                    <Search size={14} />
                                 </button>
-                            )}
+                                <button
+                                    className="rail-icon-button sidebar-mobile-close-btn"
+                                    type="button"
+                                    title="Close sidebar"
+                                    aria-label="Close sidebar"
+                                    onClick={() => onOpenChange(false)}
+                                >
+                                    <X size={15} />
+                                </button>
+                            </div>
                         </div>
 
-                        <section className="rail-section chat-section">
-                            <div className="rail-title with-action">
-                                <span>
-                                    Chat history
-                                    {hasChatFilter && (
-                                        <small>{filteredContextualChats.length}</small>
-                                    )}
-                                </span>
-                                <span className="rail-actions">
-                                    <button
-                                        className="rail-icon-button"
-                                        type="button"
-                                        title={
-                                            hasCharacters
-                                                ? "Import SillyTavern chat (.jsonl) for the active character"
-                                                : "Select a character before importing a chat"
-                                        }
-                                        disabled={!hasCharacters}
-                                        onClick={() =>
-                                            chatImportInputRef.current?.click()
-                                        }
-                                    >
-                                        <FileInput size={14} />
-                                    </button>
-                                </span>
-                            </div>
-                            <ChatList
-                                activeChatId={activeChatId}
-                                directChats={contextualChats}
-                                filteredDirectChats={filteredContextualChats}
-                                hasCharacters={hasCharacters}
-                                hasSidebarFilter={hasChatFilter}
-                                onOpenChatMenu={openChatMenu}
-                                onSelectChat={onSelectChat}
+                        <div className="chat-rail-actions">
+                            <button
+                                className="new-chat-button"
+                                type="button"
+                                title={
+                                    activeGroupId
+                                        ? "Start a new conversation in this group"
+                                        : "Start a new chat with the active character"
+                                }
+                                disabled={!hasCharacters}
+                                onClick={onNewChat}
+                            >
+                                <MessageSquare size={16} />
+                                New chat
+                            </button>
+                            <button
+                                className="new-chat-button secondary"
+                                type="button"
+                                title="Start a group chat"
+                                disabled={!hasCharacters}
+                                onClick={openGroupCreate}
+                            >
+                                <Users size={16} />
+                                New group
+                            </button>
+                        </div>
+
+                        <input
+                            ref={chatImportInputRef}
+                            hidden
+                            type="file"
+                            accept=".jsonl,.json,application/json"
+                            onChange={(event) => {
+                                const input = event.currentTarget as HTMLInputElement;
+                                const file = input.files?.[0];
+
+                                if (file) {
+                                    onImportChatFile(file);
+                                }
+
+                                input.value = "";
+                            }}
+                        />
+                        <input
+                            ref={groupAvatarInputRef}
+                            hidden
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={(event) => {
+                                const input = event.currentTarget as HTMLInputElement;
+                                const file = input.files?.[0];
+
+                                if (file && groupAvatarTarget) {
+                                    onChangeGroupAvatar(groupAvatarTarget.id, file);
+                                }
+
+                                setGroupAvatarTarget(undefined);
+                                input.value = "";
+                            }}
+                        />
+
+                        {groupCreateOpen && (
+                            <GroupChatCreator
+                                characters={characters}
+                                groupDefaultTitle={groupDefaultTitle}
+                                groupGreetingMode={groupGreetingMode}
+                                groupTitleDraft={groupTitleDraft}
+                                selectedGroupCharacterIds={selectedGroupCharacterIds}
+                                selectedGroupMembers={selectedGroupMembers}
+                                onClose={closeGroupCreate}
+                                onGroupGreetingModeChange={setGroupGreetingMode}
+                                onGroupTitleDraftChange={setGroupTitleDraft}
+                                onSubmit={submitGroupCreate}
+                                onToggleGroupCharacter={toggleGroupCharacter}
                             />
-                            {chatImportStatus && (
-                                <p
-                                    className={`rail-status${
-                                        chatImportStatusFading ? "fading" : ""
-                                    }`}
-                                >
-                                    {chatImportStatus}
-                                </p>
-                            )}
-                            {chatLoadError && (
-                                <p className="rail-error">{chatLoadError}</p>
-                            )}
-                        </section>
-
-                        {characterImportStatus && (
-                            <p className="rail-status">{characterImportStatus}</p>
-                        )}
-                        {characterLoadError && (
-                            <p className="rail-error">{characterLoadError}</p>
                         )}
 
-                        <PluginSidebarPanels side="left" snapshot={pluginSnapshot} />
+                        {!groupCreateOpen && (
+                            <>
+                                <div className="sidebar-filter-bar">
+                                    <Search size={15} aria-hidden="true" />
+                                    <input
+                                        type="search"
+                                        value={chatFilter}
+                                        placeholder="Search chats"
+                                        aria-label="Search chats"
+                                        onInput={(event) =>
+                                            setChatFilter(
+                                                (event.currentTarget as HTMLInputElement)
+                                                    .value,
+                                            )
+                                        }
+                                    />
+                                    {chatFilter && (
+                                        <button
+                                            type="button"
+                                            title="Clear search"
+                                            aria-label="Clear chat search"
+                                            onClick={() => setChatFilter("")}
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <section className="rail-section chat-section">
+                                    <div className="rail-title with-action">
+                                        <span>
+                                            Chat history
+                                            {hasChatFilter && (
+                                                <small>
+                                                    {filteredContextualChats.length}
+                                                </small>
+                                            )}
+                                        </span>
+                                        <span className="rail-actions">
+                                            <button
+                                                className="rail-icon-button"
+                                                type="button"
+                                                title={
+                                                    hasCharacters
+                                                        ? "Import SillyTavern chat (.jsonl) for the active character"
+                                                        : "Select a character before importing a chat"
+                                                }
+                                                disabled={!hasCharacters}
+                                                onClick={() =>
+                                                    chatImportInputRef.current?.click()
+                                                }
+                                            >
+                                                <FileInput size={14} />
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <ChatList
+                                        activeChatId={activeChatId}
+                                        directChats={contextualChats}
+                                        filteredDirectChats={filteredContextualChats}
+                                        hasCharacters={hasCharacters}
+                                        hasSidebarFilter={hasChatFilter}
+                                        onOpenChatMenu={openChatMenu}
+                                        onSelectChat={onSelectChat}
+                                    />
+                                    {chatImportStatus && (
+                                        <p
+                                            className={`rail-status${
+                                                chatImportStatusFading ? "fading" : ""
+                                            }`}
+                                        >
+                                            {chatImportStatus}
+                                        </p>
+                                    )}
+                                    {chatLoadError && (
+                                        <p className="rail-error">{chatLoadError}</p>
+                                    )}
+                                </section>
+
+                                {characterImportStatus && (
+                                    <p className="rail-status">{characterImportStatus}</p>
+                                )}
+                                {characterLoadError && (
+                                    <p className="rail-error">{characterLoadError}</p>
+                                )}
+
+                                <PluginSidebarPanels
+                                    side="left"
+                                    snapshot={pluginSnapshot}
+                                />
+                            </>
+                        )}
                     </>
                 )}
 

@@ -1,9 +1,12 @@
 import { Check, Users, X } from "lucide-preact";
+import { useMemo, useState } from "preact/hooks";
 
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
+import { searchCharacters } from "#frontend/lib/characters/character-search";
 import type { GroupGreetingMode } from "#frontend/types";
 
 import { GroupAvatar } from "../../chat/group-avatar";
+import { CharacterSearchInput } from "../../characters/search";
 
 type GroupMemberPreview = {
     avatarPath?: string;
@@ -51,6 +54,13 @@ export function GroupChatCreator({
     onSubmit,
     onToggleGroupCharacter,
 }: GroupChatCreatorProps) {
+    const [characterFilter, setCharacterFilter] = useState("");
+
+    const displayedCharacters = useMemo(() => {
+        if (!characterFilter.trim()) return characters;
+        return searchCharacters(characters, characterFilter).map((res) => res.item);
+    }, [characters, characterFilter]);
+
     return (
         <form className="inline-group-create" onSubmit={onSubmit}>
             <div className="inline-group-create-header">
@@ -104,9 +114,30 @@ export function GroupChatCreator({
             </div>
 
             <div className="inline-group-field">
-                <span>Characters</span>
+                <div className="inline-group-field-label-row">
+                    <span>Characters</span>
+                    {characterFilter.trim() && (
+                        <small className="inline-group-filter-count">
+                            {displayedCharacters.length} matching
+                        </small>
+                    )}
+                </div>
+                {(characters.length > 3 || characterFilter.length > 0) && (
+                    <CharacterSearchInput
+                        value={characterFilter}
+                        onChange={setCharacterFilter}
+                        placeholder="Filter characters..."
+                        resultCount={displayedCharacters.length}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter") event.preventDefault();
+                        }}
+                    />
+                )}
                 <div className="group-avatar-grid" aria-label="Group characters">
-                    {characters.map((character) => {
+                    {displayedCharacters.length === 0 && (
+                        <p role="status">No matching characters.</p>
+                    )}
+                    {displayedCharacters.map((character) => {
                         const isSelected = selectedGroupCharacterIds.includes(
                             character.id,
                         );

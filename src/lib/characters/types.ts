@@ -109,6 +109,7 @@ export type CharacterSummary = {
     id: string;
     name: string;
     tagline: string;
+    tags?: string[];
     avatar?: SmileyCharacter["avatar"];
     importedFrom?: SmileyCharacter["importedFrom"];
     isFavorite?: boolean;
@@ -119,6 +120,7 @@ export type CharacterIndexEntry = {
     id: string;
     name: string;
     tagline: string;
+    tags?: string[];
     basePath: string;
     avatar?: SmileyCharacter["avatar"];
     importedFrom?: SmileyCharacter["importedFrom"];

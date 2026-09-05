@@ -62,6 +62,7 @@ export async function readCharacterCollection(): Promise<CharacterCollection> {
 }
 
 export async function readCharacterSummaryCollection(): Promise<CharacterSummaryCollection> {
+    // Cold index reads already repair summaries from the character cards, including tags.
     const index = await readCharacterIndex();
 
     return {
@@ -621,11 +622,15 @@ function normalizeCharacterIndexEntry(value: unknown): CharacterIndexEntry | und
 
     const updatedAt =
         typeof value.updatedAt === "string" ? value.updatedAt : new Date().toISOString();
+    const tags = Array.isArray(value.tags)
+        ? value.tags.filter((t): t is string => typeof t === "string")
+        : undefined;
 
     return {
         id,
         name,
         tagline: typeof value.tagline === "string" ? value.tagline : "",
+        ...(tags ? { tags } : {}),
         basePath,
         ...(isRecord(value.avatar)
             ? { avatar: value.avatar as SmileyCharacter["avatar"] }
@@ -669,6 +674,7 @@ function indexEntryToSummary(entry: CharacterIndexEntry) {
         id: entry.id,
         name: entry.name,
         tagline: entry.tagline,
+        ...(entry.tags && entry.tags.length > 0 ? { tags: entry.tags } : {}),
         ...(entry.avatar ? { avatar: entry.avatar } : {}),
         ...(entry.importedFrom ? { importedFrom: entry.importedFrom } : {}),
         ...(entry.isFavorite ? { isFavorite: entry.isFavorite } : {}),

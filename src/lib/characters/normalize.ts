@@ -256,6 +256,7 @@ export function characterToSummary(character: SmileyCharacter): CharacterSummary
         id: character.id,
         name: character.data.name,
         tagline: getCharacterTagline(character),
+        tags: [...character.data.tags],
         ...(character.avatar ? { avatar: character.avatar } : {}),
         ...(character.importedFrom ? { importedFrom: character.importedFrom } : {}),
         ...(character.metadata?.isFavorite ? { isFavorite: true } : {}),

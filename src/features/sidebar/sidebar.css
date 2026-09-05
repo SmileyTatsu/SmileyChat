@@ -278,6 +278,13 @@
     font-weight: 800;
 }
 
+.character-rail-top {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    width: 100%;
+}
+
 .chat-rail-header {
     display: flex;
     align-items: center;
@@ -286,6 +293,13 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.045);
     margin: -4px -2px 0;
     padding: 0 2px 12px;
+}
+
+.chat-rail-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
 }
 
 .chat-rail-title-block {
@@ -610,6 +624,18 @@
     display: grid;
     gap: 6px;
     min-width: 0;
+}
+
+.inline-group-field-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.inline-group-filter-count {
+    font-size: 0.72rem;
+    color: #7ea0ff;
+    font-weight: 600;
 }
 
 .inline-group-field > span {
