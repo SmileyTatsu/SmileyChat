@@ -274,6 +274,9 @@
     gap: 16px;
     height: 100%;
     min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
     animation: context-panel-in 160ms ease-out;
 }
 
@@ -435,7 +438,11 @@
     align-content: start;
     gap: 13px;
     min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     overflow-y: auto;
+    overflow-x: hidden;
     border-top: 1px solid #292c35;
     padding-top: 16px;
     padding-right: 14px;
@@ -1087,6 +1094,10 @@
     gap: 10px;
     padding-top: 10px;
     border-top: 1px solid #262a35;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .group-add-member-header {
@@ -1094,6 +1105,9 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
 }
 
 .group-add-member-header h3 {
@@ -1101,6 +1115,10 @@
     color: #ececf1;
     font-size: 0.9rem;
     font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .group-add-member-count-badge {
@@ -1112,16 +1130,21 @@
     font-weight: 500;
     background: rgba(255, 255, 255, 0.07);
     color: #9da3b4;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .group-add-member-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .group-add-member-row {
-    width: 100%;
     font: inherit;
     display: flex;
     align-items: center;
@@ -1133,6 +1156,10 @@
     cursor: pointer;
     text-align: left;
     user-select: none;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     transition:
         background-color 140ms ease,
         border-color 140ms ease,
@@ -1166,6 +1193,8 @@
     gap: 2px;
     min-width: 0;
     flex: 1 1 auto;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .group-add-member-name-row {
@@ -1173,6 +1202,7 @@
     align-items: center;
     gap: 6px;
     min-width: 0;
+    max-width: 100%;
 }
 
 .group-add-member-name {
@@ -1182,6 +1212,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 
 .group-add-member-star {
@@ -1202,7 +1233,7 @@
     font-size: 0.65rem;
     font-weight: 500;
     flex-shrink: 0;
-    max-width: 100px;
+    max-width: 80px;
 }
 
 .group-add-member-tag span {
@@ -1219,6 +1250,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 
 .group-add-member-action-btn {
@@ -1233,6 +1265,7 @@
     color: #b9bbbe;
     padding: 0;
     cursor: pointer;
+    box-sizing: border-box;
     transition:
         background-color 120ms ease,
         border-color 120ms ease,
@@ -1255,12 +1288,18 @@
     padding-top: 4px;
     font-size: 0.78rem;
     color: #9da3b4;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .group-add-member-page-summary {
     display: flex;
     align-items: center;
     gap: 8px;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .group-add-member-size-label {
@@ -1269,6 +1308,7 @@
     gap: 4px;
     font-size: 0.75rem;
     color: #8b92a5;
+    white-space: nowrap;
 }
 
 .group-add-member-size-select {
@@ -1280,6 +1320,7 @@
     color: #ececf1;
     cursor: pointer;
     outline: none;
+    box-sizing: border-box;
 }
 
 .group-add-member-size-select:focus {
@@ -1290,6 +1331,9 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    box-sizing: border-box;
+    min-width: 0;
+    flex-shrink: 0;
 }
 
 .group-add-member-page-btn {
@@ -1303,6 +1347,7 @@
     background: #1e222b;
     color: #ececf1;
     cursor: pointer;
+    box-sizing: border-box;
     transition:
         background-color 120ms ease,
         border-color 120ms ease;
@@ -1328,6 +1373,7 @@
     color: #8b92a5;
     min-width: 32px;
     text-align: center;
+    white-space: nowrap;
 }
 
 .group-add-member-empty {
@@ -1341,6 +1387,10 @@
     border-radius: 8px;
     background: rgba(23, 26, 33, 0.45);
     text-align: center;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .group-add-member-empty p {
