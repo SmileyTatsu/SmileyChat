@@ -446,6 +446,7 @@
     border-top: 1px solid #292c35;
     padding-top: 16px;
     padding-right: 14px;
+    padding-left: 3px;
     scrollbar-gutter: stable;
 }
 
@@ -1093,11 +1094,20 @@
     flex-direction: column;
     gap: 10px;
     padding-top: 10px;
+    padding-left: 2px;
+    padding-right: 2px;
+    padding-bottom: 2px;
     border-top: 1px solid #262a35;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
     max-width: 100%;
+}
+
+.character-form input.character-search-input,
+.group-add-member-section .character-search-input {
+    height: 36px;
+    padding: 0 54px 0 34px;
 }
 
 .group-add-member-header {
