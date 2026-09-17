@@ -49,7 +49,7 @@ type MessageComposerProps = {
     placeholder?: string;
     resetKey: string;
     onAbortGeneration?: () => void;
-    onSubmit: (draft: string, files?: File[]) => void | Promise<void>;
+    onSubmit: (draft: string, files?: File[]) => boolean | void | Promise<boolean | void>;
     pluginSnapshot: PluginAppSnapshot;
 };
 
@@ -68,6 +68,37 @@ type PluginComposerActionsProps = {
     ) => void;
 };
 
+function disposeStagedFiles(files: StagedFile[]) {
+    for (const item of files) {
+        if (item.previewUrl) {
+            URL.revokeObjectURL(item.previewUrl);
+        }
+    }
+}
+
+function mergeDrafts(submittedDraft: string, currentDraft: string) {
+    if (!submittedDraft || !currentDraft) {
+        return submittedDraft || currentDraft;
+    }
+
+    const separator =
+        submittedDraft.endsWith("\n") || currentDraft.startsWith("\n") ? "" : "\n";
+    return `${submittedDraft}${separator}${currentDraft}`;
+}
+
+function mergeStagedFiles(submittedFiles: StagedFile[], currentFiles: StagedFile[]) {
+    const fileIds = new Set<string>();
+
+    return [...submittedFiles, ...currentFiles].filter((file) => {
+        if (fileIds.has(file.id)) {
+            return false;
+        }
+
+        fileIds.add(file.id);
+        return true;
+    });
+}
+
 export const MessageComposer = memo(function MessageComposer({
     characterName,
     isGroup,
@@ -85,11 +116,14 @@ export const MessageComposer = memo(function MessageComposer({
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const resizeFrameRef = useRef<number>();
+    const resetKeyRef = useRef(resetKey);
 
     const [draft, setDraft] = useState("");
     const [registryRevision, setRegistryRevision] = useState(0);
     const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
     const [attachmentError, setAttachmentError] = useState("");
+
+    resetKeyRef.current = resetKey;
 
     const hasMessageContent = draft.trim().length > 0 || stagedFiles.length > 0;
     const canSubmit = !disabled || isGenerating;
@@ -209,14 +243,40 @@ export const MessageComposer = memo(function MessageComposer({
         });
     });
 
-    const submitDraft = useEventCallback(() => {
+    const submitDraft = useEventCallback(async (): Promise<void> => {
         const submittedDraft = draft;
-        const submittedFiles = stagedFiles.map((item) => item.file);
+        const submittedStagedFiles = stagedFiles;
+        const submittedFiles = submittedStagedFiles.map((item) => item.file);
+        const submittedResetKey = resetKey;
 
         setDraft("");
-        clearStagedFiles();
+        setStagedFiles([]);
 
-        return onSubmit(submittedDraft, submittedFiles);
+        try {
+            const result = await onSubmit(submittedDraft, submittedFiles);
+
+            if (result === false) {
+                restoreFailedSubmission();
+                return;
+            }
+        } catch {
+            restoreFailedSubmission();
+            return;
+        }
+
+        disposeStagedFiles(submittedStagedFiles);
+
+        function restoreFailedSubmission() {
+            if (resetKeyRef.current !== submittedResetKey) {
+                disposeStagedFiles(submittedStagedFiles);
+                return;
+            }
+
+            setDraft((currentDraft) => mergeDrafts(submittedDraft, currentDraft));
+            setStagedFiles((currentFiles) =>
+                mergeStagedFiles(submittedStagedFiles, currentFiles),
+            );
+        }
     });
 
     const runComposerAction = useEventCallback(
@@ -310,11 +370,7 @@ export const MessageComposer = memo(function MessageComposer({
 
     function clearStagedFiles() {
         setStagedFiles((current) => {
-            for (const item of current) {
-                if (item.previewUrl) {
-                    URL.revokeObjectURL(item.previewUrl);
-                }
-            }
+            disposeStagedFiles(current);
 
             return [];
         });

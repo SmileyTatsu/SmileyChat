@@ -410,7 +410,7 @@ export function App() {
         latestChatSessionForPluginsRef.current.stopGeneration();
     }, []);
     const handleDeleteMessage = useCallback((messageId: string) => {
-        latestChatSessionForPluginsRef.current.deleteMessage(messageId);
+        void latestChatSessionForPluginsRef.current.deleteMessage(messageId);
     }, []);
     const handleDeleteMessageSwipe = useCallback((messageId: string) => {
         latestChatSessionForPluginsRef.current.removeActiveSwipe(messageId);

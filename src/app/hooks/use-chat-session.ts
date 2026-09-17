@@ -23,6 +23,7 @@ import { isGroupChat } from "#frontend/lib/chats/normalize";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { resolvePresetStreaming } from "#frontend/lib/presets/generation";
+import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
     ChatMode,
@@ -161,7 +162,7 @@ export function useChatSession({
         [],
     );
 
-    async function sendMessage(draft: string, files: File[] = []) {
+    async function sendMessage(draft: string, files: File[] = []): Promise<boolean> {
         return sendMessageWithOptions(draft, { files });
     }
 
@@ -186,12 +187,12 @@ export function useChatSession({
     async function sendMessageWithOptions(
         draft: string,
         options: SendMessageOptions = {},
-    ) {
+    ): Promise<boolean> {
         const files = options.files ?? [];
         const sourceChat = latestChatRef.current;
 
         if (!sourceChat) {
-            return;
+            return false;
         }
 
         if (
@@ -214,7 +215,7 @@ export function useChatSession({
             setChatError(
                 "All group members are muted. Unmute at least one member to generate a response.",
             );
-            return;
+            return false;
         }
 
         const text = await applyInputMiddlewares(
@@ -226,7 +227,7 @@ export function useChatSession({
         );
 
         if (isChatPending(sourceChat.id)) {
-            return;
+            return false;
         }
 
         const chatId = sourceChat.id;
@@ -236,7 +237,14 @@ export function useChatSession({
             files.length === 0 &&
             performance.now() < (suppressEmptyGenerationUntilRef.current[chatId] ?? 0)
         ) {
-            return;
+            return false;
+        }
+
+        try {
+            getAdapterForSettings(connectionSettings);
+        } catch (error) {
+            setChatError(messageFromError(error));
+            return false;
         }
 
         let attachments: ChatAttachment[] = [];
@@ -248,7 +256,7 @@ export function useChatSession({
             }
         } catch (error) {
             setChatError(`Attachment upload failed: ${messageFromError(error)}`);
-            return;
+            return false;
         } finally {
             setUploadingAttachmentCount(0);
         }
@@ -286,6 +294,13 @@ export function useChatSession({
                   generationCharacter,
               )
             : undefined;
+        const generationChat = streamingReply
+            ? {
+                  ...pendingChat,
+                  messages: [...pendingChat.messages, streamingReply],
+                  updatedAt: new Date().toISOString(),
+              }
+            : pendingChat;
         let streamedContent = "";
         const streamedImages: string[] = [];
         setChatError("");
@@ -294,16 +309,14 @@ export function useChatSession({
             name: generationCharacter.data.name,
         });
         const abortController = beginGenerationController(chatId, {
+            sourceChat: generationChat,
             streamingMessageId: streamingReply?.id,
         });
 
         try {
             if (streamingReply) {
                 startStreamingMessageDraft(streamingReply.id);
-                updateChatMessages(
-                    [...pendingChat.messages, streamingReply],
-                    currentOrSourceChat(pendingChat),
-                );
+                updateChatMessages(generationChat.messages, generationChat);
             }
 
             const result = await generateWithPreset(
@@ -356,7 +369,7 @@ export function useChatSession({
             );
 
             if (abortController.signal.aborted) {
-                return;
+                return true;
             }
 
             if (streamingReply) {
@@ -364,7 +377,7 @@ export function useChatSession({
                     chatId,
                     result.images?.length ? result.images : streamedImages,
                 );
-                updateMessageContent(
+                let completedChat = updateMessageContent(
                     streamingReply.id,
                     result.message,
                     undefined,
@@ -373,9 +386,14 @@ export function useChatSession({
                     result.toolActivities,
                     result.timeline,
                     result.pendingToolContinuation ?? null,
+                    currentOrSourceChat(generationChat),
                 );
                 if (resultAttachments.length) {
-                    updateMessageAttachments(streamingReply.id, resultAttachments);
+                    completedChat = updateMessageAttachments(
+                        streamingReply.id,
+                        resultAttachments,
+                        completedChat,
+                    );
                 }
                 if (!result.pendingToolContinuation) {
                     scheduleAutomaticGroupResponse({
@@ -411,10 +429,8 @@ export function useChatSession({
                         result.pendingToolContinuation;
                 }
 
-                updateChatMessages(
-                    [...pendingChat.messages, reply],
-                    currentOrSourceChat(pendingChat),
-                );
+                const targetChat = currentOrSourceChat(generationChat);
+                updateChatMessages([...targetChat.messages, reply], targetChat);
                 if (!result.pendingToolContinuation) {
                     scheduleAutomaticGroupResponse({
                         autoTurnCount: options.autoTurnCount ?? 0,
@@ -426,11 +442,11 @@ export function useChatSession({
         } catch (error) {
             if (isAbortError(error)) {
                 cleanupEmptyAbortedGeneration(chatId);
-                return;
+                return true;
             }
 
             const errorMessage = formatInterruptedGeneration(streamedContent, error);
-            const targetChat = currentOrSourceChat(pendingChat);
+            const targetChat = currentOrSourceChat(generationChat);
             const lastMessage = targetChat.messages[targetChat.messages.length - 1];
 
             if (
@@ -439,11 +455,21 @@ export function useChatSession({
                 lastMessage?.role === "character" &&
                 lastMessage.author === generationCharacter.data.name
             ) {
-                updateMessageContent(lastMessage.id, errorMessage, "error");
+                updateMessageContent(
+                    lastMessage.id,
+                    errorMessage,
+                    "error",
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    targetChat,
+                );
             } else {
                 updateChatMessages(
                     [
-                        ...pendingChat.messages,
+                        ...targetChat.messages,
                         createCharacterErrorMessage(
                             generationCharacter.data.name,
                             errorMessage,
@@ -456,6 +482,8 @@ export function useChatSession({
             endGenerationController(chatId, abortController);
             endChatPending(chatId);
         }
+
+        return true;
     }
 
     async function nextSwipe(messageId: string) {
@@ -514,22 +542,25 @@ export function useChatSession({
         }
 
         setChatError("");
+        let generationChat = sourceChat;
+
+        if (streamGeneration) {
+            startStreamingMessageDraft(messageId);
+            generationChat = appendEmptySwipe(messageId, sourceChat) ?? sourceChat;
+        }
+
         beginChatPending(chatId, messageId, {
             characterId: generationCharacter.id,
             name: generationCharacter.data.name,
         });
         const abortController = beginGenerationController(chatId, {
+            sourceChat: generationChat,
             swipeMessageId: streamGeneration ? messageId : undefined,
         });
         let streamedContent = "";
         const streamedImages: string[] = [];
 
         try {
-            if (streamGeneration) {
-                startStreamingMessageDraft(messageId);
-                appendEmptySwipe(messageId, sourceChat);
-            }
-
             const result = await generateWithPreset(
                 historyBeforeTarget,
                 generationCharacter,
@@ -581,13 +612,13 @@ export function useChatSession({
                 return;
             }
 
-            const targetChat = currentOrSourceChat(sourceChat);
+            const targetChat = currentOrSourceChat(generationChat);
             if (streamGeneration) {
                 const resultAttachments = await saveGeneratedImageAttachments(
                     chatId,
                     result.images?.length ? result.images : streamedImages,
                 );
-                updateMessageContent(
+                let completedChat = updateMessageContent(
                     messageId,
                     result.message,
                     undefined,
@@ -596,16 +627,21 @@ export function useChatSession({
                     result.toolActivities,
                     result.timeline,
                     result.pendingToolContinuation ?? null,
+                    targetChat,
                 );
                 if (resultAttachments.length) {
-                    updateMessageAttachments(messageId, resultAttachments);
+                    completedChat = updateMessageAttachments(
+                        messageId,
+                        resultAttachments,
+                        completedChat,
+                    );
                 }
             } else {
                 const resultAttachments = await saveGeneratedImageAttachments(
                     chatId,
                     result.images ?? [],
                 );
-                appendSwipe(
+                const completedChat = appendSwipe(
                     messageId,
                     result.message,
                     undefined,
@@ -617,7 +653,7 @@ export function useChatSession({
                     result.pendingToolContinuation,
                 );
                 if (resultAttachments.length) {
-                    updateMessageAttachments(messageId, resultAttachments);
+                    updateMessageAttachments(messageId, resultAttachments, completedChat);
                 }
             }
         } catch (error) {
@@ -627,9 +663,19 @@ export function useChatSession({
             }
 
             const errorMessage = formatInterruptedGeneration(streamedContent, error);
-            const targetChat = currentOrSourceChat(sourceChat);
+            const targetChat = currentOrSourceChat(generationChat);
             if (streamGeneration) {
-                updateMessageContent(messageId, errorMessage, "error");
+                updateMessageContent(
+                    messageId,
+                    errorMessage,
+                    "error",
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    targetChat,
+                );
             } else {
                 appendSwipe(
                     messageId,
@@ -724,6 +770,7 @@ export function useChatSession({
             name: generationCharacter.data.name,
         });
         const abortController = beginGenerationController(chatId, {
+            sourceChat,
             swipeMessageId: streamGeneration ? messageId : undefined,
         });
 
@@ -774,6 +821,7 @@ export function useChatSession({
                 [...priorActivities, ...(result.toolActivities ?? [])],
                 [...priorTimeline, ...(result.timeline ?? [])],
                 result.pendingToolContinuation ?? null,
+                currentOrSourceChat(sourceChat),
             );
         } catch (error) {
             if (!isAbortError(error)) {
@@ -781,6 +829,12 @@ export function useChatSession({
                     messageId,
                     formatInterruptedGeneration(streamedContent, error),
                     "error",
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    currentOrSourceChat(sourceChat),
                 );
             }
         } finally {
@@ -948,32 +1002,33 @@ export function useChatSession({
         chatId: string,
         activeGeneration = getActiveGeneration(chatId),
     ) {
-        const sourceChat = latestChatRef.current;
+        const sourceChat = activeGeneration?.sourceChat ?? latestChatRef.current;
 
         if (!sourceChat || sourceChat.id !== chatId || !activeGeneration) {
             return;
         }
+        const targetChat = currentOrSourceChat(sourceChat);
 
         if (activeGeneration.streamingMessageId) {
-            const message = sourceChat.messages.find(
+            const message = targetChat.messages.find(
                 (item) => item.id === activeGeneration.streamingMessageId,
             );
 
-            if (message && commitStreamingDraft(message.id, sourceChat)) {
+            if (message && commitStreamingDraft(message.id, targetChat)) {
                 return;
             }
 
             if (message && isActiveMessageSwipeEmpty(message)) {
-                removeMessage(message.id, sourceChat);
+                removeMessage(message.id, targetChat);
             }
         }
 
         if (activeGeneration.swipeMessageId) {
-            const message = sourceChat.messages.find(
+            const message = targetChat.messages.find(
                 (item) => item.id === activeGeneration.swipeMessageId,
             );
 
-            if (message && commitStreamingDraft(message.id, sourceChat)) {
+            if (message && commitStreamingDraft(message.id, targetChat)) {
                 return;
             }
 
@@ -982,7 +1037,7 @@ export function useChatSession({
                 message.swipes.length > 1 &&
                 isActiveMessageSwipeEmpty(message)
             ) {
-                removeActiveSwipe(message.id, sourceChat);
+                removeActiveSwipe(message.id, targetChat);
             }
         }
     }
@@ -1017,6 +1072,7 @@ export function useChatSession({
             updateMessageAttachments(
                 messageId,
                 attachments.filter((attachment) => !deletedIds.has(attachment.id)),
+                currentOrSourceChat(sourceChat),
             );
         }
 
@@ -1051,6 +1107,7 @@ export function useChatSession({
             updateMessageAttachments(
                 messageId,
                 attachments.filter((attachment) => !deletedIds.has(attachment.id)),
+                currentOrSourceChat(sourceChat),
             );
         }
 

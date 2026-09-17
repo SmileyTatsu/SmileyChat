@@ -1,4 +1,5 @@
 import { useRef, useState } from "preact/hooks";
+import type { ChatSession } from "#frontend/types";
 
 export type ActiveGeneratingSpeaker = {
     characterId: string;
@@ -7,6 +8,7 @@ export type ActiveGeneratingSpeaker = {
 
 export type ActiveGeneration = {
     controller: AbortController;
+    sourceChat?: ChatSession;
     streamingMessageId?: string;
     swipeMessageId?: string;
 };

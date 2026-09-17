@@ -3,6 +3,119 @@ import { describe, expect, test } from "bun:test";
 import type { ChatSession, Message } from "#frontend/types";
 
 import { formatInterruptedGeneration, isMessageAuthorUnmuted } from "./use-chat-session";
+import { resolveLatestChatSession } from "./use-message-operations";
+
+test("uses a newer background session snapshot over a stale source session", () => {
+    const deletedMessage: Message = {
+        id: "message-deleted",
+        author: "You",
+        role: "user",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        activeSwipeIndex: 0,
+        swipes: [
+            {
+                id: "swipe-deleted",
+                content: "Delete me.",
+                createdAt: "2026-01-01T00:00:00.000Z",
+            },
+        ],
+    };
+    const source: ChatSession = {
+        id: "chat-background",
+        version: 1,
+        characterId: "char-luna",
+        defaultTitle: "Chat with Luna",
+        mode: "chat",
+        messages: [deletedMessage],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const generatedMessage: Message = {
+        id: "message-generated",
+        author: "Luna",
+        role: "character",
+        createdAt: "2026-01-01T00:00:01.000Z",
+        activeSwipeIndex: 0,
+        swipes: [
+            {
+                id: "swipe-generated",
+                content: "Generated while the chat was in the background.",
+                createdAt: "2026-01-01T00:00:01.000Z",
+            },
+        ],
+    };
+    const latestBackgroundSession: ChatSession = {
+        ...source,
+        messages: [deletedMessage, generatedMessage],
+        updatedAt: "2026-01-01T00:00:01.000Z",
+    };
+
+    const resolved = resolveLatestChatSession(
+        source,
+        undefined,
+        new Map([[source.id, latestBackgroundSession]]),
+    );
+
+    expect(resolved).toBe(latestBackgroundSession);
+    expect(
+        resolved.messages.filter((message) => message.id !== deletedMessage.id),
+    ).toEqual([generatedMessage]);
+});
+
+test("appends a background generation after a deleted message without resurrecting it", () => {
+    const deletedMessage: Message = {
+        id: "message-deleted",
+        author: "You",
+        role: "user",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        activeSwipeIndex: 0,
+        swipes: [
+            {
+                id: "swipe-deleted",
+                content: "Delete me.",
+                createdAt: "2026-01-01T00:00:00.000Z",
+            },
+        ],
+    };
+    const source: ChatSession = {
+        id: "chat-background",
+        version: 1,
+        characterId: "char-luna",
+        defaultTitle: "Chat with Luna",
+        mode: "chat",
+        messages: [deletedMessage],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const generatedMessage: Message = {
+        id: "message-generated",
+        author: "Luna",
+        role: "character",
+        createdAt: "2026-01-01T00:00:01.000Z",
+        activeSwipeIndex: 0,
+        swipes: [
+            {
+                id: "swipe-generated",
+                content: "This must not restore the deleted message.",
+                createdAt: "2026-01-01T00:00:01.000Z",
+            },
+        ],
+    };
+    const postDeletionSession: ChatSession = {
+        ...source,
+        messages: [],
+        updatedAt: "2026-01-01T00:00:01.000Z",
+    };
+
+    const target = resolveLatestChatSession(
+        source,
+        undefined,
+        new Map([[source.id, postDeletionSession]]),
+    );
+    const completedMessages = [...target.messages, generatedMessage];
+
+    expect(completedMessages).toEqual([generatedMessage]);
+});
 
 describe("isMessageAuthorUnmuted", () => {
     test("returns true for non-group chats", () => {

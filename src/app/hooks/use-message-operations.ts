@@ -15,6 +15,7 @@ import {
     hasStreamingMessageDraftValue,
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
+import { deleteLocalChatAttachments } from "./chat-session-attachments";
 import { getMessageUpdateMiddlewares } from "#frontend/lib/plugins/registry";
 import { clientLogger } from "#frontend/lib/logging/client-logger";
 import type { MessageUpdateKind } from "#frontend/lib/plugins/types";
@@ -42,6 +43,16 @@ type UseMessageOperationsOptions = {
     ) => string;
 };
 
+export function resolveLatestChatSession(
+    sourceChat: ChatSession,
+    activeChat: ChatSession | undefined,
+    sessionsById: ReadonlyMap<string, ChatSession>,
+) {
+    return activeChat?.id === sourceChat.id
+        ? activeChat
+        : (sessionsById.get(sourceChat.id) ?? sourceChat);
+}
+
 export function useMessageOperations({
     character,
     latestChatRef,
@@ -49,13 +60,15 @@ export function useMessageOperations({
     persona,
     resolveChatMacros,
 }: UseMessageOperationsOptions) {
+    const latestSessionsByIdRef = useRef(new Map<string, ChatSession>());
+
     function updateChatMessages(
         messages: Message[],
         sourceChat = latestChatRef.current,
         messageUpdateKind?: MessageUpdateKind,
     ) {
         if (!sourceChat) {
-            return;
+            return undefined;
         }
 
         const nextMessages = messageUpdateKind
@@ -71,13 +84,17 @@ export function useMessageOperations({
         if (latestChatRef.current?.id === nextChat.id) {
             latestChatRef.current = nextChat;
         }
+        latestSessionsByIdRef.current.set(nextChat.id, nextChat);
         onChatChange(nextChat);
+        return nextChat;
     }
 
     function currentOrSourceChat(sourceChat: ChatSession) {
-        return latestChatRef.current?.id === sourceChat.id
-            ? latestChatRef.current
-            : sourceChat;
+        return resolveLatestChatSession(
+            sourceChat,
+            latestChatRef.current,
+            latestSessionsByIdRef.current,
+        );
     }
 
     async function injectMessage(
@@ -120,16 +137,38 @@ export function useMessageOperations({
         );
     }
 
-    function deleteMessage(messageId: string) {
+    async function deleteMessage(messageId: string) {
         const sourceChat = latestChatRef.current;
 
         if (!sourceChat) {
             return;
         }
 
+        const message = sourceChat.messages.find((item) => item.id === messageId);
+
+        if (message) {
+            const attachments = Array.from(
+                new Map(
+                    message.swipes
+                        .flatMap((swipe) => swipe.attachments ?? [])
+                        .map((attachment) => [attachment.url, attachment]),
+                ).values(),
+            );
+            const result = await deleteLocalChatAttachments(sourceChat.id, attachments);
+
+            if (result.failedAttachments.length) {
+                clientLogger.warn("Could not delete message attachments", {
+                    chatId: sourceChat.id,
+                    messageId,
+                    failedCount: result.failedAttachments.length,
+                });
+            }
+        }
+
+        const targetChat = currentOrSourceChat(sourceChat);
         updateChatMessages(
-            sourceChat.messages.filter((message) => message.id !== messageId),
-            sourceChat,
+            targetChat.messages.filter((message) => message.id !== messageId),
+            targetChat,
         );
     }
 
@@ -213,7 +252,7 @@ export function useMessageOperations({
     }
 
     function appendEmptySwipe(messageId: string, sourceChat: ChatSession) {
-        updateChatMessages(
+        return updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId ? appendMessageSwipe(message, "") : message,
             ),
@@ -237,7 +276,7 @@ export function useMessageOperations({
             return;
         }
 
-        updateChatMessages(
+        return updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId
                     ? appendMessageSwipe(
@@ -268,14 +307,13 @@ export function useMessageOperations({
         pendingToolContinuation?:
             | Message["swipes"][number]["pendingToolContinuation"]
             | null,
+        sourceChat = latestChatRef.current,
     ) {
-        const sourceChat = latestChatRef.current;
-
         if (!sourceChat) {
-            return;
+            return undefined;
         }
 
-        updateChatMessages(
+        const nextChat = updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId
                     ? (() => {
@@ -301,20 +339,20 @@ export function useMessageOperations({
             "update",
         );
         finalizeStreamingMessageDraft(messageId);
+        return nextChat;
     }
 
     function updateMessageReasoning(
         messageId: string,
         reasoning: string,
         reasoningDetails?: unknown,
+        sourceChat = latestChatRef.current,
     ) {
-        const sourceChat = latestChatRef.current;
-
         if (!sourceChat) {
-            return;
+            return undefined;
         }
 
-        updateChatMessages(
+        const nextChat = updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId
                     ? updateActiveSwipeReasoning(message, reasoning, reasoningDetails)
@@ -324,16 +362,19 @@ export function useMessageOperations({
             "update",
         );
         finalizeStreamingMessageDraft(messageId);
+        return nextChat;
     }
 
-    function updateMessageAttachments(messageId: string, attachments: ChatAttachment[]) {
-        const sourceChat = latestChatRef.current;
-
+    function updateMessageAttachments(
+        messageId: string,
+        attachments: ChatAttachment[],
+        sourceChat = latestChatRef.current,
+    ) {
         if (!sourceChat) {
-            return;
+            return undefined;
         }
 
-        updateChatMessages(
+        const nextChat = updateChatMessages(
             sourceChat.messages.map((message) =>
                 message.id === messageId
                     ? updateActiveSwipeAttachments(message, attachments)
@@ -343,6 +384,7 @@ export function useMessageOperations({
             "update",
         );
         finalizeStreamingMessageDraft(messageId);
+        return nextChat;
     }
 
     function removeMessage(messageId: string, sourceChat = latestChatRef.current) {
@@ -493,3 +535,4 @@ function applyStreamingDraftToMessage(
 function finalizeStreamingMessageDraft(messageId: string) {
     requestAnimationFrame(() => clearStreamingMessageDraft(messageId));
 }
+import { useRef } from "preact/hooks";

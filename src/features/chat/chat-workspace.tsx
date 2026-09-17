@@ -89,7 +89,10 @@ type ChatWorkspaceProps = {
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onRemoveAllAttachments: (messageId: string) => void;
     onAbortGeneration: () => void;
-    onSendMessage: (draft: string, files?: File[]) => void | Promise<void>;
+    onSendMessage: (
+        draft: string,
+        files?: File[],
+    ) => boolean | void | Promise<boolean | void>;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
     pluginComposerState?: PluginComposerStatePatch;
