@@ -51,6 +51,8 @@ export type MessageToolResult = {
     name: string;
     content: string;
     isError?: boolean;
+    imageContext?: string;
+    suppressHistoryProtocol?: boolean;
 };
 
 export type MessageToolActivity = {

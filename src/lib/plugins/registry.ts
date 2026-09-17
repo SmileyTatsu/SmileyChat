@@ -27,6 +27,7 @@ import type {
     PluginComposerStatePatch,
     PluginComposerAction,
     PluginComposerOption,
+    PluginComposerCommand,
     PluginAppDataChangedEvent,
     PluginConnectionProvider,
     PluginEventsApi,
@@ -86,6 +87,7 @@ const modalInstances: Array<Owned<PluginModalInstance>> = [];
 const macroResolvers = new Map<string, Owned<PluginMacroResolver>>();
 const connectionProviders = new Map<string, Owned<PluginConnectionProvider>>();
 const pluginTools = new Map<string, Owned<PluginTool>>();
+const composerCommands = new Map<string, Owned<PluginComposerCommand>>();
 const enabledPlugins = new Map<string, boolean>();
 const listeners = new Set<Listener>();
 const snapshotListeners = new Set<OwnedSnapshotListener>();
@@ -100,6 +102,7 @@ let appActionHandlers: Partial<PluginAppActionHandlers> = {};
 let draftActionHandlers: Partial<Pick<PluginActionsApi, "insertDraft" | "setDraft">> = {};
 let modelHandlers: Partial<PluginModelApi> = {};
 let presetHandlers: Partial<PluginPresetHandlers> = {};
+let connectionAccessHandlers: Partial<PluginConnectionAccessHandlers> = {};
 
 type PluginAppActionHandlers = Pick<
     PluginActionsApi,
@@ -128,6 +131,13 @@ type PluginAppActionHandlers = Pick<
 };
 type PluginPresetHandlers = {
     resolveMacros: (text: string, options?: PluginMacroResolveOptions) => string;
+};
+type PluginConnectionAccessHandlers = {
+    getProfile: (profileId: string) => ConnectionProfile | undefined;
+};
+
+type PluginApiCapabilities = {
+    coreConnectionSecrets?: boolean;
 };
 
 export function subscribeToPluginRegistry(listener: Listener) {
@@ -257,6 +267,7 @@ export function deactivatePlugin(pluginId: string) {
     removeOwnedMapValues(macroResolvers, pluginId);
     removeOwnedMapValues(connectionProviders, pluginId);
     removeOwnedMapValues(pluginTools, pluginId);
+    removeOwnedMapValues(composerCommands, pluginId);
     characterPresenceOverrides.delete(pluginId);
     composerStateOverrides.delete(pluginId);
     pluginStyles.delete(pluginId);
@@ -510,6 +521,11 @@ export function getPluginTool(name: string, snapshot = latestSnapshot) {
         : undefined;
 }
 
+export function getPluginComposerCommand(name: string) {
+    const command = composerCommands.get(name.toLowerCase());
+    return command && isPluginEnabled(command.pluginId) ? command.value : undefined;
+}
+
 export function setPluginAppActionHandlers(handlers: Partial<PluginAppActionHandlers>) {
     appActionHandlers = handlers;
 }
@@ -526,6 +542,13 @@ export function setPluginModelHandlers(handlers: Partial<PluginModelApi>) {
 
 export function setPluginPresetHandlers(handlers: Partial<PluginPresetHandlers>) {
     presetHandlers = handlers;
+}
+
+export function setPluginConnectionAccessHandlers(
+    handlers: Partial<PluginConnectionAccessHandlers>,
+) {
+    connectionAccessHandlers = handlers;
+    notifyRegistryChanged();
 }
 
 export function getPluginCharacterPresence(): PluginCharacterPresence {
@@ -567,6 +590,7 @@ export function createPluginApi(
     storage: PluginStorageApi,
     preactH: typeof h,
     network: PluginNetworkApi,
+    capabilities: PluginApiCapabilities = {},
 ): SmileyPluginApi {
     return {
         plugin: manifest,
@@ -852,6 +876,20 @@ export function createPluginApi(
                     notifyRegistryChanged();
                 }
             },
+            hasApiKey(profileId) {
+                requireCoreConnectionSecretAccess(manifest, capabilities);
+                const profile = connectionAccessHandlers.getProfile?.(profileId);
+                const apiKey =
+                    profile && "apiKey" in profile.config
+                        ? profile.config.apiKey
+                        : undefined;
+                return typeof apiKey === "string" && Boolean(apiKey.trim());
+            },
+            getProfileWithSecrets(profileId) {
+                requireCoreConnectionSecretAccess(manifest, capabilities);
+                const profile = connectionAccessHandlers.getProfile?.(profileId);
+                return profile ? structuredClone(profile) : undefined;
+            },
         },
         formatting: {
             formatInstructPrompt,
@@ -871,6 +909,33 @@ export function createPluginApi(
                     modelName,
                     formatting,
                 );
+            },
+        },
+        commands: {
+            register(command) {
+                requireDeclaredPluginPermission(manifest, "commands:register");
+                const name = command.name.trim().toLowerCase();
+                if (!/^[a-z0-9_-]{1,32}$/.test(name)) {
+                    throw new Error(
+                        "Plugin commands need a 1-32 character command name.",
+                    );
+                }
+                if (!command.description.trim()) {
+                    throw new Error(`Plugin command "/${name}" needs a description.`);
+                }
+                const value = { ...command, name };
+                const registered = registerOwnedMapValue(composerCommands, name, {
+                    pluginId: manifest.id,
+                    value,
+                });
+                if (registered) notifyRegistryChanged();
+                return () => {
+                    const current = composerCommands.get(name);
+                    if (current?.pluginId === manifest.id) {
+                        composerCommands.delete(name);
+                        notifyRegistryChanged();
+                    }
+                };
             },
         },
         tools: {
@@ -916,6 +981,18 @@ export function createPluginApi(
         storage,
         events: pluginEvents(manifest),
     };
+}
+
+function requireCoreConnectionSecretAccess(
+    manifest: PluginManifest,
+    capabilities: PluginApiCapabilities,
+) {
+    requireDeclaredPluginPermission(manifest, "connections:secrets");
+    if (manifest.source !== "core" || capabilities.coreConnectionSecrets !== true) {
+        throw new Error(
+            `${manifest.name} cannot access connection secrets because it is not a bundled core extension.`,
+        );
+    }
 }
 
 function pluginLogger(manifest: PluginManifest): PluginLoggerApi {

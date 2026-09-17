@@ -83,6 +83,7 @@ async function loadBundledRuntimePlugin(
                 createPluginStorage(manifest.id),
                 h,
                 createPluginNetwork(manifest.id),
+                { coreConnectionSecrets: true },
             ),
         );
 

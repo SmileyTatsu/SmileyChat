@@ -521,24 +521,31 @@ function toAnchoredHistoryMessages(
 ): AnchoredPromptMessage[] {
     const activeSwipe = getActiveSwipe(message);
     const activities = activeSwipe?.toolActivities;
+    const replayableActivities = activities?.filter(
+        (activity) =>
+            activity.result.suppressHistoryProtocol !== true &&
+            activity.call.name !== "generate_image",
+    );
     const pendingContinuation = activeSwipe?.pendingToolContinuation;
 
-    if (activities?.length || pendingContinuation?.toolCalls.length) {
+    if (replayableActivities?.length || pendingContinuation?.toolCalls.length) {
         return [
-            ...(activities?.length
+            ...(replayableActivities?.length
                 ? [
                       {
                           message: {
                               role: promptRoleForMessage(message),
                               content: "",
                               speakerName: message.author,
-                              toolCalls: activities.map((activity) => activity.call),
+                              toolCalls: replayableActivities.map(
+                                  (activity) => activity.call,
+                              ),
                           },
                           messageId: message.id,
                           promptId,
                           source: "history" as const,
                       },
-                      ...activities.map((activity) => ({
+                      ...replayableActivities.map((activity) => ({
                           message: {
                               role: "user" as const,
                               content: activity.result.content,
@@ -627,14 +634,34 @@ function messageContentWithAttachments(
 ): ChatGenerationMessage["content"] {
     const content = messageTextForGeneration(message, context);
     const attachments = getMessageAttachments(message);
+    const generatedImageContexts = getActiveSwipe(message)
+        ?.toolActivities?.filter(
+            (activity) =>
+                Boolean(activity.result.imageContext?.trim()) ||
+                activity.result.name === "generate_image",
+        )
+        .map(
+            (activity) =>
+                activity.result.imageContext?.trim() ||
+                "Generated image; detailed historical tags are unavailable.",
+        );
 
     if (attachments.length === 0) {
         return content;
     }
 
-    return [
-        ...(content ? [{ type: "text" as const, text: content }] : []),
-        ...attachments.map((attachment) =>
+    const generatedImageContext = generatedImageContexts?.length
+        ? generatedImageContexts
+              .map((value) => `[Generated image context: ${value}]`)
+              .join("\n")
+        : "";
+    const textContent = [content, generatedImageContext].filter(Boolean).join("\n\n");
+    const attachmentParts = attachments.flatMap((attachment) => {
+        if (attachment.type === "image" && generatedImageContext) {
+            return [];
+        }
+
+        return [
             attachment.type === "image"
                 ? {
                       type: "image_url" as const,
@@ -653,7 +680,16 @@ function messageContentWithAttachments(
                               : {}),
                       },
                   },
-        ),
+        ];
+    });
+
+    if (attachmentParts.length === 0) {
+        return textContent;
+    }
+
+    return [
+        ...(textContent ? [{ type: "text" as const, text: textContent }] : []),
+        ...attachmentParts,
     ];
 }
 

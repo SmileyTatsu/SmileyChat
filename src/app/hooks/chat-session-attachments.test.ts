@@ -11,6 +11,7 @@ describe("generatedImageUrlToFile", () => {
 
         expect(file.name).toBe("generated-image-1.png");
         expect(file.type).toBe("image/png");
+        expect(file.size).toBe(8);
     });
 
     test("rejects unsafe schemes and SVG data URLs", async () => {
@@ -23,5 +24,11 @@ describe("generatedImageUrlToFile", () => {
                 0,
             ),
         ).rejects.toThrow("unsupported URL scheme");
+    });
+
+    test("reports malformed base64 image data", async () => {
+        await expect(
+            generatedImageUrlToFile("data:image/png;base64,%%%", 0),
+        ).rejects.toThrow("invalid base64 image data");
     });
 });

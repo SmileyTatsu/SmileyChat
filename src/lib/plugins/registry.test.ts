@@ -15,6 +15,7 @@ import {
     setPluginModelHandlers,
     setPluginPresetHandlers,
     setPluginAppActionHandlers,
+    setPluginConnectionAccessHandlers,
     setPluginEnabledState,
     setPluginSnapshot,
     subscribeToPluginRegistry,
@@ -34,6 +35,7 @@ let idCounter = 0;
 afterEach(() => {
     console.warn = originalWarn;
     setPluginModelHandlers({});
+    setPluginConnectionAccessHandlers({});
 });
 
 describe("plugin registry runtime isolation", () => {
@@ -145,6 +147,40 @@ describe("plugin registry runtime isolation", () => {
 
         expect(getPluginConnectionProviderOwnerId(providerId)).toBe(firstPluginId);
         expect(String(warnings[0]?.[0])).toContain("duplicate plugin key");
+    });
+
+    test("connection secrets are available only to explicitly capable core extensions", () => {
+        const storedProfile = {
+            id: "novelai-profile",
+            name: "NovelAI Images",
+            provider: "novelai",
+            config: { apiKey: "secret-token" },
+        } as never;
+        setPluginConnectionAccessHandlers({
+            getProfile: (profileId) =>
+                profileId === "novelai-profile" ? storedProfile : undefined,
+        });
+
+        const coreManifest = pluginManifest("core-image", ["connections:secrets"]);
+        coreManifest.source = "core";
+        const coreApi = createPluginApi(
+            coreManifest,
+            storage,
+            (() => null) as never,
+            network,
+            { coreConnectionSecrets: true },
+        );
+        const returnedProfile =
+            coreApi.connections.getProfileWithSecrets("novelai-profile");
+
+        expect(coreApi.connections.hasApiKey("novelai-profile")).toBe(true);
+        expect(returnedProfile).toEqual(storedProfile);
+        expect(returnedProfile).not.toBe(storedProfile);
+
+        const userApi = pluginApi("user-image", ["connections:secrets"]);
+        expect(() => userApi.connections.hasApiKey("novelai-profile")).toThrow(
+            "not a bundled core extension",
+        );
     });
 
     test("output middleware registrations run by descending priority", async () => {

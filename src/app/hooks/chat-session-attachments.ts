@@ -4,6 +4,8 @@ import {
     localChatAttachmentFileName,
 } from "#frontend/lib/chat-attachments";
 import type { ChatAttachment } from "#frontend/types";
+import { clientLogger } from "#frontend/lib/logging/client-logger";
+import { messageFromError } from "#frontend/lib/common/errors";
 
 const maxGeneratedImageBytes = 25 * 1024 * 1024;
 
@@ -23,7 +25,7 @@ export async function generatedImageUrlsToLocalAttachments(
     const uniqueUrls = Array.from(new Set(urls.filter(Boolean)));
 
     if (uniqueUrls.length === 0) {
-        return { attachments: [], failedCount: 0 };
+        return { attachments: [], failedCount: 0, failures: [] };
     }
 
     const results = await Promise.allSettled(
@@ -33,11 +35,26 @@ export async function generatedImageUrlsToLocalAttachments(
         }),
     );
 
+    const failures = results.flatMap((result, index) =>
+        result.status === "rejected"
+            ? [{ index, message: messageFromError(result.reason) }]
+            : [],
+    );
+
+    for (const failure of failures) {
+        clientLogger.error("Generated image could not be saved locally", {
+            chatId,
+            imageNumber: failure.index + 1,
+            error: failure.message,
+        });
+    }
+
     return {
         attachments: results.flatMap((result) =>
             result.status === "fulfilled" ? result.value : [],
         ),
-        failedCount: results.filter((result) => result.status === "rejected").length,
+        failedCount: failures.length,
+        failures,
     };
 }
 
@@ -72,6 +89,11 @@ export async function generatedImageUrlToFile(url: string, index: number) {
         throw new Error(`generated image ${index + 1} uses an unsupported URL scheme`);
     }
 
+    const dataImage = decodeBase64DataImage(url, index);
+    if (dataImage) {
+        return imageBlobToFile(dataImage.blob, dataImage.mimeType, index);
+    }
+
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -95,12 +117,43 @@ export async function generatedImageUrlToFile(url: string, index: number) {
         throw new Error(`generated image ${index + 1} is not a supported image type`);
     }
 
+    return imageBlobToFile(blob, mimeType, index);
+}
+
+function decodeBase64DataImage(url: string, index: number) {
+    if (!url.startsWith("data:")) return undefined;
+    const match = /^data:([^;,]+);base64,([\s\S]*)$/i.exec(url);
+    if (!match?.[1] || match[2] === undefined) {
+        throw new Error(`generated image ${index + 1} has invalid base64 image data`);
+    }
+
+    const mimeType = normalizedMimeType(match[1]);
+    if (!isSafeGeneratedImageMimeType(mimeType)) {
+        throw new Error(`generated image ${index + 1} is not a supported image type`);
+    }
+    const estimatedBytes = Math.floor((match[2].length * 3) / 4);
+    if (estimatedBytes > maxGeneratedImageBytes) {
+        throw new Error(`generated image ${index + 1} is too large`);
+    }
+
+    let binary: string;
+    try {
+        binary = atob(match[2]);
+    } catch {
+        throw new Error(`generated image ${index + 1} has invalid base64 image data`);
+    }
+    const bytes = new Uint8Array(binary.length);
+    for (let offset = 0; offset < binary.length; offset += 1) {
+        bytes[offset] = binary.charCodeAt(offset);
+    }
+    return { blob: new Blob([bytes], { type: mimeType }), mimeType };
+}
+
+function imageBlobToFile(blob: Blob, mimeType: string, index: number) {
     return new File(
         [blob],
         `generated-image-${index + 1}.${extensionForMimeType(mimeType)}`,
-        {
-            type: mimeType,
-        },
+        { type: mimeType },
     );
 }
 

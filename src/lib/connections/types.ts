@@ -39,6 +39,12 @@ export type ToolResult = {
     name: string;
     content: string;
     isError?: boolean;
+    /** Image URLs produced by a local plugin tool and attached to the final reply. */
+    images?: string[];
+    /** Textual context replayed instead of tool-produced image bytes on later turns. */
+    imageContext?: string;
+    /** Do not replay this completed tool call/result protocol in later prompts. */
+    suppressHistoryProtocol?: boolean;
 };
 
 export type ToolActivity = {

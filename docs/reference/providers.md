@@ -101,6 +101,8 @@ Defaults and endpoints:
 
 SmileyChat utilizes the NovelAI `/oa/v1/chat/completions` endpoint for instruct-based models to ensure instruct formatting templates are automatically applied by the NovelAI backend. For raw text models like Erato or Kayra, it uses the `/ai/generate` API with the shared text-completion formatting layer (supporting Story Strings, Story anchor aliases, and budgeting against serialized prompts) and applies magic `logit_bias` arrays to automatically ban unwanted artifacts like dinkus and asterisms. Small text files are inlined directly into the prompt as NovelAI has no general files API.
 
+NovelAI image generation is provided separately by the optional bundled Image Generation core extension. It calls `POST https://image.novelai.net/ai/generate-image`, reuses a NovelAI connection token, and stores returned images as local chat attachments. See [NovelAI Image Generation](../guides/image-generation.md) for setup, prompt assembly, supported controls, automatic tool policy, and text-only generated-image history.
+
 ## xAI
 
 Use the xAI provider to access Grok directly.

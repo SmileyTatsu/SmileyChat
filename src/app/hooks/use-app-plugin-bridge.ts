@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { ChatGenerationResult } from "#frontend/lib/connections/types";
+import type { ConnectionSettings } from "#frontend/lib/connections/config";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import {
     getPluginCharacterPresence,
@@ -8,6 +9,7 @@ import {
     getPluginSnapshot,
     isPluginEnabled,
     setPluginAppActionHandlers,
+    setPluginConnectionAccessHandlers,
     setPluginModelHandlers,
     setPluginPresetHandlers,
     setPluginSnapshot,
@@ -49,6 +51,7 @@ type ChatSessionActions = {
             includeInPrompt?: boolean;
             pluginId: string;
             promptRole?: "assistant" | "user" | "system" | "none";
+            files?: File[];
         },
     ) => Promise<void>;
     sendMessage: (draft: string, files?: File[]) => Promise<boolean>;
@@ -59,6 +62,7 @@ type MutableRef<T> = {
 };
 
 type UseAppPluginBridgeOptions = {
+    connectionSettingsRef: MutableRef<ConnectionSettings>;
     getModelContextBudgetRef: MutableRef<
         (request?: PluginModelContextBudgetRequest) => number
     >;
@@ -82,6 +86,7 @@ type UseAppPluginBridgeOptions = {
 
 export function useAppPluginBridge({
     chatSessionRef,
+    connectionSettingsRef,
     getModelContextBudgetRef,
     generateModelResponseRef,
     loadCharacterCollection,
@@ -237,6 +242,17 @@ export function useAppPluginBridge({
         patchPersona,
         selectCharacterRef,
     ]);
+
+    useEffect(() => {
+        setPluginConnectionAccessHandlers({
+            getProfile: (profileId) =>
+                connectionSettingsRef.current.profiles.find(
+                    (profile) => profile.id === profileId,
+                ),
+        });
+
+        return () => setPluginConnectionAccessHandlers({});
+    }, [connectionSettingsRef]);
 
     useEffect(() => {
         setPluginModelHandlers({

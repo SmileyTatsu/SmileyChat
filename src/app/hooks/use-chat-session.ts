@@ -984,8 +984,11 @@ export function useChatSession({
             const result = await generatedImageUrlsToLocalAttachments(chatId, urls);
 
             if (result.failedCount > 0) {
+                const reasons = result.failures
+                    .map((failure) => `Image ${failure.index + 1}: ${failure.message}`)
+                    .join("; ");
                 setChatError(
-                    `${result.failedCount} generated ${result.failedCount === 1 ? "image" : "images"} could not be saved locally.`,
+                    `${result.failedCount} generated ${result.failedCount === 1 ? "image" : "images"} could not be saved locally.${reasons ? ` ${reasons}` : ""}`,
                 );
             }
 

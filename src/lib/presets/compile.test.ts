@@ -184,6 +184,106 @@ describe("compilePresetMessages", () => {
         ]);
     });
 
+    test("replays tool-generated image context as text instead of image bytes", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const generated = {
+            ...message("m1", "character", "Here is the selfie."),
+            swipes: [
+                {
+                    id: "m1-swipe",
+                    content: "Here is the selfie.",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    attachments: [
+                        {
+                            id: "generated-image",
+                            type: "image" as const,
+                            url: "/api/chats/chat-1/attachments/generated.png",
+                        },
+                    ],
+                    toolActivities: [
+                        {
+                            call: {
+                                id: "call-image",
+                                name: "generate_image",
+                                argumentsText: "{}",
+                            },
+                            result: {
+                                toolCallId: "call-image",
+                                name: "generate_image",
+                                content: "Generated 1 NovelAI image.",
+                                imageContext:
+                                    "NovelAI prompt tags: nejire hadou, selfie, indoors",
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const compiled = compilePresetMessages(
+            preset,
+            context({ messages: [generated] }),
+        );
+        const serialized = JSON.stringify(compiled);
+
+        expect(serialized).toContain("NovelAI prompt tags");
+        expect(serialized).not.toContain("image_url");
+        expect(serialized).not.toContain("generated.png");
+        expect(serialized).not.toContain("Generated 1 NovelAI image");
+        expect(serialized).not.toContain("toolCalls");
+        expect(serialized).not.toContain("toolResult");
+    });
+
+    test("does not replay legacy generate_image attachments without saved tags", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const generated = {
+            ...message("m1", "character", "An older generated image."),
+            swipes: [
+                {
+                    id: "m1-swipe",
+                    content: "An older generated image.",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    attachments: [
+                        {
+                            id: "legacy-image",
+                            type: "image" as const,
+                            url: "/api/chats/chat-1/attachments/legacy.png",
+                        },
+                    ],
+                    toolActivities: [
+                        {
+                            call: {
+                                id: "call-image",
+                                name: "generate_image",
+                                argumentsText: "{}",
+                            },
+                            result: {
+                                toolCallId: "call-image",
+                                name: "generate_image",
+                                content: "Generated 1 NovelAI image.",
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const serialized = JSON.stringify(
+            compilePresetMessages(preset, context({ messages: [generated] })),
+        );
+
+        expect(serialized).toContain("historical tags are unavailable");
+        expect(serialized).not.toContain("image_url");
+        expect(serialized).not.toContain("legacy.png");
+        expect(serialized).not.toContain("Generated 1 NovelAI image");
+        expect(serialized).not.toContain("toolCalls");
+        expect(serialized).not.toContain("toolResult");
+    });
+
     test("keeps a paused tool-call turn after completed tool activities", () => {
         const preset = presetWithPrompts([
             prompt(dynamicPromptIds.chatHistory, "Chat History", ""),

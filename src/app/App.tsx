@@ -292,9 +292,7 @@ export function App() {
         };
     }, []);
 
-    useEffect(() => {
-        latestConnectionSettingsRef.current = connectionSettings;
-    }, [connectionSettings]);
+    latestConnectionSettingsRef.current = connectionSettings;
 
     useEffect(() => {
         const profile = getActiveConnectionProfile(connectionSettings);
@@ -351,6 +349,7 @@ export function App() {
     const { characterPresence, pluginComposerState, isLorebooksPluginEnabled } =
         useAppPluginBridge({
             chatSessionRef: latestChatSessionForPluginsRef,
+            connectionSettingsRef: latestConnectionSettingsRef,
             getModelContextBudgetRef: latestGetModelContextBudgetForPluginsRef,
             generateModelResponseRef: latestGenerateModelForPluginsRef,
             loadCharacterCollection,

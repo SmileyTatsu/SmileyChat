@@ -28,6 +28,7 @@ SmileyChat is a local-first frontend application designed for interacting with A
 - **Personas & Dialogue Highlights**: Create and manage multiple user personas with customizable dialogue highlight colors. Switch between them instantly and set custom visual statuses (Online, Away, Do Not Disturb).
 - **Composer Formatting & Hotkeys**: Write effortlessly with built-in markdown, spoiler tags (`||spoiler||`), and keyboard shortcuts (`Ctrl+B`, `Ctrl+I`, `Ctrl+U`, `Ctrl+Shift+X`, `Ctrl+Shift+P`, `Alt+Q`) in the message composer and editor.
 - **Attachments & Multimodality**: Support for image and file attachments during chats, integrating directly with multimodal providers.
+- **NovelAI Image Generation**: Optional bundled extension with context-aware prompt writing, exact master-prompt preservation, automatic character image tools, local image saving, and text-only generated-image history.
 - **Context Management & Local Tokenizer**: Profile-aware local token counting with automatic model detection (GPT-4o, Claude, Llama 3, Mistral, Gemma, DeepSeek) and manual overrides to ensure prompt stability and prevent token overflow.
 - **Diagnostics & Logging**: In-app real-time diagnostics viewer, live SSE log streaming, granular subsystem filters, automatic secret scrubbing, and daily rotating log files.
 - **Extensible Plugin System**: Customize and extend the core functionality using local ESM plugins.
@@ -42,6 +43,7 @@ Included as bundled plugins, SmileyChat provides powerful tools right out of the
 - **Chat Summarizer**: Generate concise summaries of long conversations to save context tokens.
 - **Post Processing**: Apply custom processing prompts to refine or alter the AI's final output.
 - **MCP Servers**: Built-in support for Model Context Protocol integration.
+- **Image Generation**: Generate NovelAI images from character and conversation context using an editable prompt guide and master prompt.
 
 ---
 
@@ -133,6 +135,7 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 - [Backup and Restore Data](docs/guides/backup-and-restore.md)
 - [Accessing SmileyChat Remotely](docs/guides/remote-access.md)
 - [Using LoreBooks](docs/guides/lorebooks.md)
+- [NovelAI Image Generation](docs/guides/image-generation.md)
 - [Troubleshooting](docs/guides/troubleshooting.md)
 
 ### Technical Details

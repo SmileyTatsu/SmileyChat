@@ -15,7 +15,10 @@ import {
     hasStreamingMessageDraftValue,
     type StreamingMessageDraft,
 } from "#frontend/lib/streaming-message-drafts";
-import { deleteLocalChatAttachments } from "./chat-session-attachments";
+import {
+    deleteLocalChatAttachments,
+    uploadMessageAttachments,
+} from "./chat-session-attachments";
 import { getMessageUpdateMiddlewares } from "#frontend/lib/plugins/registry";
 import { clientLogger } from "#frontend/lib/logging/client-logger";
 import type { MessageUpdateKind } from "#frontend/lib/plugins/types";
@@ -106,6 +109,7 @@ export function useMessageOperations({
             includeInPrompt?: boolean;
             pluginId: string;
             promptRole?: "assistant" | "user" | "system" | "none";
+            files?: File[];
         },
     ) {
         const sourceChat = latestChatRef.current;
@@ -120,18 +124,25 @@ export function useMessageOperations({
             return;
         }
 
+        const attachments = options.files?.length
+            ? await uploadMessageAttachments(sourceChat.id, options.files)
+            : undefined;
+        const message = createInjectedMessage(role, text, {
+            activeCharacter: character,
+            authorName: options.authorName,
+            avatarPath: options.avatarPath,
+            includeInPrompt: options.includeInPrompt,
+            persona,
+            pluginId: options.pluginId,
+            promptRole: options.promptRole,
+        });
+
         updateChatMessages(
             [
                 ...sourceChat.messages,
-                createInjectedMessage(role, text, {
-                    activeCharacter: character,
-                    authorName: options.authorName,
-                    avatarPath: options.avatarPath,
-                    includeInPrompt: options.includeInPrompt,
-                    persona,
-                    pluginId: options.pluginId,
-                    promptRole: options.promptRole,
-                }),
+                attachments?.length
+                    ? updateActiveSwipeAttachments(message, attachments)
+                    : message,
             ],
             sourceChat,
         );

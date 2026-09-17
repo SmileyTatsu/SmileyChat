@@ -21,6 +21,7 @@ import {
 } from "#frontend/lib/chat-attachment-limits";
 import {
     getPluginComposerActions,
+    getPluginComposerCommand,
     getPluginComposerOptions,
     setPluginDraftActionHandlers,
     subscribeToPluginRegistry,
@@ -248,6 +249,23 @@ export const MessageComposer = memo(function MessageComposer({
         const submittedStagedFiles = stagedFiles;
         const submittedFiles = submittedStagedFiles.map((item) => item.file);
         const submittedResetKey = resetKey;
+        const commandMatch = submittedDraft.match(/^\/([a-z0-9_-]+)(?:\s+([\s\S]*))?$/i);
+        const command = commandMatch
+            ? getPluginComposerCommand(commandMatch[1])
+            : undefined;
+
+        if (command && submittedFiles.length === 0) {
+            setDraft("");
+            try {
+                await command.run(commandMatch?.[2]?.trim() ?? "", {
+                    draft: submittedDraft,
+                    snapshot: pluginSnapshot,
+                });
+            } catch {
+                setDraft(submittedDraft);
+            }
+            return;
+        }
 
         setDraft("");
         setStagedFiles([]);

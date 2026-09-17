@@ -363,6 +363,12 @@ function normalizeToolResult(value: unknown): MessageToolResult | undefined {
         name,
         content: asString(value.content),
         ...(typeof value.isError === "boolean" ? { isError: value.isError } : {}),
+        ...(asString(value.imageContext).trim()
+            ? { imageContext: asString(value.imageContext).trim() }
+            : {}),
+        ...(value.suppressHistoryProtocol === true
+            ? { suppressHistoryProtocol: true }
+            : {}),
     };
 }
 

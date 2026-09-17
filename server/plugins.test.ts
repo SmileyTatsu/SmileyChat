@@ -45,8 +45,11 @@ test("registry accepts release artifact entries", () => {
     expect(registry.plugins[0].repository).toBe("https://github.com/user/example-plugin");
 });
 
-test("server knows bundled post-processing core extension", () => {
+test("server knows bundled core extensions", () => {
     expect(pluginInstallTestInternals.corePluginIds.has("smiley-post-processing")).toBe(
+        true,
+    );
+    expect(pluginInstallTestInternals.corePluginIds.has("smiley-image-generation")).toBe(
         true,
     );
 });

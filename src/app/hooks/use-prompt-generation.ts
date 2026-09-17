@@ -413,6 +413,7 @@ export function usePromptGeneration({
         let resultAlreadyInPrompt = Boolean(initialToolCalls?.length);
         let limitReached = false;
         let pendingToolCalls: ToolCall[] | undefined;
+        const toolImages: string[] = [];
 
         for (let iteration = 0; result.toolCalls?.length; iteration += 1) {
             if (iteration >= maxIterations) {
@@ -453,14 +454,17 @@ export function usePromptGeneration({
                     request.signal,
                     allowedTools,
                 );
-                toolResults.push(toolResult);
+                toolImages.push(...(toolResult.images ?? []));
+                const persistableToolResult = { ...toolResult };
+                delete persistableToolResult.images;
+                toolResults.push(persistableToolResult);
                 const durationMs = Math.max(
                     0,
                     Date.now() - (pendingActivity.startedAt ?? Date.now()),
                 );
                 timelineEntry.activity = {
                     call,
-                    result: toolResult,
+                    result: persistableToolResult,
                     startedAt: pendingActivity.startedAt,
                     durationMs,
                 };
@@ -482,13 +486,16 @@ export function usePromptGeneration({
                               toolCalls: result.toolCalls,
                           },
                       ]),
-                ...toolResults.map(
-                    (toolResult): ChatGenerationMessage => ({
+                ...toolResults.map((toolResult): ChatGenerationMessage => {
+                    const content = toolResult.imageContext
+                        ? `[Generated image context: ${toolResult.imageContext}]`
+                        : toolResult.content;
+                    return {
                         role: ChatGenerationMessageRole.User,
-                        content: toolResult.content,
-                        toolResult,
-                    }),
-                ),
+                        content,
+                        toolResult: { ...toolResult, content },
+                    };
+                }),
             ];
 
             result = await generateTurn();
@@ -496,7 +503,12 @@ export function usePromptGeneration({
         }
 
         return {
-            result,
+            result: {
+                ...result,
+                ...(toolImages.length || result.images?.length
+                    ? { images: [...toolImages, ...(result.images ?? [])] }
+                    : {}),
+            },
             activities,
             promptMessages,
             timeline,
@@ -564,16 +576,29 @@ export function usePromptGeneration({
         }
 
         try {
-            const content = await raceWithAbort(
+            const output = await raceWithAbort(
                 () => tool.run(args, { ...snapshot, signal }),
                 signal,
             );
-
-            return {
+            const normalizedResult = {
                 toolCallId: call.id,
                 name: call.name,
-                content: typeof content === "string" ? content : String(content),
+                content: typeof output === "string" ? output : output.content,
+                ...(typeof output === "object" && output.images?.length
+                    ? { images: output.images }
+                    : {}),
+                ...(typeof output === "object" && output.imageContext?.trim()
+                    ? { imageContext: output.imageContext.trim() }
+                    : {}),
+                ...(typeof output === "object" && output.suppressHistoryProtocol === true
+                    ? { suppressHistoryProtocol: true }
+                    : {}),
             };
+            clientLogger.info(`[SmileyChat tool completed] ${call.name}`, {
+                tool: call.name,
+                imageCount: normalizedResult.images?.length ?? 0,
+            });
+            return normalizedResult;
         } catch (error) {
             if (isAbortError(error)) {
                 throw error;

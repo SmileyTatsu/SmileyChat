@@ -980,6 +980,26 @@ const unregister = api.tools.registerTool({
 });
 ```
 
+`run` may return a string or a structured result:
+
+```js
+return {
+    content: "Created the requested image.",
+    images: [imageDataUrl],
+    imageContext: "blue-haired character taking an indoor handheld selfie",
+    suppressHistoryProtocol: true,
+};
+```
+
+Structured result fields:
+
+- `content`: Required tool-result text used for the immediate continuation.
+- `images`: Optional image URLs or base64 data URLs. SmileyChat copies generated images into the active chat's local attachment storage and removes the original image data from the persisted tool result.
+- `imageContext`: Optional compact text used in place of tool-produced image bytes when the completed message is compiled into later prompts. Use it for tags, a caption, or another durable visual memory. It does not affect normal user-uploaded images.
+- `suppressHistoryProtocol`: When `true`, the completed assistant tool-call frame and tool-result frame are not replayed into later prompts. The immediate continuation still receives a valid tool result. This is useful for media tools whose transport messages would otherwise add repeated `(empty)`, success, or error boilerplate to history.
+
+For an image-producing tool, use `imageContext` and `suppressHistoryProtocol` together. The saved chat still retains tool activity for UI and diagnostics, while future model context contains the final assistant message plus the textual image context.
+
 Requires `tools:register`.
 
 ## `api.storage`

@@ -13,6 +13,7 @@ This folder contains user guides, reference material, plugin documentation, and 
 - [How to Access SmileyChat Remotely](guides/remote-access.md)
 - [Troubleshooting](guides/troubleshooting.md)
 - [Using LoreBooks](guides/lorebooks.md)
+- [NovelAI Image Generation](guides/image-generation.md)
 
 ## Reference
 

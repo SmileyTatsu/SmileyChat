@@ -123,3 +123,13 @@ If you encounter unexpected errors, connection failures, or plugin crashes:
 Server log files are also saved locally to `userData/logs/smileychat-YYYY-MM-DD.log`.
 
 To increase logging verbosity during debugging, set `SMILEYCHAT_LOG_LEVEL=debug` (or `trace`) in `.env` or adjust the Log Level in the Diagnostics settings card. Sensitive prompts and payloads can be inspected by setting `SMILEYCHAT_LOG_SENSITIVE_PAYLOADS=true` in `.env` (kept disabled by default to protect privacy).
+
+## Image Generation Problems
+
+For complete setup and behavior, see [NovelAI Image Generation](image-generation.md).
+
+- If the model reports that `generate_image` is unavailable, enable the Image Generation core extension and save an API token on a NovelAI connection profile.
+- If NovelAI generation fails, filter Diagnostics for plugin entries and use the logged correlation ID when inspecting the upstream error.
+- If an image cannot be saved, Diagnostics reports the image number and decoding or upload failure.
+- Tool-generated images are represented as text in future prompts and should not cause large base64 request bodies. A `413 Request Entity Too Large` can still come from large user-uploaded images, files, or an upstream gateway with a small body limit.
+- If the prompt writer returns invalid structured output, try a more instruction-following text model or restore the default prompt-writer instruction.

@@ -229,6 +229,21 @@ export type PluginComposerOption = {
     run: (context: PluginComposerActionContext) => void | Promise<void>;
 };
 
+export type PluginComposerCommandContext = {
+    draft: string;
+    snapshot: PluginAppSnapshot;
+};
+
+export type PluginComposerCommand = {
+    /** Command name without the leading slash. */
+    name: string;
+    description: string;
+    run: (
+        argumentsText: string,
+        context: PluginComposerCommandContext,
+    ) => void | Promise<void>;
+};
+
 export type PluginHeaderActionContext = {
     snapshot: PluginAppSnapshot;
 };
@@ -335,6 +350,14 @@ export type PluginConnectionProvider = {
     testConnection?: (profile: ConnectionProfile) => Promise<string>;
 };
 
+export type PluginConnectionsApi = {
+    registerProvider(provider: PluginConnectionProvider): void;
+    /** Core-only capability. User plugins never receive access to connection secrets. */
+    hasApiKey(profileId: string): boolean;
+    /** Core-only capability. Returns a detached copy of one profile, including its key. */
+    getProfileWithSecrets(profileId: string): ConnectionProfile | undefined;
+};
+
 /** Text-completion prompt serialization helpers for connection provider plugins. */
 export type PluginFormattingApi = {
     formatInstructPrompt(
@@ -359,6 +382,15 @@ export type PluginToolContext = PluginAppSnapshot & {
     signal?: AbortSignal;
 };
 
+export type PluginToolRunResult = {
+    content: string;
+    images?: string[];
+    /** Compact model context to use instead of replaying generated image bytes. */
+    imageContext?: string;
+    /** Keep this tool's transport-only call/result frames out of saved prompt history. */
+    suppressHistoryProtocol?: boolean;
+};
+
 export type PluginTool = ToolDefinition & {
     /**
      * Optional chat-scoped access group. Tools from the same plugin share the
@@ -375,7 +407,7 @@ export type PluginTool = ToolDefinition & {
     run: (
         args: Record<string, unknown>,
         context: PluginToolContext,
-    ) => string | Promise<string>;
+    ) => string | PluginToolRunResult | Promise<string | PluginToolRunResult>;
 };
 
 export type PluginStorageApi = {
@@ -439,6 +471,8 @@ export type PluginInjectMessageOptions = {
     avatarPath?: string;
     includeInPrompt?: boolean;
     promptRole?: "assistant" | "user" | "system" | "none";
+    /** Files are copied into the active chat's local attachment folder. */
+    files?: File[];
 };
 
 export type PluginComposerStatePatch = {
@@ -542,10 +576,11 @@ export type SmileyPluginApi = {
         registerMacro(name: string, resolver: PluginMacroResolver): void;
         resolveMacros(text: string, options?: PluginMacroResolveOptions): string;
     };
-    connections: {
-        registerProvider(provider: PluginConnectionProvider): void;
-    };
+    connections: PluginConnectionsApi;
     formatting: PluginFormattingApi;
+    commands: {
+        register(command: PluginComposerCommand): () => void;
+    };
     tools: {
         /** Returns a disposer so dynamic tool sources can be refreshed safely. */
         registerTool(tool: PluginTool): () => void;

@@ -36,6 +36,7 @@ This ensures that data is easy to inspect, back up, edit manually, and move betw
     - `core-extensions/`: Storage for built-in extension data.
         - `mcp.json`: Settings for Model Context Protocol servers.
         - `mcp-secrets.json`: Secrets and credentials for MCP servers.
+        - `smiley-image-generation/settings.json`: NovelAI image-generation, prompt-writer, master-prompt, and history-context settings. NovelAI tokens remain in `connection-secrets.json`.
 - `userData/logs/`: Daily rotating server and diagnostics log files.
     - `smileychat-YYYY-MM-DD.log`: Active log file for the day (rotates to indexed files like `-1.log` if exceeding 10MB). Automatically pruned based on age (default 7 days) and total storage size (default 25MB) configured in Diagnostics settings.
 - `userData/plugins/`: Folder for user-installed extension modules.
