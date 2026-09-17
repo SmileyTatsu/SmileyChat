@@ -85,6 +85,32 @@ export function json(data: unknown, status = 200) {
     return Response.json(data, { status });
 }
 
+export function isCorruptJsonError(error: unknown): boolean {
+    if (!error) return false;
+
+    if (error instanceof SyntaxError) {
+        return true;
+    }
+
+    if (typeof error === "object") {
+        const err = error as { code?: unknown; errno?: unknown; name?: unknown };
+        if (
+            typeof err.code === "string" &&
+            /^(EACCES|EBUSY|EPERM|EMFILE|ENFILE|EIO|ENOSPC|EROFS|ENOENT)$/.test(err.code)
+        ) {
+            return false;
+        }
+        if (typeof err.errno === "number") {
+            return false;
+        }
+        if (err.name === "SyntaxError") {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 export async function readJsonBody(request: Request) {
     try {
         return await request.json();

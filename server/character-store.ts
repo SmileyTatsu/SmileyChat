@@ -73,38 +73,42 @@ export async function readCharacterSummaryCollection(): Promise<CharacterSummary
 }
 
 export async function updateCharacterIndex(value: unknown) {
-    const current = await readCharacterIndex();
-    const record = isRecord(value) ? value : {};
-    const requestedIds = Array.isArray(record.characterIds)
-        ? record.characterIds.filter((item): item is string => typeof item === "string")
-        : current.characters.map((character) => character.id);
-    const entries: CharacterIndexEntry[] = [];
+    return withResourceLock(characterIndexPath, async () => {
+        const current = await readCharacterIndex();
+        const record = isRecord(value) ? value : {};
+        const requestedIds = Array.isArray(record.characterIds)
+            ? record.characterIds.filter(
+                  (item): item is string => typeof item === "string",
+              )
+            : current.characters.map((character) => character.id);
+        const entries: CharacterIndexEntry[] = [];
 
-    for (const characterId of requestedIds) {
-        const entry = current.characters.find((item) => item.id === characterId);
+        for (const characterId of requestedIds) {
+            const entry = current.characters.find((item) => item.id === characterId);
 
-        if (!entry || entries.some((item) => item.id === characterId)) {
-            continue;
+            if (!entry || entries.some((item) => item.id === characterId)) {
+                continue;
+            }
+
+            entries.push(entry);
         }
 
-        entries.push(entry);
-    }
+        const requestedActiveId =
+            typeof record.activeCharacterId === "string"
+                ? record.activeCharacterId
+                : current.activeCharacterId;
+        const activeCharacterId = entries.some((entry) => entry.id === requestedActiveId)
+            ? requestedActiveId
+            : (entries[0]?.id ?? "");
+        const index = {
+            version: 1 as const,
+            activeCharacterId,
+            characters: entries,
+        };
 
-    const requestedActiveId =
-        typeof record.activeCharacterId === "string"
-            ? record.activeCharacterId
-            : current.activeCharacterId;
-    const activeCharacterId = entries.some((entry) => entry.id === requestedActiveId)
-        ? requestedActiveId
-        : (entries[0]?.id ?? "");
-    const index = {
-        version: 1 as const,
-        activeCharacterId,
-        characters: entries,
-    };
-
-    await writeCharacterIndex(index);
-    return index;
+        await writeCharacterIndex(index);
+        return index;
+    });
 }
 
 export async function readCharacterById(characterId: string) {
@@ -203,55 +207,59 @@ export async function createCharacter(value: unknown) {
 }
 
 export async function deleteCharacterById(characterId: string) {
-    const index = await readCharacterIndex();
-    const entry = index.characters.find((item) => item.id === characterId);
+    return withResourceLock(`character:${characterId}`, async () => {
+        return withResourceLock(characterIndexPath, async () => {
+            const index = await readCharacterIndex();
+            const entry = index.characters.find((item) => item.id === characterId);
 
-    if (!entry) {
-        return undefined;
-    }
+            if (!entry) {
+                return undefined;
+            }
 
-    const character = await readCharacterFromEntry(entry);
+            const character = await readCharacterFromEntry(entry);
 
-    if (character) {
-        await archiveCharacterIdentity(character);
-    }
+            if (character) {
+                await archiveCharacterIdentity(character);
+            }
 
-    await rm(characterBaseDirectoryPath(entry.basePath), {
-        force: true,
-        recursive: true,
+            await rm(characterBaseDirectoryPath(entry.basePath), {
+                force: true,
+                recursive: true,
+            });
+
+            const entries = index.characters.filter((item) => item.id !== characterId);
+
+            if (entries.length === 0) {
+                const emptyIndex = {
+                    version: 1 as const,
+                    activeCharacterId: "",
+                    characters: [],
+                };
+
+                await writeCharacterIndex(emptyIndex);
+                return {
+                    index: emptyIndex,
+                    characters: await readCharacterSummaryCollection(),
+                };
+            }
+
+            const nextIndex = {
+                version: 1 as const,
+                activeCharacterId:
+                    index.activeCharacterId === characterId
+                        ? entries[0].id
+                        : index.activeCharacterId,
+                characters: entries,
+            };
+
+            await writeCharacterIndex(nextIndex);
+
+            return {
+                index: nextIndex,
+                characters: await readCharacterSummaryCollection(),
+            };
+        });
     });
-
-    const entries = index.characters.filter((item) => item.id !== characterId);
-
-    if (entries.length === 0) {
-        const emptyIndex = {
-            version: 1 as const,
-            activeCharacterId: "",
-            characters: [],
-        };
-
-        await writeCharacterIndex(emptyIndex);
-        return {
-            index: emptyIndex,
-            characters: await readCharacterSummaryCollection(),
-        };
-    }
-
-    const nextIndex = {
-        version: 1 as const,
-        activeCharacterId:
-            index.activeCharacterId === characterId
-                ? entries[0].id
-                : index.activeCharacterId,
-        characters: entries,
-    };
-
-    await writeCharacterIndex(nextIndex);
-
-    return {
-        index: nextIndex,
-        characters: await readCharacterSummaryCollection(),
-    };
 }
 
 export async function characterBasePathById(characterId: string) {
@@ -552,19 +560,21 @@ async function upsertCharacterIndexEntry(
     basePath: string,
     options: { activeCharacterId?: string } = {},
 ) {
-    const index = await readCharacterIndex();
-    const entry = characterToIndexEntry(character, basePath);
-    const entries = index.characters.some((item) => item.id === character.id)
-        ? index.characters.map((item) => (item.id === character.id ? entry : item))
-        : [...index.characters, entry];
-    const activeCharacterId = options.activeCharacterId ?? index.activeCharacterId;
+    await withResourceLock(characterIndexPath, async () => {
+        const index = await readCharacterIndex();
+        const entry = characterToIndexEntry(character, basePath);
+        const entries = index.characters.some((item) => item.id === character.id)
+            ? index.characters.map((item) => (item.id === character.id ? entry : item))
+            : [...index.characters, entry];
+        const activeCharacterId = options.activeCharacterId ?? index.activeCharacterId;
 
-    await writeCharacterIndex({
-        version: 1,
-        activeCharacterId: entries.some((item) => item.id === activeCharacterId)
-            ? activeCharacterId
-            : entry.id,
-        characters: entries,
+        await writeFileBackedIndex(characterIndexPath, {
+            version: 1,
+            activeCharacterId: entries.some((item) => item.id === activeCharacterId)
+                ? activeCharacterId
+                : entry.id,
+            characters: entries,
+        });
     });
 }
 

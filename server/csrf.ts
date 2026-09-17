@@ -3,10 +3,11 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { getCsrfTrustedOrigins, getFrontendPort } from "./config/runtime-config";
-import { HttpError, writeJsonAtomic } from "./http";
+import { HttpError, isCorruptJsonError, writeJsonAtomic } from "./http";
 import { logger } from "./logger";
 import { csrfSecretPath } from "./paths";
 import { isPrivateNetworkHostname } from "./private-network";
+import { hostnameFromAuthority, isAllowedHost } from "./security/host-validation";
 
 const csrfTokenHeader = "x-smileychat-csrf";
 // Magic header that confirms a request was issued by code aware of the
@@ -40,6 +41,7 @@ type CsrfSecretFile = {
 };
 
 let secretPromise: Promise<string> | undefined;
+let secretReaderOverride: (() => Promise<string>) | undefined;
 
 export class CsrfError extends HttpError {
     constructor(
@@ -110,8 +112,17 @@ function verifyRequestOrigin(request: Request, trustedProxy: boolean) {
 }
 
 function getAllowedOrigins(request: Request, trustedProxy: boolean) {
+    const rawHost =
+        (trustedProxy
+            ? firstHeaderValue(request.headers.get("x-forwarded-host"))
+            : undefined) ??
+        firstHeaderValue(request.headers.get("host")) ??
+        new URL(request.url).host;
+    const hostname = rawHost ? hostnameFromAuthority(rawHost) : undefined;
+    const isHostAllowed = hostname ? isAllowedHost(hostname) : false;
+
     return new Set([
-        new URL(request.url).origin,
+        ...(isHostAllowed ? [new URL(request.url).origin] : []),
         ...forwardedRequestOrigins(request, trustedProxy),
         ...privateNetworkRequestOrigins(request, trustedProxy),
         ...trustedOriginsFromEnv(),
@@ -138,14 +149,6 @@ function privateNetworkRequestOrigins(request: Request, trustedProxy: boolean) {
 
     const origin = normalizeOrigin(`${proto}://${host}`);
     return origin ? [origin] : [];
-}
-
-function hostnameFromAuthority(authority: string) {
-    try {
-        return new URL(`http://${authority}`).hostname;
-    } catch {
-        return undefined;
-    }
 }
 
 function forwardedRequestOrigins(request: Request, trustedProxy: boolean) {
@@ -211,16 +214,44 @@ async function readCsrfSecret() {
         return process.env.SMILEYCHAT_CSRF_SECRET;
     }
 
-    secretPromise ??= readOrCreateCsrfSecret();
+    if (!secretPromise) {
+        const reader = secretReaderOverride ?? readOrCreateCsrfSecret;
+        secretPromise = reader().catch((error) => {
+            secretPromise = undefined;
+            throw error;
+        });
+    }
+
     return secretPromise;
 }
 
+export const csrfTestInternals = {
+    readCsrfSecret,
+    readOrCreateCsrfSecret,
+    resetSecretPromise: () => {
+        secretPromise = undefined;
+    },
+    setSecretReaderOverride: (fn?: () => Promise<string>) => {
+        secretReaderOverride = fn;
+    },
+};
+
 async function readOrCreateCsrfSecret() {
     if (await Bun.file(csrfSecretPath).exists()) {
-        const saved = normalizeCsrfSecret(await Bun.file(csrfSecretPath).json());
+        try {
+            const saved = normalizeCsrfSecret(await Bun.file(csrfSecretPath).json());
 
-        if (saved) {
-            return saved;
+            if (saved) {
+                return saved;
+            }
+        } catch (error) {
+            if (!isCorruptJsonError(error)) {
+                throw error;
+            }
+            logger.warn(
+                "security",
+                "[csrf] Stored csrf-secret.json is corrupt; regenerating a new secret.",
+            );
         }
     }
 

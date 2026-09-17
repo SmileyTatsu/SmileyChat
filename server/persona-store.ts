@@ -22,6 +22,7 @@ import {
     writeFileBackedIndex,
 } from "./file-store";
 import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
+import { logger } from "./logger";
 import { personaCardsDir, personaIndexPath, personaOrphanedDir } from "./paths";
 import { personaFilePath } from "./persona-file-paths";
 import { deletePersonaAvatarAsset } from "./persona-images";
@@ -44,10 +45,18 @@ export async function readPersonaById(personaId: string) {
         return undefined;
     }
 
-    return normalizePersona({
-        ...(await Bun.file(path).json()),
-        id: personaId,
-    });
+    try {
+        const rawJson = await Bun.file(path).json();
+        return normalizePersona({
+            ...rawJson,
+            id: personaId,
+        });
+    } catch (error) {
+        logger.warn("server", `Could not parse persona JSON for ${personaId}`, {
+            error: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+    }
 }
 
 export async function createPersona(value: unknown) {
@@ -59,16 +68,18 @@ export async function createPersona(value: unknown) {
 
     await writeJsonAtomic(personaFilePath(persona.id), persona);
 
-    const index = await readPersonaIndex();
-    const personaIds = index.personaIds.includes(persona.id)
-        ? index.personaIds
-        : [...index.personaIds, persona.id];
+    await withResourceLock(personaIndexPath, async () => {
+        const index = await readPersonaIndex();
+        const personaIds = index.personaIds.includes(persona.id)
+            ? index.personaIds
+            : [...index.personaIds, persona.id];
 
-    await writeFileBackedIndex(personaIndexPath, {
-        version: 1,
-        activePersonaId: index.activePersonaId,
-        personaIds,
-        summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
+        await writeFileBackedIndex(personaIndexPath, {
+            version: 1,
+            activePersonaId: index.activePersonaId,
+            personaIds,
+            summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
+        });
     });
 
     return {
@@ -101,15 +112,17 @@ async function writePersonaByIdUnlocked(personaId: string, value: unknown) {
         await deletePersonaAvatarAsset(existingPersona);
     }
 
-    const index = await readPersonaIndex();
+    await withResourceLock(personaIndexPath, async () => {
+        const index = await readPersonaIndex();
 
-    await writeFileBackedIndex(personaIndexPath, {
-        version: 1,
-        activePersonaId: index.activePersonaId,
-        personaIds: index.personaIds.includes(persona.id)
-            ? index.personaIds
-            : [...index.personaIds, persona.id],
-        summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
+        await writeFileBackedIndex(personaIndexPath, {
+            version: 1,
+            activePersonaId: index.activePersonaId,
+            personaIds: index.personaIds.includes(persona.id)
+                ? index.personaIds
+                : [...index.personaIds, persona.id],
+            summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
+        });
     });
 
     return persona;
@@ -143,12 +156,17 @@ export async function patchPersonaById(personaId: string, value: unknown) {
             await deletePersonaAvatarAsset(existingPersona);
         }
 
-        const index = await readPersonaIndex();
-        await writeFileBackedIndex(personaIndexPath, {
-            version: 1,
-            activePersonaId: index.activePersonaId,
-            personaIds: index.personaIds,
-            summaries: replacePersonaSummary(index.summaries, personaToSummary(persona)),
+        await withResourceLock(personaIndexPath, async () => {
+            const index = await readPersonaIndex();
+            await writeFileBackedIndex(personaIndexPath, {
+                version: 1,
+                activePersonaId: index.activePersonaId,
+                personaIds: index.personaIds,
+                summaries: replacePersonaSummary(
+                    index.summaries,
+                    personaToSummary(persona),
+                ),
+            });
         });
 
         return persona;
@@ -156,79 +174,90 @@ export async function patchPersonaById(personaId: string, value: unknown) {
 }
 
 export async function updatePersonaIndex(value: unknown) {
-    const current = await readPersonaIndex();
-    const record = isRecord(value) ? value : {};
-    const requestedIds = Array.isArray(record.personaIds)
-        ? record.personaIds.filter((item): item is string => typeof item === "string")
-        : current.personaIds;
-    const personaIds: string[] = [];
+    return withResourceLock(personaIndexPath, async () => {
+        const current = await readPersonaIndex();
+        const record = isRecord(value) ? value : {};
+        const requestedIds = Array.isArray(record.personaIds)
+            ? record.personaIds.filter((item): item is string => typeof item === "string")
+            : current.personaIds;
+        const personaIds: string[] = [];
 
-    for (const personaId of requestedIds) {
-        if (
-            personaIds.includes(personaId) ||
-            !(await Bun.file(personaFilePath(personaId)).exists())
-        ) {
-            continue;
+        for (const personaId of requestedIds) {
+            if (
+                personaIds.includes(personaId) ||
+                !(await Bun.file(personaFilePath(personaId)).exists())
+            ) {
+                continue;
+            }
+
+            personaIds.push(personaId);
         }
 
-        personaIds.push(personaId);
-    }
+        if (personaIds.length === 0) {
+            await writeDefaultPersonaCollection();
+            return collectionToIndex([defaultPersona], defaultPersona.id);
+        }
 
-    if (personaIds.length === 0) {
-        await writeDefaultPersonaCollection();
-        return collectionToIndex([defaultPersona], defaultPersona.id);
-    }
+        const requestedActiveId =
+            typeof record.activePersonaId === "string"
+                ? record.activePersonaId
+                : current.activePersonaId;
+        const activePersonaId = personaIds.includes(requestedActiveId)
+            ? requestedActiveId
+            : personaIds[0];
+        const index = {
+            version: 1 as const,
+            activePersonaId,
+            personaIds,
+            summaries: personaIds.flatMap((id) => {
+                const summary = current.summaries.find((item) => item.id === id);
+                return summary ? [summary] : [];
+            }),
+        };
 
-    const requestedActiveId =
-        typeof record.activePersonaId === "string"
-            ? record.activePersonaId
-            : current.activePersonaId;
-    const activePersonaId = personaIds.includes(requestedActiveId)
-        ? requestedActiveId
-        : personaIds[0];
-    const index = {
-        version: 1 as const,
-        activePersonaId,
-        personaIds,
-        summaries: personaIds.flatMap((id) => {
-            const summary = current.summaries.find((item) => item.id === id);
-            return summary ? [summary] : [];
-        }),
-    };
-
-    await writeFileBackedIndex(personaIndexPath, index);
-    return index;
+        await writeFileBackedIndex(personaIndexPath, index);
+        return index;
+    });
 }
 
 export async function deletePersonaById(personaId: string) {
-    const persona = await readPersonaById(personaId);
+    return withResourceLock(`persona:${personaId}`, async () => {
+        const fileExists = await Bun.file(personaFilePath(personaId)).exists();
+        if (!fileExists) {
+            return undefined;
+        }
 
-    if (!persona || !(await Bun.file(personaFilePath(personaId)).exists())) {
-        return undefined;
-    }
+        const persona = await readPersonaById(personaId);
 
-    const index = await readPersonaIndex();
+        return withResourceLock(personaIndexPath, async () => {
+            const index = await readPersonaIndex();
 
-    if (index.personaIds.length <= 1) {
-        throw new BadRequestError("Cannot delete the last persona.");
-    }
+            if (index.personaIds.length <= 1) {
+                throw new BadRequestError("Cannot delete the last persona.");
+            }
 
-    await deletePersonaAvatarAsset(persona);
-    await rm(personaFilePath(personaId), { force: true });
-    const personaIds = index.personaIds.filter((item) => item !== personaId);
-    const nextIndex = {
-        version: 1 as const,
-        activePersonaId:
-            index.activePersonaId === personaId ? personaIds[0] : index.activePersonaId,
-        personaIds,
-        summaries: index.summaries.filter((item) => item.id !== personaId),
-    };
+            if (persona) {
+                await deletePersonaAvatarAsset(persona);
+            }
+            await rm(personaFilePath(personaId), { force: true });
+            const personaIds = index.personaIds.filter((item) => item !== personaId);
+            const nextIndex = {
+                version: 1 as const,
+                activePersonaId:
+                    index.activePersonaId === personaId
+                        ? personaIds[0]
+                        : index.activePersonaId,
+                personaIds,
+                summaries: index.summaries.filter((item) => item.id !== personaId),
+            };
 
-    await writeFileBackedIndex(personaIndexPath, nextIndex);
+            await writeFileBackedIndex(personaIndexPath, nextIndex);
 
-    return {
-        personas: await readPersonaSummaryCollection(),
-    };
+            return {
+                personas: await readPersonaSummaryCollection(),
+            };
+        });
+    });
 }
 
 async function readPersonaIndex(): Promise<PersonaIndex> {

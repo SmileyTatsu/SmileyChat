@@ -21,3 +21,20 @@ export async function withResourceLock<T>(key: string, work: () => Promise<T>) {
         }
     }
 }
+
+// Acquires multiple resource locks in deterministic sorted order to prevent deadlocks.
+export async function withResourceLocks<T>(
+    keys: string[],
+    work: () => Promise<T>,
+): Promise<T> {
+    const uniqueKeys = Array.from(new Set(keys.filter(Boolean))).sort();
+
+    const acquire = async (index: number): Promise<T> => {
+        if (index >= uniqueKeys.length) {
+            return work();
+        }
+        return withResourceLock(uniqueKeys[index], () => acquire(index + 1));
+    };
+
+    return acquire(0);
+}

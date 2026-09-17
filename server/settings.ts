@@ -17,7 +17,8 @@ import { defaultPresetCollection } from "#frontend/lib/presets/defaults";
 import { normalizePresetCollection } from "#frontend/lib/presets/normalize";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 
-import { writeJsonAtomic } from "./http";
+import { isCorruptJsonError, writeJsonAtomic } from "./http";
+import { logger } from "./logger";
 import {
     connectionSecretsPath,
     connectionSettingsPath,
@@ -31,8 +32,23 @@ export async function readConnectionSettings(): Promise<ConnectionSettings> {
         return defaultConnectionSettings;
     }
 
-    const file = Bun.file(connectionSettingsPath);
-    return sanitizeConnectionSettings(await file.json());
+    try {
+        const file = Bun.file(connectionSettingsPath);
+        return sanitizeConnectionSettings(await file.json());
+    } catch (error) {
+        if (!isCorruptJsonError(error)) {
+            throw error;
+        }
+        logger.warn(
+            "server",
+            "Corrupt connections.json detected; resetting to default.",
+            {
+                error: error instanceof Error ? error.message : String(error),
+            },
+        );
+        await writeConnectionSettings(defaultConnectionSettings);
+        return defaultConnectionSettings;
+    }
 }
 
 export async function writeConnectionSettings(settings: unknown) {
@@ -49,8 +65,23 @@ export async function readConnectionSecrets(): Promise<ConnectionSecrets> {
         return settingsSecrets;
     }
 
-    const file = Bun.file(connectionSecretsPath);
-    const savedSecrets = sanitizeConnectionSecrets(await file.json());
+    let savedSecrets: ConnectionSecrets;
+    try {
+        const file = Bun.file(connectionSecretsPath);
+        savedSecrets = sanitizeConnectionSecrets(await file.json());
+    } catch (error) {
+        if (!isCorruptJsonError(error)) {
+            throw error;
+        }
+        logger.warn(
+            "server",
+            "Corrupt connection-secrets.json detected; resetting to merged secrets.",
+            { error: error instanceof Error ? error.message : String(error) },
+        );
+        await writeConnectionSecrets(settingsSecrets);
+        return settingsSecrets;
+    }
+
     const mergedSecrets = mergeConnectionSecrets(savedSecrets, settingsSecrets);
 
     if (JSON.stringify(mergedSecrets) !== JSON.stringify(savedSecrets)) {
@@ -104,8 +135,19 @@ export async function readPresetCollection(): Promise<PresetCollection> {
         return defaultPresetCollection;
     }
 
-    const file = Bun.file(presetsPath);
-    return normalizePresetCollection(await file.json());
+    try {
+        const file = Bun.file(presetsPath);
+        return normalizePresetCollection(await file.json());
+    } catch (error) {
+        if (!isCorruptJsonError(error)) {
+            throw error;
+        }
+        logger.warn("server", "Corrupt presets.json detected; resetting to default.", {
+            error: error instanceof Error ? error.message : String(error),
+        });
+        await writePresetCollection(defaultPresetCollection);
+        return defaultPresetCollection;
+    }
 }
 
 export async function writePresetCollection(presets: unknown) {
@@ -120,8 +162,21 @@ export async function readAppPreferences(): Promise<AppPreferences> {
         return defaultAppPreferences;
     }
 
-    const file = Bun.file(preferencesPath);
-    return normalizeAppPreferences(await file.json());
+    try {
+        const file = Bun.file(preferencesPath);
+        return normalizeAppPreferences(await file.json());
+    } catch (error) {
+        if (!isCorruptJsonError(error)) {
+            throw error;
+        }
+        logger.warn(
+            "server",
+            "Corrupt preferences.json detected; resetting to default.",
+            { error: error instanceof Error ? error.message : String(error) },
+        );
+        await writeAppPreferences(defaultAppPreferences);
+        return defaultAppPreferences;
+    }
 }
 
 export async function writeAppPreferences(preferences: unknown) {

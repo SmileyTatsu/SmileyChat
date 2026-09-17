@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { pluginInstallTestInternals } from "./plugins";
+import { pluginInstallTestInternals, servePluginAsset } from "./plugins";
 
 const tempRoots: string[] = [];
 const originalManualFlag = Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS;
@@ -457,3 +457,38 @@ async function tempRoot() {
     tempRoots.push(root);
     return root;
 }
+
+test("servePluginAsset rejects path traversal attempts and malformed encoding", async () => {
+    const resDotDot = await servePluginAsset(
+        new URL("http://localhost:4173/plugins/%2e%2e/settings/connection-secrets.json"),
+    );
+    expect(resDotDot.status).toBe(404);
+
+    const resSlash = await servePluginAsset(
+        new URL("http://localhost:4173/plugins/..%2F../.env"),
+    );
+    expect(resSlash.status).toBe(404);
+
+    const resAssetTraversal = await servePluginAsset(
+        new URL("http://localhost:4173/plugins/some-plugin/..%2Fsecret.txt"),
+    );
+    expect(resAssetTraversal.status).toBe(404);
+
+    const resMalformed = await servePluginAsset(
+        new URL("http://localhost:4173/plugins/%zz/file.txt"),
+    );
+    expect(resMalformed.status).toBe(404);
+
+    const resNul = await servePluginAsset(
+        new URL("http://localhost:4173/plugins/some-plugin/%00x"),
+    );
+    expect(resNul.status).toBe(404);
+
+    const resNulFolder = await servePluginAsset(
+        new URL("http://localhost:4173/plugins/%00/file.txt"),
+    );
+    expect(resNulFolder.status).toBe(404);
+
+    const resEmpty = await servePluginAsset(new URL("http://localhost:4173/plugins/"));
+    expect(resEmpty.status).toBe(404);
+});

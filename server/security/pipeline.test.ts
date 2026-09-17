@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-import { isRequestFromTrustedProxy, resolveClientIp } from "./pipeline";
+import {
+    isRequestFromTrustedProxy,
+    resolveClientIp,
+    runSecurityPipeline,
+} from "./pipeline";
 
 const originalTrustedProxies = process.env.SMILEYCHAT_TRUSTED_PROXIES;
 
@@ -57,6 +61,29 @@ describe("security pipeline client IP resolution", () => {
         });
 
         expect(resolveClientIp(request, serverWithIp("10.0.0.8"))).toBe("10.0.0.8");
+    });
+
+    test("blocks requests with untrusted Host header", async () => {
+        const request = new Request("http://localhost:4173/api/chats", {
+            headers: { host: "attacker.com:4173" },
+        });
+
+        const result = runSecurityPipeline(request, serverWithIp("127.0.0.1"));
+        expect(result instanceof Response).toBe(true);
+        if (result instanceof Response) {
+            expect(result.status).toBe(403);
+            const body = (await result.json()) as { code: string };
+            expect(body.code).toBe("untrusted_host");
+        }
+    });
+
+    test("allows requests with loopback or local Host header", () => {
+        const request = new Request("http://localhost:4173/api/chats", {
+            headers: { host: "localhost:4173" },
+        });
+
+        const result = runSecurityPipeline(request, serverWithIp("127.0.0.1"));
+        expect(result instanceof Response).toBe(false);
     });
 });
 

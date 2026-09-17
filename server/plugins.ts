@@ -1059,7 +1059,39 @@ export async function servePluginAsset(url: URL) {
     }
 
     const [pluginFolder, ...assetParts] = parts;
+
+    // Validate pluginFolder is a valid single folder name (no dots/traversal)
+    if (
+        !/^[a-zA-Z0-9_-][a-zA-Z0-9._-]*$/.test(pluginFolder) ||
+        pluginFolder === "." ||
+        pluginFolder === ".." ||
+        pluginFolder.includes("/") ||
+        pluginFolder.includes("\\")
+    ) {
+        return new Response("Not found", { status: 404 });
+    }
+
+    // Validate asset segments do not contain traversal or control/NUL characters
+    if (
+        assetParts.some(
+            (part) =>
+                part === "." ||
+                part === ".." ||
+                part.includes("/") ||
+                part.includes("\\") ||
+                part.includes("\0") ||
+                /[\x00-\x1f\x7f]/.test(part),
+        )
+    ) {
+        return new Response("Not found", { status: 404 });
+    }
+
     const pluginRoot = normalize(join(pluginsDir, pluginFolder));
+
+    if (!isSafeChild(pluginsDir, pluginRoot)) {
+        return new Response("Not found", { status: 404 });
+    }
+
     const requestedPath = normalize(join(pluginRoot, ...assetParts));
 
     if (!isSafeChild(pluginRoot, requestedPath)) {
@@ -1493,11 +1525,21 @@ function decodePathParts(pathname: string) {
         return undefined;
     }
 
-    return pathname
-        .slice(prefix.length)
-        .split("/")
-        .filter(Boolean)
-        .map((part) => decodeURIComponent(part));
+    try {
+        const parts = pathname
+            .slice(prefix.length)
+            .split("/")
+            .filter(Boolean)
+            .map((part) => decodeURIComponent(part));
+
+        if (parts.some((part) => part.includes("\0") || /[\x00-\x1f\x7f]/.test(part))) {
+            return undefined;
+        }
+
+        return parts;
+    } catch {
+        return undefined;
+    }
 }
 
 function isSafeChild(parent: string, child: string) {

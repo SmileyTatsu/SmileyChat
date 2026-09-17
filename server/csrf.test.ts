@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-import { createCsrfToken, verifyCsrfRequest } from "./csrf";
+import { createCsrfToken, csrfTestInternals, verifyCsrfRequest } from "./csrf";
 
 const csrfSecret = "test-csrf-secret-that-is-long-enough-for-smileychat";
 const csrfMagicHeader = "x-smileychat-csrf-magic";
@@ -343,6 +343,36 @@ describe("CSRF request verification", () => {
             code: "csrf_origin_untrusted",
             status: 403,
         });
+    });
+
+    test("clears cached secret promise on transient failure so subsequent requests can retry", async () => {
+        delete process.env.SMILEYCHAT_CSRF_SECRET;
+        csrfTestInternals.resetSecretPromise();
+
+        let attempts = 0;
+        csrfTestInternals.setSecretReaderOverride(async () => {
+            attempts += 1;
+            if (attempts === 1) {
+                const error = new Error("EBUSY: resource busy or locked");
+                (error as unknown as { code: string }).code = "EBUSY";
+                throw error;
+            }
+            return "valid-secret-that-is-at-least-32-characters-long-12345";
+        });
+
+        try {
+            // First call fails with transient error
+            await expect(csrfTestInternals.readCsrfSecret()).rejects.toThrow("EBUSY");
+            expect(attempts).toBe(1);
+
+            // Second call must NOT return the cached rejected promise; it must retry and succeed
+            const secret = await csrfTestInternals.readCsrfSecret();
+            expect(attempts).toBe(2);
+            expect(secret).toBe("valid-secret-that-is-at-least-32-characters-long-12345");
+        } finally {
+            csrfTestInternals.setSecretReaderOverride(undefined);
+            csrfTestInternals.resetSecretPromise();
+        }
     });
 });
 

@@ -11,6 +11,7 @@
 
 import { checkBasicAuth } from "./basic-auth";
 import { getTrustedProxyCidrs } from "../config/runtime-config";
+import { hostnameFromAuthority, isAllowedHost } from "./host-validation";
 import {
     checkIpAllowlist,
     ipToBytes,
@@ -116,6 +117,29 @@ export function runSecurityPipeline(
     const url = new URL(request.url);
     const ip = resolveClientIp(request, server);
     const trustedProxy = isRequestFromTrustedProxy(request, server);
+
+    // Host validation prevents DNS rebinding attacks from arbitrary domains
+    const rawHost =
+        (trustedProxy ? request.headers.get("x-forwarded-host") : undefined) ??
+        request.headers.get("host") ??
+        url.host;
+    const hostname = rawHost ? hostnameFromAuthority(rawHost) : undefined;
+    if (!hostname || !isAllowedHost(hostname)) {
+        logger.warn("security", `Untrusted Host header blocked: "${rawHost}"`, {
+            ip,
+            path: url.pathname,
+        });
+        return finalize(
+            new Response(
+                JSON.stringify({ error: "Forbidden.", code: "untrusted_host" }),
+                {
+                    status: 403,
+                    headers: { "Content-Type": "application/json; charset=utf-8" },
+                },
+            ),
+            url,
+        );
+    }
 
     // IP allowlist runs first so blocked IPs never reach auth/rate limit.
     const allowlistResult = checkIpAllowlist(ip);

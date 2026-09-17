@@ -36,8 +36,9 @@ import {
     writeFileBackedIndex,
 } from "./file-store";
 import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
+import { logger } from "./logger";
 import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
-import { withResourceLock } from "./resource-lock";
+import { withResourceLock, withResourceLocks } from "./resource-lock";
 
 export async function readChatSummaryCollection(): Promise<ChatSummaryCollection> {
     const index = await readChatIndex();
@@ -56,12 +57,20 @@ export async function readChatById(chatId: string) {
         return undefined;
     }
 
-    const chat = normalizeChat({
-        ...(await Bun.file(path).json()),
-        id: chatId,
-    });
+    try {
+        const rawJson = await Bun.file(path).json();
+        const chat = normalizeChat({
+            ...rawJson,
+            id: chatId,
+        });
 
-    return chat ? sanitizeChatAttachmentUrls(chat) : undefined;
+        return chat ? sanitizeChatAttachmentUrls(chat) : undefined;
+    } catch (error) {
+        logger.warn("server", `Could not parse chat JSON for ${chatId}`, {
+            error: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+    }
 }
 
 export async function createChat(value: unknown) {
@@ -73,24 +82,27 @@ export async function createChat(value: unknown) {
     }
 
     await writeJsonAtomic(chatFilePath(chat.id), chat);
-    const index = await readChatIndex();
-    const chatIds = index.chatIds.includes(chat.id)
-        ? moveChatIdToFront(index.chatIds, chat.id)
-        : [chat.id, ...index.chatIds];
-    const nextIndex = {
-        version: 1 as const,
-        activeChatIdsByCharacter: isGroupChat(chat)
-            ? index.activeChatIdsByCharacter
-            : {
-                  ...index.activeChatIdsByCharacter,
-                  [chat.characterId]: chat.id,
-              },
-        lastActiveChatId: chat.id,
-        chatIds,
-        summaries: replaceChatSummary(index.summaries, chatToSummary(chat)),
-    };
 
-    await writeFileBackedIndex(chatIndexPath, nextIndex);
+    await withResourceLock(chatIndexPath, async () => {
+        const freshIndex = await readChatIndex();
+        const chatIds = freshIndex.chatIds.includes(chat.id)
+            ? moveChatIdToFront(freshIndex.chatIds, chat.id)
+            : [chat.id, ...freshIndex.chatIds];
+        const nextIndex = {
+            version: 1 as const,
+            activeChatIdsByCharacter: isGroupChat(chat)
+                ? freshIndex.activeChatIdsByCharacter
+                : {
+                      ...freshIndex.activeChatIdsByCharacter,
+                      [chat.characterId]: chat.id,
+                  },
+            lastActiveChatId: chat.id,
+            chatIds,
+            summaries: replaceChatSummary(freshIndex.summaries, chatToSummary(chat)),
+        };
+
+        await writeFileBackedIndex(chatIndexPath, nextIndex);
+    });
 
     return {
         chat,
@@ -188,22 +200,27 @@ async function writeChatByIdUnlocked(chatId: string, value: unknown) {
 
     await writeJsonAtomic(chatFilePath(chat.id), chat);
 
-    const chatIds = index.chatIds.includes(chat.id)
-        ? moveChatIdToFront(index.chatIds, chat.id)
-        : [chat.id, ...index.chatIds];
-    await writeFileBackedIndex(chatIndexPath, {
-        version: 1,
-        activeChatIdsByCharacter: isGroupChat(chat)
-            ? index.activeChatIdsByCharacter
-            : {
-                  ...index.activeChatIdsByCharacter,
-                  ...(index.activeChatIdsByCharacter[chat.characterId]
-                      ? {}
-                      : { [chat.characterId]: chat.id }),
-              },
-        ...(index.lastActiveChatId ? { lastActiveChatId: index.lastActiveChatId } : {}),
-        chatIds,
-        summaries: replaceChatSummary(index.summaries, chatToSummary(chat)),
+    await withResourceLock(chatIndexPath, async () => {
+        const freshIndex = await readChatIndex();
+        const chatIds = freshIndex.chatIds.includes(chat.id)
+            ? moveChatIdToFront(freshIndex.chatIds, chat.id)
+            : [chat.id, ...freshIndex.chatIds];
+        await writeFileBackedIndex(chatIndexPath, {
+            version: 1,
+            activeChatIdsByCharacter: isGroupChat(chat)
+                ? freshIndex.activeChatIdsByCharacter
+                : {
+                      ...freshIndex.activeChatIdsByCharacter,
+                      ...(freshIndex.activeChatIdsByCharacter[chat.characterId]
+                          ? {}
+                          : { [chat.characterId]: chat.id }),
+                  },
+            ...(freshIndex.lastActiveChatId
+                ? { lastActiveChatId: freshIndex.lastActiveChatId }
+                : {}),
+            chatIds,
+            summaries: replaceChatSummary(freshIndex.summaries, chatToSummary(chat)),
+        });
     });
 
     return chatToSummary(chat);
@@ -243,37 +260,44 @@ export function shouldPreserveExistingChat(
 }
 
 export async function deleteChatById(chatId: string) {
-    const chat = await readChatById(chatId);
+    return withResourceLock(`chat:${chatId}`, async () => {
+        const fileExists = await Bun.file(chatFilePath(chatId)).exists();
 
-    if (!chat || !(await Bun.file(chatFilePath(chatId)).exists())) {
-        return undefined;
-    }
-
-    await rm(chatFilePath(chatId), { force: true });
-    await deleteChatAssetDirectory(chatId);
-    const index = await readChatIndex();
-    const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };
-
-    for (const [characterId, activeChatId] of Object.entries(activeChatIdsByCharacter)) {
-        if (activeChatId === chatId) {
-            delete activeChatIdsByCharacter[characterId];
+        if (!fileExists) {
+            return undefined;
         }
-    }
 
-    const lastActiveChatId =
-        index.lastActiveChatId === chatId ? undefined : index.lastActiveChatId;
+        await rm(chatFilePath(chatId), { force: true });
+        await deleteChatAssetDirectory(chatId);
 
-    await writeFileBackedIndex(chatIndexPath, {
-        version: 1,
-        activeChatIdsByCharacter,
-        ...(lastActiveChatId ? { lastActiveChatId } : {}),
-        chatIds: index.chatIds.filter((item) => item !== chatId),
-        summaries: index.summaries.filter((summary) => summary.id !== chatId),
+        await withResourceLock(chatIndexPath, async () => {
+            const index = await readChatIndex();
+            const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };
+
+            for (const [characterId, activeChatId] of Object.entries(
+                activeChatIdsByCharacter,
+            )) {
+                if (activeChatId === chatId) {
+                    delete activeChatIdsByCharacter[characterId];
+                }
+            }
+
+            const lastActiveChatId =
+                index.lastActiveChatId === chatId ? undefined : index.lastActiveChatId;
+
+            await writeFileBackedIndex(chatIndexPath, {
+                version: 1,
+                activeChatIdsByCharacter,
+                ...(lastActiveChatId ? { lastActiveChatId } : {}),
+                chatIds: index.chatIds.filter((item) => item !== chatId),
+                summaries: index.summaries.filter((summary) => summary.id !== chatId),
+            });
+        });
+
+        return {
+            chats: await readChatSummaryCollection(),
+        };
     });
-
-    return {
-        chats: await readChatSummaryCollection(),
-    };
 }
 
 /**
@@ -283,84 +307,148 @@ export async function deleteChatById(chatId: string) {
  * rewrite the chat index once for every conversation.
  */
 export async function deleteGroupWorkspaceById(workspaceId: string) {
-    const index = await readChatIndex();
-    const workspace = index.summaries.find((summary) => summary.id === workspaceId);
+    while (true) {
+        const snapshot = await readChatIndex();
+        const candidateIds = groupWorkspaceChatIds(snapshot.summaries, workspaceId);
+        const workspace = snapshot.summaries.find(
+            (summary) => summary.id === workspaceId,
+        );
 
-    if (!workspace || !isGroupWorkspace(workspace)) {
-        return undefined;
+        if (!workspace || !isGroupWorkspace(workspace)) {
+            return undefined;
+        }
+
+        const result = await withResourceLocks(
+            candidateIds.map((id) => `chat:${id}`),
+            async () => {
+                return withResourceLock(chatIndexPath, async () => {
+                    const index = await readChatIndex();
+                    const currentWorkspace = index.summaries.find(
+                        (summary) => summary.id === workspaceId,
+                    );
+
+                    if (!currentWorkspace || !isGroupWorkspace(currentWorkspace)) {
+                        return { status: "not_found" as const };
+                    }
+
+                    const currentIds = groupWorkspaceChatIds(
+                        index.summaries,
+                        workspaceId,
+                    );
+                    if (currentIds.some((id) => !candidateIds.includes(id))) {
+                        return { status: "retry" as const };
+                    }
+
+                    const deleteIds = new Set(currentIds);
+                    await deleteChatRecords(deleteIds);
+
+                    const activeChatIdsByCharacter = Object.fromEntries(
+                        Object.entries(index.activeChatIdsByCharacter).filter(
+                            ([, chatId]) => !deleteIds.has(chatId),
+                        ),
+                    );
+                    const lastActiveChatId =
+                        index.lastActiveChatId && deleteIds.has(index.lastActiveChatId)
+                            ? undefined
+                            : index.lastActiveChatId;
+                    const nextIndex = {
+                        version: 1 as const,
+                        activeChatIdsByCharacter,
+                        ...(lastActiveChatId ? { lastActiveChatId } : {}),
+                        chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
+                        summaries: index.summaries.filter(
+                            (summary) => !deleteIds.has(summary.id),
+                        ),
+                    };
+
+                    await writeFileBackedIndex(chatIndexPath, nextIndex);
+
+                    return {
+                        status: "done" as const,
+                        value: {
+                            deleted: deleteIds.size,
+                            chats: toChatSummaryCollection(nextIndex),
+                        },
+                    };
+                });
+            },
+        );
+
+        if (result.status === "not_found") return undefined;
+        if (result.status === "done") return result.value;
     }
+}
 
-    const deleteIds = new Set(groupWorkspaceChatIds(index.summaries, workspaceId));
-
-    await deleteChatRecords(deleteIds);
-
-    const activeChatIdsByCharacter = Object.fromEntries(
-        Object.entries(index.activeChatIdsByCharacter).filter(
-            ([, chatId]) => !deleteIds.has(chatId),
-        ),
-    );
-    const lastActiveChatId =
-        index.lastActiveChatId && deleteIds.has(index.lastActiveChatId)
-            ? undefined
-            : index.lastActiveChatId;
-    const nextIndex = {
-        version: 1 as const,
-        activeChatIdsByCharacter,
-        ...(lastActiveChatId ? { lastActiveChatId } : {}),
-        chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
-        summaries: index.summaries.filter((summary) => !deleteIds.has(summary.id)),
-    };
-
-    await writeFileBackedIndex(chatIndexPath, nextIndex);
-
-    return {
-        deleted: deleteIds.size,
-        chats: toChatSummaryCollection(nextIndex),
-    };
+function getCharacterChatIds(summaries: ChatSummary[], characterId: string): string[] {
+    return summaries
+        .filter((chat) =>
+            isGroupChat(chat)
+                ? (chat.members ?? []).some(
+                      (member) => member.characterId === characterId,
+                  )
+                : chat.characterId === characterId,
+        )
+        .map((chat) => chat.id);
 }
 
 export async function deleteChatsByCharacterId(characterId: string) {
-    const index = await readChatIndex();
-    const deleteIds = new Set(
-        index.summaries
-            .filter((chat) =>
-                isGroupChat(chat)
-                    ? (chat.members ?? []).some(
-                          (member) => member.characterId === characterId,
-                      )
-                    : chat.characterId === characterId,
-            )
-            .map((chat) => chat.id),
-    );
+    while (true) {
+        const snapshot = await readChatIndex();
+        const candidateIds = getCharacterChatIds(snapshot.summaries, characterId);
 
-    if (deleteIds.size === 0) {
-        return {
-            deleted: 0,
-            chats: await readChatSummaryCollection(),
-        };
+        if (candidateIds.length === 0) {
+            return {
+                deleted: 0,
+                chats: await readChatSummaryCollection(),
+            };
+        }
+
+        const result = await withResourceLocks(
+            candidateIds.map((id) => `chat:${id}`),
+            async () => {
+                return withResourceLock(chatIndexPath, async () => {
+                    const index = await readChatIndex();
+                    const currentIds = getCharacterChatIds(index.summaries, characterId);
+
+                    if (currentIds.some((id) => !candidateIds.includes(id))) {
+                        return { status: "retry" as const };
+                    }
+
+                    const deleteIds = new Set(currentIds);
+                    await deleteChatRecords(deleteIds);
+
+                    const activeChatIdsByCharacter = {
+                        ...index.activeChatIdsByCharacter,
+                    };
+                    delete activeChatIdsByCharacter[characterId];
+                    const lastActiveChatId =
+                        index.lastActiveChatId && deleteIds.has(index.lastActiveChatId)
+                            ? undefined
+                            : index.lastActiveChatId;
+
+                    await writeFileBackedIndex(chatIndexPath, {
+                        version: 1,
+                        activeChatIdsByCharacter,
+                        ...(lastActiveChatId ? { lastActiveChatId } : {}),
+                        chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
+                        summaries: index.summaries.filter(
+                            (summary) => !deleteIds.has(summary.id),
+                        ),
+                    });
+
+                    return {
+                        status: "done" as const,
+                        value: {
+                            deleted: deleteIds.size,
+                            chats: await readChatSummaryCollection(),
+                        },
+                    };
+                });
+            },
+        );
+
+        if (result.status === "done") return result.value;
     }
-
-    await deleteChatRecords(deleteIds);
-
-    const activeChatIdsByCharacter = { ...index.activeChatIdsByCharacter };
-    delete activeChatIdsByCharacter[characterId];
-    const lastActiveChatId =
-        index.lastActiveChatId && deleteIds.has(index.lastActiveChatId)
-            ? undefined
-            : index.lastActiveChatId;
-
-    await writeFileBackedIndex(chatIndexPath, {
-        version: 1,
-        activeChatIdsByCharacter,
-        ...(lastActiveChatId ? { lastActiveChatId } : {}),
-        chatIds: index.chatIds.filter((chatId) => !deleteIds.has(chatId)),
-        summaries: index.summaries.filter((summary) => !deleteIds.has(summary.id)),
-    });
-
-    return {
-        deleted: deleteIds.size,
-        chats: await readChatSummaryCollection(),
-    };
 }
 
 export function groupWorkspaceChatIds(summaries: ChatSummary[], workspaceId: string) {
@@ -403,68 +491,70 @@ function toChatSummaryCollection(index: ChatIndex): ChatSummaryCollection {
 }
 
 export async function updateChatIndex(value: unknown) {
-    const current = await readChatIndex();
-    const record = isRecord(value) ? value : {};
-    const requestedActive = isRecord(record.activeChatIdsByCharacter)
-        ? record.activeChatIdsByCharacter
-        : {};
-    const requestedChatIds = Array.isArray(record.chatIds)
-        ? record.chatIds.filter((item): item is string => typeof item === "string")
-        : [];
-    const activeChatIdsByCharacter = { ...current.activeChatIdsByCharacter };
-    const summariesById = new Map(
-        current.summaries.map((summary) => [summary.id, summary]),
-    );
-    const currentChatIds = new Set(current.chatIds);
+    return withResourceLock(chatIndexPath, async () => {
+        const current = await readChatIndex();
+        const record = isRecord(value) ? value : {};
+        const requestedActive = isRecord(record.activeChatIdsByCharacter)
+            ? record.activeChatIdsByCharacter
+            : {};
+        const requestedChatIds = Array.isArray(record.chatIds)
+            ? record.chatIds.filter((item): item is string => typeof item === "string")
+            : [];
+        const activeChatIdsByCharacter = { ...current.activeChatIdsByCharacter };
+        const summariesById = new Map(
+            current.summaries.map((summary) => [summary.id, summary]),
+        );
+        const currentChatIds = new Set(current.chatIds);
 
-    for (const [characterId, chatId] of Object.entries(requestedActive)) {
-        if (typeof chatId !== "string" || !currentChatIds.has(chatId)) {
-            continue;
-        }
-
-        const chat = summariesById.get(chatId);
-
-        if (chat && !isGroupChat(chat)) {
-            activeChatIdsByCharacter[characterId] = chatId;
-        }
-    }
-    const requestedChatIdsSet = new Set<string>();
-    const chatIds = [
-        ...requestedChatIds.filter((chatId) => {
-            if (!currentChatIds.has(chatId) || requestedChatIdsSet.has(chatId)) {
-                return false;
+        for (const [characterId, chatId] of Object.entries(requestedActive)) {
+            if (typeof chatId !== "string" || !currentChatIds.has(chatId)) {
+                continue;
             }
 
-            requestedChatIdsSet.add(chatId);
-            return true;
-        }),
-        ...current.chatIds.filter((chatId) => !requestedChatIdsSet.has(chatId)),
-    ];
+            const chat = summariesById.get(chatId);
 
-    const requestedLastActive =
-        record.lastActiveChatId === null
-            ? undefined
-            : typeof record.lastActiveChatId === "string"
-              ? record.lastActiveChatId
-              : current.lastActiveChatId;
-    const lastActiveChatId =
-        requestedLastActive && currentChatIds.has(requestedLastActive)
-            ? requestedLastActive
-            : undefined;
+            if (chat && !isGroupChat(chat)) {
+                activeChatIdsByCharacter[characterId] = chatId;
+            }
+        }
+        const requestedChatIdsSet = new Set<string>();
+        const chatIds = [
+            ...requestedChatIds.filter((chatId) => {
+                if (!currentChatIds.has(chatId) || requestedChatIdsSet.has(chatId)) {
+                    return false;
+                }
 
-    const nextIndex: ChatIndex = {
-        version: 1 as const,
-        activeChatIdsByCharacter,
-        ...(lastActiveChatId ? { lastActiveChatId } : {}),
-        chatIds,
-        summaries: chatIds.flatMap((chatId) => {
-            const summary = summariesById.get(chatId);
-            return summary ? [summary] : [];
-        }),
-    };
+                requestedChatIdsSet.add(chatId);
+                return true;
+            }),
+            ...current.chatIds.filter((chatId) => !requestedChatIdsSet.has(chatId)),
+        ];
 
-    await writeFileBackedIndex(chatIndexPath, nextIndex);
-    return nextIndex;
+        const requestedLastActive =
+            record.lastActiveChatId === null
+                ? undefined
+                : typeof record.lastActiveChatId === "string"
+                  ? record.lastActiveChatId
+                  : current.lastActiveChatId;
+        const lastActiveChatId =
+            requestedLastActive && currentChatIds.has(requestedLastActive)
+                ? requestedLastActive
+                : undefined;
+
+        const nextIndex: ChatIndex = {
+            version: 1 as const,
+            activeChatIdsByCharacter,
+            ...(lastActiveChatId ? { lastActiveChatId } : {}),
+            chatIds,
+            summaries: chatIds.flatMap((chatId) => {
+                const summary = summariesById.get(chatId);
+                return summary ? [summary] : [];
+            }),
+        };
+
+        await writeFileBackedIndex(chatIndexPath, nextIndex);
+        return nextIndex;
+    });
 }
 
 async function readChatIndex(): Promise<ChatIndex> {
