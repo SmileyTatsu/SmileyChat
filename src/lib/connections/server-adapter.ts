@@ -6,7 +6,10 @@ import type {
     ConnectionAdapter,
 } from "./types";
 
-export function createServerGenerationConnection(profileId?: string): ConnectionAdapter {
+export function createServerGenerationConnection(
+    profileId?: string,
+    options: { modelId?: string } = {},
+): ConnectionAdapter {
     return {
         id: "smileychat-server",
         label: "SmileyChat server connection",
@@ -21,6 +24,7 @@ export function createServerGenerationConnection(profileId?: string): Connection
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     profileId,
+                    modelId: options.modelId,
                     generation: request.generation,
                     formatting: request.formatting,
                     promptMessages: request.promptMessages ?? [],

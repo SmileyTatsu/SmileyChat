@@ -35,6 +35,8 @@ export type ImageGenerationSettings = {
     masterPrompt: string;
     promptInstruction: string;
     promptWriterProfileId: string;
+    promptWriterModelId: string;
+    rawPromptWriter: boolean;
     includePresetContext: boolean;
     promptWriterPresetId: string;
     promptWriterHistoryLimit: number;
@@ -63,6 +65,8 @@ export const defaultImageGenerationSettings: ImageGenerationSettings = {
     masterPrompt: PROMPT_MACRO,
     promptInstruction: DEFAULT_IMAGE_PROMPT_INSTRUCTION,
     promptWriterProfileId: "",
+    promptWriterModelId: "",
+    rawPromptWriter: false,
     includePresetContext: true,
     promptWriterPresetId: "",
     promptWriterHistoryLimit: 8,
@@ -163,6 +167,8 @@ export function normalizeImageGenerationSettings(
             defaultImageGenerationSettings.promptInstruction,
         ),
         promptWriterProfileId: text("promptWriterProfileId", ""),
+        promptWriterModelId: text("promptWriterModelId", "").trim(),
+        rawPromptWriter: input.rawPromptWriter === true,
         includePresetContext,
         promptWriterPresetId: text("promptWriterPresetId", ""),
         promptWriterHistoryLimit: Math.round(

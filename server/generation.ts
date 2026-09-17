@@ -18,6 +18,7 @@ import {
 import { createAnthropicConnection } from "#frontend/lib/connections/anthropic/adapter";
 import { createGoogleAIConnection } from "#frontend/lib/connections/google-ai/adapter";
 import { createNovelAIConnection } from "#frontend/lib/connections/novelai/adapter";
+import { applyTemporaryModelOverride } from "#frontend/lib/connections/registry";
 import { createOpenAICompatibleConnection } from "#frontend/lib/connections/openai-compatible/adapter";
 import { createOpenRouterConnection } from "#frontend/lib/connections/openrouter/adapter";
 import { createXAIConnection } from "#frontend/lib/connections/xai/adapter";
@@ -42,6 +43,7 @@ import { logger, sensitiveLog } from "./logger";
 
 type GenerationPayload = {
     profileId?: string;
+    modelId?: string;
     generation?: ChatGenerationRequest["generation"];
     formatting?: ChatGenerationRequest["formatting"];
     promptMessages: ChatGenerationMessage[];
@@ -66,7 +68,8 @@ export async function generateWithSavedConnection(
         readConnectionSecrets(),
     ]);
     const privateSettings = applyConnectionSecrets(settings, secrets);
-    const sourceProfile = resolveProfile(privateSettings, payload.profileId);
+    const rawProfile = resolveProfile(privateSettings, payload.profileId);
+    const sourceProfile = applyTemporaryModelOverride(rawProfile, payload.modelId);
     const prepared = prepareGenerationRequest(sourceProfile, {
         generation: payload.generation,
         messages: [],
@@ -537,8 +540,16 @@ function parseGenerationPayload(value: unknown): GenerationPayload {
         throw new BadRequestError("Generation profile ID must be a string.");
     }
 
+    if (typeof value.modelId !== "undefined" && typeof value.modelId !== "string") {
+        throw new BadRequestError("Generation model ID must be a string.");
+    }
+
     return {
         profileId: value.profileId,
+        modelId:
+            typeof value.modelId === "string"
+                ? value.modelId.trim() || undefined
+                : undefined,
         generation: isRecord(value.generation)
             ? (value.generation as ChatGenerationRequest["generation"])
             : undefined,

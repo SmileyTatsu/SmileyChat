@@ -174,10 +174,10 @@ function withRequestValidation(
     };
 }
 
-function applyTemporaryModelOverride(
-    profile: ConnectionProfile | undefined,
+export function applyTemporaryModelOverride<T extends ConnectionProfile | undefined>(
+    profile: T,
     modelId: string | undefined,
-): ConnectionProfile | undefined {
+): T {
     const trimmedModelId = modelId?.trim();
 
     if (!profile || !trimmedModelId) {
@@ -203,7 +203,7 @@ function applyTemporaryModelOverride(
                     id: trimmedModelId,
                 },
             },
-        } as ConnectionProfile;
+        } as unknown as T;
     }
 
     return profile;

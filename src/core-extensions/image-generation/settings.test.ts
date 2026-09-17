@@ -25,11 +25,25 @@ describe("image generation settings", () => {
             promptWriterPresetId: "",
             promptWriterHistoryLimit: 8,
             generatedImageContextMode: "tags",
+            rawPromptWriter: false,
+            promptWriterModelId: "",
         });
         expect(
             normalizeImageGenerationSettings({ promptWriterHistoryLimit: 500 })
                 .promptWriterHistoryLimit,
         ).toBe(50);
+    });
+
+    test("normalizes rawPromptWriter and promptWriterModelId", () => {
+        expect(
+            normalizeImageGenerationSettings({
+                rawPromptWriter: true,
+                promptWriterModelId: "  gpt-4o-mini  ",
+            }),
+        ).toMatchObject({
+            rawPromptWriter: true,
+            promptWriterModelId: "gpt-4o-mini",
+        });
     });
 
     test("normalizes generated-image history context mode", () => {

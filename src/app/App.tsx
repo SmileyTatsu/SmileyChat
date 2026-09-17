@@ -874,8 +874,12 @@ export function App() {
             : getActiveConnectionProfile(connectionSettings);
         const connection =
             profile && !isNativeProvider(profile.provider)
-                ? getAdapterForSettings(connectionSettings, profile.id)
-                : createServerGenerationConnection(request.profileId);
+                ? getAdapterForSettings(connectionSettings, profile.id, {
+                      modelId: request.modelId,
+                  })
+                : createServerGenerationConnection(request.profileId, {
+                      modelId: request.modelId,
+                  });
         const preset =
             (request.presetId
                 ? presetCollection.presets.find(

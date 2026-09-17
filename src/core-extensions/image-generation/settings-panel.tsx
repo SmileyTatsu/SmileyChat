@@ -104,6 +104,39 @@ export function ImageGenerationSettingsPanel({ api, snapshot }: SettingsPanelPro
                         ))}
                     </select>
                 </Field>
+                <Field
+                    label="Prompt-writer custom model"
+                    hint="Optional model ID override (e.g. gpt-4o-mini, gemini-2.5-flash). Leave blank to use the connection's active model."
+                >
+                    <input
+                        name="image-prompt-writer-model"
+                        type="text"
+                        autoComplete="off"
+                        placeholder="Default connection model"
+                        value={draft.promptWriterModelId}
+                        onInput={(event) =>
+                            patch({ promptWriterModelId: event.currentTarget.value })
+                        }
+                    />
+                </Field>
+                <label className="sig-toggle">
+                    <span>
+                        <span>Raw prompt writer</span>
+                        <small>
+                            Asks the model to output raw NovelAI prompt tags directly
+                            instead of structured JSON. Recommended for smaller, local, or
+                            roleplay models.
+                        </small>
+                    </span>
+                    <input
+                        name="image-raw-prompt-writer"
+                        type="checkbox"
+                        checked={draft.rawPromptWriter}
+                        onChange={(event) =>
+                            patch({ rawPromptWriter: event.currentTarget.checked })
+                        }
+                    />
+                </label>
                 <label className="sig-toggle">
                     <span>
                         <span>Send preset and recent chat context</span>

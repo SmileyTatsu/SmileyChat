@@ -23,6 +23,8 @@ const PROMPT_WRITER_RESPONSE_CONTRACT = `This is an application response protoco
 
 const PROMPT_WRITER_LABEL_RESPONSE_CONTRACT = `This is an application response protocol and is not user-editable. Return exactly one JSON object and no surrounding prose or code fence. Use this shape: {"roleMap":[{"role":"Subject","purpose":"short purpose"}],"prompt":"exact prompt insertion","label":"compact visual memory","notes":["short assumption"]}. The prompt field is required and must contain only the text that replaces {{prompt}}. The label field is required and must be a concise plain-language description of the resulting image for future chat context, preserving subject identity, image type, current appearance, action, framing, and setting while omitting artist and quality tags. Keep the label under 300 characters. roleMap and notes may be empty arrays. Never copy, rewrite, normalize, reorder, or remove the fixed master-prompt prefix or suffix.`;
 
+const PROMPT_WRITER_RAW_RESPONSE_CONTRACT = `This is an application response protocol and is not user-editable. Output only the exact prompt insertion that replaces {{prompt}}. Return only the comma-separated tags and natural language bindings. Do not wrap in JSON, markdown code fences, quotes, or conversational explanations. Never copy, rewrite, normalize, reorder, or remove the fixed master-prompt prefix or suffix.`;
+
 export type ImagePromptDraft = {
     roleMap: Array<{ role: string; purpose: string }>;
     prompt: string;
@@ -108,21 +110,33 @@ export async function writeImagePrompt(
         mode,
         contextLength: context.length,
         profileId: settings.promptWriterProfileId || "active",
+        modelId: settings.promptWriterModelId?.trim() || "default",
+        rawPromptWriter: settings.rawPromptWriter,
         includePresetContext: settings.includePresetContext,
         presetId: selectedPreset?.id || "none",
         historyMessageCount: historyCount,
     });
 
+    let rawResponse = "";
     try {
         const result = await api.model.generate({
             profileId: settings.promptWriterProfileId || undefined,
+            modelId: settings.promptWriterModelId?.trim() || undefined,
             presetId: selectedPreset?.id,
             stream: false,
             messages,
         });
+        rawResponse = result.message;
+        api.logger.info("Image prompt writer raw response", {
+            profileId: settings.promptWriterProfileId || "active",
+            modelId: settings.promptWriterModelId?.trim() || "default",
+            raw: result.message,
+            length: result.message.length,
+        });
         const parsed = parsePromptWriterResult(
             result.message,
             settings.generatedImageContextMode === "label",
+            settings.rawPromptWriter,
         );
         api.logger.info("Image prompt writer completed", {
             durationMs: Date.now() - startedAt,
@@ -132,7 +146,10 @@ export async function writeImagePrompt(
         });
         return parsed;
     } catch (error) {
-        api.logger.error("Image prompt writer failed", error);
+        api.logger.error("Image prompt writer failed", {
+            error,
+            raw: rawResponse,
+        });
         throw error;
     }
 }
@@ -173,50 +190,125 @@ export function buildPromptWriterMessages(
         },
         {
             role: ChatGenerationMessageRole.System,
-            content:
-                settings.generatedImageContextMode === "label"
-                    ? PROMPT_WRITER_LABEL_RESPONSE_CONTRACT
-                    : PROMPT_WRITER_RESPONSE_CONTRACT,
+            content: settings.rawPromptWriter
+                ? PROMPT_WRITER_RAW_RESPONSE_CONTRACT
+                : settings.generatedImageContextMode === "label"
+                  ? PROMPT_WRITER_LABEL_RESPONSE_CONTRACT
+                  : PROMPT_WRITER_RESPONSE_CONTRACT,
         },
         {
             role: ChatGenerationMessageRole.User,
-            content: JSON.stringify(
-                {
-                    task: "Write only the replaceable insertion for {{prompt}}.",
-                    contextMode: mode,
-                    visualContext: context,
-                    novelAIImageModel: settings.model,
-                    fixedMasterPrompt: settings.masterPrompt,
-                    fixedPrefix: prefix,
-                    fixedSuffix: suffix,
-                    warning:
-                        "Prefix and suffix are immutable user text. Do not repeat their tags in prompt unless the visual request cannot be expressed otherwise. Follow the latest visual request while remaining consistent with the supplied preset and recent chat context.",
-                },
-                null,
-                2,
-            ),
+            content: settings.rawPromptWriter
+                ? [
+                      `Visual request mode: ${mode}`,
+                      `Context for this image:\n${context}`,
+                      `NovelAI model: ${settings.model}`,
+                      `Fixed master-prompt prefix: ${prefix}`,
+                      `Fixed master-prompt suffix: ${suffix}`,
+                      "Prefix and suffix are immutable user text. Do not repeat their tags in prompt unless the visual request cannot be expressed otherwise. Follow the latest visual request while remaining consistent with the supplied preset and recent chat context.",
+                      "Generate only the raw prompt tags and bindings to insert into {{prompt}}.",
+                  ].join("\n\n")
+                : JSON.stringify(
+                      {
+                          task: "Write only the replaceable insertion for {{prompt}}.",
+                          contextMode: mode,
+                          visualContext: context,
+                          novelAIImageModel: settings.model,
+                          fixedMasterPrompt: settings.masterPrompt,
+                          fixedPrefix: prefix,
+                          fixedSuffix: suffix,
+                          warning:
+                              "Prefix and suffix are immutable user text. Do not repeat their tags in prompt unless the visual request cannot be expressed otherwise. Follow the latest visual request while remaining consistent with the supplied preset and recent chat context.",
+                      },
+                      null,
+                      2,
+                  ),
         },
     ];
+}
+
+export function stripThinkingTags(value: string): string {
+    return value.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "").trim();
 }
 
 export function parsePromptWriterResult(
     value: string,
     requireLabel = false,
+    rawPromptWriter = false,
 ): ImagePromptDraft {
-    const trimmed = value.trim();
-    const unfenced = trimmed
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/, "")
-        .trim();
-    const objectStart = unfenced.indexOf("{");
-    const objectEnd = unfenced.lastIndexOf("}");
+    const withoutThinking = stripThinkingTags(value);
+    const trimmed = withoutThinking.trim();
+
+    if (rawPromptWriter) {
+        // Strip code fences if model wrapped the raw prompt in ```tags or ```
+        const unfenced = trimmed
+            .replace(/^```[a-z0-9_-]*\s*/i, "")
+            .replace(/\s*```$/, "")
+            .trim();
+
+        // If the model still returned JSON despite raw prompt mode, extract the prompt field
+        if (unfenced.startsWith("{") && unfenced.endsWith("}")) {
+            try {
+                const parsed = JSON.parse(unfenced) as Record<string, unknown>;
+                if (typeof parsed.prompt === "string" && parsed.prompt.trim()) {
+                    const prompt = parsed.prompt.trim();
+                    const label =
+                        typeof parsed.label === "string" && parsed.label.trim()
+                            ? parsed.label.trim().slice(0, 300)
+                            : prompt.slice(0, 300);
+                    return { roleMap: [], prompt, label, notes: [] };
+                }
+            } catch {
+                // Not valid JSON, continue with unfenced text
+            }
+        }
+
+        if (!unfenced) {
+            throw new Error("The prompt writer returned an empty prompt.");
+        }
+
+        return {
+            roleMap: [],
+            prompt: unfenced,
+            label: unfenced.slice(0, 300),
+            notes: [],
+        };
+    }
+
+    // Structured JSON mode
+    // 1. If wrapped in markdown codeblock, extract codeblock contents first
+    const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidateText = codeBlockMatch ? codeBlockMatch[1].trim() : trimmed;
+
+    // 2. Locate the outermost JSON object
+    const objectStart = candidateText.indexOf("{");
+    const objectEnd = candidateText.lastIndexOf("}");
     const jsonText =
         objectStart >= 0 && objectEnd > objectStart
-            ? unfenced.slice(objectStart, objectEnd + 1)
-            : unfenced;
+            ? candidateText.slice(objectStart, objectEnd + 1)
+            : candidateText;
+
+    let parsed: Record<string, unknown> | null = null;
+    try {
+        parsed = JSON.parse(jsonText) as Record<string, unknown>;
+    } catch {
+        // Try lenient sanitization for common LLM syntax flaws:
+        // - Trailing commas: ,} or ,]
+        // - Unescaped backslashes in NovelAI syntax: \{tag\} -> {tag}
+        try {
+            const sanitized = jsonText
+                .replace(/,\s*([\]}])/g, "$1")
+                .replace(/\\([{}[\]])/g, "$1");
+            parsed = JSON.parse(sanitized) as Record<string, unknown>;
+        } catch {
+            parsed = null;
+        }
+    }
 
     try {
-        const parsed = JSON.parse(jsonText) as Record<string, unknown>;
+        if (!parsed || typeof parsed !== "object") {
+            throw new Error("Invalid structured JSON");
+        }
         if (typeof parsed.prompt !== "string" || !parsed.prompt.trim()) {
             throw new Error("The prompt writer returned an empty prompt field.");
         }

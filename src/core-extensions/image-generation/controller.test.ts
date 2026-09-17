@@ -6,6 +6,7 @@ import {
     buildPromptWriterMessages,
     isNovelAIImageGenerationAvailable,
     parsePromptWriterResult,
+    stripThinkingTags,
 } from "./controller";
 import { defaultImageGenerationSettings } from "./settings";
 
@@ -39,6 +40,54 @@ describe("image prompt writer response", () => {
                 'Here is the result: {"roleMap":[],"prompt":"1girl, solo","label":"A solo portrait.","notes":[]}',
             ).prompt,
         ).toBe("1girl, solo");
+    });
+
+    test("strips thinking tags before parsing structured JSON", () => {
+        expect(stripThinkingTags("<think>Let's think { foo: bar }</think>Hello")).toBe(
+            "Hello",
+        );
+        expect(
+            parsePromptWriterResult(
+                '<think>\nWe need to output JSON: {"test": 123}\n</think>\n```json\n{"roleMap":[],"prompt":"1girl, smile","notes":[]}\n```',
+            ).prompt,
+        ).toBe("1girl, smile");
+    });
+
+    test("handles trailing commas and unescaped NovelAI syntax in JSON", () => {
+        expect(
+            parsePromptWriterResult(
+                '{"roleMap":[],"prompt":"1girl, \\{blue eyes\\}, [bad hands]","notes":[],}',
+            ).prompt,
+        ).toBe("1girl, {blue eyes}, [bad hands]");
+    });
+
+    test("accepts raw prompt writer output when raw mode is enabled", () => {
+        expect(
+            parsePromptWriterResult(
+                "1girl, nejire hadou, boku no hero academia, looking at viewer",
+                false,
+                true,
+            ),
+        ).toEqual({
+            roleMap: [],
+            prompt: "1girl, nejire hadou, boku no hero academia, looking at viewer",
+            label: "1girl, nejire hadou, boku no hero academia, looking at viewer",
+            notes: [],
+        });
+
+        expect(
+            parsePromptWriterResult("```\n1girl, solo, smile\n```", false, true).prompt,
+        ).toBe("1girl, solo, smile");
+
+        expect(
+            parsePromptWriterResult(
+                '<think>thinking about tags</think>{"prompt":"1girl, extracted"}',
+                false,
+                true,
+            ).prompt,
+        ).toBe("1girl, extracted");
+
+        expect(() => parsePromptWriterResult("   ", false, true)).toThrow("empty prompt");
     });
 });
 
@@ -112,6 +161,49 @@ describe("image prompt writer context", () => {
                 buildPromptWriterMessages(snapshot, settings, "custom", "draw this"),
             ),
         ).not.toContain("must-not-leak");
+    });
+
+    test("builds raw prompt writer messages when rawPromptWriter is enabled", () => {
+        const snapshot = {
+            mode: "chatting",
+            messages: [],
+            character: {
+                id: "character",
+                data: {
+                    name: "Character",
+                    description: "Description",
+                    personality: "Personality",
+                    scenario: "Scenario",
+                    first_mes: "",
+                    mes_example: "",
+                    extensions: {},
+                },
+            },
+            persona: { name: "User", description: "Persona" },
+            userStatus: "online",
+            presetCollection: { activePresetId: "missing", presets: [] },
+        } as unknown as PluginAppSnapshot;
+        const settings = {
+            ...defaultImageGenerationSettings,
+            rawPromptWriter: true,
+        };
+
+        const messages = buildPromptWriterMessages(
+            snapshot,
+            settings,
+            "custom",
+            "draw this",
+        );
+        const systemMessage = messages.find(
+            (m) =>
+                typeof m.content === "string" &&
+                m.content.includes("Output only the exact prompt insertion"),
+        );
+        expect(systemMessage).toBeDefined();
+        const userMessage = messages[messages.length - 1];
+        expect(userMessage?.content).toContain(
+            "Generate only the raw prompt tags and bindings",
+        );
     });
 });
 
