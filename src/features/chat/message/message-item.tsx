@@ -17,6 +17,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
 import { cn } from "#frontend/lib/common/style";
+import { formatShortTime } from "#frontend/lib/common/time";
 import {
     getTextFormattingHotkeyResult,
     restoreTextareaSelection,
@@ -24,11 +25,12 @@ import {
 import { formatDuration } from "#frontend/lib/time";
 import { getPluginTool } from "#frontend/lib/plugins/registry";
 import {
+    getActiveSwipe,
     getMessageAttachments,
     getMessageContent,
+    getMessageCreatedAt,
     getMessageTimeline,
     getVisibleMessageTimeline,
-    getActiveSwipe,
 } from "#frontend/lib/messages";
 import type { MessageFormattingOptions } from "#frontend/lib/message-formatting/quote-highlighting";
 import type {
@@ -59,6 +61,8 @@ export type MessageItemProps = {
     characterDialogueColor?: string;
     characterName: string;
     chatId: string;
+    isContinuation?: boolean;
+    hasNextFromSameAuthor?: boolean;
     isEditing: boolean;
     isLastMessage: boolean;
     isMenuOpen: boolean;
@@ -105,6 +109,8 @@ export const MessageItem = memo(function MessageItem({
     characterDialogueColor,
     characterName,
     chatId,
+    isContinuation,
+    hasNextFromSameAuthor,
     isEditing,
     isLastMessage,
     isMenuOpen,
@@ -150,6 +156,7 @@ export const MessageItem = memo(function MessageItem({
     const attachments = getMessageAttachments(message);
     const activeSwipe = getActiveSwipe(message);
     const toolActivities = activeSwipe?.toolActivities;
+    const messageDateTime = getMessageCreatedAt(message);
 
     const canPagePrevious = message.activeSwipeIndex > 0;
     const canUseUserSwipes =
@@ -263,12 +270,20 @@ export const MessageItem = memo(function MessageItem({
 
     return (
         <article
-            className={cn("message", {
-                "generating-swipe": isPendingSwipe,
-                "show-rp-message-avatar": showRpMessageAvatar,
-                "hide-avatar": hideChatAvatar,
-                "system-message": message.metadata?.displayRole === "system",
-            })}
+            className={cn(
+                "message",
+                message.role === "user" ? "user-message" : "character-message",
+                {
+                    "generating-swipe": isPendingSwipe,
+                    "show-rp-message-avatar": showRpMessageAvatar,
+                    "hide-avatar": hideChatAvatar,
+                    "is-continuation": isContinuation,
+                    "has-continuation": hasNextFromSameAuthor,
+                    "system-message": message.metadata?.displayRole === "system",
+                },
+            )}
+            data-role={message.role}
+            data-continuation={isContinuation ? "true" : undefined}
         >
             <div className="message-avatar">
                 {avatar.path && <img src={avatar.path} alt={avatar.alt} />}
@@ -498,6 +513,15 @@ export const MessageItem = memo(function MessageItem({
                         onVisibleContentChange={onVisibleContentChange}
                     />
                 )}
+                {showTimestamps && (
+                    <time
+                        className="bubble-timestamp"
+                        dateTime={messageDateTime}
+                        aria-label={formatShortTime(messageDateTime, timeFormat)}
+                    >
+                        {formatShortTime(messageDateTime, timeFormat)}
+                    </time>
+                )}
                 {!isEditing && isLastMessage && activeSwipe?.pendingToolContinuation && (
                     <div className="tool-continuation">
                         <p>
@@ -595,6 +619,8 @@ function areMessageItemPropsEqual(
         previous.characterDialogueColor === next.characterDialogueColor &&
         previous.characterName === next.characterName &&
         previous.chatId === next.chatId &&
+        previous.isContinuation === next.isContinuation &&
+        previous.hasNextFromSameAuthor === next.hasNextFromSameAuthor &&
         previous.isEditing === next.isEditing &&
         previous.isLastMessage === next.isLastMessage &&
         previous.isMenuOpen === next.isMenuOpen &&

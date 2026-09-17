@@ -465,9 +465,30 @@ export const MessageList = memo(function MessageList({
                     align: "end",
                 }}
                 increaseViewportBy={{ top: 500, bottom: 800 }}
-                itemContent={(_, message) => {
+                itemContent={(index, message) => {
                     const isEditing = editingMessageId === message.id;
                     const isMenuOpen = openMenuMessageId === message.id;
+                    const previousMessage =
+                        index > 0 ? displayMessages[index - 1] : undefined;
+                    const nextMessage =
+                        index < displayMessages.length - 1
+                            ? displayMessages[index + 1]
+                            : undefined;
+
+                    const isContinuation = Boolean(
+                        previousMessage &&
+                        previousMessage.role === message.role &&
+                        previousMessage.author === message.author &&
+                        previousMessage.metadata?.displayRole !== "system" &&
+                        message.metadata?.displayRole !== "system",
+                    );
+                    const hasNextFromSameAuthor = Boolean(
+                        nextMessage &&
+                        nextMessage.role === message.role &&
+                        nextMessage.author === message.author &&
+                        nextMessage.metadata?.displayRole !== "system" &&
+                        message.metadata?.displayRole !== "system",
+                    );
 
                     return (
                         <MessageItem
@@ -491,6 +512,8 @@ export const MessageList = memo(function MessageList({
                             }
                             characterName={characterName}
                             chatId={chatId}
+                            isContinuation={isContinuation}
+                            hasNextFromSameAuthor={hasNextFromSameAuthor}
                             isEditing={isEditing}
                             isLastMessage={
                                 message === displayMessages[displayMessages.length - 1]

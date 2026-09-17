@@ -31,6 +31,19 @@ export const AVAILABLE_CHAT_THEMES: readonly ChatThemeDefinition[] = [
             time: "10:24 PM",
         },
     },
+    {
+        id: "bubbles",
+        name: "Bubbles",
+        badge: "WhatsApp / Messaging",
+        description:
+            "Classic messaging app layout inspired by WhatsApp and modern mobile chats. Character messages appear on the left, user messages on the right in distinct speech bubbles, with seamless attachment enclosures.",
+        preview: {
+            author: "Luna",
+            text: "I found the ledger you mentioned earlier! Page thirty-two has what we're looking for.",
+            quote: '"Page thirty-two has what we\'re looking for."',
+            time: "10:24 PM",
+        },
+    },
 ];
 
 export function getChatTheme(id: string): ChatThemeDefinition {

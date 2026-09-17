@@ -59,6 +59,10 @@ describe("app preference normalization", () => {
                 .chatTheme,
         ).toBe("rp");
         expect(
+            normalizeAppPreferences({ appearance: { chatTheme: "bubbles" } }).appearance
+                .chatTheme,
+        ).toBe("bubbles");
+        expect(
             normalizeAppPreferences({ appearance: { chatTheme: "invalid-theme" } })
                 .appearance.chatTheme,
         ).toBe("chat");

@@ -1,4 +1,4 @@
-export type ChatThemeId = "chat" | "rp" | (string & {});
+export type ChatThemeId = "chat" | "rp" | "bubbles" | (string & {});
 
 export type ChatThemePreviewSample = {
     author: string;

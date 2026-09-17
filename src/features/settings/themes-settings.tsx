@@ -4,6 +4,7 @@ import {
     CheckCircle2,
     Eye,
     Info,
+    MessageCircle,
     MessageSquare,
     SlidersHorizontal,
 } from "lucide-preact";
@@ -153,7 +154,12 @@ export function ThemesSettings({
             <div className="themes-grid">
                 {AVAILABLE_CHAT_THEMES.map((theme) => {
                     const isActive = theme.id === activeThemeId;
-                    const Icon = theme.id === "rp" ? BookOpen : MessageSquare;
+                    const Icon =
+                        theme.id === "rp"
+                            ? BookOpen
+                            : theme.id === "bubbles"
+                              ? MessageCircle
+                              : MessageSquare;
 
                     return (
                         <article
@@ -222,8 +228,12 @@ export function ThemesSettings({
                     data-theme={activeThemeId}
                 >
                     <div className="message-list">
-                        {previewMessages.map((msg) => {
+                        {previewMessages.map((msg, index) => {
                             const isCharacter = msg.role === "character";
+                            const isContinuation =
+                                index > 0 &&
+                                previewMessages[index - 1].role === msg.role &&
+                                previewMessages[index - 1].author === msg.author;
                             const showRpAvatar =
                                 activeThemeId === "rp" && effectiveShowAvatars;
                             const hideChatAvatar =
@@ -242,8 +252,11 @@ export function ThemesSettings({
                             return (
                                 <article
                                     key={msg.id}
-                                    className={`message ${isCharacter ? "character-message" : "user-message"} ${showRpAvatar ? "show-rp-message-avatar" : ""} ${hideChatAvatar ? "hide-avatar" : ""}`}
+                                    className={`message ${isCharacter ? "character-message" : "user-message"} ${showRpAvatar ? "show-rp-message-avatar" : ""} ${hideChatAvatar ? "hide-avatar" : ""} ${isContinuation ? "is-continuation" : ""}`}
                                     data-role={msg.role}
+                                    data-continuation={
+                                        isContinuation ? "true" : undefined
+                                    }
                                 >
                                     <div className="message-avatar">
                                         <img
@@ -278,6 +291,17 @@ export function ThemesSettings({
                                                 enabled: effectiveHighlightQuotes,
                                             })}
                                         </p>
+                                        {preferences.appearance.showTimestamps && (
+                                            <time
+                                                className="bubble-timestamp"
+                                                dateTime={msg.date.toISOString()}
+                                            >
+                                                {formatShortTime(
+                                                    msg.date,
+                                                    preferences.appearance.timeFormat,
+                                                )}
+                                            </time>
+                                        )}
                                     </div>
                                 </article>
                             );
