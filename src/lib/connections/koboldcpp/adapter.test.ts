@@ -124,6 +124,48 @@ describe("KoboldCPP connection adapter", () => {
         );
     });
 
+    test("preserves generated leading whitespace and accepts blank output", async () => {
+        globalThis.fetch = (async () =>
+            new Response(JSON.stringify({ results: [{ text: "\n    indented" }] }), {
+                status: 200,
+            })) as unknown as typeof fetch;
+        const result = await createKoboldCPPConnection(config).generate({
+            messages: [],
+            promptMessages: [{ role: "user", content: "Hi" }],
+        });
+        expect(result.message).toBe("\n    indented");
+
+        globalThis.fetch = (async () =>
+            new Response(JSON.stringify({ results: [{ text: "   " }] }), {
+                status: 200,
+            })) as unknown as typeof fetch;
+        const blank = await createKoboldCPPConnection(config).generate({
+            messages: [],
+            promptMessages: [{ role: "user", content: "Hi" }],
+        });
+        expect(blank.message).toBe("");
+    });
+
+    test("preserves streamed whitespace around text and normalizes blank streams", async () => {
+        for (const text of ["\n    indented\n", " \n\t", ""]) {
+            globalThis.fetch = (async () =>
+                new Response(
+                    `data: ${JSON.stringify({ token: text })}\n\n`,
+                )) as unknown as typeof fetch;
+            let tokens = "";
+            const result = await createKoboldCPPConnection(config).generate({
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hi" }],
+                stream: true,
+                onToken: (token) => {
+                    tokens += token;
+                },
+            });
+            expect(tokens).toBe(text);
+            expect(result.message).toBe(text.trim() ? text : "");
+        }
+    });
+
     test("authenticates the abort request", async () => {
         const calls: Array<{ url: string; init?: RequestInit }> = [];
         globalThis.fetch = (async (url, init) => {

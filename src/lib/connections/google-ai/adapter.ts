@@ -38,6 +38,7 @@ export function createGoogleAIConnection(
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
+                        ...createGoogleAIHeaders(config),
                     },
                     body: JSON.stringify(body),
                     signal: request.signal,
@@ -156,10 +157,6 @@ export function createGoogleAIGenerateUrl(
         target.searchParams.set("alt", "sse");
     }
 
-    if (config.apiKey?.trim()) {
-        target.searchParams.set("key", config.apiKey.trim());
-    }
-
     return target.toString();
 }
 
@@ -176,9 +173,6 @@ async function uploadGoogleAIFile(
     filename = "attachment",
 ) {
     const startUrl = new URL(`${googleAIUploadBaseUrl(config.baseUrl)}/files`);
-    if (config.apiKey?.trim()) {
-        startUrl.searchParams.set("key", config.apiKey.trim());
-    }
 
     const startResponse = await fetch(startUrl.toString(), {
         method: "POST",
@@ -188,6 +182,7 @@ async function uploadGoogleAIFile(
             "X-Goog-Upload-Header-Content-Length": String(blob.size),
             "X-Goog-Upload-Header-Content-Type": blob.type || "application/octet-stream",
             "X-Goog-Upload-Protocol": "resumable",
+            ...createGoogleAIHeaders(config),
         },
         body: JSON.stringify({ file: { display_name: filename } }),
     });
@@ -300,11 +295,10 @@ async function waitForGoogleAIFile(
 
 async function getGoogleAIFile(config: GoogleAIRuntimeConfig, fileName: string) {
     const target = new URL(`${normalizeGoogleAIBaseUrl(config.baseUrl)}/${fileName}`);
-    if (config.apiKey?.trim()) {
-        target.searchParams.set("key", config.apiKey.trim());
-    }
 
-    const response = await fetch(target.toString());
+    const response = await fetch(target.toString(), {
+        headers: createGoogleAIHeaders(config),
+    });
 
     if (!response.ok) {
         throw new Error(
@@ -341,11 +335,18 @@ async function deleteGoogleAIFiles(config: GoogleAIRuntimeConfig, fileNames: str
     await Promise.allSettled(
         fileNames.map((name) => {
             const target = new URL(`${normalizeGoogleAIBaseUrl(config.baseUrl)}/${name}`);
-            if (config.apiKey?.trim()) {
-                target.searchParams.set("key", config.apiKey.trim());
-            }
 
-            return fetch(target.toString(), { method: "DELETE" });
+            return fetch(target.toString(), {
+                method: "DELETE",
+                headers: createGoogleAIHeaders(config),
+            });
         }),
     );
+}
+
+export function createGoogleAIHeaders(
+    config: Pick<GoogleAIRuntimeConfig, "apiKey">,
+): Record<string, string> {
+    const apiKey = config.apiKey?.trim();
+    return apiKey ? { "x-goog-api-key": apiKey } : {};
 }

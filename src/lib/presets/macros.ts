@@ -38,10 +38,6 @@ type MacroValue = {
 };
 
 const commentMacroPattern = /\{\{\/\/[\s\S]*?\}\}/g;
-const ifBlockPattern =
-    /\{\{#if\s+([a-zA-Z0-9_]+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g;
-const unlessBlockPattern =
-    /\{\{#unless\s+([a-zA-Z0-9_]+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/unless\}\}/g;
 const macroPattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
 const maxNestedMacroDepth = 8;
 
@@ -237,32 +233,94 @@ export function resolveCharacterCardMacros(content: string, character: SmileyCha
     return resolveCharacterCardMacrosInternal(content, character, 0, new Set());
 }
 
+type ConditionalNode =
+    | { type: "text"; value: string }
+    | {
+          type: "conditional";
+          block: "if" | "unless";
+          key: string;
+          truthy: ConditionalNode[];
+          falsy: ConditionalNode[];
+      };
+
+/**
+ * Resolves the conditional subset used in presets without regex pairing.
+ * A stack makes nested Handlebars blocks unambiguous, unlike a non-greedy
+ * `{{#if}}...{{/if}}` pattern which closes at the first inner block.
+ */
 function evaluateConditionals(
     content: string,
     evaluator: (key: string) => boolean,
 ): string {
-    let result = content;
-    let iterations = 0;
+    const root: ConditionalNode[] = [];
+    const stack: Array<{
+        node: Extract<ConditionalNode, { type: "conditional" }>;
+        branch: "truthy" | "falsy";
+    }> = [];
+    const currentNodes = () => {
+        const current = stack[stack.length - 1];
+        return current ? current.node[current.branch] : root;
+    };
+    const tokenPattern = /\{\{([\s\S]*?)\}\}/g;
+    let cursor = 0;
+    let match: RegExpExecArray | null;
 
-    while (
-        (ifBlockPattern.test(result) || unlessBlockPattern.test(result)) &&
-        iterations < maxNestedMacroDepth
-    ) {
-        iterations++;
-        result = result
-            .replace(
-                ifBlockPattern,
-                (_, key: string, thenBranch: string, elseBranch = "") =>
-                    evaluator(key) ? thenBranch : elseBranch,
-            )
-            .replace(
-                unlessBlockPattern,
-                (_, key: string, thenBranch: string, elseBranch = "") =>
-                    evaluator(key) ? elseBranch : thenBranch,
-            );
+    while ((match = tokenPattern.exec(content))) {
+        if (match.index > cursor) {
+            currentNodes().push({
+                type: "text",
+                value: content.slice(cursor, match.index),
+            });
+        }
+        cursor = tokenPattern.lastIndex;
+        const token = match[1].trim();
+        const start = /^#(if|unless)\s+([a-zA-Z0-9_]+)$/.exec(token);
+        const close = /^\/(if|unless)$/.exec(token);
+
+        if (start) {
+            const node: Extract<ConditionalNode, { type: "conditional" }> = {
+                type: "conditional",
+                block: start[1] as "if" | "unless",
+                key: start[2],
+                truthy: [],
+                falsy: [],
+            };
+            currentNodes().push(node);
+            stack.push({ node, branch: "truthy" });
+        } else if (token === "else" && stack.length > 0) {
+            stack[stack.length - 1].branch = "falsy";
+        } else if (close && stack[stack.length - 1]?.node.block === close[1]) {
+            stack.pop();
+        } else {
+            currentNodes().push({ type: "text", value: match[0] });
+        }
     }
 
-    return result;
+    if (cursor < content.length) {
+        currentNodes().push({ type: "text", value: content.slice(cursor) });
+    }
+
+    // Preserve malformed, unfinished templates exactly as they were.
+    if (stack.length > 0) return content;
+
+    // Rendering must also be iterative: imported templates can nest deeply.
+    const output: string[] = [];
+    const pending = [...root].reverse();
+    while (pending.length > 0) {
+        const node = pending.pop()!;
+        if (node.type === "text") {
+            output.push(node.value);
+            continue;
+        }
+        const truthy = evaluator(node.key);
+        const branch = (node.block === "if" ? truthy : !truthy)
+            ? node.truthy
+            : node.falsy;
+        for (let index = branch.length - 1; index >= 0; index--) {
+            pending.push(branch[index]);
+        }
+    }
+    return output.join("");
 }
 
 function resolvePresetMacrosInternal(

@@ -62,11 +62,11 @@ Defaults and endpoints:
 
 - Base URL: `https://generativelanguage.googleapis.com/v1beta`
 - Default model: `gemini-3.1-flash-lite`
-- Model loading: `GET {baseUrl}/models?key={apiKey}`
-- Generation: `POST {baseUrl}/models/{model}:generateContent?key={apiKey}`
-- Streaming generation: `POST {baseUrl}/models/{model}:streamGenerateContent?alt=sse&key={apiKey}`
+- Model loading: `GET {baseUrl}/models`
+- Generation: `POST {baseUrl}/models/{model}:generateContent`
+- Streaming generation: `POST {baseUrl}/models/{model}:streamGenerateContent?alt=sse`
 
-System and developer prompts are sent through `systemInstruction`. User and assistant history is converted to Google `contents` with `user` / `model` roles, and consecutive same-role turns are merged. Non-image files are uploaded to Gemini Files and referenced as `fileData`.
+Google requests authenticate with the `x-goog-api-key` request header; the key is never appended to a URL. System and developer prompts are sent through `systemInstruction`. User and assistant history is converted to Google `contents` with `user` / `model` roles, and consecutive same-role turns are merged. Non-image files are uploaded to Gemini Files and referenced as `fileData`.
 
 Model selection starts with the local default catalog in `src/data/default-google-ai-models.json`. Models loaded from the endpoint are shown under `Other`.
 
@@ -131,6 +131,7 @@ Features:
 - **Context Length**: Automatically inspects server context length or allows manual override.
 - **Multimodality**: Sends image attachments directly to KoboldCPP vision models.
 - **Sampling & Stopping**: Respects preset sampling settings (temperature, top-p, top-k, min-p, top-a, typical-p, tfs, repetition penalty) and injects template stop sequences.
+- **Output fidelity**: Preserves model output exactly, including leading indentation, newlines, and whitespace-only generations.
 
 ## Context Limits & Token Budgeting
 
@@ -147,6 +148,8 @@ SmileyChat manages prompt size locally before sending generation requests:
 OpenAI-compatible, OpenRouter, Google AI, Anthropic, NovelAI, xAI, and KoboldCPP adapters support streaming over SSE. Configure streaming in the active preset's Generation settings. Presets without an explicit setting use the legacy `preferences.chat.streaming` value as their fallback.
 
 Streaming is intentionally not a per-provider setting.
+
+Cancelling a stream keeps the original abort result even if the underlying transport is still releasing its reader lock.
 
 ## Secrets
 

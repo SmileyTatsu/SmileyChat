@@ -51,6 +51,10 @@ These macros provide access to the current chat session's flow. Note: To prevent
 - `{{// your comment here }}`: A comment macro. Everything inside will be removed entirely during preset compilation. Useful for adding notes to your preset prompts.
 - `{{outlet::outlet_name}}`: Used internally and by plugins to inject dynamic content registered via prompt outlets.
 
+## Preset conditionals
+
+Preset blocks support `{{#if macro}}...{{else}}...{{/if}}` and `{{#unless macro}}...{{else}}...{{/unless}}`. Conditionals can be nested; each closing tag matches its own enclosing block. The macro name is evaluated by whether its resolved value contains non-whitespace content.
+
 ## Story String macros (Formatting Beta)
 
 Text-completion Story Strings also support Handlebars-style conditionals and these context values:

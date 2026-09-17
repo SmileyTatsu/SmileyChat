@@ -1,3 +1,5 @@
+import { inflateSync } from "node:zlib";
+
 import { isRecord } from "../common/guards";
 import { createId } from "../common/ids";
 
@@ -220,6 +222,20 @@ function textChunkValue(type: string, chunk: Uint8Array, keyword: string) {
         return chunkKeyword === keyword ? latin1(chunk.slice(separator + 1)) : undefined;
     }
 
+    if (type === "zTXt") {
+        const separator = chunk.indexOf(0);
+
+        if (
+            separator < 0 ||
+            latin1(chunk.slice(0, separator)) !== keyword ||
+            chunk[separator + 1] !== 0
+        ) {
+            return undefined;
+        }
+
+        return latin1(inflatePngText(chunk.slice(separator + 2)));
+    }
+
     if (type === "iTXt") {
         const firstSeparator = chunk.indexOf(0);
 
@@ -228,11 +244,14 @@ function textChunkValue(type: string, chunk: Uint8Array, keyword: string) {
         }
 
         const compressionFlag = chunk[firstSeparator + 1];
+        const compressionMethod = chunk[firstSeparator + 2];
 
-        if (compressionFlag !== 0) {
-            throw new Error(
-                "Compressed iTXt PNG character metadata is not supported yet.",
-            );
+        if (compressionFlag !== 0 && compressionFlag !== 1) {
+            return undefined;
+        }
+
+        if (compressionFlag === 1 && compressionMethod !== 0) {
+            return undefined;
         }
 
         let cursor = firstSeparator + 3;
@@ -249,10 +268,22 @@ function textChunkValue(type: string, chunk: Uint8Array, keyword: string) {
             return undefined;
         }
 
-        return utf8(chunk.slice(translatedKeywordEnd + 1));
+        const text = chunk.slice(translatedKeywordEnd + 1);
+        return compressionFlag === 1 ? utf8(inflatePngText(text)) : utf8(text);
     }
 
     return undefined;
+}
+
+function inflatePngText(data: Uint8Array) {
+    try {
+        // Bound expanded metadata, not just the small compressed PNG chunk.
+        return new Uint8Array(inflateSync(data, { maxOutputLength: 16 * 1024 * 1024 }));
+    } catch {
+        throw new Error(
+            "PNG character metadata could not be decompressed or exceeds the 16 MiB limit.",
+        );
+    }
 }
 
 function readUint32(data: Uint8Array, offset: number) {

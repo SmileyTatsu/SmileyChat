@@ -2,6 +2,8 @@
 
 SmileyChat fully supports standard V1, V2, and V3 character cards (like those used in SillyTavern or Text Generation WebUI).
 
+PNG cards can store their `chara` metadata in ordinary `tEXt`, compressed `zTXt`, or compressed international `iTXt` chunks, so cards exported by tools that compress metadata import normally.
+
 There are three simple ways to bring your characters into SmileyChat:
 
 ## Method 1: Drag and Drop (In the App)

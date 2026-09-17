@@ -57,7 +57,8 @@ export async function readJsonServerSentEvents<TChunk>(
     const decoder = new TextDecoder();
     let buffer = "";
     const abortReader = () => {
-        void reader.cancel();
+        // Cancellation can reject if the underlying stream has already errored.
+        void reader.cancel().catch(() => {});
     };
 
     try {
@@ -96,9 +97,21 @@ export async function readJsonServerSentEvents<TChunk>(
         if (buffer.trim()) {
             parseServerSentEvent(buffer, onChunk);
         }
+    } catch (error) {
+        if (signal?.aborted) {
+            throw new DOMException("The operation was aborted.", "AbortError");
+        }
+        throw error;
     } finally {
         signal?.removeEventListener("abort", abortReader);
-        reader.releaseLock();
+        // Cancelling an in-flight read can leave the stream locked until that
+        // read settles. Releasing then throws in some browser implementations
+        // and would otherwise hide the original AbortError.
+        try {
+            reader.releaseLock();
+        } catch {
+            // The read/cancel operation owns the lock until it finishes.
+        }
     }
 }
 

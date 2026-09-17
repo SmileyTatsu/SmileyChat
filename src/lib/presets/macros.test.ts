@@ -85,6 +85,50 @@ describe("resolvePresetMacros", () => {
         ).toBe("Personality missing");
     });
 
+    test("matches nested preset conditional blocks with a stack", () => {
+        const withDescription = createMacroContext();
+        expect(
+            resolvePresetMacros(
+                "{{#if description}}outer {{#if personality}}inner{{else}}fallback{{/if}} done{{else}}missing{{/if}}",
+                withDescription,
+            ),
+        ).toBe("outer fallback done");
+
+        const withoutDescription = createMacroContext({
+            character: {
+                ...createCharacter(),
+                data: { ...createCharacter().data, description: "" },
+            },
+        });
+        expect(
+            resolvePresetMacros(
+                "{{#if description}}outer {{#if personality}}inner{{else}}fallback{{/if}} done{{else}}missing{{/if}}",
+                withoutDescription,
+            ),
+        ).toBe("missing");
+    });
+
+    test("evaluates mixed nested blocks and adjacent branches", () => {
+        expect(
+            resolvePresetMacros(
+                "{{#unless personality}}A{{#if description}}{{char}}{{else}}B{{/if}}{{else}}C{{/unless}}|{{#if personality}}D{{else}}{{#unless description}}E{{else}}F{{/unless}}{{/if}}",
+                createMacroContext(),
+            ),
+        ).toBe("ALuna|F");
+    });
+
+    test("renders deeply nested imported conditionals without overflowing the call stack", () => {
+        const template =
+            "{{#if description}}".repeat(12000) + "ok" + "{{/if}}".repeat(12000);
+        expect(resolvePresetMacros(template, createMacroContext())).toBe("ok");
+    });
+
+    test("preserves unfinished conditional syntax", () => {
+        const template =
+            "{{#if description}}text{{#unless personality}}unfinished{{/if}}";
+        expect(resolvePresetMacros(template, createMacroContext())).toBe(template);
+    });
+
     test("renders Story Strings with Handlebars blocks and separate lore positions", () => {
         const rendered = renderStoryString(
             "{{#if wiBefore}}Before: {{wiBefore}}{{/if}}|{{#if wiAfter}}After: {{wiAfter}}{{/if}}|{{#each tags}}{{this}},{{/each}}",

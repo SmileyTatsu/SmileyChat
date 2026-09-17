@@ -12,23 +12,13 @@ export async function listGoogleAIModels({
 }): Promise<GoogleAIModel[]> {
     const normalizedBaseUrl = normalizeGoogleAIBaseUrl(baseUrl);
     const displayUrl = `${normalizedBaseUrl}/models`;
-    const targetUrl = withApiKey(displayUrl, apiKey);
-    const data = await fetchProviderApi<GoogleAIListModelsResponse>(targetUrl, {
+    const data = await fetchProviderApi<GoogleAIListModelsResponse>(displayUrl, {
         errorPrefix: "Google AI model list failed",
         displayUrl,
+        headers: apiKey?.trim() ? { "x-goog-api-key": apiKey.trim() } : undefined,
     });
 
     return (data.models ?? []).filter((model) =>
         model.supportedGenerationMethods?.includes("generateContent"),
     );
-}
-
-function withApiKey(url: string, apiKey: string | undefined) {
-    if (!apiKey?.trim()) {
-        return url;
-    }
-
-    const target = new URL(url);
-    target.searchParams.set("key", apiKey.trim());
-    return target.toString();
 }

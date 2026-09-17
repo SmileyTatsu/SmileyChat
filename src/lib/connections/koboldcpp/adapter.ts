@@ -50,11 +50,9 @@ export function createKoboldCPPConnection(
                 if (request.stream)
                     return consumeKoboldCPPStream(response, request, config.model.id);
                 const data = (await response.json()) as KoboldCPPGenerateResponse;
-                const message = data.results?.[0]?.text?.trim();
-                if (!message)
-                    throw new Error("KoboldCPP did not include generated text.");
+                const message = data.results?.[0]?.text ?? "";
                 return {
-                    message,
+                    message: message.trim() ? message : "",
                     provider: "koboldcpp",
                     model: config.model.id,
                     raw: data,
@@ -255,9 +253,7 @@ async function consumeKoboldCPPStream(
         },
         request.signal,
     );
-    if (!message.trim())
-        throw new Error("KoboldCPP stream did not include generated text.");
-    return { message: message.trim(), provider: "koboldcpp", model };
+    return { message: message.trim() ? message : "", provider: "koboldcpp", model };
 }
 function createHeaders(config: Pick<KoboldCPPRuntimeConfig, "apiKey">) {
     return {
