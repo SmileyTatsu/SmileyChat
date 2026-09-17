@@ -39,15 +39,37 @@ type MessageContentProps = {
 };
 
 export function MessageContent(props: MessageContentProps) {
-    if (!hasMessageBubbles(props.content)) {
-        return <SingleMessageBubbleContent {...props} />;
+    const rawContent = props.messageFormatting.hideNamePrefix
+        ? stripLeadingSpeakerPrefix(props.content, [
+              props.characterName,
+              props.message.author,
+          ])
+        : props.content;
+
+    if (!hasMessageBubbles(rawContent)) {
+        return <SingleMessageBubbleContent {...props} content={rawContent} />;
     }
 
-    return <MessageSubBubbles {...props} />;
+    return <MessageSubBubbles {...props} content={rawContent} />;
 }
 
 function MessageSubBubbles(props: MessageContentProps) {
-    const bubbles = useMemo(() => parseMessageBubbles(props.content), [props.content]);
+    const bubbles = useMemo(() => {
+        const candidates = props.messageFormatting.hideNamePrefix
+            ? [props.characterName, props.message.author]
+            : undefined;
+        return parseMessageBubbles(props.content, candidates).filter((bubble) => {
+            const trimmed = props.messageFormatting.hideNamePrefix
+                ? stripLeadingSpeakerPrefix(bubble.content, candidates).trim()
+                : bubble.content.trim();
+            return trimmed.length > 0;
+        });
+    }, [
+        props.content,
+        props.messageFormatting.hideNamePrefix,
+        props.characterName,
+        props.message.author,
+    ]);
 
     // Determine if this message is live (actively streaming or created within the last 10 seconds)
     const isLive = useMemo(() => {

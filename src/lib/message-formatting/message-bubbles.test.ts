@@ -133,5 +133,25 @@ describe("message-bubbles", () => {
             expect(result[1].content).toBe("Second");
             expect(result[1].delayMs).toBe(1000);
         });
+
+        it("strips leading speaker prefix like {{char}}: without creating an empty initial bubble", () => {
+            const raw =
+                '{{char}}: <msg>najimi!! hiii :D</msg><msg delay="1s">training went great!</msg>';
+            const result = parseMessageBubbles(raw);
+
+            expect(result).toHaveLength(2);
+            expect(result[0].content).toBe("najimi!! hiii :D");
+            expect(result[1].content).toBe("training went great!");
+            expect(result[1].delayMs).toBe(1000);
+        });
+
+        it("strips character name prefix before <msg> when author candidates are supplied", () => {
+            const raw = "Nejire: <msg>najimi!! hiii :D</msg><msg>how are you?</msg>";
+            const result = parseMessageBubbles(raw, ["Nejire"]);
+
+            expect(result).toHaveLength(2);
+            expect(result[0].content).toBe("najimi!! hiii :D");
+            expect(result[1].content).toBe("how are you?");
+        });
     });
 });

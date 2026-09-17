@@ -1,3 +1,5 @@
+import { stripLeadingSpeakerPrefix } from "../presets/message-format";
+
 export type MessageBubbleSegment = {
     id: string;
     content: string;
@@ -76,9 +78,13 @@ export function hasMessageBubbles(content: string): boolean {
  * - Text outside <msg> tags is preserved as bubbles if non-empty.
  * - Unclosed <msg> tags (such as during live token streaming) are treated as active bubbles.
  */
-export function parseMessageBubbles(content: string): MessageBubbleSegment[] {
-    if (!hasMessageBubbles(content)) {
-        return [{ id: "bubble-0", content }];
+export function parseMessageBubbles(
+    content: string,
+    authorCandidates?: Array<string | undefined | null>,
+): MessageBubbleSegment[] {
+    const sanitizedContent = stripLeadingSpeakerPrefix(content, authorCandidates);
+    if (!hasMessageBubbles(sanitizedContent)) {
+        return [{ id: "bubble-0", content: sanitizedContent }];
     }
 
     const segments: MessageBubbleSegment[] = [];
@@ -90,10 +96,10 @@ export function parseMessageBubbles(content: string): MessageBubbleSegment[] {
     let currentBuffer = "";
 
     let match: RegExpExecArray | null;
-    while ((match = MSG_TAG_SCANNER_REGEX.exec(content)) !== null) {
+    while ((match = MSG_TAG_SCANNER_REGEX.exec(sanitizedContent)) !== null) {
         const [fullMatch, isClosing, attrs] = match;
         const matchIndex = match.index;
-        const textBefore = content.slice(lastIndex, matchIndex);
+        const textBefore = sanitizedContent.slice(lastIndex, matchIndex);
 
         if (inMsgTag) {
             currentBuffer += textBefore;
@@ -147,7 +153,7 @@ export function parseMessageBubbles(content: string): MessageBubbleSegment[] {
         lastIndex = MSG_TAG_SCANNER_REGEX.lastIndex;
     }
 
-    const trailingText = content.slice(lastIndex);
+    const trailingText = sanitizedContent.slice(lastIndex);
     if (inMsgTag) {
         currentBuffer += trailingText;
         // In streaming situations, preserve even untrimmed trailing text if it's the active bubble,
@@ -172,7 +178,7 @@ export function parseMessageBubbles(content: string): MessageBubbleSegment[] {
 
     // If all bubbles were empty whitespace, fall back to a single segment with trimmed content
     if (segments.length === 0) {
-        return [{ id: "bubble-0", content: content.trim() }];
+        return [{ id: "bubble-0", content: sanitizedContent.trim() }];
     }
 
     return segments;
