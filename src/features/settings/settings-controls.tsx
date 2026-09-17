@@ -26,6 +26,7 @@ export function ToggleRow({
     checked,
     className = "",
     description,
+    disabled = false,
     label,
     labelClassName = "",
     onChange,
@@ -33,12 +34,15 @@ export function ToggleRow({
     checked: boolean;
     className?: string;
     description?: string;
+    disabled?: boolean;
     label: string;
     labelClassName?: string;
     onChange: (checked: boolean) => void;
 }) {
     return (
-        <label className={`setting-row preference-toggle-row ${className}`.trim()}>
+        <label
+            className={`setting-row preference-toggle-row ${disabled ? "disabled" : ""} ${className}`.trim()}
+        >
             <span className={labelClassName || undefined}>
                 <strong>{label}</strong>
                 {description && <small>{description}</small>}
@@ -46,6 +50,7 @@ export function ToggleRow({
             <input
                 type="checkbox"
                 checked={checked}
+                disabled={disabled}
                 onChange={(event) =>
                     onChange((event.currentTarget as HTMLInputElement).checked)
                 }

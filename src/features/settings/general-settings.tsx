@@ -1,13 +1,6 @@
-import { Code2, MessageSquareText, PanelRight, Send, Type } from "lucide-preact";
+import { Cpu, PanelRight, Send } from "lucide-preact";
 
-import type {
-    AppPreferences,
-    FontScale,
-    MessageDensity,
-    TimeFormat,
-} from "#frontend/lib/preferences/types";
-import { formatShortTime } from "#frontend/lib/common/time";
-import { messageFormattingForMode } from "#frontend/lib/message-formatting/quote-highlighting";
+import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type { ChatMode } from "#frontend/types";
 import {
     NumberInput,
@@ -29,16 +22,6 @@ export function GeneralSettings({
     saveStatus,
     onPreferencesChange,
 }: GeneralSettingsProps) {
-    function updateAppearance(nextAppearance: Partial<AppPreferences["appearance"]>) {
-        onPreferencesChange({
-            ...preferences,
-            appearance: {
-                ...preferences.appearance,
-                ...nextAppearance,
-            },
-        });
-    }
-
     function updateChat(nextChat: Partial<AppPreferences["chat"]>) {
         onPreferencesChange({
             ...preferences,
@@ -59,121 +42,19 @@ export function GeneralSettings({
         });
     }
 
-    const currentVisualMode = (
-        preferences.appearance.chatTheme === "rp" ? "rp" : preferences.chat.defaultMode
-    ) as ChatMode;
-    const previewFormatting = messageFormattingForMode(preferences, currentVisualMode);
-
     return (
         <section className="tool-window general-settings">
             <header className="settings-section-heading">
                 <div>
                     <h2>Settings</h2>
-                    <p>Local interface preferences for this installation.</p>
+                    <p>
+                        Local interface and interaction preferences for this installation.
+                    </p>
                 </div>
                 {saveStatus && <span className="settings-save-state">{saveStatus}</span>}
             </header>
 
             {loadError && <p className="connection-status error">{loadError}</p>}
-
-            <section className="settings-card">
-                <header>
-                    <MessageSquareText size={18} />
-                    <div>
-                        <h3>Messages</h3>
-                        <p>Adjust how chat history reads on screen.</p>
-                    </div>
-                </header>
-
-                <SettingField label="Message density">
-                    <SegmentedControl<MessageDensity>
-                        value={preferences.appearance.messageDensity}
-                        options={[
-                            { value: "compact", label: "Compact" },
-                            { value: "comfortable", label: "Comfortable" },
-                            { value: "spacious", label: "Spacious" },
-                        ]}
-                        onChange={(messageDensity) =>
-                            updateAppearance({ messageDensity })
-                        }
-                    />
-                </SettingField>
-
-                <SettingField label="Font size">
-                    <SegmentedControl<FontScale>
-                        value={preferences.appearance.fontScale}
-                        options={[
-                            { value: "small", label: "Small" },
-                            { value: "default", label: "Default" },
-                            { value: "large", label: "Large" },
-                        ]}
-                        onChange={(fontScale) => updateAppearance({ fontScale })}
-                    />
-                </SettingField>
-
-                <SettingField label="UI font">
-                    <input
-                        className="settings-text-input"
-                        type="text"
-                        value={preferences.appearance.uiFontFamily}
-                        placeholder="System default"
-                        spellcheck={false}
-                        onInput={(event) =>
-                            updateAppearance({
-                                uiFontFamily: event.currentTarget.value,
-                            })
-                        }
-                    />
-                </SettingField>
-
-                <SettingField label="Chat font">
-                    <input
-                        className="settings-text-input"
-                        type="text"
-                        value={preferences.appearance.chatFontFamily}
-                        placeholder="Use UI font"
-                        spellcheck={false}
-                        onInput={(event) =>
-                            updateAppearance({
-                                chatFontFamily: event.currentTarget.value,
-                            })
-                        }
-                    />
-                </SettingField>
-
-                <SettingField label="Codeblock font">
-                    <input
-                        className="settings-text-input"
-                        type="text"
-                        value={preferences.appearance.codeblockFontFamily}
-                        placeholder="Default monospace"
-                        spellcheck={false}
-                        onInput={(event) =>
-                            updateAppearance({
-                                codeblockFontFamily: event.currentTarget.value,
-                            })
-                        }
-                    />
-                </SettingField>
-
-                <ToggleRow
-                    checked={preferences.appearance.showTimestamps}
-                    label="Show timestamps"
-                    onChange={(showTimestamps) => updateAppearance({ showTimestamps })}
-                />
-
-                <SettingField label="Hour format">
-                    <SegmentedControl<TimeFormat>
-                        ariaLabel="Hour format"
-                        value={preferences.appearance.timeFormat}
-                        options={[
-                            { value: "12h", label: "a.m. / p.m." },
-                            { value: "24h", label: "24-hour" },
-                        ]}
-                        onChange={(timeFormat) => updateAppearance({ timeFormat })}
-                    />
-                </SettingField>
-            </section>
 
             <section className="settings-card">
                 <header>
@@ -197,23 +78,20 @@ export function GeneralSettings({
 
                 <ToggleRow
                     checked={preferences.chat.autoScroll}
+                    description="Automatically scroll down when new messages arrive."
                     label="Auto-scroll on new messages"
                     onChange={(autoScroll) => updateChat({ autoScroll })}
                 />
+            </section>
 
-                <ToggleRow
-                    checked={preferences.chat.showThoughtProcess}
-                    description="Show the combined thought and tool activity panel on model replies."
-                    label="Show thought process"
-                    onChange={(showThoughtProcess) => updateChat({ showThoughtProcess })}
-                />
-
-                <ToggleRow
-                    checked={preferences.chat.showToolActivity}
-                    description="Show tool entries inside the thought process panel."
-                    label="Show tool activity"
-                    onChange={(showToolActivity) => updateChat({ showToolActivity })}
-                />
+            <section className="settings-card">
+                <header>
+                    <Cpu size={18} />
+                    <div>
+                        <h3>Tool Execution</h3>
+                        <p>Configure model tool-call limits.</p>
+                    </div>
+                </header>
 
                 <SettingField
                     label="Tool-call iterations per generation"
@@ -235,7 +113,7 @@ export function GeneralSettings({
                 <header>
                     <PanelRight size={18} />
                     <div>
-                        <h3>Layout</h3>
+                        <h3>Layout & Workspace</h3>
                         <p>Set defaults for new sessions and startup.</p>
                     </div>
                 </header>
@@ -253,77 +131,12 @@ export function GeneralSettings({
 
                 <ToggleRow
                     checked={preferences.layout.characterPanelOpenByDefault}
+                    description="Keep the character details sidebar expanded when opening chats."
                     label="Open character panel by default"
                     onChange={(characterPanelOpenByDefault) =>
                         updateLayout({ characterPanelOpenByDefault })
                     }
                 />
-            </section>
-
-            <section className="settings-card">
-                <header>
-                    <Code2 aria-hidden="true" size={18} />
-                    <div>
-                        <h3>Custom CSS</h3>
-                        <p>Apply local style overrides across the application.</p>
-                    </div>
-                </header>
-
-                <SettingField label="CSS overrides">
-                    <textarea
-                        aria-label="Custom CSS overrides"
-                        autoComplete="off"
-                        className="settings-custom-css-input"
-                        name="custom-css"
-                        placeholder="/* Example: increase chat spacing… */"
-                        spellcheck={false}
-                        value={preferences.appearance.customCss}
-                        onInput={(event) =>
-                            updateAppearance({
-                                customCss: event.currentTarget.value,
-                            })
-                        }
-                    />
-                </SettingField>
-            </section>
-
-            <section className="settings-card preview-card">
-                <header>
-                    <Type size={18} />
-                    <div>
-                        <h3>Preview</h3>
-                        <p>Current message appearance.</p>
-                    </div>
-                </header>
-                <div
-                    className="settings-message-preview"
-                    style={{
-                        fontStyle: previewFormatting.italicizeMessages
-                            ? "italic"
-                            : undefined,
-                    }}
-                >
-                    <strong>
-                        Mira
-                        {preferences.appearance.showTimestamps && (
-                            <time>
-                                {formatShortTime(
-                                    new Date(2000, 0, 1, 22, 24),
-                                    preferences.appearance.timeFormat,
-                                )}
-                            </time>
-                        )}
-                    </strong>
-                    <p>
-                        The room settles into quiet light.{" "}
-                        {previewFormatting.highlightQuotes ? (
-                            <span className="message-quoted-text">"Stay a moment,"</span>
-                        ) : (
-                            '"Stay a moment,"'
-                        )}{" "}
-                        Mira says, while the next line waits in the composer.
-                    </p>
-                </div>
             </section>
         </section>
     );

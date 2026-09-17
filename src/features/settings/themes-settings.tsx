@@ -2,11 +2,14 @@ import { h } from "preact";
 import {
     BookOpen,
     CheckCircle2,
+    Code2,
     Eye,
     Info,
     MessageCircle,
     MessageSquare,
     SlidersHorizontal,
+    Type,
+    Wrench,
 } from "lucide-preact";
 
 import { characterInitialAvatar } from "#frontend/lib/characters/avatar";
@@ -15,7 +18,12 @@ import {
     messageFormattingForMode,
     renderQuotedText,
 } from "#frontend/lib/message-formatting/quote-highlighting";
-import type { AppPreferences, TimeFormat } from "#frontend/lib/preferences/types";
+import type {
+    AppPreferences,
+    FontScale,
+    MessageDensity,
+    TimeFormat,
+} from "#frontend/lib/preferences/types";
 import { stripLeadingSpeakerPrefix } from "#frontend/lib/presets/message-format";
 import {
     AVAILABLE_CHAT_THEMES,
@@ -57,7 +65,7 @@ export function ThemesSettings({
     const effectiveItalicizeMessages =
         preferences.appearance.italicizeMessages ?? formatting.italicizeMessages;
 
-    function updateDisplayPreferences(patch: Partial<AppPreferences["appearance"]>) {
+    function updateAppearancePreferences(patch: Partial<AppPreferences["appearance"]>) {
         const updated = { ...patch };
         if ("showCharacterImages" in patch) {
             updated.showRpCharacterImages = patch.showCharacterImages!;
@@ -75,6 +83,16 @@ export function ThemesSettings({
             appearance: {
                 ...preferences.appearance,
                 ...updated,
+            },
+        });
+    }
+
+    function updateChatPreferences(patch: Partial<AppPreferences["chat"]>) {
+        onPreferencesChange({
+            ...preferences,
+            chat: {
+                ...preferences.chat,
+                ...patch,
             },
         });
     }
@@ -99,6 +117,14 @@ export function ThemesSettings({
             author: charName,
             text: `${charName}: "I found the ledger you mentioned earlier," she adds, sliding a worn volume across the wooden table. "Page thirty-two has what we're looking for."`,
             date: new Date(2026, 0, 1, 22, 23),
+            thought:
+                "Looking through the archives for references to the old library ledger... Found ledger record in Volume 4. Excerpting section for page thirty-two.",
+            tool: {
+                name: "search_archives",
+                duration: "0.4s",
+                args: '{ query: "library ledger", page: 32 }',
+                result: 'Found entry: "Town Archives Vol. 4 (1892), p. 32"',
+            },
         },
         {
             id: "msg-3",
@@ -224,8 +250,25 @@ export function ThemesSettings({
                 </header>
 
                 <div
-                    className={`global-theme-preview-workspace chat-workspace ${activeThemeId} theme-${activeThemeId} ${effectiveItalicizeMessages ? "italicized-message-text" : ""} ${effectiveHighlightQuotes ? "highlight-quoted-text" : ""}`}
+                    className={`global-theme-preview-workspace chat-workspace ${activeThemeId} theme-${activeThemeId} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale} ${effectiveItalicizeMessages ? "italicized-message-text" : ""} ${effectiveHighlightQuotes ? "highlight-quoted-text" : ""}`}
                     data-theme={activeThemeId}
+                    style={{
+                        ...(preferences.appearance.uiFontFamily?.trim()
+                            ? {
+                                  "--custom-ui-font-family": `${preferences.appearance.uiFontFamily.trim()}, var(--default-font-family)`,
+                              }
+                            : {}),
+                        ...(preferences.appearance.chatFontFamily?.trim()
+                            ? {
+                                  "--custom-chat-font-family": `${preferences.appearance.chatFontFamily.trim()}, var(--default-font-family)`,
+                              }
+                            : {}),
+                        ...(preferences.appearance.codeblockFontFamily?.trim()
+                            ? {
+                                  "--custom-codeblock-font-family": `${preferences.appearance.codeblockFontFamily.trim()}, monospace`,
+                              }
+                            : {}),
+                    }}
                 >
                     <div className="message-list">
                         {previewMessages.map((msg, index) => {
@@ -286,6 +329,59 @@ export function ThemesSettings({
                                     </div>
 
                                     <div className="message-content">
+                                        {isCharacter &&
+                                            msg.thought &&
+                                            preferences.chat.showThoughtProcess && (
+                                                <details
+                                                    className="message-reasoning thought-process"
+                                                    open
+                                                >
+                                                    <summary>
+                                                        Thought Process (0.9s)
+                                                    </summary>
+                                                    <div className="thought-process-timeline">
+                                                        <p className="thought-process-thought">
+                                                            {msg.thought}
+                                                        </p>
+                                                        {preferences.chat
+                                                            .showToolActivity &&
+                                                            msg.tool && (
+                                                                <details
+                                                                    className="message-reasoning tool-activity"
+                                                                    open
+                                                                >
+                                                                    <summary>
+                                                                        <Wrench
+                                                                            size={13}
+                                                                            aria-hidden="true"
+                                                                        />
+                                                                        Tool used:{" "}
+                                                                        {msg.tool.name} (
+                                                                        {
+                                                                            msg.tool
+                                                                                .duration
+                                                                        }
+                                                                        )
+                                                                    </summary>
+                                                                    <p>
+                                                                        <strong>
+                                                                            Arguments:
+                                                                        </strong>
+                                                                        <br />
+                                                                        {msg.tool.args}
+                                                                    </p>
+                                                                    <p>
+                                                                        <strong>
+                                                                            Result:
+                                                                        </strong>
+                                                                        <br />
+                                                                        {msg.tool.result}
+                                                                    </p>
+                                                                </details>
+                                                            )}
+                                                    </div>
+                                                </details>
+                                            )}
                                         <p>
                                             {renderQuotedText(h, displayText, {
                                                 enabled: effectiveHighlightQuotes,
@@ -310,7 +406,7 @@ export function ThemesSettings({
                 </div>
             </section>
 
-            {/* Display Configurations at the bottom */}
+            {/* Display Configurations */}
             <section className="settings-card theme-display-settings-card">
                 <header className="theme-display-settings-header">
                     <SlidersHorizontal size={18} />
@@ -320,40 +416,28 @@ export function ThemesSettings({
                     </div>
                 </header>
 
+                <SettingField label="Message density">
+                    <SegmentedControl<MessageDensity>
+                        value={preferences.appearance.messageDensity}
+                        options={[
+                            { value: "compact", label: "Compact" },
+                            { value: "comfortable", label: "Comfortable" },
+                            { value: "spacious", label: "Spacious" },
+                        ]}
+                        onChange={(messageDensity) =>
+                            updateAppearancePreferences({ messageDensity })
+                        }
+                    />
+                </SettingField>
+
                 <ToggleRow
                     checked={effectiveShowAvatars}
                     description="Display avatar images beside messages across all themes."
                     label="Show avatars"
                     onChange={(showCharacterImages) =>
-                        updateDisplayPreferences({
+                        updateAppearancePreferences({
                             showCharacterImages,
                             showRpCharacterImages: showCharacterImages,
-                        })
-                    }
-                />
-
-                <ToggleRow
-                    checked={effectiveHighlightQuotes}
-                    description="Use a subtle accent color for dialogue and text inside quotation marks across all themes."
-                    label="Highlight quoted text"
-                    onChange={(highlightQuotedText) =>
-                        updateDisplayPreferences({
-                            highlightQuotedText,
-                            highlightQuotedTextInChat: highlightQuotedText,
-                            highlightQuotedTextInRp: highlightQuotedText,
-                        })
-                    }
-                />
-
-                <ToggleRow
-                    checked={effectiveItalicizeMessages}
-                    description="Render message body text in italics across all themes."
-                    label="Italicize message text"
-                    onChange={(italicizeMessages) =>
-                        updateDisplayPreferences({
-                            italicizeMessages,
-                            italicizeChatMessages: italicizeMessages,
-                            italicizeRpMessages: italicizeMessages,
                         })
                     }
                 />
@@ -363,7 +447,26 @@ export function ThemesSettings({
                     description="Automatically hide leading character and user name prefixes (e.g. 'Character:' or 'User:') from the message view."
                     label="Hide name prefixes in messages"
                     onChange={(hideNamePrefixInMessages) =>
-                        updateDisplayPreferences({ hideNamePrefixInMessages })
+                        updateAppearancePreferences({ hideNamePrefixInMessages })
+                    }
+                />
+
+                <ToggleRow
+                    checked={preferences.chat.showThoughtProcess}
+                    description="Show reasoning and thinking sections inside model replies."
+                    label="Show thought process"
+                    onChange={(showThoughtProcess) =>
+                        updateChatPreferences({ showThoughtProcess })
+                    }
+                />
+
+                <ToggleRow
+                    checked={preferences.chat.showToolActivity}
+                    description="Show tool call entries and results inside the thought process panel."
+                    disabled={!preferences.chat.showThoughtProcess}
+                    label="Show tool activity"
+                    onChange={(showToolActivity) =>
+                        updateChatPreferences({ showToolActivity })
                     }
                 />
 
@@ -372,7 +475,7 @@ export function ThemesSettings({
                     description="Display message timestamps beside author names across all themes."
                     label="Show timestamps"
                     onChange={(showTimestamps) =>
-                        updateDisplayPreferences({ showTimestamps })
+                        updateAppearancePreferences({ showTimestamps })
                     }
                 />
 
@@ -385,7 +488,134 @@ export function ThemesSettings({
                             { value: "24h", label: "24-hour" },
                         ]}
                         onChange={(timeFormat) =>
-                            updateDisplayPreferences({ timeFormat })
+                            updateAppearancePreferences({ timeFormat })
+                        }
+                    />
+                </SettingField>
+
+                <ToggleRow
+                    checked={effectiveHighlightQuotes}
+                    description="Use a subtle accent color for dialogue and text inside quotation marks across all themes."
+                    label="Highlight quoted text"
+                    onChange={(highlightQuotedText) =>
+                        updateAppearancePreferences({
+                            highlightQuotedText,
+                            highlightQuotedTextInChat: highlightQuotedText,
+                            highlightQuotedTextInRp: highlightQuotedText,
+                        })
+                    }
+                />
+
+                <ToggleRow
+                    checked={effectiveItalicizeMessages}
+                    description="Render message body text in italics across all themes."
+                    label="Italicize message text"
+                    onChange={(italicizeMessages) =>
+                        updateAppearancePreferences({
+                            italicizeMessages,
+                            italicizeChatMessages: italicizeMessages,
+                            italicizeRpMessages: italicizeMessages,
+                        })
+                    }
+                />
+            </section>
+
+            {/* Typography */}
+            <section className="settings-card">
+                <header className="theme-display-settings-header">
+                    <Type size={18} />
+                    <div>
+                        <h3>Typography</h3>
+                        <p>
+                            Font sizing and typography families for chat and application
+                            interface.
+                        </p>
+                    </div>
+                </header>
+
+                <SettingField label="Font size">
+                    <SegmentedControl<FontScale>
+                        value={preferences.appearance.fontScale}
+                        options={[
+                            { value: "small", label: "Small" },
+                            { value: "default", label: "Default" },
+                            { value: "large", label: "Large" },
+                        ]}
+                        onChange={(fontScale) =>
+                            updateAppearancePreferences({ fontScale })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField label="UI font">
+                    <input
+                        className="settings-text-input"
+                        type="text"
+                        value={preferences.appearance.uiFontFamily}
+                        placeholder="System default"
+                        spellcheck={false}
+                        onInput={(event) =>
+                            updateAppearancePreferences({
+                                uiFontFamily: event.currentTarget.value,
+                            })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField label="Chat font">
+                    <input
+                        className="settings-text-input"
+                        type="text"
+                        value={preferences.appearance.chatFontFamily}
+                        placeholder="Use UI font"
+                        spellcheck={false}
+                        onInput={(event) =>
+                            updateAppearancePreferences({
+                                chatFontFamily: event.currentTarget.value,
+                            })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField label="Codeblock font">
+                    <input
+                        className="settings-text-input"
+                        type="text"
+                        value={preferences.appearance.codeblockFontFamily}
+                        placeholder="Default monospace"
+                        spellcheck={false}
+                        onInput={(event) =>
+                            updateAppearancePreferences({
+                                codeblockFontFamily: event.currentTarget.value,
+                            })
+                        }
+                    />
+                </SettingField>
+            </section>
+
+            {/* Custom CSS */}
+            <section className="settings-card">
+                <header className="theme-display-settings-header">
+                    <Code2 aria-hidden="true" size={18} />
+                    <div>
+                        <h3>Custom CSS</h3>
+                        <p>Apply local style overrides across the application.</p>
+                    </div>
+                </header>
+
+                <SettingField label="CSS overrides">
+                    <textarea
+                        aria-label="Custom CSS overrides"
+                        autoComplete="off"
+                        className="settings-custom-css-input"
+                        name="custom-css"
+                        placeholder="/* Example: increase chat spacing… */"
+                        spellcheck={false}
+                        value={preferences.appearance.customCss}
+                        onInput={(event) =>
+                            updateAppearancePreferences({
+                                customCss: event.currentTarget.value,
+                            })
                         }
                     />
                 </SettingField>

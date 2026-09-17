@@ -2822,6 +2822,12 @@
     height: 18px;
 }
 
+.preference-toggle-row.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .settings-text-input {
     width: min(100%, 360px);
     justify-self: end;
@@ -4111,6 +4117,30 @@ input[aria-invalid="true"] {
     border-radius: 8px;
     overflow-x: hidden;
     box-sizing: border-box;
+}
+
+.global-theme-preview-workspace.density-compact {
+    --message-gap: 10px;
+    --message-avatar-size: 36px;
+    --message-line-height: 1.45;
+    --message-padding-y: 5px;
+    --rp-message-gap: 10px;
+}
+
+.global-theme-preview-workspace.density-spacious {
+    --message-gap: 14px;
+    --message-avatar-size: 44px;
+    --message-line-height: 1.68;
+    --message-padding-y: 14px;
+    --rp-message-gap: 22px;
+}
+
+.global-theme-preview-workspace.font-small {
+    --message-font-size: 0.875rem;
+}
+
+.global-theme-preview-workspace.font-large {
+    --message-font-size: 1.125rem;
 }
 
 .global-theme-preview-workspace .message-list {
