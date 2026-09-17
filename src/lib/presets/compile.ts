@@ -103,6 +103,12 @@ export function compilePresetMessagesWithMetadata(
     preset: SmileyPreset | undefined,
     context: CompilePresetContext,
 ): AnchoredPromptMessage[] {
+    // An explicitly empty preset is intentional. In particular, do not let the
+    // text-completion story-string fallback silently recreate prompt context.
+    if (preset && preset.prompts.length === 0) {
+        return [];
+    }
+
     if (
         context.isTextCompletion &&
         context.formatting?.overridePresetPromptOrder !== true

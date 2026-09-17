@@ -5,7 +5,7 @@ export type PresetConfirmAction = {
     message: string;
     details?: string[];
     confirmLabel: string;
-    onConfirm: () => void;
+    onConfirm: () => void | Promise<void>;
 };
 
 type PresetConfirmDialogProps = {
@@ -14,6 +14,11 @@ type PresetConfirmDialogProps = {
 };
 
 export function PresetConfirmDialog({ action, onClose }: PresetConfirmDialogProps) {
+    async function handleConfirm() {
+        await action.onConfirm();
+        onClose();
+    }
+
     return (
         <ConfirmDialog
             title={action.title}
@@ -21,7 +26,7 @@ export function PresetConfirmDialog({ action, onClose }: PresetConfirmDialogProp
             details={action.details}
             confirmLabel={action.confirmLabel}
             variant="danger"
-            onConfirm={action.onConfirm}
+            onConfirm={handleConfirm}
             onClose={onClose}
         />
     );

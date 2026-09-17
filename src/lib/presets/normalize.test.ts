@@ -4,6 +4,18 @@ import { resolvePresetStreaming } from "./generation";
 import { importSillyTavernPreset, normalizePreset } from "./normalize";
 
 describe("preset normalization", () => {
+    test("preserves an explicitly empty prompt list", () => {
+        const preset = normalizePreset({
+            id: "empty-preset",
+            title: "Empty preset",
+            prompts: [],
+            promptOrder: [],
+        });
+
+        expect(preset.prompts).toEqual([]);
+        expect(preset.promptOrder).toEqual([]);
+    });
+
     test("normalizes and imports SillyTavern formatting settings", () => {
         const normalized = normalizePreset({
             title: "Formatting",

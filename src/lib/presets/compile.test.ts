@@ -8,6 +8,18 @@ import { compilePresetMessages } from "./compile";
 import type { PresetPrompt, SmileyPreset } from "./types";
 
 describe("compilePresetMessages", () => {
+    test("compiles an empty preset to empty context", () => {
+        const preset = presetWithPrompts([]);
+
+        expect(compilePresetMessages(preset, context())).toEqual([]);
+        expect(
+            compilePresetMessages(preset, {
+                ...context(),
+                isTextCompletion: true,
+            }),
+        ).toEqual([]);
+    });
+
     test("default preset includes empty world info slots", () => {
         const preset = createDefaultPreset("2026-01-01T00:00:00.000Z");
 

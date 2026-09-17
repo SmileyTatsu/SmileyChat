@@ -80,21 +80,19 @@ export function normalizePresetCollection(value: unknown): PresetCollection {
 export function normalizePreset(value: unknown): SmileyPreset {
     const now = new Date().toISOString();
     const preset = isRecord(value) ? value : {};
-    const sourcePrompts = Array.isArray(preset.prompts) ? preset.prompts : [];
-    const promptEntries =
-        sourcePrompts.length > 0
-            ? dedupePromptEntries(
-                  sourcePrompts.map((prompt) => ({
-                      prompt: normalizePrompt(prompt),
-                      sourceEnabled: sourcePromptEnabled(prompt),
-                      sourceId: sourcePromptId(prompt, "id"),
-                  })),
-              )
-            : createDefaultPreset(now).prompts.map((prompt) => ({
-                  prompt,
-                  sourceEnabled: true,
-                  sourceId: prompt.id,
-              }));
+    const promptEntries = Array.isArray(preset.prompts)
+        ? dedupePromptEntries(
+              preset.prompts.map((prompt) => ({
+                  prompt: normalizePrompt(prompt),
+                  sourceEnabled: sourcePromptEnabled(prompt),
+                  sourceId: sourcePromptId(prompt, "id"),
+              })),
+          )
+        : createDefaultPreset(now).prompts.map((prompt) => ({
+              prompt,
+              sourceEnabled: true,
+              sourceId: prompt.id,
+          }));
     const prompts = promptEntries.map((entry) => entry.prompt);
     const promptIds = new Set(prompts.map((prompt) => prompt.id));
     const promptIdRewriteMap = promptIdMapFromEntries(promptEntries);
