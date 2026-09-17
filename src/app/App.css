@@ -1334,6 +1334,15 @@ textarea:disabled {
         overflow: visible;
     }
 
+    .preset-editor-view,
+    .preset-editor-shell {
+        display: block;
+    }
+
+    .preset-editor-view > .preset-text-completion-banner {
+        margin-bottom: 12px;
+    }
+
     .personas-list,
     .lorebook-list {
         max-height: 420px;

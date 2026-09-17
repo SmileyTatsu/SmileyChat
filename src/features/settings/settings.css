@@ -1600,11 +1600,24 @@
     display: grid;
     grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.45fr);
     flex: 1;
+    height: 100%;
     min-height: 360px;
     overflow: hidden;
     border: 1px solid #303440;
     border-radius: 10px;
     background: #15171c;
+}
+
+.preset-editor-view,
+.preset-editor-shell {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.preset-editor-view {
+    gap: 12px;
 }
 
 .personas-editor {
@@ -2330,10 +2343,13 @@
 .prompt-list {
     display: grid;
     align-content: start;
+    flex: 1;
     gap: 6px;
+    min-height: 0;
     max-height: none;
     overflow: auto;
     padding-right: 8px;
+    overscroll-behavior: contain;
     scrollbar-gutter: stable;
 }
 

@@ -642,7 +642,7 @@ export function PresetSettings({
                     )}
 
                     {activeView === "editor" && (
-                        <div>
+                        <div className="preset-editor-view">
                             {isTextCompletionProvider && (
                                 <div
                                     className="preset-text-completion-banner"
@@ -708,13 +708,13 @@ export function PresetSettings({
                                 </div>
                             )}
                             <div
-                                className={
+                                className={`preset-editor-shell ${
                                     isTextCompletionProvider &&
                                     preferences?.formatting.settings
                                         .overridePresetPromptOrder !== true
                                         ? "preset-editor-dimmed"
                                         : ""
-                                }
+                                }`}
                             >
                                 <PresetEditor
                                     orderedPrompts={orderedPrompts}
