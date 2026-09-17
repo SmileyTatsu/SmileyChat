@@ -142,7 +142,9 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     getPluginSnapshot,
     pluginSnapshot,
 }: ChatWorkspaceProps) {
-    const messageFormatting = messageFormattingForMode(preferences, mode);
+    const activeTheme = preferences.appearance.chatTheme || mode || "chat";
+    const visualMode = (activeTheme === "rp" ? "rp" : "chat") as ChatMode;
+    const messageFormatting = messageFormattingForMode(preferences, visualMode);
     const characterDialogueColors = useMemo(() => {
         const colors: Record<string, string | null> = {};
 
@@ -170,7 +172,8 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     }, [personas]);
     const workspaceClassName = [
         "chat-workspace",
-        mode,
+        activeTheme,
+        `theme-${activeTheme}`,
         messageFormatting.italicizeMessages ? "italicized-message-text" : "",
         messageFormatting.highlightQuotes ? "highlight-quoted-text" : "",
     ]
@@ -180,6 +183,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     return (
         <section
             className={workspaceClassName}
+            data-theme={activeTheme}
             aria-busy={isLoading ? "true" : undefined}
             aria-label="Active chat"
         >
@@ -189,7 +193,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                 chatTitle={chatTitle}
                 groupAvatarPath={groupAvatarPath}
                 groupMembers={groupMembers}
-                mode={mode}
+                mode={visualMode}
                 pluginSnapshot={pluginSnapshot}
                 onModeChange={onModeChange}
                 onToggleSidebar={onToggleSidebar}
@@ -218,11 +222,12 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     errorMessage={errorMessage}
                     isTyping={isSending}
                     messages={messages}
-                    mode={mode}
+                    mode={visualMode}
                     autoScroll={preferences.chat.autoScroll}
                     pendingSwipeMessageId={pendingSwipeMessageId}
                     chatLoadRequestId={chatLoadRequestId}
                     isInert={Boolean(isLoading)}
+                    showCharacterImages={preferences.appearance.showCharacterImages}
                     showRpCharacterImages={preferences.appearance.showRpCharacterImages}
                     showThoughtProcess={preferences.chat.showThoughtProcess}
                     showTimestamps={preferences.appearance.showTimestamps}
@@ -256,7 +261,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                         Boolean(uploadingAttachmentCount) ||
                         Boolean(pendingSwipeMessageId)
                     }
-                    mode={mode}
+                    mode={visualMode}
                     enterToSend={preferences.chat.enterToSend}
                     isGenerating={Boolean(isSending)}
                     uploadingAttachmentCount={uploadingAttachmentCount}

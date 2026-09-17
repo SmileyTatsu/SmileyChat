@@ -1,6 +1,7 @@
 import { isRecord } from "#frontend/lib/common/guards";
 import type { ChatMode } from "#frontend/types";
 import type { PresetFormattingSettings } from "#frontend/lib/presets/types";
+import { DEFAULT_CHAT_THEME_ID, isValidChatTheme } from "#frontend/lib/themes/registry";
 
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type FontScale = "small" | "default" | "large";
@@ -12,18 +13,22 @@ export type AppPreferences = {
     appearance: {
         messageDensity: MessageDensity;
         showTimestamps: boolean;
+        showCharacterImages: boolean;
         showRpCharacterImages: boolean;
         timeFormat: TimeFormat;
         fontScale: FontScale;
+        highlightQuotedText: boolean;
         highlightQuotedTextInChat: boolean;
         highlightQuotedTextInRp: boolean;
         hideNamePrefixInMessages: boolean;
+        italicizeMessages: boolean;
         italicizeChatMessages: boolean;
         italicizeRpMessages: boolean;
         uiFontFamily: string;
         chatFontFamily: string;
         codeblockFontFamily: string;
         customCss: string;
+        chatTheme: string;
     };
     chat: {
         enterToSend: boolean;
@@ -81,18 +86,22 @@ export const defaultAppPreferences: AppPreferences = {
     appearance: {
         messageDensity: "comfortable",
         showTimestamps: true,
+        showCharacterImages: false,
         showRpCharacterImages: false,
         timeFormat: "12h",
         fontScale: "default",
+        highlightQuotedText: true,
         highlightQuotedTextInChat: true,
         highlightQuotedTextInRp: true,
         hideNamePrefixInMessages: true,
+        italicizeMessages: true,
         italicizeChatMessages: true,
         italicizeRpMessages: true,
         uiFontFamily: "",
         chatFontFamily: "",
         codeblockFontFamily: "",
         customCss: "",
+        chatTheme: DEFAULT_CHAT_THEME_ID,
     },
     chat: {
         enterToSend: true,
@@ -166,9 +175,19 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 appearance.showTimestamps,
                 defaultAppPreferences.appearance.showTimestamps,
             ),
+            showCharacterImages: booleanOrFallback(
+                appearance.showCharacterImages,
+                booleanOrFallback(
+                    appearance.showRpCharacterImages,
+                    defaultAppPreferences.appearance.showCharacterImages,
+                ),
+            ),
             showRpCharacterImages: booleanOrFallback(
                 appearance.showRpCharacterImages,
-                defaultAppPreferences.appearance.showRpCharacterImages,
+                booleanOrFallback(
+                    appearance.showCharacterImages,
+                    defaultAppPreferences.appearance.showRpCharacterImages,
+                ),
             ),
             timeFormat: normalizeTimeFormat(
                 appearance.timeFormat,
@@ -178,25 +197,51 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 appearance.fontScale,
                 defaultAppPreferences.appearance.fontScale,
             ),
+            highlightQuotedText: booleanOrFallback(
+                appearance.highlightQuotedText,
+                booleanOrFallback(
+                    appearance.highlightQuotedTextInChat,
+                    defaultAppPreferences.appearance.highlightQuotedText,
+                ),
+            ),
             highlightQuotedTextInChat: booleanOrFallback(
                 appearance.highlightQuotedTextInChat,
-                defaultAppPreferences.appearance.highlightQuotedTextInChat,
+                booleanOrFallback(
+                    appearance.highlightQuotedText,
+                    defaultAppPreferences.appearance.highlightQuotedTextInChat,
+                ),
             ),
             highlightQuotedTextInRp: booleanOrFallback(
                 appearance.highlightQuotedTextInRp,
-                defaultAppPreferences.appearance.highlightQuotedTextInRp,
+                booleanOrFallback(
+                    appearance.highlightQuotedText,
+                    defaultAppPreferences.appearance.highlightQuotedTextInRp,
+                ),
             ),
             hideNamePrefixInMessages: booleanOrFallback(
                 appearance.hideNamePrefixInMessages,
                 defaultAppPreferences.appearance.hideNamePrefixInMessages,
             ),
+            italicizeMessages: booleanOrFallback(
+                appearance.italicizeMessages,
+                booleanOrFallback(
+                    appearance.italicizeChatMessages,
+                    defaultAppPreferences.appearance.italicizeMessages,
+                ),
+            ),
             italicizeChatMessages: booleanOrFallback(
                 appearance.italicizeChatMessages,
-                defaultAppPreferences.appearance.italicizeChatMessages,
+                booleanOrFallback(
+                    appearance.italicizeMessages,
+                    defaultAppPreferences.appearance.italicizeChatMessages,
+                ),
             ),
             italicizeRpMessages: booleanOrFallback(
                 appearance.italicizeRpMessages,
-                defaultAppPreferences.appearance.italicizeRpMessages,
+                booleanOrFallback(
+                    appearance.italicizeMessages,
+                    defaultAppPreferences.appearance.italicizeRpMessages,
+                ),
             ),
             uiFontFamily: normalizeFontFamily(
                 appearance.uiFontFamily,
@@ -212,8 +257,12 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             ),
             customCss:
                 typeof appearance.customCss === "string"
-                    ? appearance.customCss
+                    ? appearance.customCss.slice(0, 100_000)
                     : defaultAppPreferences.appearance.customCss,
+            chatTheme: normalizeChatTheme(
+                appearance.chatTheme,
+                defaultAppPreferences.appearance.chatTheme,
+            ),
         },
         chat: {
             enterToSend: booleanOrFallback(
@@ -370,6 +419,10 @@ function normalizeLogLevel(value: unknown): LogLevel {
 
 function normalizeChatMode(value: unknown, fallback: ChatMode) {
     return value === "chat" || value === "rp" ? value : fallback;
+}
+
+function normalizeChatTheme(value: unknown, fallback: string) {
+    return typeof value === "string" && isValidChatTheme(value) ? value : fallback;
 }
 
 function normalizeFontFamily(value: unknown, fallback: string) {

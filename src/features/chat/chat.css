@@ -2,6 +2,7 @@
 
 .chat-workspace {
     grid-template-rows: auto 1fr auto auto;
+    overflow-x: hidden;
 
     @apply relative grid min-h-0 min-w-0 overflow-hidden;
 }
@@ -54,13 +55,18 @@
 }
 
 .chat-character-header {
+    min-width: 0;
+    max-width: 100%;
     @apply items-center justify-center gap-x-4;
 
-    &[data-mode="chatting"] {
+    &[data-mode="chatting"],
+    &[data-mode="chat"],
+    &[data-theme="chat"] {
         @apply flex flex-col;
     }
 
-    &[data-mode="rp"] {
+    &[data-mode="rp"],
+    &[data-theme="rp"] {
         grid-template-columns: max-content 1fr;
         grid-template-areas:
             "character-name character-status"
@@ -69,7 +75,8 @@
         @apply grid;
     }
 
-    &[data-mode="rp"][data-group="true"] {
+    &[data-mode="rp"][data-group="true"],
+    &[data-theme="rp"][data-group="true"] {
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas: "chat-title";
     }
@@ -82,7 +89,8 @@
 
 .rp-chat-title {
     grid-area: chat-title;
-    max-width: min(52vw, 680px);
+    min-width: 0;
+    max-width: min(50vw, 460px);
     color: #b9bfd0;
     text-overflow: ellipsis;
 
@@ -160,25 +168,9 @@
     @apply flex items-center justify-center gap-2;
 }
 
-.mode-toggle {
-    @apply grid grid-cols-2 items-center gap-1;
-}
-
-.mode-toggle button,
 .icon-button,
 .send-button {
     @apply flex items-center justify-center rounded-md border-0 bg-transparent text-[#ececf1];
-}
-
-.mode-toggle button {
-    --active-bg: #e1e7ff;
-    --active-text: #15171d;
-
-    @apply h-10 border border-[#303440] px-4 py-2 font-bold transition-[color,background-color,font-weight];
-}
-
-.mode-toggle button.active {
-    @apply bg-[var(--active-bg)] text-[var(--active-text)];
 }
 
 .icon-button {
@@ -201,7 +193,8 @@
 .message-list {
     height: 100%;
     min-height: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     outline: none;
 }
 
@@ -407,6 +400,19 @@
 
 .chat .message:hover {
     background: rgba(255, 255, 255, 0.045);
+}
+
+.chat .message.hide-avatar,
+.chat .message.hide-character-avatar {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "header"
+        "content";
+}
+
+.chat .message.hide-avatar .message-avatar,
+.chat .message.hide-character-avatar .message-avatar {
+    display: none;
 }
 
 .message.system-message {
@@ -1381,40 +1387,115 @@
     margin: 0;
 }
 
-.rp .message-list {
+.rp .message-list,
+.theme-rp .message-list,
+[data-theme="rp"] .message-list {
     display: grid;
     align-content: start;
-    gap: var(--rp-message-gap);
-    padding: 28px clamp(24px, 8vw, 96px) 28px clamp(68px, 8vw, 96px);
+    gap: 0;
+    padding: 24px clamp(20px, 4vw, 48px) 24px clamp(20px, 4vw, 48px);
+    overflow-x: hidden;
+    box-sizing: border-box;
+    width: 100%;
 }
 
-.rp .message {
+.rp .message,
+.theme-rp .message,
+[data-theme="rp"] .message {
+    position: relative;
     contain-intrinsic-size: auto 180px;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
         "header"
         "content";
-    border-left: 2px solid #384252;
-    padding: 0 0 0 18px;
+    border-left: none;
+    padding: 8px 0 8px 18px;
+    margin: 0 0 0 12px;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
 }
 
-.rp .message-avatar {
+/* Individual cut line segment for message without avatar */
+.rp .message:not(.show-rp-message-avatar)::before,
+.theme-rp .message:not(.show-rp-message-avatar)::before,
+[data-theme="rp"] .message:not(.show-rp-message-avatar)::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 0;
+    width: 2px;
+    background: #3e4758;
+    border-radius: 9999px;
+    pointer-events: none;
+}
+
+.rp .message-avatar,
+.theme-rp .message-avatar,
+[data-theme="rp"] .message-avatar {
     display: none;
 }
 
-.rp .message.show-rp-message-avatar .message-avatar {
-    position: absolute;
-    top: -2px;
-    left: calc(-1 * (var(--message-avatar-size) + 14px));
+/* Individual cut line segment for message with avatar */
+.rp .message.show-rp-message-avatar,
+.theme-rp .message.show-rp-message-avatar,
+[data-theme="rp"] .message.show-rp-message-avatar {
+    position: relative;
     display: grid;
+    grid-template-columns: var(--message-avatar-size, 40px) minmax(0, 1fr);
+    grid-template-areas:
+        "avatar header"
+        "avatar content";
+    gap: 0 30px;
+    border-left: none;
+    padding: 8px 0;
+    margin: 0 0 0 12px;
+}
+
+.rp .message.show-rp-message-avatar::before,
+.theme-rp .message.show-rp-message-avatar::before,
+[data-theme="rp"] .message.show-rp-message-avatar::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: calc(var(--message-avatar-size, 40px) + 14px);
+    width: 2px;
+    background: #3e4758;
+    border-radius: 9999px;
+    pointer-events: none;
+}
+
+.rp .message.show-rp-message-avatar .message-avatar,
+.theme-rp .message.show-rp-message-avatar .message-avatar,
+[data-theme="rp"] .message.show-rp-message-avatar .message-avatar {
+    grid-area: avatar;
+    position: static;
+    display: grid;
+    width: var(--message-avatar-size, 40px);
+    height: var(--message-avatar-size, 40px);
     border-radius: 8px;
+    align-self: start;
+    margin-top: 2px;
+}
+
+.rp .message.show-rp-message-avatar .message-header,
+.rp .message.show-rp-message-avatar .message-content,
+.theme-rp .message.show-rp-message-avatar .message-header,
+.theme-rp .message.show-rp-message-avatar .message-content,
+[data-theme="rp"] .message.show-rp-message-avatar .message-header,
+[data-theme="rp"] .message.show-rp-message-avatar .message-content {
+    border-left: none;
+    padding-left: 0;
 }
 
 .rp .message-meta {
     margin-bottom: 8px;
 }
 
-.rp .message-meta strong {
+.rp .message-meta strong,
+.rp .message-meta .character-title {
     color: #f3f0e8;
     font-size: 1rem;
 }

@@ -39,6 +39,7 @@ type MessageListProps = {
     timeFormat: TimeFormat;
     messageFormatting: MessageFormattingOptions;
     pendingSwipeMessageId?: string;
+    showCharacterImages?: boolean;
     showRpCharacterImages: boolean;
     showThoughtProcess: boolean;
     showToolActivity: boolean;
@@ -75,6 +76,7 @@ export const MessageList = memo(function MessageList({
     mode,
     canForkMessages,
     pendingSwipeMessageId,
+    showCharacterImages,
     showRpCharacterImages,
     showThoughtProcess,
     showToolActivity,
@@ -504,7 +506,12 @@ export const MessageList = memo(function MessageList({
                             renderer={messageRenderers[0]}
                             messageFormatting={messageFormatting}
                             canForkMessages={canForkMessages}
-                            showRpCharacterImages={showRpCharacterImages}
+                            showCharacterImages={
+                                showCharacterImages ?? showRpCharacterImages
+                            }
+                            showRpCharacterImages={
+                                showCharacterImages ?? showRpCharacterImages
+                            }
                             showThoughtProcess={showThoughtProcess}
                             showTimestamps={showTimestamps}
                             showToolActivity={showToolActivity}

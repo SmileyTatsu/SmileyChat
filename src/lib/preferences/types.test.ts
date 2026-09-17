@@ -53,6 +53,17 @@ describe("app preference normalization", () => {
         expect(preferences.appearance.hideNamePrefixInMessages).toBe(false);
     });
 
+    test("normalizes the global chatTheme preference", () => {
+        expect(
+            normalizeAppPreferences({ appearance: { chatTheme: "rp" } }).appearance
+                .chatTheme,
+        ).toBe("rp");
+        expect(
+            normalizeAppPreferences({ appearance: { chatTheme: "invalid-theme" } })
+                .appearance.chatTheme,
+        ).toBe("chat");
+    });
+
     test("normalizes the tool iteration limit", () => {
         expect(
             normalizeAppPreferences({ chat: { toolIterationLimit: 99 } }).chat

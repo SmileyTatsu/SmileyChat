@@ -27,17 +27,21 @@ export function messageFormattingForMode(
 ): MessageFormattingOptions {
     const hideNamePrefix = preferences.appearance.hideNamePrefixInMessages !== false;
 
-    if (mode === "rp") {
-        return {
-            highlightQuotes: preferences.appearance.highlightQuotedTextInRp,
-            italicizeMessages: preferences.appearance.italicizeRpMessages,
-            hideNamePrefix,
-        };
-    }
+    const highlightQuotes =
+        preferences.appearance.highlightQuotedText ??
+        (mode === "rp"
+            ? preferences.appearance.highlightQuotedTextInRp
+            : preferences.appearance.highlightQuotedTextInChat);
+
+    const italicizeMessages =
+        preferences.appearance.italicizeMessages ??
+        (mode === "rp"
+            ? preferences.appearance.italicizeRpMessages
+            : preferences.appearance.italicizeChatMessages);
 
     return {
-        highlightQuotes: preferences.appearance.highlightQuotedTextInChat,
-        italicizeMessages: preferences.appearance.italicizeChatMessages,
+        highlightQuotes,
+        italicizeMessages,
         hideNamePrefix,
     };
 }

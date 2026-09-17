@@ -59,10 +59,10 @@ export function GeneralSettings({
         });
     }
 
-    const previewFormatting = messageFormattingForMode(
-        preferences,
-        preferences.chat.defaultMode,
-    );
+    const currentVisualMode = (
+        preferences.appearance.chatTheme === "rp" ? "rp" : preferences.chat.defaultMode
+    ) as ChatMode;
+    const previewFormatting = messageFormattingForMode(preferences, currentVisualMode);
 
     return (
         <section className="tool-window general-settings">
@@ -173,60 +173,6 @@ export function GeneralSettings({
                         onChange={(timeFormat) => updateAppearance({ timeFormat })}
                     />
                 </SettingField>
-
-                <ToggleRow
-                    checked={preferences.appearance.showRpCharacterImages}
-                    description="Display the active character image beside character messages in Roleplaying mode."
-                    label="Show character image in RP mode"
-                    onChange={(showRpCharacterImages) =>
-                        updateAppearance({ showRpCharacterImages })
-                    }
-                />
-
-                <ToggleRow
-                    checked={preferences.appearance.hideNamePrefixInMessages !== false}
-                    description="Automatically hide leading character and user name prefixes (e.g. 'Character:' or 'User:') from the message view."
-                    label="Hide name prefixes in messages"
-                    onChange={(hideNamePrefixInMessages) =>
-                        updateAppearance({ hideNamePrefixInMessages })
-                    }
-                />
-
-                <ToggleRow
-                    checked={preferences.appearance.highlightQuotedTextInRp}
-                    description='Use a subtle accent color for text inside "quotes" in Roleplaying mode.'
-                    label="Highlight quoted text in RP mode"
-                    onChange={(highlightQuotedTextInRp) =>
-                        updateAppearance({ highlightQuotedTextInRp })
-                    }
-                />
-
-                <ToggleRow
-                    checked={preferences.appearance.highlightQuotedTextInChat}
-                    description="Use the same quote color in Chatting mode."
-                    label="Highlight quoted text in Chatting mode"
-                    onChange={(highlightQuotedTextInChat) =>
-                        updateAppearance({ highlightQuotedTextInChat })
-                    }
-                />
-
-                <ToggleRow
-                    checked={preferences.appearance.italicizeRpMessages}
-                    description="Render message body text in italics while reading Roleplaying mode."
-                    label="Italicize RP messages"
-                    onChange={(italicizeRpMessages) =>
-                        updateAppearance({ italicizeRpMessages })
-                    }
-                />
-
-                <ToggleRow
-                    checked={preferences.appearance.italicizeChatMessages}
-                    description="Apply the same italic treatment to Chatting mode."
-                    label="Italicize Chatting messages"
-                    onChange={(italicizeChatMessages) =>
-                        updateAppearance({ italicizeChatMessages })
-                    }
-                />
             </section>
 
             <section className="settings-card">

@@ -72,6 +72,7 @@ export type MessageItemProps = {
     messageFormatting: MessageFormattingOptions;
     pluginMessageActions: PluginMessageAction[];
     renderer?: MessageRenderer;
+    showCharacterImages?: boolean;
     showRpCharacterImages: boolean;
     showTimestamps: boolean;
     showThoughtProcess: boolean;
@@ -117,6 +118,7 @@ export const MessageItem = memo(function MessageItem({
     messageFormatting,
     pluginMessageActions,
     renderer,
+    showCharacterImages,
     showRpCharacterImages,
     showTimestamps,
     showThoughtProcess,
@@ -168,7 +170,9 @@ export const MessageItem = memo(function MessageItem({
             : message.role === "character" && isLastSwipe
               ? "Generate next swipe"
               : "Next swipe";
-    const showRpMessageAvatar = mode === "rp" && showRpCharacterImages;
+    const effectiveShowAvatars = showCharacterImages ?? showRpCharacterImages;
+    const showRpMessageAvatar = mode === "rp" && effectiveShowAvatars;
+    const hideChatAvatar = mode !== "rp" && !effectiveShowAvatars;
 
     const avatar =
         message.role === "character"
@@ -183,7 +187,9 @@ export const MessageItem = memo(function MessageItem({
                           : "Character Avatar",
               }
             : {
-                  path: message.authorAvatarPath,
+                  path:
+                      message.authorAvatarPath ??
+                      characterInitialAvatar(message.author || "You"),
                   alt: "User Persona Avatar",
               };
     useLayoutEffect(() => {
@@ -260,6 +266,7 @@ export const MessageItem = memo(function MessageItem({
             className={cn("message", {
                 "generating-swipe": isPendingSwipe,
                 "show-rp-message-avatar": showRpMessageAvatar,
+                "hide-avatar": hideChatAvatar,
                 "system-message": message.metadata?.displayRole === "system",
             })}
         >
@@ -601,6 +608,7 @@ function areMessageItemPropsEqual(
         previous.messageFormatting === next.messageFormatting &&
         previous.pluginMessageActions === next.pluginMessageActions &&
         previous.renderer === next.renderer &&
+        previous.showCharacterImages === next.showCharacterImages &&
         previous.showRpCharacterImages === next.showRpCharacterImages &&
         previous.showTimestamps === next.showTimestamps &&
         previous.showThoughtProcess === next.showThoughtProcess &&

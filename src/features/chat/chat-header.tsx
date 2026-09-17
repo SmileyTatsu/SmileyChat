@@ -18,7 +18,7 @@ type ChatHeaderProps = {
     groupAvatarPath?: string;
     mode: ChatMode;
     pluginSnapshot: PluginAppSnapshot;
-    onModeChange: (mode: ChatMode) => void;
+    onModeChange?: (mode: ChatMode) => void;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
 };
@@ -138,24 +138,6 @@ export function ChatHeader({
                         ))}
                     </div>
                 )}
-
-                <div className="mode-toggle" aria-label="Visual chat mode">
-                    <button
-                        className={mode === "chat" ? "active" : ""}
-                        type="button"
-                        onClick={() => onModeChange("chat")}
-                    >
-                        Chatting
-                    </button>
-
-                    <button
-                        className={mode === "rp" ? "active" : ""}
-                        type="button"
-                        onClick={() => onModeChange("rp")}
-                    >
-                        RP
-                    </button>
-                </div>
 
                 {onToggleCharacter && (
                     <button

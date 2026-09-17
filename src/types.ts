@@ -8,6 +8,7 @@ export type SettingsCategory =
     | "formatting"
     | "lorebooks"
     | "personas"
+    | "themes"
     | "plugins"
     | "settings"
     | "sillytavern"

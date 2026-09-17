@@ -1237,39 +1237,18 @@ textarea:disabled {
     .settings-nav-panel {
         border-right: 0;
         border-bottom: 1px solid #292c35;
-        padding: 10px 12px 8px;
+        padding: 8px 12px;
+        display: block;
     }
 
-    .settings-nav {
-        display: flex;
-        overflow-x: auto;
-        gap: 8px;
-        padding-bottom: 4px;
-        scrollbar-gutter: auto;
-    }
-
-    .settings-nav::-webkit-scrollbar {
-        height: 4px;
-    }
-
-    .settings-nav::-webkit-scrollbar-thumb {
-        background-color: #343845;
-        border-radius: 4px;
-    }
-
-    .settings-nav button {
-        justify-content: center;
-        flex: 0 0 auto;
-        min-width: 86px;
-        padding: 0 12px;
-    }
-
-    .settings-nav span {
-        display: inline;
-    }
-
+    .settings-desktop-nav,
     .settings-nav-toggle {
-        display: none;
+        display: none !important;
+    }
+
+    .settings-mobile-nav {
+        display: block !important;
+        width: 100%;
     }
 
     .connection-profile-toolbar,
