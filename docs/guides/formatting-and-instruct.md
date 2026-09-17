@@ -85,3 +85,61 @@ When typing in the chat composer or editing an existing message swipe, SmileyCha
 | `Ctrl + Shift + P`                       | Spoiler         | `                  |     | text |     | `   |
 | `Ctrl + Shift + 9` or `Alt + Q`          | Blockquote      | `> text`           |
 | `Ctrl + Shift + 2` or `Ctrl + Shift + '` | Dialogue Quotes | `"text"`           |
+
+---
+
+## Multi-Bubble Chatting with `<msg>` Tags
+
+In modern messaging apps (such as Discord, WhatsApp, or iMessage), people often send rapid-fire thoughts across multiple separate bubbles rather than a single large paragraph. SmileyChat supports this through the `<msg>` tag format.
+
+A single message turn can contain multiple `<msg>` tags, which the UI renders as distinct, cleanly stacked visual bubbles without splitting the underlying data model or disrupting API turn alternation.
+
+### Basic Syntax
+
+```html
+<msg>Hey!</msg>
+<msg>Did you see the announcement earlier?</msg>
+<msg>I can't believe it's actually happening!</msg>
+```
+
+### Simulated Typing Latency with `delay`
+
+You can add an optional `delay` attribute to simulate real-time typing cadence:
+
+```html
+<msg>Hey!</msg>
+<msg delay="1.5s">Wait, look at this.</msg>
+<msg delay="500ms">Pretty cool, right?</msg>
+```
+
+Supported delay formats:
+
+- **Seconds:** `delay="1s"`, `delay="1.5s"`, `delay="2"`
+- **Milliseconds:** `delay="500ms"`, `delay="800ms"`
+
+**Live vs. Historical Display:**
+
+- During live conversation turns (newly sent user messages or streaming AI responses), bubbles with delays show an animated typing indicator for the specified duration before revealing with a smooth entrance animation.
+- When opening or scrolling through older chat history, delays are skipped automatically so the entire conversation loads instantly without pauses.
+
+### Using `<msg>` as a User
+
+You can type `<msg>` tags directly into the message composer or edit an existing message swipe:
+
+```text
+<msg>First thought</msg><msg delay="1s">Second thought</msg>
+```
+
+When sent, your message appears as stacked outgoing bubbles with matching user theme styling.
+
+### Prompting AI Characters to use `<msg>`
+
+To have your AI characters speak in natural, segmented chat bubbles when using the **Chatting** or **Bubbles** visual themes, include an instruction in the character's scenario, system prompt, or your active preset:
+
+> _"When replying, simulate real-time messaging by dividing your thoughts into short `<msg>` blocks. For natural pacing between rapid thoughts, you may include an optional delay (e.g. `<msg delay=\"1s\">text</msg>`)."_
+
+### Theme Behavior
+
+- **Chatting (`chat`):** Renders each `<msg>` as a compact, vertically stacked message line under the author header.
+- **Bubbles (`bubbles`):** Renders each `<msg>` as an independent WhatsApp-style speech bubble with directional tail corners for the first bubble and rounded continuation corners for subsequent bubbles.
+- **Roleplaying (`rp`):** Renders `<msg>` blocks as clean, book-styled prose paragraphs without chat bubbles, keeping long-form storytelling immersive.

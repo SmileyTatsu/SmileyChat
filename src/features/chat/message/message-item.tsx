@@ -43,6 +43,7 @@ import {
     getStreamingMessageDraft,
     findStreamingMessageDraftSignal,
 } from "#frontend/lib/streaming-message-drafts";
+import { hasMessageBubbles } from "#frontend/lib/message-formatting/message-bubbles";
 import type { ChatMode, Message, MessageToolActivity } from "#frontend/types";
 import type { TimeFormat } from "#frontend/lib/preferences/types";
 
@@ -268,6 +269,10 @@ export const MessageItem = memo(function MessageItem({
         }
     }
 
+    const streamingDraft = findStreamingMessageDraftSignal(message.id)?.value;
+    const currentContent = streamingDraft?.content ?? activeSwipe?.content ?? "";
+    const hasSubBubbles = hasMessageBubbles(currentContent);
+
     return (
         <article
             className={cn(
@@ -468,7 +473,11 @@ export const MessageItem = memo(function MessageItem({
                 </div>
             </MessageHeader>
 
-            <div className="message-content">
+            <div
+                className={cn("message-content", {
+                    "has-sub-bubbles": !isEditing && hasSubBubbles,
+                })}
+            >
                 {isEditing && (
                     <div className="message-edit-panel">
                         <textarea
@@ -509,11 +518,13 @@ export const MessageItem = memo(function MessageItem({
                         renderer={renderer}
                         showThoughtProcess={showThoughtProcess}
                         showToolActivity={showToolActivity}
+                        showTimestamps={showTimestamps}
+                        timeFormat={timeFormat}
                         onRemoveAttachment={onRemoveAttachment}
                         onVisibleContentChange={onVisibleContentChange}
                     />
                 )}
-                {showTimestamps && (
+                {showTimestamps && !hasSubBubbles && (
                     <time
                         className="bubble-timestamp"
                         dateTime={messageDateTime}
@@ -670,6 +681,8 @@ type MessageLiveContentProps = {
     renderer?: MessageRenderer;
     showThoughtProcess: boolean;
     showToolActivity: boolean;
+    showTimestamps: boolean;
+    timeFormat: TimeFormat;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onVisibleContentChange: () => void;
 };
@@ -685,6 +698,8 @@ function MessageLiveContent({
     renderer,
     showThoughtProcess,
     showToolActivity,
+    showTimestamps,
+    timeFormat,
     onRemoveAttachment,
     onVisibleContentChange,
 }: MessageLiveContentProps) {
@@ -741,6 +756,9 @@ function MessageLiveContent({
                 message={renderedMessage}
                 messageFormatting={messageFormatting}
                 mode={mode}
+                showTimestamps={showTimestamps}
+                timeFormat={timeFormat}
+                onVisibleContentChange={onVisibleContentChange}
             />
         </>
     );
