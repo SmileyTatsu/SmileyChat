@@ -58,7 +58,7 @@ export async function activate(api: SmileyPluginApi) {
         name: "generate_image",
         displayName: "Generate image",
         description:
-            "Generate a NovelAI image and return it with this assistant response. Use this tool only in either of these cases: (1) a character is sending the user a selfie, photo, or other image because it was requested in the conversation, including an in-fiction request between characters; or (2) an image is strictly necessary to fulfill an explicit user request. Do not generate unsolicited illustrations, scene visuals, visual reveals, decorative images, or images that merely enrich the roleplay. Those require an explicit user request. This tool takes no arguments. Do not compose or supply an image prompt. SmileyChat derives the visual intent from the current conversation, uses the configured preset and bounded history in a separate prompt-writer request, inserts the result into {{prompt}}, preserves the fixed master prompt, calls NovelAI, and returns the generated image.",
+            "Generate a NovelAI image and return it with this assistant response. Use this tool only in either of these cases: (1) a character is sending the user a selfie, photo, or other image because it was requested in the conversation, including an in-fiction request between characters; or (2) an image is strictly necessary to fulfill an explicit user request. Do not generate unsolicited illustrations, scene visuals, visual reveals, decorative images, or images that merely enrich the roleplay. Those require an explicit user request. Never simulate this tool by writing image descriptions, prompt tags, attachment markers, or generated image context text. When an image is requested, call the tool. This tool takes no arguments. Do not compose or supply an image prompt. SmileyChat derives the visual intent from the current conversation, uses the configured preset and bounded history in a separate prompt-writer request, inserts the result into {{prompt}}, preserves the fixed master prompt, calls NovelAI, and returns the generated image.",
         parameters: {
             type: "object",
             additionalProperties: false,
@@ -98,7 +98,7 @@ export async function activate(api: SmileyPluginApi) {
                         ? `Image label: ${draft.label}`
                         : `NovelAI prompt tags: ${draft.prompt}`;
                 return {
-                    content: imageContext,
+                    content: "Image generated successfully and attached.",
                     images: outcome.images,
                     imageContext,
                     suppressHistoryProtocol: true,

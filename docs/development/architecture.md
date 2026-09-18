@@ -13,7 +13,7 @@ SmileyChat's architecture separates the UI, the state orchestration, the text ge
 7. **Middlewares (Output)**: The raw AI response is filtered through output middlewares.
 8. **Save**: The final message is appended to the chat, and the Bun server saves the JSON state to `userData/chats/`.
 
-Completed tools can mark transport-only call/result frames with `suppressHistoryProtocol`. These frames remain saved for activity UI and diagnostics but are omitted when future preset history is compiled. Image tools can also provide `imageContext`; SmileyChat uses that text instead of rematerializing the tool-produced attachment as base64. The immediate continuation still receives a valid tool result.
+Completed tools can mark transport-only call/result frames with `suppressHistoryProtocol`. These frames remain saved for activity UI and diagnostics but are omitted when future preset history is compiled. Image tools can also provide `imageContext`; SmileyChat uses that text in a separate internal system message instead of rematerializing the tool-produced attachment as base64 or appending metadata to the assistant's conversational text. The immediate continuation still receives a valid, terse tool result.
 
 ## The Connection Adapter
 

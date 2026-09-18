@@ -487,13 +487,10 @@ export function usePromptGeneration({
                           },
                       ]),
                 ...toolResults.map((toolResult): ChatGenerationMessage => {
-                    const content = toolResult.imageContext
-                        ? `[Generated image context: ${toolResult.imageContext}]`
-                        : toolResult.content;
                     return {
                         role: ChatGenerationMessageRole.User,
-                        content,
-                        toolResult: { ...toolResult, content },
+                        content: toolResult.content,
+                        toolResult,
                     };
                 }),
             ];

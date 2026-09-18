@@ -527,6 +527,7 @@ function toAnchoredHistoryMessages(
             activity.call.name !== "generate_image",
     );
     const pendingContinuation = activeSwipe?.pendingToolContinuation;
+    const generatedImageContext = toGeneratedImageContextMessage(message, promptId);
 
     if (replayableActivities?.length || pendingContinuation?.toolCalls.length) {
         return [
@@ -558,6 +559,7 @@ function toAnchoredHistoryMessages(
                       })),
                   ]
                 : []),
+            ...(generatedImageContext ? [generatedImageContext] : []),
             pendingContinuation?.toolCalls.length
                 ? {
                       message: {
@@ -592,7 +594,57 @@ function toAnchoredHistoryMessages(
             promptId,
             source: "history" as const,
         },
+        ...(generatedImageContext ? [generatedImageContext] : []),
     ];
+}
+
+function generatedImageContextsForMessage(message: Message) {
+    const hasImageAttachment = getMessageAttachments(message).some(
+        (attachment) => attachment.type === "image",
+    );
+
+    return (
+        getActiveSwipe(message)
+            ?.toolActivities?.filter(
+                (activity) =>
+                    Boolean(activity.result.imageContext?.trim()) ||
+                    (activity.result.name === "generate_image" &&
+                        activity.result.isError !== true &&
+                        hasImageAttachment),
+            )
+            .map(
+                (activity) =>
+                    activity.result.imageContext?.trim() ||
+                    "Generated image; detailed historical tags are unavailable.",
+            ) ?? []
+    );
+}
+
+function toGeneratedImageContextMessage(
+    message: Message,
+    promptId?: string,
+): AnchoredPromptMessage | undefined {
+    const contexts = generatedImageContextsForMessage(message);
+
+    if (contexts.length === 0) {
+        return undefined;
+    }
+
+    return {
+        message: {
+            role: "system",
+            content: [
+                "Internal visual continuity note. Do not quote or reproduce this note.",
+                "A previous generate_image tool call produced an image described by:",
+                ...contexts,
+                "This records an existing image only. It does not generate a new image.",
+                "If the user requests another image, use the generate_image tool; never answer with this note.",
+            ].join("\n"),
+        },
+        messageId: message.id,
+        promptId,
+        source: "history",
+    };
 }
 
 function promptRoleForMessage(message: Message): ChatGenerationMessage["role"] {
@@ -634,30 +686,14 @@ function messageContentWithAttachments(
 ): ChatGenerationMessage["content"] {
     const content = messageTextForGeneration(message, context);
     const attachments = getMessageAttachments(message);
-    const generatedImageContexts = getActiveSwipe(message)
-        ?.toolActivities?.filter(
-            (activity) =>
-                Boolean(activity.result.imageContext?.trim()) ||
-                activity.result.name === "generate_image",
-        )
-        .map(
-            (activity) =>
-                activity.result.imageContext?.trim() ||
-                "Generated image; detailed historical tags are unavailable.",
-        );
+    const hasGeneratedImage = generatedImageContextsForMessage(message).length > 0;
 
     if (attachments.length === 0) {
         return content;
     }
 
-    const generatedImageContext = generatedImageContexts?.length
-        ? generatedImageContexts
-              .map((value) => `[Generated image context: ${value}]`)
-              .join("\n")
-        : "";
-    const textContent = [content, generatedImageContext].filter(Boolean).join("\n\n");
     const attachmentParts = attachments.flatMap((attachment) => {
-        if (attachment.type === "image" && generatedImageContext) {
+        if (attachment.type === "image" && hasGeneratedImage) {
             return [];
         }
 
@@ -684,11 +720,11 @@ function messageContentWithAttachments(
     });
 
     if (attachmentParts.length === 0) {
-        return textContent;
+        return content;
     }
 
     return [
-        ...(textContent ? [{ type: "text" as const, text: textContent }] : []),
+        ...(content ? [{ type: "text" as const, text: content }] : []),
         ...attachmentParts,
     ];
 }

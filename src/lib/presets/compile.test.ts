@@ -184,7 +184,7 @@ describe("compilePresetMessages", () => {
         ]);
     });
 
-    test("replays tool-generated image context as text instead of image bytes", () => {
+    test("replays tool-generated image context as internal system memory", () => {
         const preset = presetWithPrompts([
             prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
         ]);
@@ -227,8 +227,24 @@ describe("compilePresetMessages", () => {
             context({ messages: [generated] }),
         );
         const serialized = JSON.stringify(compiled);
+        const assistantMessage = compiled.find((item) => item.role === "assistant");
+        const visualMemory = compiled.find(
+            (item) =>
+                item.role === "system" &&
+                typeof item.content === "string" &&
+                item.content.includes("Internal visual continuity note"),
+        );
 
+        expect(assistantMessage?.content).toBe("Luna: Here is the selfie.");
+        expect(assistantMessage?.content).not.toContain("NovelAI prompt tags");
+        expect(visualMemory?.content).toContain(
+            "NovelAI prompt tags: nejire hadou, selfie, indoors",
+        );
+        expect(visualMemory?.content).toContain(
+            "If the user requests another image, use the generate_image tool",
+        );
         expect(serialized).toContain("NovelAI prompt tags");
+        expect(serialized).not.toContain("[Generated image context:");
         expect(serialized).not.toContain("image_url");
         expect(serialized).not.toContain("generated.png");
         expect(serialized).not.toContain("Generated 1 NovelAI image");
@@ -276,12 +292,52 @@ describe("compilePresetMessages", () => {
             compilePresetMessages(preset, context({ messages: [generated] })),
         );
 
+        expect(serialized).toContain("Internal visual continuity note");
         expect(serialized).toContain("historical tags are unavailable");
+        expect(serialized).not.toContain("[Generated image context:");
         expect(serialized).not.toContain("image_url");
         expect(serialized).not.toContain("legacy.png");
         expect(serialized).not.toContain("Generated 1 NovelAI image");
         expect(serialized).not.toContain("toolCalls");
         expect(serialized).not.toContain("toolResult");
+    });
+
+    test("does not create visual memory for a failed image tool call", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const failed = {
+            ...message("m1", "character", "I couldn't make that image."),
+            swipes: [
+                {
+                    id: "m1-swipe",
+                    content: "I couldn't make that image.",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    toolActivities: [
+                        {
+                            call: {
+                                id: "call-image",
+                                name: "generate_image",
+                                argumentsText: "{}",
+                            },
+                            result: {
+                                toolCallId: "call-image",
+                                name: "generate_image",
+                                content: "Tool error: image generation failed.",
+                                isError: true,
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const serialized = JSON.stringify(
+            compilePresetMessages(preset, context({ messages: [failed] })),
+        );
+
+        expect(serialized).not.toContain("Internal visual continuity note");
+        expect(serialized).not.toContain("historical tags are unavailable");
     });
 
     test("keeps a paused tool-call turn after completed tool activities", () => {

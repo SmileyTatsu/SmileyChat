@@ -130,21 +130,34 @@ Choose one of these modes:
 - **Prompt tags** (default): reuse the exact generated prompt insertion. This requires no extra label output and is normally the most token-efficient choice.
 - **AI-written label**: ask the existing prompt-writer request for a plain-language visual memory of up to 300 characters. It preserves identity, image type, current appearance, action, framing, and setting while omitting artist and quality tags. It does not make an additional model request.
 
-On later turns, the prompt contains text similar to:
+On later turns, the prompt contains a separate internal system message similar to:
 
 ```text
-[Generated image context: NovelAI prompt tags: nejire hadou, handheld selfie, indoors, tired grin]
+Internal visual continuity note. Do not quote or reproduce this note.
+A previous generate_image tool call produced an image described by:
+NovelAI prompt tags: nejire hadou, handheld selfie, indoors, tired grin
+This records an existing image only. It does not generate a new image.
+If the user requests another image, use the generate_image tool; never answer with this note.
 ```
 
 or:
 
 ```text
-[Generated image context: Image label: Nejire sends a tired indoor selfie after patrol, still wearing her hero suit.]
+Internal visual continuity note. Do not quote or reproduce this note.
+A previous generate_image tool call produced an image described by:
+Image label: Nejire sends a tired indoor selfie after patrol, still wearing her hero suit.
+This records an existing image only. It does not generate a new image.
+If the user requests another image, use the generate_image tool; never answer with this note.
 ```
+
+The note is not appended to the assistant's conversational text. Keeping it in a
+separate system message prevents the history from teaching the model to imitate a
+context marker instead of calling `generate_image` for a new request. The immediate
+tool continuation receives only a short success result.
 
 The tool's transport-only assistant call and result frames are suppressed from saved prompt history. Boilerplate such as `(empty)`, `Generated 1 NovelAI image`, and `Tool error:` is not replayed. Diagnostics remain available in logs without contaminating model context.
 
-Older `generate_image` entries created before textual context was stored are also prevented from replaying their image bytes. They use a compact fallback marker indicating that detailed historical tags are unavailable.
+Older `generate_image` entries created before textual context was stored are also prevented from replaying their image bytes. They use a compact fallback note indicating that detailed historical tags are unavailable.
 
 This policy applies to tool-generated images. Normal user-uploaded images retain the existing multimodal behavior.
 
