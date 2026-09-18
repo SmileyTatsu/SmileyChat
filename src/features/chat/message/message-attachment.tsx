@@ -57,13 +57,15 @@ export function StreamingGeneratedImages({ count }: { count: number }) {
     );
 }
 
-function MessageAttachmentItem({
+export function MessageAttachmentItem({
     attachment,
     chatId,
+    inline = false,
     onRemoveAttachment,
 }: {
     attachment: ChatAttachment;
     chatId: string;
+    inline?: boolean;
     onRemoveAttachment?: (attachmentId: string) => void;
 }) {
     const isLocal = isLocalChatAttachmentUrl(attachment.url, chatId);
@@ -74,8 +76,10 @@ function MessageAttachmentItem({
     const canDownloadFile = attachment.type === "file" && isLocal;
     const isValid = canShowImage || canDownloadFile;
 
+    const Root = inline ? "span" : "div";
+
     return (
-        <div
+        <Root
             className="message-attachment-item"
             data-kind={attachment.type}
             data-valid={isValid ? "true" : "false"}
@@ -121,6 +125,6 @@ function MessageAttachmentItem({
                     <X size={13} />
                 </button>
             )}
-        </div>
+        </Root>
     );
 }

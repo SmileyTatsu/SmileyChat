@@ -5,6 +5,7 @@ import {
     getMessageReasoningDetails,
 } from "#frontend/lib/messages";
 import { MessageRole, type Message } from "#frontend/types";
+import { resolvePhotoPlaceholders } from "#frontend/lib/message-formatting/photo-placeholders";
 
 import { messageContentToText } from "./images";
 import { readChatCompletionStream } from "./streaming";
@@ -16,7 +17,7 @@ import type {
     ToolCall,
     ToolDefinition,
 } from "./types";
-import { ChatGenerationMessageRole } from "./types";
+import { chatImageSourceIndex, ChatGenerationMessageRole } from "./types";
 
 type ChatCompletionMessage<TRole extends string> = {
     role: TRole | "tool";
@@ -415,9 +416,66 @@ function messageContentWithAttachments(
 ): string | ChatGenerationMessageContentPart[] {
     const content = getMessageContent(message);
     const attachments = getMessageAttachments(message);
+    const resolved = resolvePhotoPlaceholders(content, attachments);
 
     if (attachments.length === 0) {
-        return content;
+        return resolved.hasMarkers
+            ? resolved.segments
+                  .filter((segment) => segment.type === "text")
+                  .map((segment) => segment.text)
+                  .join("")
+            : content;
+    }
+
+    if (resolved.hasMarkers) {
+        const parts: ChatGenerationMessageContentPart[] = [];
+
+        for (const segment of resolved.segments) {
+            if (segment.type === "text") {
+                if (segment.text) parts.push({ type: "text", text: segment.text });
+            } else if (segment.type === "photo") {
+                parts.push({
+                    type: "image_url",
+                    image_url: { url: segment.attachment.url },
+                    [chatImageSourceIndex]: segment.imageIndex,
+                });
+            }
+        }
+
+        const images = attachments.filter((attachment) => attachment.type === "image");
+        for (const attachment of attachments) {
+            if (
+                attachment.type === "image" &&
+                resolved.placedAttachmentIds.has(attachment.id)
+            ) {
+                continue;
+            }
+            parts.push(
+                attachment.type === "image"
+                    ? {
+                          type: "image_url",
+                          image_url: { url: attachment.url },
+                          [chatImageSourceIndex]: images.findIndex(
+                              (image) => image.id === attachment.id,
+                          ),
+                      }
+                    : {
+                          type: "file",
+                          file: {
+                              url: attachment.url,
+                              ...(attachment.name ? { filename: attachment.name } : {}),
+                              ...(attachment.mimeType
+                                  ? { mime_type: attachment.mimeType }
+                                  : {}),
+                              ...(attachment.sizeBytes !== undefined
+                                  ? { size_bytes: attachment.sizeBytes }
+                                  : {}),
+                          },
+                      },
+            );
+        }
+
+        return parts;
     }
 
     return [
@@ -427,6 +485,9 @@ function messageContentWithAttachments(
                 ? {
                       type: "image_url" as const,
                       image_url: { url: attachment.url },
+                      [chatImageSourceIndex]: attachments
+                          .filter((item) => item.type === "image")
+                          .findIndex((image) => image.id === attachment.id),
                   }
                 : {
                       type: "file" as const,

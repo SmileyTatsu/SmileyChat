@@ -12,6 +12,7 @@ import type { ToolActivity } from "./connections/types";
 import { createId } from "./common/ids";
 import { getCharacterDialogueColor } from "./characters/normalize";
 import { getPersonaDialogueColor } from "./personas/normalize";
+import { stabilizePhotoPlaceholders } from "./message-formatting/photo-placeholders";
 
 export function createUserMessage(
     content: string,
@@ -263,8 +264,12 @@ export function updateActiveSwipeContent(
     timeline?: MessageSwipe["timeline"],
     pendingToolContinuation?: MessageSwipe["pendingToolContinuation"],
 ): Message {
+    const stableContent = stabilizePhotoPlaceholders(
+        content,
+        getMessageAttachments(message),
+    );
     if (message.swipes.length === 0) {
-        const swipe = createMessageSwipe(content, status);
+        const swipe = createMessageSwipe(stableContent, status);
 
         return {
             ...message,
@@ -288,7 +293,7 @@ export function updateActiveSwipeContent(
             index === message.activeSwipeIndex
                 ? {
                       ...swipe,
-                      content,
+                      content: stableContent,
                       ...(reasoning !== undefined ? { reasoning } : {}),
                       ...(reasoningDetails !== undefined ? { reasoningDetails } : {}),
                       ...(status ? { status } : {}),
@@ -378,7 +383,10 @@ export function updateActiveSwipeAttachments(
 }
 
 function withSwipeAttachments(swipe: MessageSwipe, attachments: ChatAttachment[]) {
-    const nextSwipe = { ...swipe };
+    const nextSwipe = {
+        ...swipe,
+        content: stabilizePhotoPlaceholders(swipe.content, attachments),
+    };
     delete nextSwipe.attachments;
 
     if (attachments.length > 0) {
@@ -470,7 +478,7 @@ function createMessage(
         swipes: [
             {
                 id: createId("swipe"),
-                content,
+                content: stabilizePhotoPlaceholders(content, attachments ?? []),
                 ...(attachments?.length ? { attachments } : {}),
                 createdAt,
                 ...(status ? { status } : {}),

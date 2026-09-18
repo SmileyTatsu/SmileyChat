@@ -1,7 +1,7 @@
 import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
 
 import { getCharacterTagline } from "../characters/normalize";
-import type { ChatGenerationMessage } from "../connections/types";
+import { chatImageSourceIndex, type ChatGenerationMessage } from "../connections/types";
 import { messageContentToText } from "../connections/images";
 import {
     getMessageAttachments,
@@ -17,6 +17,7 @@ import { messageTextForHistory as formatMessageTextForHistory } from "./message-
 import type { PresetFormattingSettings, PresetPrompt, SmileyPreset } from "./types";
 import type { AnchoredPromptMessage } from "../prompt/injections";
 import { isMessageIncludedInPrompt } from "../prompt/message-utils";
+import { resolvePhotoPlaceholders } from "../message-formatting/photo-placeholders";
 import type { PromptOutletRegistry } from "../prompt/outlets";
 import type { PromptGenerationContext } from "../prompt/types";
 
@@ -687,36 +688,59 @@ function messageContentWithAttachments(
     const content = messageTextForGeneration(message, context);
     const attachments = getMessageAttachments(message);
     const hasGeneratedImage = generatedImageContextsForMessage(message).length > 0;
+    const resolved = resolvePhotoPlaceholders(content, attachments);
 
     if (attachments.length === 0) {
-        return content;
+        return resolved.hasMarkers
+            ? resolved.segments
+                  .filter((segment) => segment.type === "text")
+                  .map((segment) => segment.text)
+                  .join("")
+            : content;
     }
 
-    const attachmentParts = attachments.flatMap((attachment) => {
-        if (attachment.type === "image" && hasGeneratedImage) {
-            return [];
+    const allowedAttachments = attachments.filter(
+        (attachment) => !(attachment.type === "image" && hasGeneratedImage),
+    );
+    if (resolved.hasMarkers) {
+        const parts: Exclude<ChatGenerationMessage["content"], string> = [];
+
+        for (const segment of resolved.segments) {
+            if (segment.type === "text") {
+                if (segment.text) parts.push({ type: "text", text: segment.text });
+                continue;
+            }
+
+            if (
+                segment.type === "photo" &&
+                allowedAttachments.some(
+                    (attachment) => attachment.id === segment.attachment.id,
+                )
+            ) {
+                parts.push({
+                    type: "image_url",
+                    image_url: { url: segment.attachment.url },
+                    [chatImageSourceIndex]: segment.imageIndex,
+                });
+            }
+            // Missing markers are intentionally omitted from provider prompts.
         }
 
-        return [
-            attachment.type === "image"
-                ? {
-                      type: "image_url" as const,
-                      image_url: { url: attachment.url },
-                  }
-                : {
-                      type: "file" as const,
-                      file: {
-                          url: attachment.url,
-                          ...(attachment.name ? { filename: attachment.name } : {}),
-                          ...(attachment.mimeType
-                              ? { mime_type: attachment.mimeType }
-                              : {}),
-                          ...(attachment.sizeBytes !== undefined
-                              ? { size_bytes: attachment.sizeBytes }
-                              : {}),
-                      },
-                  },
-        ];
+        for (const attachment of allowedAttachments) {
+            if (
+                attachment.type === "image" &&
+                resolved.placedAttachmentIds.has(attachment.id)
+            ) {
+                continue;
+            }
+            parts.push(attachmentToContentPart(attachment, allowedAttachments));
+        }
+
+        return parts.length ? parts : "";
+    }
+
+    const attachmentParts = allowedAttachments.flatMap((attachment) => {
+        return [attachmentToContentPart(attachment, allowedAttachments)];
     });
 
     if (attachmentParts.length === 0) {
@@ -727,6 +751,32 @@ function messageContentWithAttachments(
         ...(content ? [{ type: "text" as const, text: content }] : []),
         ...attachmentParts,
     ];
+}
+
+function attachmentToContentPart(
+    attachment: ReturnType<typeof getMessageAttachments>[number],
+    attachments: ReturnType<typeof getMessageAttachments>,
+) {
+    if (attachment.type === "image") {
+        const images = attachments.filter((item) => item.type === "image");
+        return {
+            type: "image_url" as const,
+            image_url: { url: attachment.url },
+            [chatImageSourceIndex]: images.findIndex((item) => item.id === attachment.id),
+        };
+    }
+
+    return {
+        type: "file" as const,
+        file: {
+            url: attachment.url,
+            ...(attachment.name ? { filename: attachment.name } : {}),
+            ...(attachment.mimeType ? { mime_type: attachment.mimeType } : {}),
+            ...(attachment.sizeBytes !== undefined
+                ? { size_bytes: attachment.sizeBytes }
+                : {}),
+        },
+    };
 }
 
 function messageTextForGeneration(message: Message, context: CompilePresetContext) {

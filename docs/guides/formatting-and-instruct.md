@@ -82,6 +82,7 @@ When typing in the chat composer or editing an existing message swipe, SmileyCha
 | `Ctrl + Shift + X`                       | Strikethrough   | `~~text~~`         |
 | `Ctrl + Shift + C`                       | Inline Code     | `` `text` ``       |
 | `Ctrl + Shift + K`                       | Code Block      | ` ```\ntext\n``` ` |
+| `Ctrl + Shift + M`                       | Message Bubble  | `<msg>text</msg>`  |
 | `Ctrl + Shift + P`                       | Spoiler         | `                  |     | text |     | `   |
 | `Ctrl + Shift + 9` or `Alt + Q`          | Blockquote      | `> text`           |
 | `Ctrl + Shift + 2` or `Ctrl + Shift + '` | Dialogue Quotes | `"text"`           |
@@ -130,6 +131,8 @@ You can type `<msg>` tags directly into the message composer or edit an existing
 <msg>First thought</msg><msg delay="1s">Second thought</msg>
 ```
 
+Select text and press `Ctrl + Shift + M` (`Cmd + Shift + M` on macOS) to wrap it in `<msg>` tags. With no selection, the shortcut inserts an empty `<msg></msg>` pair and places the cursor between the tags.
+
 When sent, your message appears as stacked outgoing bubbles with matching user theme styling.
 
 ### Prompting AI Characters to use `<msg>`
@@ -143,3 +146,25 @@ To have your AI characters speak in natural, segmented chat bubbles when using t
 - **Chatting (`chat`):** Renders each `<msg>` as a compact, vertically stacked message line under the author header.
 - **Bubbles (`bubbles`):** Renders each `<msg>` as an independent WhatsApp-style speech bubble with directional tail corners for the first bubble and rounded continuation corners for subsequent bubbles.
 - **Roleplaying (`rp`):** Renders `<msg>` blocks as clean, book-styled prose paragraphs without chat bubbles, keeping long-form storytelling immersive.
+
+## Positioning attached photos
+
+Image attachments normally appear in the attachment gallery beneath a message. Photo placeholders let a message place them at an exact point in its text or inside and between `<msg>` bubbles.
+
+```text
+<msg>Here is the wide shot.</msg>
+{{photo[0]}}
+<msg delay="1s">And these are the remaining photos: {{photo}}</msg>
+```
+
+Supported forms:
+
+- `{{photo[0]}}` places one image by its zero-based position among image attachments. File attachments do not affect the number.
+- `{{photo}}` places every image not already reserved by an explicit photo reference.
+- `{{photo:id=…}}` is SmileyChat's stable stored form. Numeric references are converted to attachment IDs when a chat is normalized or saved so later attachment reordering does not silently point at a different image.
+
+A positioned image is removed from the bottom gallery without deleting its file. Removing that attachment leaves a small missing-photo marker in the displayed message; the unresolved marker is omitted from model prompts. Repeating an explicit reference intentionally displays the same image more than once.
+
+Multimodal providers receive text and image parts in placeholder order. Providers without image input receive a compact marker such as `[attached image 2 appears here]`; its number continues to identify the original image attachment. Normal attachment URL validation still applies.
+
+Photo placeholders are message-formatting syntax, not preset macros. Use them in chat messages rather than preset prompt fields.

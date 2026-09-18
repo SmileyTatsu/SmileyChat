@@ -348,7 +348,7 @@ describe("Anthropic connection mappers", () => {
         ]);
     });
 
-    test("maps data URL images to Anthropic image blocks before text", () => {
+    test("preserves text and image order in Anthropic content blocks", () => {
         const body = createAnthropicMessageBody(
             {
                 promptMessages: [
@@ -375,16 +375,16 @@ describe("Anthropic connection mappers", () => {
 
         expect(body.messages[0]?.content).toEqual([
             {
+                type: "text",
+                text: "Describe this",
+            },
+            {
                 type: "image",
                 source: {
                     type: "base64",
                     media_type: "image/png",
                     data: "abc123",
                 },
-            },
-            {
-                type: "text",
-                text: "Describe this",
             },
         ]);
     });
@@ -418,16 +418,16 @@ describe("Anthropic connection mappers", () => {
 
         expect(body.messages[0]?.content).toEqual([
             {
+                type: "text",
+                text: "Summarize this.",
+            },
+            {
                 type: "document",
                 source: {
                     type: "file",
                     file_id: "file_123",
                 },
                 title: "notes.pdf",
-            },
-            {
-                type: "text",
-                text: "Summarize this.",
             },
         ]);
     });
@@ -461,15 +461,15 @@ describe("Anthropic connection mappers", () => {
 
         expect(body.messages[0]?.content).toEqual([
             {
+                type: "text",
+                text: "Describe this.",
+            },
+            {
                 type: "image",
                 source: {
                     type: "file",
                     file_id: "file_image_1",
                 },
-            },
-            {
-                type: "text",
-                text: "Describe this.",
             },
         ]);
     });

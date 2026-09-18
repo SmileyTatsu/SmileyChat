@@ -3,9 +3,17 @@ import type { PromptBuildDebug } from "../prompt/types";
 import type { PresetGenerationSettings } from "../presets/types";
 import type { PresetFormattingSettings } from "../presets/types";
 
+/** Internal symbol metadata is ignored by JSON serialization and wire payloads. */
+export const chatImageSourceIndex = Symbol("smileychat.imageSourceIndex");
+
 export type ChatGenerationMessageContentPart =
     | { type: "text"; text: string }
-    | { type: "image_url"; image_url: { url: string } }
+    | {
+          type: "image_url";
+          image_url: { url: string };
+          /** Zero-based image-attachment index used only for text fallbacks. */
+          [chatImageSourceIndex]?: number;
+      }
     | {
           type: "file";
           file: {

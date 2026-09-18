@@ -2642,6 +2642,24 @@
     }
 }
 
+.message-inline-photo {
+    display: inline-flex;
+    width: min-content;
+    max-width: 100%;
+    margin-block: 0.45rem;
+    vertical-align: middle;
+}
+
+.message-missing-photo {
+    width: fit-content;
+    border: 1px dashed #5a6070;
+    border-radius: 0.375rem;
+    color: #9ba3b7;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
 @media (hover: none) {
     .message-attachments .message-attachment-remove {
         opacity: 1;

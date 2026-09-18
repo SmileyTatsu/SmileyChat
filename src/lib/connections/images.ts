@@ -1,7 +1,8 @@
-import type {
-    ChatGenerationMessage,
-    ChatGenerationMessageContentPart,
-    ChatGenerationRequest,
+import {
+    chatImageSourceIndex,
+    type ChatGenerationMessage,
+    type ChatGenerationMessageContentPart,
+    type ChatGenerationRequest,
 } from "./types";
 import {
     isAnyLocalChatAttachmentUrl,
@@ -64,6 +65,11 @@ async function materializeMessageAttachments(
                         image_url: {
                             url: await attachmentUrlToDataUrl(part.image_url.url),
                         },
+                        ...(part[chatImageSourceIndex] !== undefined
+                            ? {
+                                  [chatImageSourceIndex]: part[chatImageSourceIndex],
+                              }
+                            : {}),
                     };
                 }
 
@@ -103,13 +109,34 @@ export function messageContentToText(content: ChatGenerationMessage["content"]):
         return content;
     }
 
+    let encounteredImageIndex = 0;
+
     return content
         .map((part) => {
             if (part.type === "text") return part.text;
-            if (part.type === "image_url") return "[image]";
+            if (part.type === "image_url") {
+                const imageNumber =
+                    part[chatImageSourceIndex] !== undefined
+                        ? part[chatImageSourceIndex] + 1
+                        : encounteredImageIndex + 1;
+                encounteredImageIndex += 1;
+                return `[attached image ${imageNumber} appears here]`;
+            }
             return `[file: ${part.file.filename ?? "attachment"}]`;
         })
         .join("\n");
+}
+
+/** Removes SmileyChat-only content metadata before Chat Completions serialization. */
+export function stripInternalImageContentMetadata(
+    content: ChatGenerationMessage["content"],
+): ChatGenerationMessage["content"] {
+    if (typeof content === "string") return content;
+
+    return content.map((part) => {
+        if (part.type !== "image_url") return part;
+        return { type: "image_url", image_url: part.image_url };
+    });
 }
 
 export function hasImageContent(

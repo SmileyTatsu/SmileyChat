@@ -366,12 +366,11 @@ function generationMessageContentToAnthropicContent(
 function generationMessageContentToAnthropicBlocks(
     content: Exclude<ChatGenerationMessage["content"], string>,
 ): AnthropicContentBlock[] {
-    const imageBlocks: AnthropicContentBlock[] = [];
-    const textBlocks: AnthropicContentBlock[] = [];
+    const blocks: AnthropicContentBlock[] = [];
 
     for (const part of content) {
         if (part.type === "text") {
-            textBlocks.push({ type: "text", text: part.text });
+            blocks.push({ type: "text", text: part.text });
             continue;
         }
 
@@ -383,7 +382,7 @@ function generationMessageContentToAnthropicBlocks(
             }
 
             if (part.file.mime_type?.startsWith("image/")) {
-                imageBlocks.push({
+                blocks.push({
                     type: "image",
                     source: {
                         type: "file",
@@ -393,7 +392,7 @@ function generationMessageContentToAnthropicBlocks(
                 continue;
             }
 
-            imageBlocks.push({
+            blocks.push({
                 type: "document",
                 source: {
                     type: "file",
@@ -408,7 +407,7 @@ function generationMessageContentToAnthropicBlocks(
 
         if (!image) {
             if (/^https?:\/\//i.test(part.image_url.url)) {
-                imageBlocks.push({
+                blocks.push({
                     type: "image",
                     source: {
                         type: "url",
@@ -421,7 +420,7 @@ function generationMessageContentToAnthropicBlocks(
             throw new Error("Anthropic image input must be a base64 data URL.");
         }
 
-        imageBlocks.push({
+        blocks.push({
             type: "image",
             source: {
                 type: "base64",
@@ -431,7 +430,7 @@ function generationMessageContentToAnthropicBlocks(
         });
     }
 
-    return [...imageBlocks, ...textBlocks];
+    return blocks;
 }
 
 function mergeConsecutiveMessages(messages: AnthropicMessage[]) {

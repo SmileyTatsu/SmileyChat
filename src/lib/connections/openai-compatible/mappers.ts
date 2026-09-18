@@ -8,6 +8,7 @@ import { defaultOutputTokenLimit } from "../output-tokens";
 import { ChatGenerationMessageRole } from "../types";
 import type { ChatGenerationRequest, ChatGenerationResult } from "../types";
 import { MessageRole } from "#frontend/types";
+import { stripInternalImageContentMetadata } from "../images";
 import type {
     OpenAICompatibleChatCompletionRequest,
     OpenAICompatibleChatCompletionResponse,
@@ -29,7 +30,10 @@ export function createChatCompletionBody(
             message.role === MessageRole.User
                 ? ChatGenerationMessageRole.User
                 : ChatGenerationMessageRole.Assistant,
-    });
+    }).map((message) => ({
+        ...message,
+        content: stripInternalImageContentMetadata(message.content),
+    }));
     const reasoning = cleanReasoningConfig(config.reasoning);
 
     return {

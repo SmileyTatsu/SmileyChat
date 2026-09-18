@@ -17,6 +17,7 @@ import type {
     XAIResponsesRequest,
     XAIResponsesResponse,
 } from "./types";
+import { stripInternalImageContentMetadata } from "../images";
 
 export function createXAIChatCompletionBody(
     request: ChatGenerationRequest,
@@ -32,7 +33,10 @@ export function createXAIChatCompletionBody(
             message.role === MessageRole.User
                 ? ChatGenerationMessageRole.User
                 : ChatGenerationMessageRole.Assistant,
-    });
+    }).map((message) => ({
+        ...message,
+        content: stripInternalImageContentMetadata(message.content),
+    }));
     const reasoning = cleanXAIReasoningConfig(config.reasoning);
     const generation = request.generation;
 

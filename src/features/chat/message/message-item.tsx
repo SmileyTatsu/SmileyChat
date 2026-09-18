@@ -44,6 +44,7 @@ import {
     findStreamingMessageDraftSignal,
 } from "#frontend/lib/streaming-message-drafts";
 import { hasMessageBubbles } from "#frontend/lib/message-formatting/message-bubbles";
+import { getPlacedPhotoAttachmentIds } from "#frontend/lib/message-formatting/photo-placeholders";
 import type { ChatMode, Message, MessageToolActivity } from "#frontend/types";
 import type { TimeFormat } from "#frontend/lib/preferences/types";
 
@@ -707,6 +708,10 @@ function MessageLiveContent({
     const renderedMessage = applyStreamingMessageDraft(message, streamingDraft);
     const content = getMessageContent(renderedMessage);
     const attachments = getMessageAttachments(renderedMessage);
+    const placedPhotoIds = getPlacedPhotoAttachmentIds(content, attachments);
+    const galleryAttachments = attachments.filter(
+        (attachment) => attachment.type !== "image" || !placedPhotoIds.has(attachment.id),
+    );
     const timeline = getMessageTimeline(renderedMessage);
     const draftScrollVersion = [
         streamingDraft?.content?.length ?? 0,
@@ -739,7 +744,7 @@ function MessageLiveContent({
                 timeline={timeline}
             />
             <MessageAttachments
-                attachments={attachments}
+                attachments={galleryAttachments}
                 chatId={chatId}
                 onRemoveAttachment={(attachmentId) =>
                     onRemoveAttachment(message.id, attachmentId)
@@ -753,11 +758,16 @@ function MessageLiveContent({
                 characterDialogueColor={characterDialogueColor}
                 characterName={characterName}
                 content={content}
+                attachments={attachments}
+                chatId={chatId}
                 message={renderedMessage}
                 messageFormatting={messageFormatting}
                 mode={mode}
                 showTimestamps={showTimestamps}
                 timeFormat={timeFormat}
+                onRemoveAttachment={(attachmentId) =>
+                    onRemoveAttachment(message.id, attachmentId)
+                }
                 onVisibleContentChange={onVisibleContentChange}
             />
         </>

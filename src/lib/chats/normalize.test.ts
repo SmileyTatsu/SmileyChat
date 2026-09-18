@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { normalizeChatSummaryCollection } from "./normalize";
+import { normalizeChat, normalizeChatSummaryCollection } from "./normalize";
 import type { ChatSummary } from "./types";
 
 describe("normalizeChatSummaryCollection", () => {
@@ -72,5 +72,39 @@ describe("normalizeChatSummaryCollection", () => {
 
         // "chat-group-1" should be rejected for activeChatIdsByCharacter because it is a group chat
         expect(collection.activeChatIdsByCharacter["char-1"]).toBe("chat-direct-1");
+    });
+});
+
+describe("normalizeChat", () => {
+    test("stabilizes numeric photo placeholders during persistence normalization", () => {
+        const chat = normalizeChat({
+            id: "chat-1",
+            characterId: "char-1",
+            mode: "chat",
+            messages: [
+                {
+                    id: "message-1",
+                    role: "user",
+                    author: "Anon",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    activeSwipeIndex: 0,
+                    swipes: [
+                        {
+                            id: "swipe-1",
+                            content: "First {{photo[1]}} then {{photo[0]}}",
+                            createdAt: "2026-01-01T00:00:00.000Z",
+                            attachments: [
+                                { id: "photo-a", type: "image", url: "/a.png" },
+                                { id: "photo-b", type: "image", url: "/b.png" },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(chat?.messages[0]?.swipes[0]?.content).toBe(
+            "First {{photo:id=photo-b}} then {{photo:id=photo-a}}",
+        );
     });
 });

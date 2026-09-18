@@ -90,6 +90,9 @@ export function getTextFormattingHotkeyResult(
     if (event.code === "KeyX") return applyTextFormatting(selection, "~~");
     if (event.code === "KeyC") return applyTextFormatting(selection, "`");
     if (event.code === "KeyK") return applyTextFormatting(selection, "```\n", "\n```");
+    if (event.code === "KeyM") {
+        return applyTextFormatting(selection, "<msg>", "</msg>");
+    }
     if (event.code === "KeyP") return applyTextFormatting(selection, "||");
     if (event.code === "Digit9") return applyBlockquoteFormatting(selection);
     if (event.code === "Digit2" || event.code === "Quote") {

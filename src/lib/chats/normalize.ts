@@ -2,6 +2,7 @@ import { isRecord } from "#frontend/lib/common/guards";
 import { createId } from "#frontend/lib/common/ids";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import { getMessageCreatedAt } from "#frontend/lib/messages";
+import { stabilizePhotoPlaceholders } from "#frontend/lib/message-formatting/photo-placeholders";
 
 import type {
     ChatAttachment,
@@ -432,18 +433,16 @@ function normalizeSwipe(value: unknown): MessageSwipe | undefined {
         return undefined;
     }
 
+    const attachments = Array.isArray(value.attachments)
+        ? value.attachments
+              .map(normalizeAttachment)
+              .filter((attachment): attachment is ChatAttachment => Boolean(attachment))
+        : [];
+
     return {
         id: asString(value.id) || createId("swipe"),
-        content: asString(value.content),
-        ...(Array.isArray(value.attachments)
-            ? {
-                  attachments: value.attachments
-                      .map(normalizeAttachment)
-                      .filter((attachment): attachment is ChatAttachment =>
-                          Boolean(attachment),
-                      ),
-              }
-            : {}),
+        content: stabilizePhotoPlaceholders(asString(value.content), attachments),
+        ...(Array.isArray(value.attachments) ? { attachments } : {}),
         createdAt: asIsoString(value.createdAt) || new Date().toISOString(),
         ...(asString(value.reasoning) ? { reasoning: asString(value.reasoning) } : {}),
         ...("reasoningDetails" in value

@@ -14,6 +14,7 @@ describe("chat input formatting", () => {
         ["strikethrough", "~~", "~~"],
         ["inline code", "`", "`"],
         ["code block", "```\n", "\n```"],
+        ["message bubble", "<msg>", "</msg>"],
         ["spoiler", "||", "||"],
         ["dialogue quote", '"', '"'],
     ] as const;
@@ -112,6 +113,22 @@ describe("chat input formatting", () => {
                 { value: "", selectionStart: 0, selectionEnd: 0 },
             ),
         ).toEqual({ value: "||||", selectionStart: 2, selectionEnd: 2 });
+        expect(
+            getTextFormattingHotkeyResult(
+                {
+                    altKey: false,
+                    code: "KeyM",
+                    ctrlKey: true,
+                    metaKey: false,
+                    shiftKey: true,
+                },
+                { value: "hello", selectionStart: 0, selectionEnd: 5 },
+            ),
+        ).toEqual({
+            value: "<msg>hello</msg>",
+            selectionStart: 5,
+            selectionEnd: 10,
+        });
         expect(
             getTextFormattingHotkeyResult(
                 {

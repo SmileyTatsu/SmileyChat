@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { chatImageSourceIndex } from "./types";
 
 import {
     filterLocalChatGenerationMessageAttachments,
     messageContentToText,
+    stripInternalImageContentMetadata,
 } from "./images";
 
 describe("messageContentToText", () => {
@@ -19,6 +21,43 @@ describe("messageContentToText", () => {
                 },
             ]),
         ).toBe("Read this\n[file: notes.txt]");
+    });
+
+    test("keeps original attachment numbers after photos are repositioned", () => {
+        expect(
+            messageContentToText([
+                {
+                    type: "image_url",
+                    image_url: { url: "/second.png" },
+                    [chatImageSourceIndex]: 1,
+                },
+                { type: "text", text: "between" },
+                {
+                    type: "image_url",
+                    image_url: { url: "/first.png" },
+                    [chatImageSourceIndex]: 0,
+                },
+            ]),
+        ).toBe(
+            "[attached image 2 appears here]\nbetween\n[attached image 1 appears here]",
+        );
+    });
+
+    test("removes internal image indexes from provider content", () => {
+        expect(
+            stripInternalImageContentMetadata([
+                {
+                    type: "image_url",
+                    image_url: { url: "data:image/png;base64,abc" },
+                    [chatImageSourceIndex]: 3,
+                },
+            ]),
+        ).toEqual([
+            {
+                type: "image_url",
+                image_url: { url: "data:image/png;base64,abc" },
+            },
+        ]);
     });
 });
 

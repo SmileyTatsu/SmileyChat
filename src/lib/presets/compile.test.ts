@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { Message, SmileyCharacter } from "#frontend/types";
 
 import { defaultCharacterData } from "../characters/defaults";
+import { chatImageSourceIndex } from "../connections/types";
 import { createDefaultPreset, dynamicPromptIds } from "./defaults";
 import { compilePresetMessages } from "./compile";
 import type { PresetPrompt, SmileyPreset } from "./types";
@@ -131,6 +132,79 @@ describe("compilePresetMessages", () => {
                 },
             },
         ]);
+    });
+
+    test("interleaves photo placeholders and leaves files in the attachment tail", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const base = message(
+            "m1",
+            "user",
+            "Before {{photo[1]}} middle {{photo}} after {{photo[99]}}",
+        );
+        const messages: Message[] = [
+            {
+                ...base,
+                swipes: [
+                    {
+                        ...base.swipes[0],
+                        attachments: [
+                            {
+                                id: "photo-a",
+                                type: "image",
+                                url: "/api/chats/chat-1/attachments/a.png",
+                            },
+                            {
+                                id: "notes",
+                                type: "file",
+                                url: "/api/chats/chat-1/attachments/notes.txt",
+                                name: "notes.txt",
+                            },
+                            {
+                                id: "photo-b",
+                                type: "image",
+                                url: "/api/chats/chat-1/attachments/b.png",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        expect(compilePresetMessages(preset, context({ messages }))[0]?.content).toEqual([
+            { type: "text", text: "Anon: Before " },
+            {
+                type: "image_url",
+                image_url: { url: "/api/chats/chat-1/attachments/b.png" },
+                [chatImageSourceIndex]: 1,
+            },
+            { type: "text", text: " middle " },
+            {
+                type: "image_url",
+                image_url: { url: "/api/chats/chat-1/attachments/a.png" },
+                [chatImageSourceIndex]: 0,
+            },
+            { type: "text", text: " after " },
+            {
+                type: "file",
+                file: {
+                    url: "/api/chats/chat-1/attachments/notes.txt",
+                    filename: "notes.txt",
+                },
+            },
+        ]);
+    });
+
+    test("strips unresolved photo placeholders after an attachment is deleted", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const messages = [message("m1", "user", "Before {{photo[0]}} after")];
+
+        expect(compilePresetMessages(preset, context({ messages }))[0]?.content).toBe(
+            "Anon: Before  after",
+        );
     });
 
     test("expands active-swipe tool activities into tool protocol messages", () => {
