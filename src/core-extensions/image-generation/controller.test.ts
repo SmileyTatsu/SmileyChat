@@ -4,7 +4,9 @@ import type { SmileyPluginApi, PluginAppSnapshot } from "#frontend/lib/plugins/t
 
 import {
     buildPromptWriterMessages,
+    imageToolRequestContext,
     isNovelAIImageGenerationAvailable,
+    parseImageToolRequest,
     parsePromptWriterResult,
     stripThinkingTags,
 } from "./controller";
@@ -204,6 +206,43 @@ describe("image prompt writer context", () => {
         expect(userMessage?.content).toContain(
             "Generate only the raw prompt tags and bindings",
         );
+    });
+});
+
+describe("automatic image director brief", () => {
+    test("uses an exhaustive subject list and excludes an unlisted persona", () => {
+        const request = parseImageToolRequest({
+            scene: "  Nejire relaxes alone in her apartment after patrol.  ",
+            shot: "selfie",
+            visibleSubjects: ["Nejire Hado", "Nejire Hado", "  "],
+        });
+        const context = imageToolRequestContext(request, "Nejire", "Jos");
+
+        expect(request).toEqual({
+            scene: "Nejire relaxes alone in her apartment after patrol.",
+            shot: "selfie",
+            visibleSubjects: ["Nejire Hado"],
+        });
+        expect(context).toContain("Complete visible-subject list: Nejire Hado");
+        expect(context).toContain("active user persona (Jos) is not visible");
+        expect(context).toContain("camera or phone stays behind the lens");
+    });
+
+    test("rejects ambiguous or incomplete automatic image requests", () => {
+        expect(() =>
+            parseImageToolRequest({
+                scene: "A room",
+                shot: "someone_maybe_took_it",
+                visibleSubjects: ["Character"],
+            }),
+        ).toThrow("supported shot type");
+        expect(() =>
+            parseImageToolRequest({
+                scene: "A room",
+                shot: "portrait",
+                visibleSubjects: [],
+            }),
+        ).toThrow("at least one visible subject");
     });
 });
 

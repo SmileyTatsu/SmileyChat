@@ -39,6 +39,91 @@ export type ImageGenerationOutcome = {
     correlationId: string;
 };
 
+export const IMAGE_TOOL_SHOTS = [
+    "selfie",
+    "mirror_selfie",
+    "self_timer",
+    "other_person_photo",
+    "scene_illustration",
+    "portrait",
+] as const;
+
+export type ImageToolShot = (typeof IMAGE_TOOL_SHOTS)[number];
+
+export type ImageToolRequest = {
+    scene: string;
+    shot: ImageToolShot;
+    visibleSubjects: string[];
+};
+
+const IMAGE_TOOL_SHOT_GUIDANCE: Record<ImageToolShot, string> = {
+    selfie: "through-the-lens selfie taken by a visible subject; the camera or phone stays behind the lens",
+    mirror_selfie: "mirror selfie; the reflected camera or phone may be visible",
+    self_timer:
+        "self-timer or fixed-camera photograph; do not invent another photographer",
+    other_person_photo:
+        "photograph taken by another established person behind the camera; do not add that photographer to the frame",
+    scene_illustration:
+        "non-diegetic scene illustration; nobody in the story is holding a camera or taking the picture",
+    portrait: "posed portrait; do not invent an in-world photographer or camera prop",
+};
+
+export function parseImageToolRequest(args: Record<string, unknown>): ImageToolRequest {
+    const scene = typeof args.scene === "string" ? args.scene.trim() : "";
+    if (!scene) {
+        throw new Error("Image generation requires a concise scene description.");
+    }
+
+    if (!IMAGE_TOOL_SHOTS.includes(args.shot as ImageToolShot)) {
+        throw new Error("Image generation requires a supported shot type.");
+    }
+
+    const visibleSubjects = Array.isArray(args.visibleSubjects)
+        ? [
+              ...new Set(
+                  args.visibleSubjects
+                      .filter((subject): subject is string => typeof subject === "string")
+                      .map((subject) => subject.trim())
+                      .filter(Boolean),
+              ),
+          ]
+        : [];
+    if (!visibleSubjects.length) {
+        throw new Error("Image generation requires at least one visible subject.");
+    }
+
+    return {
+        scene,
+        shot: args.shot as ImageToolShot,
+        visibleSubjects,
+    };
+}
+
+export function imageToolRequestContext(
+    request: ImageToolRequest,
+    characterName: string,
+    personaName: string,
+) {
+    const normalizedPersonaName = personaName.trim().toLocaleLowerCase();
+    const personaIsVisible =
+        Boolean(normalizedPersonaName) &&
+        request.visibleSubjects.some(
+            (subject) => subject.toLocaleLowerCase() === normalizedPersonaName,
+        );
+
+    return [
+        "Automatic image director brief. Treat this as the authoritative intent for the new image, while using recent chat context only to resolve appearance and continuity details.",
+        `Tool caller / active character: ${characterName}`,
+        `Scene to depict: ${request.scene}`,
+        `Shot type: ${request.shot} — ${IMAGE_TOOL_SHOT_GUIDANCE[request.shot]}`,
+        `Complete visible-subject list: ${request.visibleSubjects.join(", ")}`,
+        personaIsVisible
+            ? `The active user persona (${personaName}) is explicitly visible because they are named in the subject list.`
+            : `The active user persona (${personaName}) is not visible. Do not depict them, their body, or an implied off-camera presence.`,
+        "Do not add people, photographers, camera operators, reflections, or body parts belonging to anyone outside the complete visible-subject list.",
+    ].join("\n");
+}
+
 export function imageContextFromSnapshot(
     snapshot: PluginAppSnapshot,
     mode: ImageContextMode,

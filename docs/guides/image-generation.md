@@ -20,7 +20,7 @@ The automatic `generate_image` tool is available only while the extension is ena
 
 ### Automatic chat tool
 
-The extension registers an argument-free `generate_image` model tool. The chat model decides only whether the tool is appropriate; it does not write or submit an image prompt.
+The extension registers a `generate_image` model tool. The chat model decides whether the tool is appropriate and supplies a compact director brief: the scene to depict, the camera relationship, and the complete list of visible subjects. It does not write or submit NovelAI prompt tags.
 
 The tool should be used only when:
 
@@ -31,7 +31,7 @@ It should not create unsolicited illustrations, decorative scene images, visual 
 
 After invocation, the extension handles the complete workflow:
 
-1. Select the latest meaningful chat message.
+1. Combine the tool's director brief with the latest meaningful chat context.
 2. Compile the configured preset and bounded recent history when enabled.
 3. Ask the selected text model to write only the replaceable NovelAI prompt section.
 4. Insert that section into the master prompt.
@@ -39,7 +39,7 @@ After invocation, the extension handles the complete workflow:
 6. Save the returned image into the active chat's attachment folder.
 7. Continue the character response with the image attached.
 
-The tool accepts an empty JSON object and has no request or prompt parameter. This prevents the chat model from bypassing the configured prompt writer or master prompt.
+The tool requires `scene`, `shot`, and `visibleSubjects`. `shot` distinguishes a through-the-lens selfie, mirror selfie, self-timer photo, established third-party photographer, non-diegetic scene illustration, or portrait. `visibleSubjects` is exhaustive, so the active persona is excluded unless the conversation explicitly requires them. The separate prompt writer still owns NovelAI tags and cannot modify the master prompt.
 
 ### Message action
 
