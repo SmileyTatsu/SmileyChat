@@ -18,6 +18,11 @@ import type { PresetFormattingSettings, PresetPrompt, SmileyPreset } from "./typ
 import type { AnchoredPromptMessage } from "../prompt/injections";
 import { isMessageIncludedInPrompt } from "../prompt/message-utils";
 import { resolvePhotoPlaceholders } from "../message-formatting/photo-placeholders";
+import {
+    formatActiveAttachmentDescription,
+    formatAttachmentContextText,
+    getActiveBinaryAttachmentIds,
+} from "./sliding-media-window";
 import type { PromptOutletRegistry } from "../prompt/outlets";
 import type { PromptGenerationContext } from "../prompt/types";
 
@@ -117,6 +122,9 @@ export function compilePresetMessagesWithMetadata(
         return compileStoryStringMessagesWithMetadata(context);
     }
 
+    const history = historyMessagesForCompile(context).filter(isMessageIncludedInPrompt);
+    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(history);
+
     if (!preset) {
         return [
             {
@@ -127,9 +135,9 @@ export function compilePresetMessagesWithMetadata(
                 },
                 source: "preset",
             },
-            ...historyMessagesForCompile(context)
-                .filter(isMessageIncludedInPrompt)
-                .flatMap((message) => toAnchoredHistoryMessages(message, context)),
+            ...history.flatMap((message) =>
+                toAnchoredHistoryMessages(message, context, undefined, activeBinaryAttachmentIds),
+            ),
         ];
     }
 
@@ -237,9 +245,10 @@ function compileStoryStringMessagesWithMetadata(
     }
 
     const history = historyMessagesForCompile(context).filter(isMessageIncludedInPrompt);
+    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(history);
     messages.push(
         ...history.flatMap((msg) =>
-            toAnchoredHistoryMessages(msg, context, "chatHistory"),
+            toAnchoredHistoryMessages(msg, context, "chatHistory", activeBinaryAttachmentIds),
         ),
     );
 
@@ -396,6 +405,7 @@ function injectConversationMessages(
     }
 
     const placements = createInjectionPlacements(promptMessages, injectedPrompts);
+    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(promptMessages);
     const output: AnchoredPromptMessage[] = [];
 
     for (let index = 0; index < promptMessages.length; index += 1) {
@@ -406,7 +416,12 @@ function injectConversationMessages(
         }
 
         output.push(
-            ...toAnchoredHistoryMessages(promptMessages[index], context, historyPromptId),
+            ...toAnchoredHistoryMessages(
+                promptMessages[index],
+                context,
+                historyPromptId,
+                activeBinaryAttachmentIds,
+            ),
         );
 
         for (const injectedPrompt of placements[index].after) {
@@ -491,13 +506,14 @@ function toAnchoredPromptMessage(
 function toGenerationMessage(
     message: Message,
     context: CompilePresetContext,
+    activeBinaryAttachmentIds?: Set<string>,
 ): ChatGenerationMessage {
     const reasoning = getMessageReasoning(message);
     const reasoningDetails = getMessageReasoningDetails(message);
 
     return {
         role: promptRoleForMessage(message),
-        content: messageContentWithAttachments(message, context),
+        content: messageContentWithAttachments(message, context, activeBinaryAttachmentIds),
         speakerName: message.author,
         ...(promptRoleForMessage(message) === "assistant" &&
         firstAssistantMessageId(context.messages) === message.id
@@ -519,6 +535,7 @@ function toAnchoredHistoryMessages(
     message: Message,
     context: CompilePresetContext,
     promptId?: string,
+    activeBinaryAttachmentIds?: Set<string>,
 ): AnchoredPromptMessage[] {
     const activeSwipe = getActiveSwipe(message);
     const activities = activeSwipe?.toolActivities;
@@ -565,7 +582,11 @@ function toAnchoredHistoryMessages(
                 ? {
                       message: {
                           role: "assistant" as const,
-                          content: messageContentWithAttachments(message, context),
+                          content: messageContentWithAttachments(
+                              message,
+                              context,
+                              activeBinaryAttachmentIds,
+                          ),
                           speakerName: message.author,
                           ...(getMessageReasoning(message)
                               ? { reasoning: getMessageReasoning(message) }
@@ -580,7 +601,7 @@ function toAnchoredHistoryMessages(
                       source: "history" as const,
                   }
                 : {
-                      message: toGenerationMessage(message, context),
+                      message: toGenerationMessage(message, context, activeBinaryAttachmentIds),
                       messageId: message.id,
                       promptId,
                       source: "history" as const,
@@ -590,7 +611,7 @@ function toAnchoredHistoryMessages(
 
     return [
         {
-            message: toGenerationMessage(message, context),
+            message: toGenerationMessage(message, context, activeBinaryAttachmentIds),
             messageId: message.id,
             promptId,
             source: "history" as const,
@@ -684,6 +705,7 @@ function messageContentForPrompt(message: Message, context: CompilePresetContext
 function messageContentWithAttachments(
     message: Message,
     context: CompilePresetContext,
+    activeBinaryAttachmentIds?: Set<string>,
 ): ChatGenerationMessage["content"] {
     const content = messageTextForGeneration(message, context);
     const attachments = getMessageAttachments(message);
@@ -698,6 +720,10 @@ function messageContentWithAttachments(
                   .join("")
             : content;
     }
+
+    const binaryAttachmentIds =
+        activeBinaryAttachmentIds ??
+        getActiveBinaryAttachmentIds(historyMessagesForCompile(context));
 
     const allowedAttachments = attachments.filter(
         (attachment) => !(attachment.type === "image" && hasGeneratedImage),
@@ -717,11 +743,23 @@ function messageContentWithAttachments(
                     (attachment) => attachment.id === segment.attachment.id,
                 )
             ) {
-                parts.push({
-                    type: "image_url",
-                    image_url: { url: segment.attachment.url },
-                    [chatImageSourceIndex]: segment.imageIndex,
-                });
+                const isBinary = binaryAttachmentIds.has(segment.attachment.id);
+                if (isBinary) {
+                    const desc = formatActiveAttachmentDescription(segment.attachment);
+                    if (desc) {
+                        parts.push({ type: "text", text: desc });
+                    }
+                    parts.push({
+                        type: "image_url",
+                        image_url: { url: segment.attachment.url },
+                        [chatImageSourceIndex]: segment.imageIndex,
+                    });
+                } else {
+                    parts.push({
+                        type: "text",
+                        text: formatAttachmentContextText(segment.attachment),
+                    });
+                }
             }
             // Missing markers are intentionally omitted from provider prompts.
         }
@@ -733,50 +771,91 @@ function messageContentWithAttachments(
             ) {
                 continue;
             }
-            parts.push(attachmentToContentPart(attachment, allowedAttachments));
+            parts.push(
+                ...attachmentToContentParts(
+                    attachment,
+                    allowedAttachments,
+                    binaryAttachmentIds,
+                ),
+            );
         }
 
-        return parts.length ? parts : "";
+        return simplifyContentParts(parts);
     }
 
     const attachmentParts = allowedAttachments.flatMap((attachment) => {
-        return [attachmentToContentPart(attachment, allowedAttachments)];
+        return attachmentToContentParts(
+            attachment,
+            allowedAttachments,
+            binaryAttachmentIds,
+        );
     });
 
     if (attachmentParts.length === 0) {
         return content;
     }
 
-    return [
+    const parts = [
         ...(content ? [{ type: "text" as const, text: content }] : []),
         ...attachmentParts,
     ];
+
+    return simplifyContentParts(parts);
 }
 
-function attachmentToContentPart(
+function attachmentToContentParts(
     attachment: ReturnType<typeof getMessageAttachments>[number],
     attachments: ReturnType<typeof getMessageAttachments>,
-) {
+    binaryAttachmentIds: Set<string>,
+): Exclude<ChatGenerationMessage["content"], string> {
+    const isBinary = binaryAttachmentIds.has(attachment.id);
+
+    if (!isBinary) {
+        return [{ type: "text", text: formatAttachmentContextText(attachment) }];
+    }
+
+    const parts: Exclude<ChatGenerationMessage["content"], string> = [];
+    const desc = formatActiveAttachmentDescription(attachment);
+    if (desc) {
+        parts.push({ type: "text", text: desc });
+    }
+
     if (attachment.type === "image") {
         const images = attachments.filter((item) => item.type === "image");
-        return {
+        parts.push({
             type: "image_url" as const,
             image_url: { url: attachment.url },
             [chatImageSourceIndex]: images.findIndex((item) => item.id === attachment.id),
-        };
+        });
+    } else {
+        parts.push({
+            type: "file" as const,
+            file: {
+                url: attachment.url,
+                ...(attachment.name ? { filename: attachment.name } : {}),
+                ...(attachment.mimeType ? { mime_type: attachment.mimeType } : {}),
+                ...(attachment.sizeBytes !== undefined
+                    ? { size_bytes: attachment.sizeBytes }
+                    : {}),
+            },
+        });
     }
 
-    return {
-        type: "file" as const,
-        file: {
-            url: attachment.url,
-            ...(attachment.name ? { filename: attachment.name } : {}),
-            ...(attachment.mimeType ? { mime_type: attachment.mimeType } : {}),
-            ...(attachment.sizeBytes !== undefined
-                ? { size_bytes: attachment.sizeBytes }
-                : {}),
-        },
-    };
+    return parts;
+}
+
+function simplifyContentParts(
+    parts: Exclude<ChatGenerationMessage["content"], string>,
+): ChatGenerationMessage["content"] {
+    if (parts.length === 0) return "";
+    const isAllText = parts.every((part) => part.type === "text");
+    if (isAllText) {
+        return parts
+            .map((part) => (part as { type: "text"; text: string }).text)
+            .filter(Boolean)
+            .join("\n");
+    }
+    return parts;
 }
 
 function messageTextForGeneration(message: Message, context: CompilePresetContext) {

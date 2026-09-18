@@ -51,10 +51,13 @@ type ChatSessionActions = {
             includeInPrompt?: boolean;
             pluginId: string;
             promptRole?: "assistant" | "user" | "system" | "none";
-            files?: File[];
+            files?: Array<File | { file: File; description?: string }>;
         },
     ) => Promise<void>;
-    sendMessage: (draft: string, files?: File[]) => Promise<boolean>;
+    sendMessage: (
+        draft: string,
+        files?: Array<File | { file: File; description?: string }>,
+    ) => Promise<boolean>;
 };
 
 type MutableRef<T> = {

@@ -738,6 +738,78 @@ describe("compilePresetMessages", () => {
         });
         expect(textContents(compiled)).toEqual(["Anon: Hello", "Luna: Greetings"]);
     });
+
+    test("demotes older attachments beyond the recent sliding window into context text", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+
+        const oldMessage: Message = {
+            ...message("m1", "user", "Look at this old outfit"),
+            swipes: [
+                {
+                    id: "m1-swipe",
+                    content: "Look at this old outfit",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    attachments: [
+                        {
+                            id: "old-dress",
+                            type: "image",
+                            url: "/api/chats/chat-1/attachments/dress.png",
+                            name: "dress.png",
+                            description: "Emerald velvet gown",
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const middleMessages: Message[] = [
+            message("m2", "character", "That is gorgeous!"),
+            message("m3", "user", "Thank you"),
+            message("m4", "character", "Any other plans?"),
+            message("m5", "user", "Just studying"),
+            message("m6", "character", "Good luck"),
+            message("m7", "user", "Here is something else"),
+            message("m8", "character", "Let me see"),
+        ];
+
+        const latestMessage: Message = {
+            ...message("m9", "user", "Here is my current sketch"),
+            swipes: [
+                {
+                    id: "m9-swipe",
+                    content: "Here is my current sketch",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    attachments: [
+                        {
+                            id: "new-sketch",
+                            type: "image",
+                            url: "/api/chats/chat-1/attachments/sketch.png",
+                            name: "sketch.png",
+                            description: "Castle blueprint",
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const allMessages = [oldMessage, ...middleMessages, latestMessage];
+        const compiled = compilePresetMessages(preset, context({ messages: allMessages }));
+
+        // The old message's attachment should be demoted to context text
+        const firstTurn = compiled[0];
+        expect(firstTurn.content).toBe(
+            'Anon: Look at this old outfit\n[Attached image: "Emerald velvet gown" (dress.png)]',
+        );
+
+        // The latest message's attachment should still be binary, with its description context
+        const lastTurn = compiled[compiled.length - 1];
+        expect(Array.isArray(lastTurn.content)).toBe(true);
+        const parts = lastTurn.content as Array<{ type: string; text?: string; image_url?: { url: string } }>;
+        expect(parts.some((p) => p.type === "image_url" && p.image_url?.url === "/api/chats/chat-1/attachments/sketch.png")).toBe(true);
+        expect(parts.some((p) => p.type === "text" && p.text?.includes("Castle blueprint"))).toBe(true);
+    });
 });
 
 function context(overrides: { messages?: Message[] } = {}) {

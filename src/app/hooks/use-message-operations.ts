@@ -109,7 +109,7 @@ export function useMessageOperations({
             includeInPrompt?: boolean;
             pluginId: string;
             promptRole?: "assistant" | "user" | "system" | "none";
-            files?: File[];
+            files?: Array<File | { file: File; description?: string }>;
         },
     ) {
         const sourceChat = latestChatRef.current;
@@ -124,9 +124,20 @@ export function useMessageOperations({
             return;
         }
 
-        const attachments = options.files?.length
-            ? await uploadMessageAttachments(sourceChat.id, options.files)
-            : undefined;
+        const files = options.files ?? [];
+        let attachments: ChatAttachment[] | undefined;
+        if (files.length) {
+            const rawFiles = files.map((item) => (item instanceof File ? item : item.file));
+            const uploaded = await uploadMessageAttachments(sourceChat.id, rawFiles);
+            attachments = uploaded.map((att, idx) => {
+                const item = files[idx];
+                const description =
+                    !(item instanceof File) && item.description?.trim()
+                        ? item.description.trim()
+                        : undefined;
+                return description ? { ...att, description } : att;
+            });
+        }
         const message = createInjectedMessage(role, text, {
             activeCharacter: character,
             authorName: options.authorName,

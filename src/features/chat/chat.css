@@ -2159,6 +2159,28 @@
     background: #233139;
 }
 
+/* A standalone {{photo...}} between <msg> tags is a media bubble, not a
+   text bubble. Keeping the text-bubble padding/fit-content sizing can shrink
+   a valid image down to an empty-looking chip. */
+.bubbles .message .message-content.has-sub-bubbles .msg-bubble-photo-only,
+.theme-bubbles .message .message-content.has-sub-bubbles .msg-bubble-photo-only,
+[data-theme="bubbles"] .message .message-content.has-sub-bubbles .msg-bubble-photo-only {
+    width: min(320px, 100%);
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.bubbles .message .message-content.has-sub-bubbles .msg-bubble-photo-only:hover,
+.theme-bubbles .message .message-content.has-sub-bubbles .msg-bubble-photo-only:hover,
+[data-theme="bubbles"]
+    .message
+    .message-content.has-sub-bubbles
+    .msg-bubble-photo-only:hover {
+    background: transparent;
+}
+
 /* User sub-bubbles */
 .bubbles .message.user-message .message-content.has-sub-bubbles .msg-bubble,
 .theme-bubbles .message.user-message .message-content.has-sub-bubbles .msg-bubble,
@@ -2533,7 +2555,8 @@
     white-space: nowrap;
 }
 
-.composer-staged-image button {
+.composer-staged-image button.composer-staged-remove-btn,
+.composer-staged-image button:not(.composer-staged-alt-btn) {
     position: absolute;
     top: 4px;
     right: 4px;
@@ -2546,6 +2569,117 @@
     background: rgba(10, 11, 14, 0.82);
     color: #ececf1;
     padding: 0;
+    cursor: pointer;
+}
+
+.composer-staged-image button.composer-staged-alt-btn {
+    position: absolute;
+    top: auto;
+    bottom: 4px;
+    left: 4px;
+    width: auto;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    background: rgba(10, 11, 14, 0.85);
+    color: #9ba3b4;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    cursor: pointer;
+    line-height: 16px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.composer-staged-image button.composer-staged-alt-btn:hover {
+    color: #fff;
+    background: rgba(22, 27, 36, 0.95);
+    border-color: rgba(255, 255, 255, 0.28);
+}
+
+.composer-staged-image button.composer-staged-alt-btn.has-alt {
+    color: #6ee7b7;
+    background: rgba(6, 44, 31, 0.88);
+    border-color: rgba(110, 231, 183, 0.4);
+}
+
+.composer-staged-alt-editor {
+    grid-column: 1 / -1;
+    margin: 4px 8px 6px;
+    padding: 8px 10px;
+    background: #181b22;
+    border: 1px solid #303440;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.composer-staged-alt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #9ba3b4;
+}
+
+.composer-staged-alt-close {
+    background: transparent;
+    border: none;
+    color: #838a9a;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+}
+
+.composer-staged-alt-close:hover {
+    color: #fff;
+}
+
+.composer-staged-alt-input {
+    width: 100%;
+    background: #0f1116;
+    border: 1px solid #282c37;
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: #e4e7ee;
+    font-size: 12px;
+    outline: none;
+}
+
+.composer-staged-alt-input:focus {
+    border-color: #4f586e;
+}
+
+.message-attachment-alt-badge {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    background: rgba(10, 11, 14, 0.85);
+    color: #a0aec0;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    pointer-events: auto;
+    cursor: default;
+}
+
+.message-file-desc-text {
+    color: #9ba3b4;
+    font-size: 11px;
+    margin-left: 4px;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .message-attachments {
@@ -2644,10 +2778,20 @@
 
 .message-inline-photo {
     display: inline-flex;
-    width: min-content;
+    width: min(320px, 100%);
     max-width: 100%;
     margin-block: 0.45rem;
     vertical-align: middle;
+}
+
+.message-inline-photo .message-attachment-item,
+.message-inline-photo .message-attachment-item > a {
+    width: 100%;
+}
+
+.msg-bubble-photo-only .message-inline-photo {
+    display: flex;
+    margin-block: 0;
 }
 
 .message-missing-photo {

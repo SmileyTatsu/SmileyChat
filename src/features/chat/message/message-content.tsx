@@ -142,10 +142,15 @@ function MessageSubBubbles(props: MessageContentProps) {
         <div className="msg-sub-bubbles-list">
             {visibleBubbles.map((bubble, index) => {
                 const isLastBubble = index === visibleBubbles.length - 1;
+                const isPhotoOnly = isPhotoOnlyBubble(
+                    bubble.content,
+                    props.attachments,
+                    props.photoPlaceholderContext ?? props.content,
+                );
                 return (
                     <div
                         key={bubble.id}
-                        className="msg-bubble"
+                        className={`msg-bubble${isPhotoOnly ? "msg-bubble-photo-only" : ""}`}
                         data-bubble-id={bubble.id}
                         data-bubble-index={index}
                     >
@@ -173,6 +178,29 @@ function MessageSubBubbles(props: MessageContentProps) {
                 </div>
             )}
         </div>
+    );
+}
+
+/**
+ * A photo marker between <msg> tags becomes a bubble of its own. Treat it as a
+ * media bubble rather than a tiny text bubble so it receives the same layout as
+ * a marker placed inside a <msg> element.
+ */
+function isPhotoOnlyBubble(
+    content: string,
+    attachments: ChatAttachment[],
+    photoPlaceholderContext: string,
+) {
+    const resolved = resolvePhotoPlaceholders(
+        content,
+        attachments,
+        photoPlaceholderContext,
+    );
+
+    return (
+        resolved.hasMarkers &&
+        resolved.segments.length === 1 &&
+        resolved.segments[0]?.type === "photo"
     );
 }
 

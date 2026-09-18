@@ -550,6 +550,7 @@ function normalizeAttachment(value: unknown): ChatAttachment | undefined {
 
     const name = asString(value.name);
     const mimeType = asString(value.mimeType);
+    const description = asString(value.description).trim() || undefined;
     const sizeBytes =
         typeof value.sizeBytes === "number" &&
         Number.isInteger(value.sizeBytes) &&
@@ -563,6 +564,7 @@ function normalizeAttachment(value: unknown): ChatAttachment | undefined {
         url,
         ...(mimeType ? { mimeType } : {}),
         ...(name ? { name } : {}),
+        ...(description ? { description } : {}),
         ...(sizeBytes !== undefined ? { sizeBytes } : {}),
     };
 }

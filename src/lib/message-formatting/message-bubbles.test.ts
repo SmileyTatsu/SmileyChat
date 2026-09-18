@@ -111,6 +111,18 @@ describe("message-bubbles", () => {
             expect(result[4].content).toBe("Farewell!");
         });
 
+        it("keeps a standalone photo marker between message bubbles", () => {
+            const result = parseMessageBubbles(
+                "<msg>Here is proof.</msg>\n{{photo:id=photo-a}}\n<msg>Do not share it.</msg>",
+            );
+
+            expect(result.map((bubble) => bubble.content)).toEqual([
+                "Here is proof.",
+                "{{photo:id=photo-a}}",
+                "Do not share it.",
+            ]);
+        });
+
         it("tolerates unclosed trailing tags during live streaming", () => {
             const raw =
                 '<msg>Completed first bubble</msg><msg delay="2s">Currently streaming text without closing tag';

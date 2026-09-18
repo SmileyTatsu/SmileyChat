@@ -108,6 +108,7 @@ export type ChatAttachment = {
     mimeType?: string;
     name?: string;
     sizeBytes?: number;
+    description?: string;
 };
 
 export type MessageSwipe = {

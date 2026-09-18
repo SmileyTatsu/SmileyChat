@@ -9,6 +9,7 @@ import {
     isLegacyGeneratedImageUrl,
     isLocalChatAttachmentUrl,
 } from "../chat-attachments";
+import { downscaleImageBlob } from "./image-downscale";
 
 export function filterLocalChatGenerationMessageAttachments(
     messages: ChatGenerationMessage[],
@@ -63,7 +64,7 @@ async function materializeMessageAttachments(
                     return {
                         type: "image_url" as const,
                         image_url: {
-                            url: await attachmentUrlToDataUrl(part.image_url.url),
+                            url: await attachmentUrlToDataUrl(part.image_url.url, undefined, true),
                         },
                         ...(part[chatImageSourceIndex] !== undefined
                             ? {
@@ -255,14 +256,21 @@ export async function filePartToBlob(file: {
     throw new Error("File input is missing data.");
 }
 
-async function attachmentUrlToDataUrl(url: string, preferredMimeType?: string) {
+async function attachmentUrlToDataUrl(
+    url: string,
+    preferredMimeType?: string,
+    isImage = false,
+) {
     const response = await fetch(url);
 
     if (!response.ok) {
         throw new Error(`Could not read chat attachment ${url}: ${response.status}`);
     }
 
-    const blob = await response.blob();
+    let blob = await response.blob();
+    if (isImage || blob.type.startsWith("image/")) {
+        blob = await downscaleImageBlob(blob);
+    }
     const mimeType =
         preferredMimeType ||
         blob.type ||

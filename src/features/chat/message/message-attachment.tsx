@@ -87,11 +87,41 @@ export function MessageAttachmentItem({
         >
             {canShowImage ? (
                 isLocal ? (
-                    <a href={attachment.url} target="_blank" rel="noreferrer">
-                        <img src={attachment.url} alt={attachment.name} />
+                    <a
+                        href={attachment.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={attachment.description || attachment.name}
+                    >
+                        <img
+                            src={attachment.url}
+                            alt={attachment.description || attachment.name}
+                        />
+                        {attachment.description && (
+                            <span
+                                className="message-attachment-alt-badge"
+                                title={`Description: ${attachment.description}`}
+                            >
+                                ALT
+                            </span>
+                        )}
                     </a>
                 ) : (
-                    <img src={attachment.url} alt={attachment.name} />
+                    <>
+                        <img
+                            src={attachment.url}
+                            alt={attachment.description || attachment.name}
+                            title={attachment.description || attachment.name}
+                        />
+                        {attachment.description && (
+                            <span
+                                className="message-attachment-alt-badge"
+                                title={`Description: ${attachment.description}`}
+                            >
+                                ALT
+                            </span>
+                        )}
+                    </>
                 )
             ) : canDownloadFile ? (
                 <a
@@ -100,9 +130,15 @@ export function MessageAttachmentItem({
                     target="_blank"
                     rel="noreferrer"
                     download={attachment.name ?? ""}
+                    title={attachment.description || attachment.name}
                 >
                     <FileText size={16} />
                     <span>{attachment.name ?? "Attachment"}</span>
+                    {attachment.description && (
+                        <span className="message-file-desc-text">
+                            ({attachment.description})
+                        </span>
+                    )}
                 </a>
             ) : (
                 <span className="message-file-attachment invalid-attachment">

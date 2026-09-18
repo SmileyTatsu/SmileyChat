@@ -66,7 +66,7 @@ type UseChatSessionOptions = {
 type SendMessageOptions = {
     autoTurnCount?: number;
     forcedCharacterId?: string;
-    files?: File[];
+    files?: Array<File | { file: File; description?: string }>;
     suppressAutoResponses?: boolean;
 };
 
@@ -162,7 +162,10 @@ export function useChatSession({
         [],
     );
 
-    async function sendMessage(draft: string, files: File[] = []): Promise<boolean> {
+    async function sendMessage(
+        draft: string,
+        files: Array<File | { file: File; description?: string }> = [],
+    ): Promise<boolean> {
         return sendMessageWithOptions(draft, { files });
     }
 
@@ -252,7 +255,16 @@ export function useChatSession({
         try {
             if (files.length) {
                 setUploadingAttachmentCount(files.length);
-                attachments = await uploadMessageAttachments(chatId, files);
+                const rawFiles = files.map((item) => (item instanceof File ? item : item.file));
+                const uploaded = await uploadMessageAttachments(chatId, rawFiles);
+                attachments = uploaded.map((att, idx) => {
+                    const item = files[idx];
+                    const description =
+                        !(item instanceof File) && item.description?.trim()
+                            ? item.description.trim()
+                            : undefined;
+                    return description ? { ...att, description } : att;
+                });
             }
         } catch (error) {
             setChatError(`Attachment upload failed: ${messageFromError(error)}`);

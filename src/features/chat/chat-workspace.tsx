@@ -17,7 +17,7 @@ import type {
 } from "#frontend/types";
 
 import { ChatHeader } from "./chat-header";
-import { MessageComposer } from "./message-composer";
+import { MessageComposer, type StagedAttachment } from "./message-composer";
 import { MessageList } from "./message-list";
 
 type LoadingMessageSkeleton = {
@@ -91,7 +91,7 @@ type ChatWorkspaceProps = {
     onAbortGeneration: () => void;
     onSendMessage: (
         draft: string,
-        files?: File[],
+        files?: StagedAttachment[] | File[],
     ) => boolean | void | Promise<boolean | void>;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;

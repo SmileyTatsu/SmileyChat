@@ -452,9 +452,15 @@ export function App() {
     const handlePreviousSwipe = useCallback((messageId: string) => {
         latestChatSessionForPluginsRef.current.previousSwipe(messageId);
     }, []);
-    const handleSendMessage = useCallback((draft: string, files?: File[]) => {
-        return latestChatSessionForPluginsRef.current.sendMessage(draft, files);
-    }, []);
+    const handleSendMessage = useCallback(
+        (
+            draft: string,
+            files?: Array<File | { file: File; description?: string }>,
+        ) => {
+            return latestChatSessionForPluginsRef.current.sendMessage(draft, files);
+        },
+        [],
+    );
     const handleUpdateChatMetadata = useCallback(
         (metadata: ChatMetadata) => {
             if (!activeChat) {

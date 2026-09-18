@@ -50,14 +50,23 @@ type MessageComposerProps = {
     placeholder?: string;
     resetKey: string;
     onAbortGeneration?: () => void;
-    onSubmit: (draft: string, files?: File[]) => boolean | void | Promise<boolean | void>;
+    onSubmit: (
+        draft: string,
+        files?: StagedAttachment[],
+    ) => boolean | void | Promise<boolean | void>;
     pluginSnapshot: PluginAppSnapshot;
+};
+
+export type StagedAttachment = {
+    file: File;
+    description?: string;
 };
 
 type StagedFile = {
     id: string;
     file: File;
     previewUrl?: string;
+    description?: string;
 };
 
 type PluginComposerActionsProps = {
@@ -122,7 +131,10 @@ export const MessageComposer = memo(function MessageComposer({
     const [draft, setDraft] = useState("");
     const [registryRevision, setRegistryRevision] = useState(0);
     const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+    const [editingAttachmentId, setEditingAttachmentId] = useState<string | null>(null);
     const [attachmentError, setAttachmentError] = useState("");
+
+    const activeEditingFile = stagedFiles.find((item) => item.id === editingAttachmentId);
 
     resetKeyRef.current = resetKey;
 
@@ -247,7 +259,10 @@ export const MessageComposer = memo(function MessageComposer({
     const submitDraft = useEventCallback(async (): Promise<void> => {
         const submittedDraft = draft;
         const submittedStagedFiles = stagedFiles;
-        const submittedFiles = submittedStagedFiles.map((item) => item.file);
+        const submittedFiles: StagedAttachment[] = submittedStagedFiles.map((item) => ({
+            file: item.file,
+            ...(item.description?.trim() ? { description: item.description.trim() } : {}),
+        }));
         const submittedResetKey = resetKey;
         const commandMatch = submittedDraft.match(/^\/([a-z0-9_-]+)(?:\s+([\s\S]*))?$/i);
         const command = commandMatch
@@ -375,6 +390,10 @@ export const MessageComposer = memo(function MessageComposer({
     }
 
     function removeStagedFile(fileId: string) {
+        if (editingAttachmentId === fileId) {
+            setEditingAttachmentId(null);
+        }
+
         setStagedFiles((current) => {
             const target = current.find((item) => item.id === fileId);
 
@@ -384,6 +403,14 @@ export const MessageComposer = memo(function MessageComposer({
 
             return current.filter((item) => item.id !== fileId);
         });
+    }
+
+    function updateStagedFileDescription(fileId: string, description: string) {
+        setStagedFiles((current) =>
+            current.map((item) =>
+                item.id === fileId ? { ...item, description } : item,
+            ),
+        );
     }
 
     function clearStagedFiles() {
@@ -418,37 +445,102 @@ export const MessageComposer = memo(function MessageComposer({
             )}
 
             {stagedFiles.length > 0 && (
-                <div className="composer-staged-images" aria-label="Staged files">
-                    {stagedFiles.map((item) => (
-                        <div
-                            className="composer-staged-image"
-                            data-kind={item.previewUrl ? "image" : "file"}
-                            key={item.id}
-                            title={item.file.name}
-                        >
-                            {item.previewUrl ? (
-                                <img src={item.previewUrl} alt={item.file.name} />
-                            ) : (
-                                <>
-                                    <span className="composer-staged-file-icon">
-                                        <FileText size={16} />
-                                    </span>
-                                    <span className="composer-staged-file-name">
-                                        {item.file.name}
-                                    </span>
-                                </>
-                            )}
-                            <button
-                                type="button"
-                                title="Remove file"
-                                disabled={disabled}
-                                onClick={() => removeStagedFile(item.id)}
+                <>
+                    <div className="composer-staged-images" aria-label="Staged files">
+                        {stagedFiles.map((item) => (
+                            <div
+                                className="composer-staged-image"
+                                data-kind={item.previewUrl ? "image" : "file"}
+                                key={item.id}
+                                title={
+                                    item.description?.trim()
+                                        ? `${item.file.name}: "${item.description.trim()}"`
+                                        : item.file.name
+                                }
                             >
-                                <X size={13} />
-                            </button>
+                                {item.previewUrl ? (
+                                    <img
+                                        src={item.previewUrl}
+                                        alt={item.description || item.file.name}
+                                    />
+                                ) : (
+                                    <>
+                                        <span className="composer-staged-file-icon">
+                                            <FileText size={16} />
+                                        </span>
+                                        <span className="composer-staged-file-name">
+                                            {item.file.name}
+                                        </span>
+                                    </>
+                                )}
+                                <button
+                                    type="button"
+                                    className="composer-staged-remove-btn"
+                                    title="Remove file"
+                                    disabled={disabled}
+                                    onClick={() => removeStagedFile(item.id)}
+                                >
+                                    <X size={13} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`composer-staged-alt-btn ${item.description?.trim() ? "has-alt" : ""}`}
+                                    title={
+                                        item.description?.trim()
+                                            ? `Description: "${item.description.trim()}" (click to edit)`
+                                            : "Add description for roleplay context"
+                                    }
+                                    disabled={disabled}
+                                    onClick={() =>
+                                        setEditingAttachmentId(
+                                            editingAttachmentId === item.id ? null : item.id,
+                                        )
+                                    }
+                                >
+                                    {item.description?.trim() ? "ALT ✓" : "ALT"}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    {activeEditingFile && (
+                        <div className="composer-staged-alt-editor">
+                            <div className="composer-staged-alt-header">
+                                <span>
+                                    Describe{" "}
+                                    <strong>{activeEditingFile.file.name}</strong> for roleplay context (optional):
+                                </span>
+                                <button
+                                    type="button"
+                                    className="composer-staged-alt-close"
+                                    onClick={() => setEditingAttachmentId(null)}
+                                    title="Close"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                className="composer-staged-alt-input"
+                                placeholder='e.g. "Emerald velvet ballgown" or "Map of the citadel"'
+                                value={activeEditingFile.description ?? ""}
+                                maxLength={300}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        setEditingAttachmentId(null);
+                                    }
+                                }}
+                                onChange={(e) =>
+                                    updateStagedFileDescription(
+                                        activeEditingFile.id,
+                                        e.currentTarget.value,
+                                    )
+                                }
+                            />
                         </div>
-                    ))}
-                </div>
+                    )}
+                </>
             )}
 
             {attachmentError && (
