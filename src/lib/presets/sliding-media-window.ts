@@ -102,7 +102,9 @@ export function formatAttachmentContextText(attachment: ChatAttachment): string 
 /**
  * Formats a description note for an active binary attachment so the model receives the user's roleplay context.
  */
-export function formatActiveAttachmentDescription(attachment: ChatAttachment): string | undefined {
+export function formatActiveAttachmentDescription(
+    attachment: ChatAttachment,
+): string | undefined {
     const desc = attachment.description?.trim();
     if (!desc) {
         return undefined;

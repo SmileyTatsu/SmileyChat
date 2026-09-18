@@ -64,7 +64,11 @@ async function materializeMessageAttachments(
                     return {
                         type: "image_url" as const,
                         image_url: {
-                            url: await attachmentUrlToDataUrl(part.image_url.url, undefined, true),
+                            url: await attachmentUrlToDataUrl(
+                                part.image_url.url,
+                                undefined,
+                                true,
+                            ),
                         },
                         ...(part[chatImageSourceIndex] !== undefined
                             ? {

@@ -795,7 +795,10 @@ describe("compilePresetMessages", () => {
         };
 
         const allMessages = [oldMessage, ...middleMessages, latestMessage];
-        const compiled = compilePresetMessages(preset, context({ messages: allMessages }));
+        const compiled = compilePresetMessages(
+            preset,
+            context({ messages: allMessages }),
+        );
 
         // The old message's attachment should be demoted to context text
         const firstTurn = compiled[0];
@@ -806,9 +809,21 @@ describe("compilePresetMessages", () => {
         // The latest message's attachment should still be binary, with its description context
         const lastTurn = compiled[compiled.length - 1];
         expect(Array.isArray(lastTurn.content)).toBe(true);
-        const parts = lastTurn.content as Array<{ type: string; text?: string; image_url?: { url: string } }>;
-        expect(parts.some((p) => p.type === "image_url" && p.image_url?.url === "/api/chats/chat-1/attachments/sketch.png")).toBe(true);
-        expect(parts.some((p) => p.type === "text" && p.text?.includes("Castle blueprint"))).toBe(true);
+        const parts = lastTurn.content as Array<{
+            type: string;
+            text?: string;
+            image_url?: { url: string };
+        }>;
+        expect(
+            parts.some(
+                (p) =>
+                    p.type === "image_url" &&
+                    p.image_url?.url === "/api/chats/chat-1/attachments/sketch.png",
+            ),
+        ).toBe(true);
+        expect(
+            parts.some((p) => p.type === "text" && p.text?.includes("Castle blueprint")),
+        ).toBe(true);
     });
 });
 

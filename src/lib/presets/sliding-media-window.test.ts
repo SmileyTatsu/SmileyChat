@@ -35,9 +35,7 @@ describe("sliding-media-window", () => {
         const att2: ChatAttachment = { id: "img-2", type: "image", url: "/img2.png" };
         const att3: ChatAttachment = { id: "img-3", type: "image", url: "/img3.png" };
 
-        const messages = [
-            makeMessage("m1", "user", "Look at these", [att1, att2, att3]),
-        ];
+        const messages = [makeMessage("m1", "user", "Look at these", [att1, att2, att3])];
 
         const active = getActiveBinaryAttachmentIds(messages);
         expect(active.has("img-1")).toBe(true);
@@ -49,7 +47,11 @@ describe("sliding-media-window", () => {
         const oldImg1: ChatAttachment = { id: "old-1", type: "image", url: "/old1.png" };
         const oldImg2: ChatAttachment = { id: "old-2", type: "image", url: "/old2.png" };
         const oldImg3: ChatAttachment = { id: "old-3", type: "image", url: "/old3.png" };
-        const latestImg: ChatAttachment = { id: "latest-1", type: "image", url: "/latest.png" };
+        const latestImg: ChatAttachment = {
+            id: "latest-1",
+            type: "image",
+            url: "/latest.png",
+        };
 
         const messages = [
             makeMessage("m1", "user", "First", [oldImg1]),
@@ -70,7 +72,11 @@ describe("sliding-media-window", () => {
     });
 
     test("demotes attachments beyond maxMessageDistance", () => {
-        const veryOldImg: ChatAttachment = { id: "very-old", type: "image", url: "/vold.png" };
+        const veryOldImg: ChatAttachment = {
+            id: "very-old",
+            type: "image",
+            url: "/vold.png",
+        };
         const messages = [
             makeMessage("m1", "user", "Old image", [veryOldImg]),
             makeMessage("m2", "assistant", "Reply 1"),

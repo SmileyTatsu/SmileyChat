@@ -9,7 +9,11 @@ export async function downscaleImageBlob(
     blob: Blob,
     maxDimension = MAX_IMAGE_DIMENSION,
 ): Promise<Blob> {
-    if (!blob.type.startsWith("image/") || blob.type === "image/svg+xml" || blob.type === "image/gif") {
+    if (
+        !blob.type.startsWith("image/") ||
+        blob.type === "image/svg+xml" ||
+        blob.type === "image/gif"
+    ) {
         return blob;
     }
 
@@ -23,7 +27,11 @@ export async function downscaleImageBlob(
             const bitmap = await createImageBitmap(blob);
             const { width, height } = bitmap;
 
-            if (width <= maxDimension && height <= maxDimension && blob.size < 1.5 * 1024 * 1024) {
+            if (
+                width <= maxDimension &&
+                height <= maxDimension &&
+                blob.size < 1.5 * 1024 * 1024
+            ) {
                 bitmap.close?.();
                 return blob;
             }
@@ -33,10 +41,16 @@ export async function downscaleImageBlob(
 
             if (targetWidth > maxDimension || targetHeight > maxDimension) {
                 if (targetWidth >= targetHeight) {
-                    targetHeight = Math.max(1, Math.round((targetHeight * maxDimension) / targetWidth));
+                    targetHeight = Math.max(
+                        1,
+                        Math.round((targetHeight * maxDimension) / targetWidth),
+                    );
                     targetWidth = maxDimension;
                 } else {
-                    targetWidth = Math.max(1, Math.round((targetWidth * maxDimension) / targetHeight));
+                    targetWidth = Math.max(
+                        1,
+                        Math.round((targetWidth * maxDimension) / targetHeight),
+                    );
                     targetHeight = maxDimension;
                 }
             }
@@ -66,11 +80,15 @@ export async function downscaleImageBlob(
             bitmap.close?.();
 
             const targetMime = blob.type === "image/png" ? "image/png" : "image/jpeg";
-            const quality = targetMime === "image/jpeg" ? IMAGE_COMPRESSION_QUALITY : undefined;
+            const quality =
+                targetMime === "image/jpeg" ? IMAGE_COMPRESSION_QUALITY : undefined;
 
             let downscaledBlob: Blob | null = null;
             if ("convertToBlob" in canvas && typeof canvas.convertToBlob === "function") {
-                downscaledBlob = await canvas.convertToBlob({ type: targetMime, quality });
+                downscaledBlob = await canvas.convertToBlob({
+                    type: targetMime,
+                    quality,
+                });
             } else if ("toBlob" in canvas && typeof canvas.toBlob === "function") {
                 downscaledBlob = await new Promise<Blob | null>((resolve) => {
                     (canvas as HTMLCanvasElement).toBlob(
@@ -81,7 +99,12 @@ export async function downscaleImageBlob(
                 });
             }
 
-            if (downscaledBlob && (downscaledBlob.size < blob.size || width > maxDimension || height > maxDimension)) {
+            if (
+                downscaledBlob &&
+                (downscaledBlob.size < blob.size ||
+                    width > maxDimension ||
+                    height > maxDimension)
+            ) {
                 return downscaledBlob;
             }
         }

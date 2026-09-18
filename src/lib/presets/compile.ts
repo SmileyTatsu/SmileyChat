@@ -136,7 +136,12 @@ export function compilePresetMessagesWithMetadata(
                 source: "preset",
             },
             ...history.flatMap((message) =>
-                toAnchoredHistoryMessages(message, context, undefined, activeBinaryAttachmentIds),
+                toAnchoredHistoryMessages(
+                    message,
+                    context,
+                    undefined,
+                    activeBinaryAttachmentIds,
+                ),
             ),
         ];
     }
@@ -248,7 +253,12 @@ function compileStoryStringMessagesWithMetadata(
     const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(history);
     messages.push(
         ...history.flatMap((msg) =>
-            toAnchoredHistoryMessages(msg, context, "chatHistory", activeBinaryAttachmentIds),
+            toAnchoredHistoryMessages(
+                msg,
+                context,
+                "chatHistory",
+                activeBinaryAttachmentIds,
+            ),
         ),
     );
 
@@ -513,7 +523,11 @@ function toGenerationMessage(
 
     return {
         role: promptRoleForMessage(message),
-        content: messageContentWithAttachments(message, context, activeBinaryAttachmentIds),
+        content: messageContentWithAttachments(
+            message,
+            context,
+            activeBinaryAttachmentIds,
+        ),
         speakerName: message.author,
         ...(promptRoleForMessage(message) === "assistant" &&
         firstAssistantMessageId(context.messages) === message.id
@@ -601,7 +615,11 @@ function toAnchoredHistoryMessages(
                       source: "history" as const,
                   }
                 : {
-                      message: toGenerationMessage(message, context, activeBinaryAttachmentIds),
+                      message: toGenerationMessage(
+                          message,
+                          context,
+                          activeBinaryAttachmentIds,
+                      ),
                       messageId: message.id,
                       promptId,
                       source: "history" as const,

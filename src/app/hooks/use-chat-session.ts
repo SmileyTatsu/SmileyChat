@@ -255,7 +255,9 @@ export function useChatSession({
         try {
             if (files.length) {
                 setUploadingAttachmentCount(files.length);
-                const rawFiles = files.map((item) => (item instanceof File ? item : item.file));
+                const rawFiles = files.map((item) =>
+                    item instanceof File ? item : item.file,
+                );
                 const uploaded = await uploadMessageAttachments(chatId, rawFiles);
                 attachments = uploaded.map((att, idx) => {
                     const item = files[idx];

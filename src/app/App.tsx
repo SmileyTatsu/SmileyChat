@@ -453,10 +453,7 @@ export function App() {
         latestChatSessionForPluginsRef.current.previousSwipe(messageId);
     }, []);
     const handleSendMessage = useCallback(
-        (
-            draft: string,
-            files?: Array<File | { file: File; description?: string }>,
-        ) => {
+        (draft: string, files?: Array<File | { file: File; description?: string }>) => {
             return latestChatSessionForPluginsRef.current.sendMessage(draft, files);
         },
         [],

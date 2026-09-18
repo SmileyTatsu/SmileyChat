@@ -127,7 +127,9 @@ export function useMessageOperations({
         const files = options.files ?? [];
         let attachments: ChatAttachment[] | undefined;
         if (files.length) {
-            const rawFiles = files.map((item) => (item instanceof File ? item : item.file));
+            const rawFiles = files.map((item) =>
+                item instanceof File ? item : item.file,
+            );
             const uploaded = await uploadMessageAttachments(sourceChat.id, rawFiles);
             attachments = uploaded.map((att, idx) => {
                 const item = files[idx];

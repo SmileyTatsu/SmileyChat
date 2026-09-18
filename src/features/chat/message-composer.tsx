@@ -407,9 +407,7 @@ export const MessageComposer = memo(function MessageComposer({
 
     function updateStagedFileDescription(fileId: string, description: string) {
         setStagedFiles((current) =>
-            current.map((item) =>
-                item.id === fileId ? { ...item, description } : item,
-            ),
+            current.map((item) => (item.id === fileId ? { ...item, description } : item)),
         );
     }
 
@@ -493,7 +491,9 @@ export const MessageComposer = memo(function MessageComposer({
                                     disabled={disabled}
                                     onClick={() =>
                                         setEditingAttachmentId(
-                                            editingAttachmentId === item.id ? null : item.id,
+                                            editingAttachmentId === item.id
+                                                ? null
+                                                : item.id,
                                         )
                                     }
                                 >
@@ -507,7 +507,8 @@ export const MessageComposer = memo(function MessageComposer({
                             <div className="composer-staged-alt-header">
                                 <span>
                                     Describe{" "}
-                                    <strong>{activeEditingFile.file.name}</strong> for roleplay context (optional):
+                                    <strong>{activeEditingFile.file.name}</strong> for
+                                    roleplay context (optional):
                                 </span>
                                 <button
                                     type="button"
