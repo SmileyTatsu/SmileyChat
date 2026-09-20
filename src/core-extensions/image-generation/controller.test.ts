@@ -4,12 +4,17 @@ import type { SmileyPluginApi, PluginAppSnapshot } from "#frontend/lib/plugins/t
 
 import {
     buildPromptWriterMessages,
+    DEFAULT_ASPECT_RATIO_DIMENSIONS,
     imageToolRequestContext,
+    IMAGE_TOOL_ASPECT_RATIOS,
     isNovelAIImageGenerationAvailable,
     parseImageToolRequest,
     parsePromptWriterResult,
+    resolveAspectRatioDimensions,
+    STANDARD_ASPECT_RATIO_DIMENSIONS,
     stripThinkingTags,
 } from "./controller";
+import { buildImageToolParameters, getImageToolDescription } from "./index";
 import { defaultImageGenerationSettings } from "./settings";
 
 describe("image prompt writer response", () => {
@@ -243,6 +248,138 @@ describe("automatic image director brief", () => {
                 visibleSubjects: [],
             }),
         ).toThrow("at least one visible subject");
+    });
+
+    test("parses optional aspect ratio and normalizes standard values and aliases", () => {
+        const square = parseImageToolRequest({
+            scene: "An avatar shot",
+            shot: "portrait",
+            visibleSubjects: ["Character"],
+            aspectRatio: "square",
+        });
+        expect(square.aspectRatio).toBe("square");
+
+        const widescreen = parseImageToolRequest({
+            scene: "A scenic view",
+            shot: "scene_illustration",
+            visibleSubjects: ["Character"],
+            aspect_ratio: "landscape",
+        });
+        expect(widescreen.aspectRatio).toBe("widescreen");
+
+        const widescreen169 = parseImageToolRequest({
+            scene: "A panoramic shot",
+            shot: "scene_illustration",
+            visibleSubjects: ["Character"],
+            orientation: "16:9",
+        });
+        expect(widescreen169.aspectRatio).toBe("widescreen");
+
+        const portrait = parseImageToolRequest({
+            scene: "Full body",
+            shot: "portrait",
+            visibleSubjects: ["Character"],
+            aspectRatio: "portrait",
+        });
+        expect(portrait.aspectRatio).toBe("portrait");
+
+        const vertical = parseImageToolRequest({
+            scene: "Full body",
+            shot: "portrait",
+            visibleSubjects: ["Character"],
+            aspectRatio: "vertical",
+        });
+        expect(vertical.aspectRatio).toBe("portrait");
+
+        const omitted = parseImageToolRequest({
+            scene: "Normal shot",
+            shot: "selfie",
+            visibleSubjects: ["Character"],
+        });
+        expect(omitted.aspectRatio).toBeUndefined();
+
+        expect(() =>
+            parseImageToolRequest({
+                scene: "An invalid framing",
+                shot: "portrait",
+                visibleSubjects: ["Character"],
+                aspectRatio: "circular",
+            }),
+        ).toThrow("supported aspect ratio");
+    });
+
+    test("resolves standard dimensions respecting free limits", () => {
+        expect(resolveAspectRatioDimensions("square")).toEqual({
+            width: 1024,
+            height: 1024,
+        });
+        expect(resolveAspectRatioDimensions("widescreen")).toEqual({
+            width: 1216,
+            height: 832,
+        });
+        expect(resolveAspectRatioDimensions("portrait")).toEqual({
+            width: 832,
+            height: 1216,
+        });
+        expect(resolveAspectRatioDimensions(undefined)).toEqual({
+            width: 832,
+            height: 1216,
+        });
+
+        // Verify non-square standard is 832x1216
+        expect(STANDARD_ASPECT_RATIO_DIMENSIONS.portrait.width).toBe(832);
+        expect(STANDARD_ASPECT_RATIO_DIMENSIONS.portrait.height).toBe(1216);
+        expect(STANDARD_ASPECT_RATIO_DIMENSIONS.widescreen.width).toBe(1216);
+        expect(STANDARD_ASPECT_RATIO_DIMENSIONS.widescreen.height).toBe(832);
+
+        // Verify free limit compliance (<= 1024*1024 = 1048576)
+        for (const ratio of IMAGE_TOOL_ASPECT_RATIOS) {
+            const dims = resolveAspectRatioDimensions(ratio);
+            expect(dims.width * dims.height).toBeLessThanOrEqual(1024 * 1024);
+            expect(dims.width % 64).toBe(0);
+            expect(dims.height % 64).toBe(0);
+        }
+    });
+
+    test("includes framing guidance in director brief when aspectRatio is specified", () => {
+        const req = parseImageToolRequest({
+            scene: "A sprawling field",
+            shot: "scene_illustration",
+            visibleSubjects: ["Character"],
+            aspectRatio: "widescreen",
+        });
+        const brief = imageToolRequestContext(req, "Character", "User");
+        expect(brief).toContain(
+            "Framing aspect ratio: widescreen — widescreen landscape framing (1216x832)",
+        );
+    });
+});
+
+describe("image tool parameters schema and description", () => {
+    test("buildImageToolParameters conditionally includes aspectRatio", () => {
+        const disabledSchema = buildImageToolParameters(false) as {
+            properties: Record<string, unknown>;
+            required: string[];
+        };
+        expect(disabledSchema.properties.aspectRatio).toBeUndefined();
+        expect(disabledSchema.required).not.toContain("aspectRatio");
+
+        const enabledSchema = buildImageToolParameters(true) as {
+            properties: Record<string, { enum?: string[] }>;
+            required: string[];
+        };
+        expect(enabledSchema.properties.aspectRatio).toBeDefined();
+        expect(enabledSchema.properties.aspectRatio?.enum).toEqual([
+            "square",
+            "widescreen",
+            "portrait",
+        ]);
+        expect(enabledSchema.required).toContain("aspectRatio");
+    });
+
+    test("getImageToolDescription mentions aspectRatio only when enabled", () => {
+        expect(getImageToolDescription(false)).not.toContain("aspectRatio");
+        expect(getImageToolDescription(true)).toContain("aspectRatio");
     });
 });
 

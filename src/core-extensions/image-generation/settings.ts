@@ -45,6 +45,7 @@ export type ImageGenerationSettings = {
     baseUrl: string;
     model: string;
     defaultMode: ImageContextMode;
+    allowModelAspectRatio: boolean;
     width: number;
     height: number;
     sampler: NovelAISampler;
@@ -75,6 +76,7 @@ export const defaultImageGenerationSettings: ImageGenerationSettings = {
     baseUrl: "https://image.novelai.net",
     model: "nai-diffusion-5-full",
     defaultMode: "scene",
+    allowModelAspectRatio: false,
     width: 832,
     height: 1216,
     sampler: "k_euler_ancestral",
@@ -93,6 +95,20 @@ export const defaultImageGenerationSettings: ImageGenerationSettings = {
 
 let cachedSettings = defaultImageGenerationSettings;
 
+type SettingsChangeListener = (settings: ImageGenerationSettings) => void;
+const changeListeners = new Set<SettingsChangeListener>();
+
+export function onImageGenerationSettingsChange(listener: SettingsChangeListener) {
+    changeListeners.add(listener);
+    return () => changeListeners.delete(listener);
+}
+
+function notifySettingsChange(settings: ImageGenerationSettings) {
+    for (const listener of changeListeners) {
+        listener(settings);
+    }
+}
+
 export function getImageGenerationSettings() {
     return cachedSettings;
 }
@@ -101,6 +117,7 @@ export async function loadImageGenerationSettings(api: SmileyPluginApi) {
     cachedSettings = normalizeImageGenerationSettings(
         await api.storage.getJson(IMAGE_SETTINGS_KEY, defaultImageGenerationSettings),
     );
+    notifySettingsChange(cachedSettings);
     return cachedSettings;
 }
 
@@ -112,6 +129,7 @@ export async function saveImageGenerationSettings(
     splitMasterPrompt(normalized.masterPrompt);
     await api.storage.setJson(IMAGE_SETTINGS_KEY, normalized);
     cachedSettings = normalized;
+    notifySettingsChange(normalized);
     return normalized;
 }
 
@@ -156,9 +174,16 @@ export function normalizeImageGenerationSettings(
             ? input.imageFormat
             : defaultImageGenerationSettings.imageFormat;
     const onlyFree = input.onlyFree === true;
+    const allowModelAspectRatio = input.allowModelAspectRatio === true;
     const includePresetContext = input.includePresetContext !== false;
     const generatedImageContextMode =
         input.generatedImageContextMode === "label" ? "label" : "tags";
+    let width = number("width", defaultImageGenerationSettings.width, 64, 2048);
+    let height = number("height", defaultImageGenerationSettings.height, 64, 2048);
+    if (allowModelAspectRatio) {
+        width = 832;
+        height = 1216;
+    }
     const normalized: ImageGenerationSettings = {
         ...defaultImageGenerationSettings,
         masterPrompt: text("masterPrompt", defaultImageGenerationSettings.masterPrompt),
@@ -184,8 +209,9 @@ export function normalizeImageGenerationSettings(
         baseUrl: text("baseUrl", defaultImageGenerationSettings.baseUrl),
         model: text("model", defaultImageGenerationSettings.model),
         defaultMode,
-        width: number("width", defaultImageGenerationSettings.width, 64, 2048),
-        height: number("height", defaultImageGenerationSettings.height, 64, 2048),
+        allowModelAspectRatio,
+        width,
+        height,
         sampler,
         steps: Math.round(number("steps", defaultImageGenerationSettings.steps, 1, 50)),
         scale: number("scale", defaultImageGenerationSettings.scale, 0, 20),

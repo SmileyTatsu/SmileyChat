@@ -39,7 +39,7 @@ After invocation, the extension handles the complete workflow:
 6. Save the returned image into the active chat's attachment folder.
 7. Continue the character response with the image attached.
 
-The tool requires `scene`, `shot`, and `visibleSubjects`. `shot` distinguishes a through-the-lens selfie, mirror selfie, self-timer photo, established third-party photographer, non-diegetic scene illustration, or portrait. `visibleSubjects` is exhaustive, so the active persona is excluded unless the conversation explicitly requires them. The separate prompt writer still owns NovelAI tags and cannot modify the master prompt.
+The tool requires `scene`, `shot`, and `visibleSubjects`, with an optional `aspectRatio` parameter when enabled in plugin settings. `shot` distinguishes a through-the-lens selfie, mirror selfie, self-timer photo, established third-party photographer, non-diegetic scene illustration, or portrait. `visibleSubjects` is exhaustive, so the active persona is excluded unless the conversation explicitly requires them. When enabled, `aspectRatio` lets the model choose `square` (1024×1024), `widescreen` (1216×832 landscape), or `portrait` (832×1216 vertical) framing using standard dimensions within free limits. The separate prompt writer still owns NovelAI tags and cannot modify the master prompt.
 
 ### Message action
 
@@ -174,16 +174,17 @@ The extension sends `Accept: application/json`, so NovelAI returns base64 images
 
 ### Generation controls
 
-| Setting         | Behavior                                            |
-| --------------- | --------------------------------------------------- |
-| Width / Height  | Canvas dimensions from 64 through 2048 pixels.      |
-| Steps           | 1 through 50, or at most 28 with Only free enabled. |
-| Guidance        | CFG scale from 0 through 20.                        |
-| CFG rescale     | Rescale value from 0 through 1.                     |
-| Image count     | 1 through 4, forced to 1 with Only free enabled.    |
-| Noise schedule  | NovelAI noise-schedule value, default `karras`.     |
-| Negative prompt | Undesired-content prompt sent with the request.     |
-| Image format    | `png` or `webp`.                                    |
+| Setting                     | Behavior                                                                                                             |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Model-selected aspect ratio | Enables `aspectRatio` tool parameter (`square`, `widescreen`, `portrait`) and locks resolution to standard 832×1216. |
+| Width / Height              | Canvas dimensions from 64 through 2048 pixels (greyed out when model-selected aspect ratio is enabled).              |
+| Steps                       | 1 through 50, or at most 28 with Only free enabled.                                                                  |
+| Guidance                    | CFG scale from 0 through 20.                                                                                         |
+| CFG rescale                 | Rescale value from 0 through 1.                                                                                      |
+| Image count                 | 1 through 4, forced to 1 with Only free enabled.                                                                     |
+| Noise schedule              | NovelAI noise-schedule value, default `karras`.                                                                      |
+| Negative prompt             | Undesired-content prompt sent with the request.                                                                      |
+| Image format                | `png` or `webp`.                                                                                                     |
 
 Supported samplers are restricted to NovelAI's configured list:
 

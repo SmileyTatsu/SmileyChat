@@ -50,10 +50,38 @@ export const IMAGE_TOOL_SHOTS = [
 
 export type ImageToolShot = (typeof IMAGE_TOOL_SHOTS)[number];
 
+export const IMAGE_TOOL_ASPECT_RATIOS = ["square", "widescreen", "portrait"] as const;
+
+export type ImageToolAspectRatio = (typeof IMAGE_TOOL_ASPECT_RATIOS)[number];
+
+export const STANDARD_ASPECT_RATIO_DIMENSIONS: Record<
+    ImageToolAspectRatio,
+    { width: number; height: number }
+> = {
+    square: { width: 1024, height: 1024 },
+    widescreen: { width: 1216, height: 832 },
+    portrait: { width: 832, height: 1216 },
+};
+
+export const DEFAULT_ASPECT_RATIO_DIMENSIONS = {
+    width: 832,
+    height: 1216,
+} as const;
+
+export function resolveAspectRatioDimensions(
+    aspectRatio?: ImageToolAspectRatio | string,
+): { width: number; height: number } {
+    if (aspectRatio && aspectRatio in STANDARD_ASPECT_RATIO_DIMENSIONS) {
+        return STANDARD_ASPECT_RATIO_DIMENSIONS[aspectRatio as ImageToolAspectRatio];
+    }
+    return DEFAULT_ASPECT_RATIO_DIMENSIONS;
+}
+
 export type ImageToolRequest = {
     scene: string;
     shot: ImageToolShot;
     visibleSubjects: string[];
+    aspectRatio?: ImageToolAspectRatio;
 };
 
 const IMAGE_TOOL_SHOT_GUIDANCE: Record<ImageToolShot, string> = {
@@ -92,10 +120,50 @@ export function parseImageToolRequest(args: Record<string, unknown>): ImageToolR
         throw new Error("Image generation requires at least one visible subject.");
     }
 
+    let aspectRatio: ImageToolAspectRatio | undefined;
+    const rawAspect = (
+        typeof args.aspectRatio === "string"
+            ? args.aspectRatio
+            : typeof args.aspect_ratio === "string"
+              ? args.aspect_ratio
+              : typeof args.orientation === "string"
+                ? args.orientation
+                : ""
+    )
+        .trim()
+        .toLowerCase();
+
+    if (rawAspect) {
+        if (rawAspect === "square" || rawAspect === "1:1" || rawAspect === "1/1") {
+            aspectRatio = "square";
+        } else if (
+            rawAspect === "widescreen" ||
+            rawAspect === "landscape" ||
+            rawAspect === "wide" ||
+            rawAspect === "16:9" ||
+            rawAspect === "16/9"
+        ) {
+            aspectRatio = "widescreen";
+        } else if (
+            rawAspect === "portrait" ||
+            rawAspect === "vertical" ||
+            rawAspect === "tall" ||
+            rawAspect === "9:16" ||
+            rawAspect === "9/16"
+        ) {
+            aspectRatio = "portrait";
+        } else {
+            throw new Error(
+                "Image generation requires a supported aspect ratio: square, widescreen, or portrait.",
+            );
+        }
+    }
+
     return {
         scene,
         shot: args.shot as ImageToolShot,
         visibleSubjects,
+        ...(aspectRatio ? { aspectRatio } : {}),
     };
 }
 
@@ -111,17 +179,32 @@ export function imageToolRequestContext(
             (subject) => subject.toLocaleLowerCase() === normalizedPersonaName,
         );
 
-    return [
+    const lines = [
         "Automatic image director brief. Treat this as the authoritative intent for the new image, while using recent chat context only to resolve appearance and continuity details.",
         `Tool caller / active character: ${characterName}`,
         `Scene to depict: ${request.scene}`,
         `Shot type: ${request.shot} — ${IMAGE_TOOL_SHOT_GUIDANCE[request.shot]}`,
+    ];
+
+    if (request.aspectRatio) {
+        const framingDesc =
+            request.aspectRatio === "widescreen"
+                ? "widescreen landscape framing (1216x832)"
+                : request.aspectRatio === "square"
+                  ? "square framing (1024x1024)"
+                  : "portrait vertical framing (832x1216)";
+        lines.push(`Framing aspect ratio: ${request.aspectRatio} — ${framingDesc}`);
+    }
+
+    lines.push(
         `Complete visible-subject list: ${request.visibleSubjects.join(", ")}`,
         personaIsVisible
             ? `The active user persona (${personaName}) is explicitly visible because they are named in the subject list.`
             : `The active user persona (${personaName}) is not visible. Do not depict them, their body, or an implied off-camera presence.`,
         "Do not add people, photographers, camera operators, reflections, or body parts belonging to anyone outside the complete visible-subject list.",
-    ].join("\n");
+    );
+
+    return lines.join("\n");
 }
 
 export function imageContextFromSnapshot(
@@ -429,31 +512,42 @@ export function parsePromptWriterResult(
     }
 }
 
+export type ImageGenerationOverrides = {
+    width?: number;
+    height?: number;
+};
+
 export async function createImages(
     api: SmileyPluginApi,
     snapshot: PluginAppSnapshot | PluginToolContext,
     insertion: string,
     signal?: AbortSignal,
+    overrides?: ImageGenerationOverrides,
 ): Promise<ImageGenerationOutcome> {
     const startedAt = Date.now();
     const settings = getImageGenerationSettings();
+    const effectiveSettings: ImageGenerationSettings = {
+        ...settings,
+        ...(overrides?.width ? { width: overrides.width } : {}),
+        ...(overrides?.height ? { height: overrides.height } : {}),
+    };
     const compiledPrompt = compileMasterPrompt(settings.masterPrompt, insertion.trim());
-    const profile = resolveNovelAIProfile(api, snapshot, settings);
+    const profile = resolveNovelAIProfile(api, snapshot, effectiveSettings);
     api.logger.info("NovelAI image request started", {
         profileId: profile.id,
-        model: settings.model,
-        width: settings.width,
-        height: settings.height,
-        steps: settings.steps,
-        imageCount: settings.imageCount,
-        imageFormat: settings.imageFormat,
+        model: effectiveSettings.model,
+        width: effectiveSettings.width,
+        height: effectiveSettings.height,
+        steps: effectiveSettings.steps,
+        imageCount: effectiveSettings.imageCount,
+        imageFormat: effectiveSettings.imageFormat,
         compiledPromptLength: compiledPrompt.length,
     });
 
     try {
         const result = await generateNovelAIImages(
             profile,
-            settings,
+            effectiveSettings,
             compiledPrompt,
             signal,
         );

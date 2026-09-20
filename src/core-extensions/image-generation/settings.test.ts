@@ -57,6 +57,30 @@ describe("image generation settings", () => {
         ).toBe("tags");
     });
 
+    test("normalizes allowModelAspectRatio and locks dimensions to standard 832x1216", () => {
+        expect(normalizeImageGenerationSettings({})).toMatchObject({
+            allowModelAspectRatio: false,
+        });
+
+        const enabled = normalizeImageGenerationSettings({
+            allowModelAspectRatio: true,
+            width: 1536,
+            height: 1024,
+        });
+        expect(enabled.allowModelAspectRatio).toBe(true);
+        expect(enabled.width).toBe(832);
+        expect(enabled.height).toBe(1216);
+
+        const disabled = normalizeImageGenerationSettings({
+            allowModelAspectRatio: false,
+            width: 512,
+            height: 768,
+        });
+        expect(disabled.allowModelAspectRatio).toBe(false);
+        expect(disabled.width).toBe(512);
+        expect(disabled.height).toBe(768);
+    });
+
     test("only-free mode enforces every NovelAI eligibility limit", () => {
         const result = normalizeImageGenerationSettings({
             onlyFree: true,

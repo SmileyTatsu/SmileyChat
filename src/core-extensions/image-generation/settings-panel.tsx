@@ -1,21 +1,24 @@
-import { RotateCcw } from "lucide-preact";
+import { CheckCircle2, LoaderCircle, RotateCcw } from "lucide-preact";
 import { useState } from "preact/hooks";
 
 import type { PluginAppSnapshot, SmileyPluginApi } from "#frontend/lib/plugins/types";
 
-import { PROMPT_MACRO, splitMasterPrompt } from "./master-prompt";
+import { PROMPT_MACRO } from "./master-prompt";
 import {
     applyOnlyFreeLimits,
     defaultImageGenerationSettings,
     getImageGenerationSettings,
     NOVELAI_SAMPLERS,
-    saveImageGenerationSettings,
     type ImageGenerationSettings,
     type NovelAIImageFormat,
     type NovelAIQualityTags,
     type NovelAISampler,
     type NovelAIUCPreset,
 } from "./settings";
+import {
+    useImageSettingsAutosave,
+    type RequestState,
+} from "./use-image-settings-autosave";
 
 type SettingsPanelProps = {
     api: SmileyPluginApi;
@@ -24,7 +27,11 @@ type SettingsPanelProps = {
 
 export function ImageGenerationSettingsPanel({ api, snapshot }: SettingsPanelProps) {
     const [draft, setDraft] = useState(getImageGenerationSettings());
-    const [status, setStatus] = useState("");
+    const { requestState, statusMessage } = useImageSettingsAutosave({
+        api,
+        settings: draft,
+        onSettingsChange: setDraft,
+    });
     const novelAIProfiles = snapshot.connectionSettings.profiles.filter(
         (profile) => profile.provider === "novelai",
     );
@@ -32,28 +39,45 @@ export function ImageGenerationSettingsPanel({ api, snapshot }: SettingsPanelPro
     function patch(value: Partial<ImageGenerationSettings>) {
         setDraft((current) => {
             const next = { ...current, ...value };
+            if (next.allowModelAspectRatio) {
+                next.width = 832;
+                next.height = 1216;
+            }
             return next.onlyFree ? applyOnlyFreeLimits(next) : next;
         });
-        setStatus("");
     }
 
-    async function save() {
-        try {
-            splitMasterPrompt(draft.masterPrompt);
-            await saveImageGenerationSettings(api, draft);
-            setStatus("Saved.");
-        } catch (error) {
-            setStatus(error instanceof Error ? error.message : String(error));
-        }
-    }
+    const saveBadge = (requestState === "loading" || requestState === "success") && (
+        <span
+            className={`preset-save-badge ${requestState}`}
+            role="status"
+            title={statusMessage}
+        >
+            {requestState === "loading" ? (
+                <LoaderCircle aria-hidden="true" size={14} />
+            ) : (
+                <CheckCircle2 aria-hidden="true" size={14} />
+            )}
+            {requestState === "loading" ? "Saving..." : "Saved"}
+        </span>
+    );
 
     return (
         <section className="sig-settings">
-            <div className="sig-note">
-                The master prompt is preserved exactly. SmileyChat replaces the single
-                <code translate={false}>{PROMPT_MACRO}</code> marker and never rewrites
-                the surrounding text.
+            <div className="sig-settings-topbar">
+                <div className="sig-note">
+                    The master prompt is preserved exactly. SmileyChat replaces the single
+                    <code translate={false}>{PROMPT_MACRO}</code> marker and never
+                    rewrites the surrounding text.
+                </div>
+                {saveBadge}
             </div>
+
+            {requestState === "error" && statusMessage && (
+                <p className="connection-status error" role="status">
+                    {statusMessage}
+                </p>
+            )}
 
             <SettingsGroup title="Prompt Assembly">
                 <Field
@@ -284,12 +308,36 @@ export function ImageGenerationSettingsPanel({ api, snapshot }: SettingsPanelPro
                         }
                     />
                 </label>
+                <label className="sig-toggle">
+                    <span>
+                        <span>Model-selected aspect ratio</span>
+                        <small>
+                            Enables optional square (1024×1024), widescreen (1216×832),
+                            and portrait (832×1216) tool parameters within free limits.
+                            Disables custom canvas resolution.
+                        </small>
+                    </span>
+                    <input
+                        name="image-allow-model-aspect-ratio"
+                        type="checkbox"
+                        checked={draft.allowModelAspectRatio}
+                        onChange={(event) =>
+                            patch({
+                                allowModelAspectRatio: event.currentTarget.checked,
+                            })
+                        }
+                    />
+                </label>
                 <div className="sig-number-grid">
                     <NumberField
                         label="Width"
                         value={draft.width}
                         min={64}
                         max={2048}
+                        disabled={draft.allowModelAspectRatio}
+                        hint={
+                            draft.allowModelAspectRatio ? "Standard 832×1216" : undefined
+                        }
                         onChange={(width) => patch({ width })}
                     />
                     <NumberField
@@ -297,6 +345,10 @@ export function ImageGenerationSettingsPanel({ api, snapshot }: SettingsPanelPro
                         value={draft.height}
                         min={64}
                         max={2048}
+                        disabled={draft.allowModelAspectRatio}
+                        hint={
+                            draft.allowModelAspectRatio ? "Standard 832×1216" : undefined
+                        }
                         onChange={(height) => patch({ height })}
                     />
                     <NumberField
@@ -433,19 +485,20 @@ export function ImageGenerationSettingsPanel({ api, snapshot }: SettingsPanelPro
             <div className="sig-settings-actions">
                 <button
                     type="button"
-                    onClick={() => {
-                        setDraft(defaultImageGenerationSettings);
-                        setStatus("Defaults loaded. Save to apply.");
-                    }}
+                    onClick={() => patch(defaultImageGenerationSettings)}
                 >
                     <RotateCcw size={15} aria-hidden="true" /> Reset Defaults
                 </button>
-                <span role="status" aria-live="polite">
-                    {status}
-                </span>
-                <button className="sig-primary" type="button" onClick={() => void save()}>
-                    Save Image Settings
-                </button>
+                {requestState === "error" && statusMessage && (
+                    <span
+                        className="connection-status error"
+                        role="status"
+                        style={{ margin: 0 }}
+                    >
+                        {statusMessage}
+                    </span>
+                )}
+                {saveBadge}
             </div>
         </section>
     );
@@ -486,6 +539,7 @@ function Field({
 
 function NumberField({
     label,
+    hint,
     value,
     min,
     max,
@@ -494,6 +548,7 @@ function NumberField({
     onChange,
 }: {
     label: string;
+    hint?: string;
     value: number;
     min: number;
     max: number;
@@ -502,7 +557,7 @@ function NumberField({
     onChange: (value: number) => void;
 }) {
     return (
-        <Field label={label}>
+        <Field label={label} hint={hint}>
             <input
                 name={`image-${label.toLowerCase().replace(/\s+/g, "-")}`}
                 autoComplete="off"
