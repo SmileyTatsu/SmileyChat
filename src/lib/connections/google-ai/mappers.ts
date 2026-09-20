@@ -116,7 +116,7 @@ export function createGoogleAIGenerateBody(
                           functionDeclarations: request.tools.map((tool) => ({
                               name: tool.name,
                               description: tool.description,
-                              parameters: tool.parameters,
+                              parameters: sanitizeGoogleAISchema(tool.parameters, true),
                           })),
                       },
                   ],
@@ -558,6 +558,124 @@ function extractGoogleAIToolCalls(response: GoogleAIGenerateContentResponse): To
     }
 
     return toolCalls;
+}
+
+export function sanitizeGoogleAISchema(
+    raw: unknown,
+    isRoot = false,
+): Record<string, unknown> {
+    if (!isRecord(raw)) {
+        return isRoot ? { type: "object", properties: {} } : { type: "string" };
+    }
+
+    const schema = raw;
+    const result: Record<string, unknown> = {};
+
+    let type: string | undefined;
+    let nullable = schema.nullable === true;
+
+    if (typeof schema.type === "string") {
+        type = schema.type.toLowerCase();
+    } else if (Array.isArray(schema.type)) {
+        const types = schema.type.map((t) => String(t).toLowerCase());
+        if (types.includes("null")) {
+            nullable = true;
+        }
+        const nonNull = types.find((t) => t !== "null");
+        if (nonNull) {
+            type = nonNull;
+        }
+    }
+
+    if (!type) {
+        if (isRecord(schema.properties)) {
+            type = "object";
+        } else if (isRecord(schema.items)) {
+            type = "array";
+        } else if (Array.isArray(schema.enum)) {
+            type = "string";
+        } else if (isRoot) {
+            type = "object";
+        }
+    }
+
+    if (type) {
+        result.type = type;
+    } else if (isRoot) {
+        result.type = "object";
+    }
+
+    if (nullable) {
+        result.nullable = true;
+    }
+
+    if (typeof schema.description === "string" && schema.description.length > 0) {
+        result.description = schema.description;
+    }
+
+    if (typeof schema.format === "string" && schema.format.length > 0) {
+        result.format = schema.format;
+    }
+
+    if (Array.isArray(schema.enum)) {
+        result.enum = schema.enum.map(String);
+    } else if (schema.const !== undefined && schema.const !== null) {
+        result.enum = [String(schema.const)];
+    }
+
+    if (isRecord(schema.properties)) {
+        const props: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(schema.properties)) {
+            props[key] = sanitizeGoogleAISchema(value, false);
+        }
+        result.properties = props;
+    } else if (isRoot && result.type === "object") {
+        result.properties = {};
+    }
+
+    if (Array.isArray(schema.required)) {
+        const required = schema.required.filter(
+            (item): item is string => typeof item === "string",
+        );
+        if (isRecord(result.properties)) {
+            const validKeys = new Set(Object.keys(result.properties));
+            const filtered = required.filter((key) => validKeys.has(key));
+            if (filtered.length > 0) {
+                result.required = filtered;
+            }
+        } else if (required.length > 0) {
+            result.required = required;
+        }
+    }
+
+    if (schema.items) {
+        const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
+        if (itemSchema) {
+            result.items = sanitizeGoogleAISchema(itemSchema, false);
+        }
+    }
+
+    if (typeof schema.minItems === "number") result.minItems = schema.minItems;
+    if (typeof schema.maxItems === "number") result.maxItems = schema.maxItems;
+    if (typeof schema.minLength === "number") result.minLength = schema.minLength;
+    if (typeof schema.maxLength === "number") result.maxLength = schema.maxLength;
+    if (typeof schema.minimum === "number") result.minimum = schema.minimum;
+    if (typeof schema.maximum === "number") result.maximum = schema.maximum;
+
+    if (typeof schema.pattern === "string" && schema.pattern.length > 0) {
+        result.pattern = schema.pattern;
+    }
+
+    if (Array.isArray(schema.anyOf)) {
+        const anyOf = schema.anyOf
+            .filter(isRecord)
+            .map((item) => sanitizeGoogleAISchema(item, false));
+        if (anyOf.length > 0) {
+            result.anyOf = anyOf;
+        }
+    }
+
+    return result;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

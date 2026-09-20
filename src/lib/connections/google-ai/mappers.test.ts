@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { createGoogleAIGenerateBody, normalizeGoogleAIResponse } from "./mappers";
+import {
+    createGoogleAIGenerateBody,
+    normalizeGoogleAIResponse,
+    sanitizeGoogleAISchema,
+} from "./mappers";
 
 describe("Google AI connection mappers", () => {
     test("moves leading system and developer messages into systemInstruction parts", () => {
@@ -493,5 +497,136 @@ describe("Google AI connection mappers", () => {
             role: "model",
             parts: [{ text: "Edited answer." }],
         });
+    });
+
+    test("sanitizes tool schema parameters by removing unsupported fields like additionalProperties and uniqueItems", () => {
+        const rawSchema = {
+            $schema: "http://json-schema.org/draft-07/schema#",
+            title: "GenerateImageParams",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+                scene: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 1200,
+                    description: "Scene description",
+                    default: "A cozy room",
+                },
+                shot: {
+                    type: "string",
+                    enum: ["close_up", "wide_shot"],
+                    description: "Shot type",
+                },
+                visibleSubjects: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 8,
+                    uniqueItems: true,
+                    items: { type: "string" },
+                    description: "Subjects",
+                },
+                optionalField: {
+                    type: ["string", "null"],
+                    description: "Nullable string",
+                },
+            },
+            required: ["scene", "shot", "visibleSubjects"],
+        };
+
+        const sanitized = sanitizeGoogleAISchema(rawSchema, true);
+
+        expect(sanitized).toEqual({
+            type: "object",
+            properties: {
+                scene: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 1200,
+                    description: "Scene description",
+                },
+                shot: {
+                    type: "string",
+                    enum: ["close_up", "wide_shot"],
+                    description: "Shot type",
+                },
+                visibleSubjects: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 8,
+                    items: { type: "string" },
+                    description: "Subjects",
+                },
+                optionalField: {
+                    type: "string",
+                    nullable: true,
+                    description: "Nullable string",
+                },
+            },
+            required: ["scene", "shot", "visibleSubjects"],
+        });
+
+        // Explicitly verify stripped properties that Google's Protobuf parser rejects
+        expect(sanitized).not.toHaveProperty("additionalProperties");
+        expect(sanitized).not.toHaveProperty("title");
+        expect(sanitized).not.toHaveProperty("$schema");
+        expect(
+            (sanitized.properties as Record<string, unknown>).scene,
+        ).not.toHaveProperty("default");
+        expect(
+            (sanitized.properties as Record<string, unknown>).visibleSubjects,
+        ).not.toHaveProperty("uniqueItems");
+    });
+
+    test("sanitizes tools embedded in createGoogleAIGenerateBody", () => {
+        const body = createGoogleAIGenerateBody(
+            {
+                promptMessages: [{ role: "user", content: "Take a picture" }],
+                messages: [],
+                tools: [
+                    {
+                        name: "generate_image",
+                        description: "Generate an image",
+                        parameters: {
+                            type: "object",
+                            additionalProperties: false,
+                            properties: {
+                                scene: { type: "string" },
+                                tags: {
+                                    type: "array",
+                                    uniqueItems: true,
+                                    items: { type: "string" },
+                                },
+                            },
+                            required: ["scene"],
+                        },
+                    },
+                ],
+            },
+            {
+                baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+                model: { source: "default", id: "gemini-3.8-flash" },
+            },
+        );
+
+        expect(body.tools).toBeDefined();
+        expect(body.tools?.[0].functionDeclarations).toHaveLength(1);
+        const decl = body.tools?.[0].functionDeclarations[0];
+        expect(decl?.name).toBe("generate_image");
+        expect(decl?.parameters).toEqual({
+            type: "object",
+            properties: {
+                scene: { type: "string" },
+                tags: {
+                    type: "array",
+                    items: { type: "string" },
+                },
+            },
+            required: ["scene"],
+        });
+        expect(decl?.parameters).not.toHaveProperty("additionalProperties");
+        expect(
+            (decl?.parameters?.properties as Record<string, unknown>)?.tags,
+        ).not.toHaveProperty("uniqueItems");
     });
 });

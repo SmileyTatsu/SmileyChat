@@ -2,9 +2,9 @@ export function trimTrailingSlash(value: string) {
     return value.replace(/\/+$/, "");
 }
 
-export async function safeResponseText(response: Response) {
+export async function safeResponseText(response: Response, limit = 4000) {
     try {
-        return (await response.text()).slice(0, 500);
+        return (await response.text()).slice(0, limit);
     } catch {
         return "";
     }
