@@ -443,15 +443,16 @@ export function FormattingSettings({
     return (
         <section
             className="tool-window formatting-settings-panel"
-            aria-label="Formatting settings"
+            aria-label="Instruct template settings"
         >
             <h2>
-                Formatting <span className="preset-scope-badge">Beta</span>
+                Instruct Templates <span className="preset-scope-badge">Beta</span>
             </h2>
             <p className="field-hint" style={{ marginTop: "-6px", marginBottom: "4px" }}>
-                Beta feature. Configure model token wrappers, instruct sequences, and
-                system guidelines for text-completion backends. Presets handle creative
-                prompt ordering and samplers.
+                Beta feature. Configure prompt wrappers and instruct token sequences for
+                text-completion backends (such as KoboldCPP). Chat-completion providers
+                (OpenAI, Anthropic, Gemini, OpenRouter, xAI) handle conversation turns
+                natively.
             </p>
 
             {!isTextCompletion && (

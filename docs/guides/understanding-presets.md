@@ -16,7 +16,7 @@ A Preset is a set of instructions that SmileyChat sends to the AI alongside your
 
 ## SillyTavern Compatibility & Sync
 
-SmileyChat supports importing SillyTavern-style presets. You can import preset JSON files directly into the Presets manager, or sync all presets from your local SillyTavern directory using **Settings > SillyTavern Sync**. SmileyChat translates the prompt structure and macros into its native preset shape; it does not promise byte-for-byte output parity with every SillyTavern feature.
+SmileyChat supports importing SillyTavern-style presets. You can import preset JSON files directly into the Presets manager, or sync all presets from your local SillyTavern directory using **Options > SillyTavern Sync**. SmileyChat translates the prompt structure and macros into its native preset shape; it does not promise byte-for-byte output parity with every SillyTavern feature.
 
 _Note: SmileyChat handles context length trimming based on your Connection profile's model, so context token settings from imported presets are ignored to ensure reliable local token budgeting._
 

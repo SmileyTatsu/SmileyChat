@@ -2,7 +2,7 @@
 
 > **Beta:** Formatting and custom Instruct Templates are usable, stored locally, and covered by automated tests, but their controls and SillyTavern compatibility are still evolving. Check the generated prompt preview before relying on a template for an important long-running chat.
 
-The **Settings > Formatting (Beta)** tab configures how SmileyChat turns an assembled chat into a text-completion prompt. It is a provider-neutral formatting layer for text-completion backends. KoboldCPP is the currently integrated text-completion provider; additional text-completion adapters can use the same assembled formatting contract in the future. It does not replace Presets: Presets control prompt content, order, and generation settings; Formatting wraps that assembled content in model-specific tokens.
+The **Options > Instruct Templates (Beta)** tab configures how SmileyChat turns an assembled chat into a text-completion prompt. It is a provider-neutral formatting layer for text-completion backends. KoboldCPP is the currently integrated text-completion provider; additional text-completion adapters can use the same assembled formatting contract in the future. It does not replace Presets: Presets control prompt content, order, and generation settings; Formatting wraps that assembled content in model-specific tokens.
 
 ## Choosing a template
 

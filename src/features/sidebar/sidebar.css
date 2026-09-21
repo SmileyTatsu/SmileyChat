@@ -1030,40 +1030,33 @@
     text-align: left;
 }
 
-.persona-menu-wrap {
-    position: relative;
+.persona-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 4px;
+    color: #8c93a4;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
-.persona-menu-wrap > button {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.persona-picker-panel {
-    position: absolute;
-    left: 100%;
-    bottom: 0;
-    z-index: 130;
-    display: grid;
-    gap: 6px;
-    width: 220px;
-    max-height: 300px;
-    border: 1px solid #343845;
-    border-radius: 8px;
-    background: #17191f;
-    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
-    padding: 6px;
+.persona-menu-divider {
+    height: 1px;
+    background: #2b303d;
+    margin: 4px 0;
 }
 
 .persona-picker-list {
     display: grid;
     gap: 4px;
-    max-height: 230px;
-    overflow: auto;
+    max-height: 180px;
+    overflow-y: auto;
     padding-right: 2px;
 }
 
-.persona-picker-panel button {
+.status-menu .persona-picker-list button {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1076,25 +1069,82 @@
     text-align: left;
 }
 
-.persona-picker-panel button:hover,
-.persona-picker-panel button.active {
+.status-menu .persona-picker-list button:hover,
+.status-menu .persona-picker-list button.active {
     background: #242832;
     border-color: #303440;
     color: #ececf1;
 }
 
-.persona-picker-panel button span:last-child {
+.status-menu .persona-picker-list button span {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.persona-picker-panel .manage-personas-button {
+.persona-active-check {
+    margin-left: auto;
+    color: #48c774;
+    flex-shrink: 0;
+}
+
+.status-menu .manage-personas-button {
+    display: flex;
+    align-items: center;
     justify-content: center;
-    border-color: #303440;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 4px;
+    border: 1px solid #303440;
+    border-radius: 6px;
     background: #20232b;
-    font-weight: 700;
+    color: #d9dce6;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px;
+    cursor: pointer;
+}
+
+.status-menu .manage-personas-button:hover {
+    background: #282d38;
+    border-color: #3e4454;
+    color: #ececf1;
+}
+
+.persona-status-section {
+    display: grid;
+    gap: 4px;
+}
+
+.persona-status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+}
+
+.persona-status-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-sizing: border-box;
+    min-height: 28px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: #1e212b;
+    color: #b9bfd0;
+    font-size: 0.74rem;
+    padding: 3px 6px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.persona-status-chip:hover,
+.persona-status-chip.active {
+    background: #292d3a;
+    border-color: #383e4f;
+    color: #ececf1;
 }
 
 .status-menu button:hover,

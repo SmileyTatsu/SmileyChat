@@ -27,7 +27,7 @@ If you want to bulk-import many characters at once, or if you are organizing fil
 If you already have SillyTavern installed locally:
 
 1. Open **Options** from the bottom-left persona bar.
-2. Go to **Settings > SillyTavern Sync**.
+2. Go to **SillyTavern Sync** (under System & Integrations).
 3. Enter your local SillyTavern installation path (e.g. `C:\Users\...\SillyTavern`).
 4. Click **Scan** to discover user folders and asset counts.
 5. Select **Characters** (and optionally chats, group chats, personas, presets, or lorebooks).

@@ -104,7 +104,7 @@ const settingsSections: SettingsSection[] = [
         categories: [
             { id: "connections", label: "Connections", icon: KeyRound },
             { id: "preset", label: "Preset", icon: SlidersHorizontal },
-            { id: "formatting", label: "Formatting (Beta)", icon: FileText },
+            { id: "formatting", label: "Instruct Templates (Beta)", icon: FileText },
         ],
     },
     {

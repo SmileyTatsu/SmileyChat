@@ -79,6 +79,23 @@ import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
+function formatConnectionError(error: unknown, targetUrl?: string): string {
+    const raw = messageFromError(error, "Unexpected connection error.");
+    const isNetworkError =
+        /failed to fetch|network\s?error|load failed|econnrefused/i.test(raw);
+    const isLocal =
+        Boolean(targetUrl) &&
+        /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?/i.test(
+            targetUrl!,
+        );
+
+    if (isNetworkError && isLocal) {
+        return `${raw}: Could not reach local endpoint at ${targetUrl}. Ensure the local server is running and configured for browser access (e.g. for Ollama set OLLAMA_ORIGINS="*", or allow CORS in LM Studio).`;
+    }
+
+    return raw;
+}
+
 const cachedOpenRouterModelsByProfileId: Record<string, OpenRouterModel[]> = {};
 const cachedGoogleAIModelsByProfileId: Record<string, GoogleAIModel[]> = {};
 const cachedAnthropicModelsByProfileId: Record<string, AnthropicModel[]> = {};
@@ -276,7 +293,10 @@ export function ConnectionsSettings({
                     setRequestState("success");
                 } catch (error) {
                     setStatusMessage(
-                        messageFromError(error, "Unexpected connection error."),
+                        formatConnectionError(
+                            error,
+                            "https://openrouter.ai/api/v1/chat/completions",
+                        ),
                     );
                     setRequestState("error");
                 }
@@ -308,9 +328,7 @@ export function ConnectionsSettings({
                     );
                     setRequestState("success");
                 } catch (error) {
-                    setStatusMessage(
-                        messageFromError(error, "Unexpected connection error."),
-                    );
+                    setStatusMessage(formatConnectionError(error, targetUrl));
                     setRequestState("error");
                 }
 
@@ -335,9 +353,7 @@ export function ConnectionsSettings({
                     );
                     setRequestState("success");
                 } catch (error) {
-                    setStatusMessage(
-                        messageFromError(error, "Unexpected connection error."),
-                    );
+                    setStatusMessage(formatConnectionError(error, targetUrl));
                     setRequestState("error");
                 }
 
@@ -365,9 +381,7 @@ export function ConnectionsSettings({
                     );
                     setRequestState("success");
                 } catch (error) {
-                    setStatusMessage(
-                        messageFromError(error, "Unexpected connection error."),
-                    );
+                    setStatusMessage(formatConnectionError(error, targetUrl));
                     setRequestState("error");
                 }
 
@@ -390,9 +404,7 @@ export function ConnectionsSettings({
                     setStatusMessage(`xAI connection test succeeded: ${result.message}`);
                     setRequestState("success");
                 } catch (error) {
-                    setStatusMessage(
-                        messageFromError(error, "Unexpected connection error."),
-                    );
+                    setStatusMessage(formatConnectionError(error, targetUrl));
                     setRequestState("error");
                 }
 
@@ -400,10 +412,12 @@ export function ConnectionsSettings({
             }
 
             if (isKoboldCPPProfile(activeProfile)) {
-                setRequestState("loading");
-                setStatusMessage(
-                    `Testing POST ${createKoboldCPPModelUrl(activeProfile.config).replace(/\/api\/v1\/model$/, "/api/v1/generate")}`,
+                const targetUrl = createKoboldCPPModelUrl(activeProfile.config).replace(
+                    /\/api\/v1\/model$/,
+                    "/api/v1/generate",
                 );
+                setRequestState("loading");
+                setStatusMessage(`Testing POST ${targetUrl}`);
                 try {
                     const result = await getAdapterForSettings(
                         settings,
@@ -423,7 +437,7 @@ export function ConnectionsSettings({
                     setRequestState("success");
                 } catch (error) {
                     setStatusMessage(
-                        messageFromError(error, "Unexpected connection error."),
+                        formatConnectionError(error, activeProfile.config.baseUrl),
                     );
                     setRequestState("error");
                 }
@@ -446,17 +460,16 @@ export function ConnectionsSettings({
                 );
                 setRequestState("success");
             } catch (error) {
-                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setStatusMessage(formatConnectionError(error));
                 setRequestState("error");
             }
 
             return;
         }
 
+        const targetUrl = `${trimTrailingSlash(activeProfile.config.baseUrl)}/chat/completions`;
         setRequestState("loading");
-        setStatusMessage(
-            `Testing POST ${trimTrailingSlash(activeProfile.config.baseUrl)}/chat/completions`,
-        );
+        setStatusMessage(`Testing POST ${targetUrl}`);
 
         try {
             const adapter = getAdapterForSettings(settings, activeProfile.id);
@@ -466,11 +479,11 @@ export function ConnectionsSettings({
             });
 
             setStatusMessage(
-                `Connection test succeeded via ${trimTrailingSlash(activeProfile.config.baseUrl)}/chat/completions: ${result.message}`,
+                `Connection test succeeded via ${targetUrl}: ${result.message}`,
             );
             setRequestState("success");
         } catch (error) {
-            setStatusMessage(messageFromError(error, "Unexpected connection error."));
+            setStatusMessage(formatConnectionError(error, targetUrl));
             setRequestState("error");
         }
     }
@@ -509,7 +522,9 @@ export function ConnectionsSettings({
                 setStatusMessage(`Loaded ${nextModels.length} OpenRouter model(s).`);
                 setRequestState("success");
             } catch (error) {
-                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setStatusMessage(
+                    formatConnectionError(error, "https://openrouter.ai/api/v1/models"),
+                );
                 setRequestState("error");
             }
 
@@ -517,10 +532,9 @@ export function ConnectionsSettings({
         }
 
         if (isGoogleAIProfile(activeProfile)) {
+            const targetUrl = `${trimTrailingSlash(activeProfile.config.baseUrl)}/models`;
             setRequestState("loading");
-            setStatusMessage(
-                `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
-            );
+            setStatusMessage(`Loading models from GET ${targetUrl}`);
 
             try {
                 const nextModels = (await loadConnectionModels(activeProfile.id))
@@ -556,7 +570,7 @@ export function ConnectionsSettings({
                 setStatusMessage(`Loaded ${nextModels.length} Google AI model(s).`);
                 setRequestState("success");
             } catch (error) {
-                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setStatusMessage(formatConnectionError(error, targetUrl));
                 setRequestState("error");
             }
 
@@ -564,10 +578,9 @@ export function ConnectionsSettings({
         }
 
         if (isAnthropicProfile(activeProfile)) {
+            const targetUrl = `${trimTrailingSlash(activeProfile.config.baseUrl)}/models`;
             setRequestState("loading");
-            setStatusMessage(
-                `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
-            );
+            setStatusMessage(`Loading models from GET ${targetUrl}`);
 
             try {
                 const nextModels = (await loadConnectionModels(activeProfile.id))
@@ -599,7 +612,7 @@ export function ConnectionsSettings({
                 setStatusMessage(`Loaded ${nextModels.length} Anthropic model(s).`);
                 setRequestState("success");
             } catch (error) {
-                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setStatusMessage(formatConnectionError(error, targetUrl));
                 setRequestState("error");
             }
 
@@ -607,10 +620,9 @@ export function ConnectionsSettings({
         }
 
         if (isXAIProfile(activeProfile)) {
+            const targetUrl = `${trimTrailingSlash(activeProfile.config.baseUrl)}/models`;
             setRequestState("loading");
-            setStatusMessage(
-                `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
-            );
+            setStatusMessage(`Loading models from GET ${targetUrl}`);
 
             try {
                 const nextModels = (await loadConnectionModels(activeProfile.id))
@@ -642,7 +654,7 @@ export function ConnectionsSettings({
                 setStatusMessage(`Loaded ${nextModels.length} xAI model(s).`);
                 setRequestState("success");
             } catch (error) {
-                setStatusMessage(messageFromError(error, "Unexpected connection error."));
+                setStatusMessage(formatConnectionError(error, targetUrl));
                 setRequestState("error");
             }
 
@@ -653,10 +665,9 @@ export function ConnectionsSettings({
             return;
         }
 
+        const targetUrl = `${trimTrailingSlash(activeProfile.config.baseUrl)}/models`;
         setRequestState("loading");
-        setStatusMessage(
-            `Loading models from GET ${trimTrailingSlash(activeProfile.config.baseUrl)}/models`,
-        );
+        setStatusMessage(`Loading models from GET ${targetUrl}`);
         updateActiveProfileConfig({
             ...activeProfile.config,
             cachedModels: undefined,
@@ -687,12 +698,10 @@ export function ConnectionsSettings({
 
             updateActiveProfileConfig(nextConfig);
 
-            setStatusMessage(
-                `Loaded ${nextModels.length} model(s) from ${trimTrailingSlash(activeProfile.config.baseUrl)}/models.`,
-            );
+            setStatusMessage(`Loaded ${nextModels.length} model(s) from ${targetUrl}.`);
             setRequestState("success");
         } catch (error) {
-            setStatusMessage(messageFromError(error, "Unexpected connection error."));
+            setStatusMessage(formatConnectionError(error, targetUrl));
             setRequestState("error");
         }
     }
@@ -747,7 +756,7 @@ export function ConnectionsSettings({
             );
             setRequestState("success");
         } catch (error) {
-            setStatusMessage(messageFromError(error, "KoboldCPP connection failed."));
+            setStatusMessage(formatConnectionError(error));
             setRequestState("error");
         }
     }

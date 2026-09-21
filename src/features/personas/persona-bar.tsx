@@ -1,4 +1,4 @@
-import { UserRound, Users } from "lucide-preact";
+import { Check, Settings, UserRound } from "lucide-preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import type { PersonaSummary, SmileyPersona, UserStatus } from "#frontend/types";
@@ -25,12 +25,10 @@ export function PersonaBar({
     onStatusChange,
 }: PersonaBarProps) {
     const [statusMenuOpen, setStatusMenuOpen] = useState(false);
-    const [personaPanelOpen, setPersonaPanelOpen] = useState(false);
     const statusWrapRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!statusMenuOpen) {
-            setPersonaPanelOpen(false);
             return;
         }
 
@@ -42,13 +40,11 @@ export function PersonaBar({
             }
 
             setStatusMenuOpen(false);
-            setPersonaPanelOpen(false);
         }
 
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") {
                 setStatusMenuOpen(false);
-                setPersonaPanelOpen(false);
             }
         }
 
@@ -71,7 +67,6 @@ export function PersonaBar({
                     aria-expanded={statusMenuOpen}
                     onClick={() => {
                         setStatusMenuOpen((open) => !open);
-                        setPersonaPanelOpen(false);
                     }}
                 >
                     <PersonaAvatar avatarPath={persona.avatar?.path} />
@@ -85,85 +80,83 @@ export function PersonaBar({
                 </button>
 
                 {statusMenuOpen && (
-                    <div className="status-menu" role="menu">
-                        {statuses.map((nextStatus) => (
-                            <button
-                                className={status === nextStatus ? "active" : ""}
-                                key={nextStatus}
-                                type="button"
-                                role="menuitem"
-                                onClick={() => {
-                                    onStatusChange(nextStatus);
-                                    setStatusMenuOpen(false);
-                                    setPersonaPanelOpen(false);
-                                }}
-                            >
-                                <i
-                                    className={`status-dot ${nextStatus}`}
-                                    aria-hidden="true"
-                                />
-                                {formatStatus(nextStatus)}
-                            </button>
-                        ))}
+                    <div
+                        className="status-menu"
+                        role="menu"
+                        aria-label="Persona and status menu"
+                    >
+                        <div className="persona-menu-header">
+                            <span>Switch Persona</span>
+                        </div>
                         <div
-                            className="persona-menu-wrap"
-                            onMouseEnter={() => setPersonaPanelOpen(true)}
-                            onMouseLeave={() => setPersonaPanelOpen(false)}
+                            className="persona-picker-list"
+                            role="group"
+                            aria-label="Personas"
                         >
-                            <button
-                                type="button"
-                                role="menuitem"
-                                aria-haspopup="menu"
-                                aria-expanded={personaPanelOpen}
-                                onClick={() => setPersonaPanelOpen((open) => !open)}
-                                onFocus={() => setPersonaPanelOpen(true)}
-                            >
-                                <Users size={15} />
-                                Personas
-                            </button>
-                            {personaPanelOpen && (
-                                <div
-                                    className="persona-picker-panel"
-                                    role="menu"
-                                    aria-label="Personas"
+                            {personas.map((item) => (
+                                <button
+                                    className={item.id === persona.id ? "active" : ""}
+                                    key={item.id}
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                        onPersonaSelect(item.id);
+                                        setStatusMenuOpen(false);
+                                    }}
                                 >
-                                    <div className="persona-picker-list">
-                                        {personas.map((item) => (
-                                            <button
-                                                className={
-                                                    item.id === persona.id ? "active" : ""
-                                                }
-                                                key={item.id}
-                                                type="button"
-                                                role="menuitem"
-                                                onClick={() => {
-                                                    onPersonaSelect(item.id);
-                                                    setPersonaPanelOpen(false);
-                                                    setStatusMenuOpen(false);
-                                                }}
-                                            >
-                                                <PersonaAvatar
-                                                    avatarPath={item.avatar?.path}
-                                                    compact
-                                                />
-                                                <span>{item.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <PersonaAvatar
+                                        avatarPath={item.avatar?.path}
+                                        compact
+                                    />
+                                    <span>{item.name}</span>
+                                    {item.id === persona.id && (
+                                        <Check
+                                            size={14}
+                                            className="persona-active-check"
+                                        />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            className="manage-personas-button"
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                                onOpenPersonasSettings();
+                                setStatusMenuOpen(false);
+                            }}
+                        >
+                            <Settings size={14} />
+                            <span>Manage personas</span>
+                        </button>
+
+                        <div className="persona-menu-divider" />
+
+                        <div className="persona-status-section">
+                            <div className="persona-menu-header">
+                                <span>Status</span>
+                            </div>
+                            <div className="persona-status-grid">
+                                {statuses.map((nextStatus) => (
                                     <button
-                                        className="manage-personas-button"
+                                        className={`persona-status-chip ${status === nextStatus ? "active" : ""}`}
+                                        key={nextStatus}
                                         type="button"
                                         role="menuitem"
                                         onClick={() => {
-                                            onOpenPersonasSettings();
-                                            setPersonaPanelOpen(false);
+                                            onStatusChange(nextStatus);
                                             setStatusMenuOpen(false);
                                         }}
                                     >
-                                        Manage personas
+                                        <i
+                                            className={`status-dot ${nextStatus}`}
+                                            aria-hidden="true"
+                                        />
+                                        <span>{formatStatus(nextStatus)}</span>
                                     </button>
-                                </div>
-                            )}
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
