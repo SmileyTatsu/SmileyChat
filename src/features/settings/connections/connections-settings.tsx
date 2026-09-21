@@ -77,24 +77,9 @@ import {
 } from "#frontend/lib/connections/koboldcpp/adapter";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 
+import { formatConnectionError } from "./connection-error";
+
 type RequestState = "idle" | "loading" | "success" | "error";
-
-function formatConnectionError(error: unknown, targetUrl?: string): string {
-    const raw = messageFromError(error, "Unexpected connection error.");
-    const isNetworkError =
-        /failed to fetch|network\s?error|load failed|econnrefused/i.test(raw);
-    const isLocal =
-        Boolean(targetUrl) &&
-        /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?/i.test(
-            targetUrl!,
-        );
-
-    if (isNetworkError && isLocal) {
-        return `${raw}: Could not reach local endpoint at ${targetUrl}. Ensure the local server is running and configured for browser access (e.g. for Ollama set OLLAMA_ORIGINS="*", or allow CORS in LM Studio).`;
-    }
-
-    return raw;
-}
 
 const cachedOpenRouterModelsByProfileId: Record<string, OpenRouterModel[]> = {};
 const cachedGoogleAIModelsByProfileId: Record<string, GoogleAIModel[]> = {};
@@ -756,7 +741,7 @@ export function ConnectionsSettings({
             );
             setRequestState("success");
         } catch (error) {
-            setStatusMessage(formatConnectionError(error));
+            setStatusMessage(formatConnectionError(error, activeProfile.config.baseUrl));
             setRequestState("error");
         }
     }

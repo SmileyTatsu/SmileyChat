@@ -98,7 +98,8 @@ export function PersonaBar({
                                     className={item.id === persona.id ? "active" : ""}
                                     key={item.id}
                                     type="button"
-                                    role="menuitem"
+                                    role="menuitemradio"
+                                    aria-checked={item.id === persona.id}
                                     onClick={() => {
                                         onPersonaSelect(item.id);
                                         setStatusMenuOpen(false);
@@ -113,6 +114,7 @@ export function PersonaBar({
                                         <Check
                                             size={14}
                                             className="persona-active-check"
+                                            aria-hidden="true"
                                         />
                                     )}
                                 </button>
@@ -127,13 +129,17 @@ export function PersonaBar({
                                 setStatusMenuOpen(false);
                             }}
                         >
-                            <Settings size={14} />
+                            <Settings size={14} aria-hidden="true" />
                             <span>Manage personas</span>
                         </button>
 
-                        <div className="persona-menu-divider" />
+                        <div className="persona-menu-divider" role="separator" />
 
-                        <div className="persona-status-section">
+                        <div
+                            className="persona-status-section"
+                            role="group"
+                            aria-label="Status"
+                        >
                             <div className="persona-menu-header">
                                 <span>Status</span>
                             </div>
@@ -143,7 +149,8 @@ export function PersonaBar({
                                         className={`persona-status-chip ${status === nextStatus ? "active" : ""}`}
                                         key={nextStatus}
                                         type="button"
-                                        role="menuitem"
+                                        role="menuitemradio"
+                                        aria-checked={status === nextStatus}
                                         onClick={() => {
                                             onStatusChange(nextStatus);
                                             setStatusMenuOpen(false);
