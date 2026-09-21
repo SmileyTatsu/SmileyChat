@@ -51,9 +51,9 @@ By default, SmileyChat binds to `127.0.0.1` (loopback only) and does not accept 
 To allow connections from your phone or tablet:
 
 1. Open `.env` in your SmileyChat folder and set:
-   ```env
-   SMILEYCHAT_HOST=0.0.0.0
-   ```
+    ```env
+    SMILEYCHAT_HOST=0.0.0.0
+    ```
 2. Configure your preferred security option (e.g., `SMILEYCHAT_BASIC_AUTH_USER`/`PASS` or `SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK=true`).
 3. Restart SmileyChat so the new host binding takes effect.
 

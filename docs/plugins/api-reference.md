@@ -468,9 +468,13 @@ api.ui.registerSettingsPanel({
     label: "Advanced",
     settingsKey: "advanced",
     render: ({ settings, updateSettings }) =>
-        api.ui.h("button", {
-            onClick: () => updateSettings({ enabled: !settings.enabled }),
-        }, settings.enabled ? "Disable" : "Enable"),
+        api.ui.h(
+            "button",
+            {
+                onClick: () => updateSettings({ enabled: !settings.enabled }),
+            },
+            settings.enabled ? "Disable" : "Enable",
+        ),
 });
 ```
 
