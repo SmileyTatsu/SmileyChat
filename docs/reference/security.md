@@ -1,14 +1,12 @@
 # Security model
 
-SmileyChat binds to **`0.0.0.0` by default** so LAN devices, Tailscale
-peers, and Docker containers can reach it out of the box. The
-**safe-by-default lockdown** keeps that safe: until you set up Basic
-Auth or an IP allowlist, any non-loopback request gets a friendly "set
-up access" page instead of your data. Loopback (`127.0.0.1`) is always
-exempt, so local browser use needs no configuration at all.
-
-If you'd rather not bind any interface but loopback, set
-`SMILEYCHAT_HOST=127.0.0.1` in `.env`.
+SmileyChat binds to **`127.0.0.1` by default** so local instances stay
+private and avoid Windows Firewall alerts. If you want LAN devices,
+Tailscale peers, or Docker containers to reach it, set
+`SMILEYCHAT_HOST=0.0.0.0` in `.env`. The **safe-by-default lockdown**
+ensures network safety: when bound to `0.0.0.0`, any non-loopback request
+gets a friendly "set up access" page until you set up Basic Auth or an
+IP allowlist. Loopback (`127.0.0.1`) is always exempt.
 
 Every protection layer is configured through environment variables in
 `.env`. The file is auto-created from `.env.example` on first boot, and
@@ -19,7 +17,7 @@ except port/host/CSRF secret.
 
 | Layer                    | Purpose                                                                           | Default                                  | Env vars                                                                         |
 | ------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
-| Server binding           | What interfaces the OS can reach the server on                                    | all interfaces (`0.0.0.0`)               | `SMILEYCHAT_HOST`, `SMILEYCHAT_PORT`                                             |
+| Server binding           | What interfaces the OS can reach the server on                                    | loopback (`127.0.0.1`)                   | `SMILEYCHAT_HOST`, `SMILEYCHAT_PORT`                                             |
 | IP allowlist             | Network-level deny-by-default                                                     | no allowlist                             | `SMILEYCHAT_IP_ALLOWLIST`, `SMILEYCHAT_IP_ALLOWLIST_ENABLED`                     |
 | Trusted-interface bypass | Explicitly skip allowlist & auth for trusted networks                             | disabled                                 | `SMILEYCHAT_BYPASS_AUTH_TAILSCALE`, `SMILEYCHAT_BYPASS_AUTH_DOCKER`              |
 | Rate limit               | Throttle abuse / accidental floods                                                | 600 req/min/IP                           | `SMILEYCHAT_RATE_LIMIT_ENABLED`, `SMILEYCHAT_RATE_LIMIT_DEFAULT`                 |

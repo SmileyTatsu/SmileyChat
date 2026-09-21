@@ -46,7 +46,7 @@ Restart SmileyChat after changing the port.
 
 ## Browser Shows the Remote Access Setup Page
 
-SmileyChat binds to `0.0.0.0` by default but blocks non-loopback access until you configure access.
+When bound to `0.0.0.0` for network access, SmileyChat blocks non-loopback access until you configure access.
 
 For another device on your LAN, set one of these in `.env`:
 

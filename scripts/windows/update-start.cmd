@@ -15,10 +15,11 @@ if errorlevel 1 (
   if exist "%USERPROFILE%\.bun\bin\bun.exe" (
     set "PATH=%USERPROFILE%\.bun\bin;%PATH%"
   ) else (
-    echo Bun is required to run SmileyChat, but it was not found.
-    set /p INSTALL_BUN="Do you want to install Bun now? (Y/N): "
+    echo Bun is required to run SmileyChat, but it was not found on your system.
+    echo SmileyChat can download and install Bun to "%USERPROFILE%\.bun" via https://bun.sh.
+    set /p INSTALL_BUN="Do you want to download and install Bun now? (Y/N): "
     if /I "!INSTALL_BUN!"=="Y" (
-      powershell -c "irm bun.sh/install.ps1 | iex"
+      powershell -NoProfile -ExecutionPolicy Bypass -c "irm bun.sh/install.ps1 | iex"
       if errorlevel 1 (
         echo Failed to install Bun. Please install it manually from https://bun.sh
         pause

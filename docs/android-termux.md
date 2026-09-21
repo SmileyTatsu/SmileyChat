@@ -68,11 +68,18 @@ If Android does not foreground the browser, open the URL manually. On devices
 that restrict background launches, allowing Termux to **Display over other
 apps** in Android settings can make the browser handoff more reliable.
 
-After the first install, start or update SmileyChat with:
+After the first install, start SmileyChat with:
 
 ```sh
 cd ~/SmileyChat
 sh ./SmileyChat.Termux.sh
+```
+
+To update SmileyChat before starting:
+
+```sh
+cd ~/SmileyChat
+sh ./SmileyChat.Termux.Update.sh
 ```
 
 ## Method 2: Manual Install

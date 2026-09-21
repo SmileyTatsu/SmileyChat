@@ -88,24 +88,26 @@ _(To update the app before starting, use `./SmileyChat.Linux.Update.sh`)_
 Android is supported using Termux and a Bun compatibility shim.
 **[Read the full Android walkthrough](docs/android-termux.md)**.
 
-Once configured, start or update SmileyChat with:
+Once configured, start SmileyChat with:
 
 ```sh
 sh ./SmileyChat.Termux.sh
 ```
 
+_(To update the app before starting, use `sh ./SmileyChat.Termux.Update.sh`)_
+
 ---
 
 ## Server Configuration
 
-By default, SmileyChat binds to **`0.0.0.0`**, making it accessible to LAN devices, Tailscale peers, and Docker containers out of the box.
+By default, SmileyChat binds to **`127.0.0.1`** (loopback only) to ensure privacy, avoid firewall alerts, and keep access local. To make it accessible to LAN devices, Tailscale peers, or Docker containers, set `SMILEYCHAT_HOST=0.0.0.0` in `.env`.
 
-**Safe-by-Default:** Any non-loopback request will show a "set up access" page until you configure authentication. Edit the `.env` file (auto-created on first boot) to manage access. Most changes hot-reload in ~2 seconds.
+**Safe-by-Default:** When exposed to the network (`0.0.0.0`), any non-loopback request will show a "set up access" page until you configure authentication. Edit the `.env` file (auto-created on first boot) to manage access. Most changes hot-reload in ~2 seconds.
 
 ```bash
-# Interface the server binds to. 0.0.0.0 = all interfaces (default).
-# Set 127.0.0.1 to refuse every connection except loopback.
-SMILEYCHAT_HOST=0.0.0.0
+# Interface the server binds to. 127.0.0.1 = loopback only (default).
+# Set 0.0.0.0 to allow LAN, Tailscale, and Docker access.
+SMILEYCHAT_HOST=127.0.0.1
 
 # Set false to stop SmileyChat opening a local browser tab on startup.
 SMILEYCHAT_OPEN_BROWSER=false

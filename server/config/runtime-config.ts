@@ -6,16 +6,12 @@
 // `SMILEYCHAT_` prefix so it can sit next to a user's other env vars
 // without ambiguity.
 
-// Bind to all interfaces by default so Tailscale / LAN access works
-// out of the box. The safe-by-default lockdown in basic-auth.ts refuses
-// non-loopback connections until the user sets up Basic Auth, an IP
-// allowlist, or explicitly opts into unauthenticated remote access, so
-// "0.0.0.0 by default" doesn't expose chats or API keys to the network
-// in a fresh install. Override with SMILEYCHAT_HOST=127.0.0.1 to bind
-// loopback only.
+// Bind to loopback (127.0.0.1) by default so local instances stay private,
+// avoid Windows Firewall alerts, and prevent unwanted LAN exposure.
+// Set SMILEYCHAT_HOST=0.0.0.0 in .env to allow LAN, Tailscale, or Docker access.
 import { logger } from "../logger";
 
-const DEFAULT_HOST = "0.0.0.0";
+const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 4173;
 const DEFAULT_FRONTEND_PORT = 5173;
 const DEFAULT_BASIC_AUTH_REALM = "SmileyChat";
