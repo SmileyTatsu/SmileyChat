@@ -44,6 +44,21 @@ SMILEYCHAT_PORT=4174
 
 Restart SmileyChat after changing the port.
 
+## Cannot Connect from Phone or Another Device
+
+By default, SmileyChat binds to `127.0.0.1` (loopback only) and does not accept connections from other devices on your local network.
+
+To allow connections from your phone or tablet:
+
+1. Open `.env` in your SmileyChat folder and set:
+   ```env
+   SMILEYCHAT_HOST=0.0.0.0
+   ```
+2. Configure your preferred security option (e.g., `SMILEYCHAT_BASIC_AUTH_USER`/`PASS` or `SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK=true`).
+3. Restart SmileyChat so the new host binding takes effect.
+
+For complete instructions, see [How to Access SmileyChat Remotely](remote-access.md).
+
 ## Browser Shows the Remote Access Setup Page
 
 When bound to `0.0.0.0` for network access, SmileyChat blocks non-loopback access until you configure access.

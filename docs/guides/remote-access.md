@@ -9,9 +9,19 @@ Here is the step-by-step guide to setting up remote access.
 Go to the main SmileyChat folder. Look for a file named `.env`.
 _(If it doesn't exist, start the app once to create it, or copy/rename `.env.example` to `.env`)_.
 
-## Step 2: Choose your security method
+## Step 2: Enable Network Access
 
-Open the `.env` file in a text editor (like Notepad) and add **one** of the following configurations:
+By default, SmileyChat binds to `127.0.0.1` (loopback only) so that only your local computer can reach it. To allow your phone, tablet, or other devices on your network to connect, set the host to bind all interfaces:
+
+```env
+SMILEYCHAT_HOST=0.0.0.0
+```
+
+> **Note:** Changing the host binding (`SMILEYCHAT_HOST`) requires restarting SmileyChat so the server can bind to your network interfaces.
+
+## Step 3: Choose your security method
+
+In the same `.env` file, choose **one** of the following security options to control who can access SmileyChat:
 
 ### Option A: Username and Password (Recommended)
 
@@ -38,16 +48,16 @@ If you only want to allow specific devices by their exact IP addresses:
 SMILEYCHAT_IP_ALLOWLIST=192.168.1.5,192.168.1.10
 ```
 
-## Step 3: Save the file (No restart needed!)
+## Step 4: Restart SmileyChat
 
-SmileyChat hot-reloads its `.env` file automatically. Just save the file, and within 2 seconds, your new security settings will be active. No need to restart the console.
+Save the `.env` file and restart SmileyChat so it binds to `0.0.0.0`. (Any future edits to passwords, auth, or allowlists will hot-reload automatically in ~2 seconds without restarting).
 
-## Step 4: Find your computer's local IP address
+## Step 5: Find your computer's local IP address
 
 - **Windows:** Open Command Prompt (`cmd`) and type `ipconfig`. Look for the "IPv4 Address" (usually starts with `192.168.` or `10.0.`).
 - **Mac/Linux:** Open the terminal and type `ifconfig` or `ip a`.
 
-## Step 5: Connect from your Mobile Device
+## Step 6: Connect from your Mobile Device
 
 Open the browser on your phone or tablet (ensure it's connected to the same WiFi as your computer). Type your computer's IP address followed by the port `:4173`.
 _Example:_ `http://192.168.1.15:4173`
