@@ -41,6 +41,8 @@ import type {
     PluginMessageAction,
     PluginNetworkApi,
     PluginSidebarPanel,
+    PluginSettingsDefinition,
+    PluginSettingsHandle,
     PluginSettingsPanel,
     PluginStorageApi,
     PromptMiddleware,
@@ -96,6 +98,144 @@ const pluginDisposers = new Map<string, () => void>();
 const pluginStyles = new Map<string, Map<string, HTMLStyleElement>>();
 const characterPresenceOverrides = new Map<string, PluginCharacterPresenceStatus>();
 const composerStateOverrides = new Map<string, PluginComposerStatePatch>();
+
+export type RegisteredSettingsRecord<T = any> = {
+    pluginId: string;
+    key: string;
+    definition?: PluginSettingsDefinition<T>;
+    currentValue?: T;
+    initialized: boolean;
+    listeners: Set<(settings: T) => void>;
+    writeQueue: Promise<void>;
+};
+
+const pluginSettingsRecords = new Map<string, Map<string, RegisteredSettingsRecord>>();
+const pluginStorages = new Map<string, PluginStorageApi>();
+
+export function getPluginSettingsRecord(
+    pluginId: string,
+    key = "settings",
+): RegisteredSettingsRecord | undefined {
+    return pluginSettingsRecords.get(pluginId)?.get(key);
+}
+
+export function getPluginSettingsDefinition(
+    pluginId: string,
+    key = "settings",
+): PluginSettingsDefinition | undefined {
+    return pluginSettingsRecords.get(pluginId)?.get(key)?.definition;
+}
+
+export function getPluginSettingsValue<T = any>(
+    pluginId: string,
+    key = "settings",
+): T | undefined {
+    return pluginSettingsRecords.get(pluginId)?.get(key)?.currentValue;
+}
+
+export function subscribeToPluginSettings(
+    pluginId: string,
+    key = "settings",
+    listener: (settings: any) => void,
+): () => void {
+    let recordsForPlugin = pluginSettingsRecords.get(pluginId);
+    if (!recordsForPlugin) {
+        recordsForPlugin = new Map();
+        pluginSettingsRecords.set(pluginId, recordsForPlugin);
+    }
+    let record = recordsForPlugin.get(key);
+    if (!record) {
+        record = {
+            pluginId,
+            key,
+            initialized: false,
+            listeners: new Set(),
+            writeQueue: Promise.resolve(),
+        };
+        recordsForPlugin.set(key, record);
+    }
+    record.listeners.add(listener);
+    return () => {
+        record?.listeners.delete(listener);
+    };
+}
+
+export async function updatePluginSettingsValue<T = any>(
+    pluginId: string,
+    key = "settings",
+    patchOrNext: Partial<T> | T,
+    storage?: PluginStorageApi,
+): Promise<T> {
+    const effectiveStorage = storage ?? pluginStorages.get(pluginId);
+    let recordsForPlugin = pluginSettingsRecords.get(pluginId);
+    if (!recordsForPlugin) {
+        recordsForPlugin = new Map();
+        pluginSettingsRecords.set(pluginId, recordsForPlugin);
+    }
+    let record = recordsForPlugin.get(key) as RegisteredSettingsRecord<T> | undefined;
+    if (!record) {
+        record = {
+            pluginId,
+            key,
+            initialized: false,
+            listeners: new Set(),
+            writeQueue: Promise.resolve(),
+        };
+        recordsForPlugin.set(key, record as RegisteredSettingsRecord);
+    }
+
+    const update = record.writeQueue.then(async () => {
+        const existing = record!.initialized
+            ? record!.currentValue
+            : effectiveStorage
+              ? await effectiveStorage.getJson(key, {})
+              : undefined;
+        const isObject =
+            typeof existing === "object" && existing !== null && !Array.isArray(existing);
+        const merged = (
+            isObject &&
+            typeof patchOrNext === "object" &&
+            patchOrNext !== null &&
+            !Array.isArray(patchOrNext)
+                ? { ...existing, ...patchOrNext }
+                : patchOrNext
+        ) as T;
+
+        const nextValue = record!.definition?.normalize
+            ? record!.definition.normalize(merged)
+            : merged;
+        const validationError = await record!.definition?.validate?.(nextValue);
+        if (typeof validationError === "string" && validationError.trim()) {
+            throw new Error(validationError);
+        }
+
+        if (effectiveStorage) {
+            await effectiveStorage.setJson(key, nextValue);
+        }
+
+        record!.currentValue = nextValue;
+        record!.initialized = true;
+        for (const listener of record!.listeners) {
+            try {
+                listener(nextValue);
+            } catch (error) {
+                createClientLogger(pluginId).warn(
+                    `Plugin ${pluginId} settings listener failed`,
+                    error,
+                );
+            }
+        }
+        notifyRegistryChanged();
+        return nextValue;
+    });
+
+    record.writeQueue = update.then(
+        () => undefined,
+        () => undefined,
+    );
+
+    return update;
+}
 
 let latestSnapshot: PluginAppSnapshot | undefined;
 let appActionHandlers: Partial<PluginAppActionHandlers> = {};
@@ -271,6 +411,8 @@ export function deactivatePlugin(pluginId: string) {
     characterPresenceOverrides.delete(pluginId);
     composerStateOverrides.delete(pluginId);
     pluginStyles.delete(pluginId);
+    pluginSettingsRecords.delete(pluginId);
+    pluginStorages.delete(pluginId);
 
     for (const listenersForEvent of eventListeners.values()) {
         for (const item of [...listenersForEvent]) {
@@ -286,10 +428,12 @@ export function deactivatePlugin(pluginId: string) {
         }
     }
 
-    for (const element of document.querySelectorAll(
-        `[data-plugin-id="${CSS.escape(pluginId)}"]`,
-    )) {
-        element.remove();
+    if (typeof document !== "undefined") {
+        for (const element of document.querySelectorAll(
+            `[data-plugin-id="${CSS.escape(pluginId)}"]`,
+        )) {
+            element.remove();
+        }
     }
 
     notifyRegistryChanged();
@@ -592,6 +736,7 @@ export function createPluginApi(
     network: PluginNetworkApi,
     capabilities: PluginApiCapabilities = {},
 ): SmileyPluginApi {
+    pluginStorages.set(manifest.id, storage);
     return {
         plugin: manifest,
         state: {
@@ -630,7 +775,11 @@ export function createPluginApi(
                 requireDeclaredPluginPermission(manifest, "ui:settings");
                 settingsPanels.push({
                     pluginId: manifest.id,
-                    value: { ...panel, id: pluginScopedId(manifest.id, panel.id) },
+                    value: {
+                        ...panel,
+                        id: pluginScopedId(manifest.id, panel.id),
+                        settingsKey: panel.settingsKey || "settings",
+                    },
                 });
                 notifyRegistryChanged();
             },
@@ -979,6 +1128,86 @@ export function createPluginApi(
             },
         },
         storage,
+        settings: {
+            async register<T = Record<string, unknown>>(
+                definition: PluginSettingsDefinition<T>,
+            ): Promise<PluginSettingsHandle<T>> {
+                const key = definition.key?.trim() || "settings";
+                let recordsForPlugin = pluginSettingsRecords.get(manifest.id);
+                if (!recordsForPlugin) {
+                    recordsForPlugin = new Map();
+                    pluginSettingsRecords.set(manifest.id, recordsForPlugin);
+                }
+
+                let record = recordsForPlugin.get(key) as
+                    | RegisteredSettingsRecord<T>
+                    | undefined;
+                if (!record) {
+                    record = {
+                        pluginId: manifest.id,
+                        key,
+                        initialized: false,
+                        listeners: new Set(),
+                        writeQueue: Promise.resolve(),
+                    };
+                    recordsForPlugin.set(key, record as RegisteredSettingsRecord);
+                }
+
+                await record.writeQueue;
+                record.definition = definition;
+                if (!record.initialized) {
+                    const raw = await storage.getJson(key, definition.defaultValues);
+                    record.currentValue = definition.normalize
+                        ? definition.normalize(raw)
+                        : raw;
+                    record.initialized = true;
+                } else if (definition.normalize) {
+                    record.currentValue = definition.normalize(record.currentValue);
+                }
+
+                notifyRegistryChanged();
+
+                const handle: PluginSettingsHandle<T> = {
+                    get() {
+                        return record!.currentValue as T;
+                    },
+                    async set(patchOrNext) {
+                        return updatePluginSettingsValue(
+                            manifest.id,
+                            key,
+                            patchOrNext,
+                            storage,
+                        );
+                    },
+                    subscribe(listener) {
+                        record!.listeners.add(listener);
+                        return () => record!.listeners.delete(listener);
+                    },
+                };
+
+                return handle;
+            },
+            get<T = Record<string, unknown>>(key = "settings"): T | undefined {
+                return pluginSettingsRecords.get(manifest.id)?.get(key)?.currentValue;
+            },
+            async set<T = Record<string, unknown>>(
+                patchOrNext: Partial<T> | T,
+                key = "settings",
+            ): Promise<T> {
+                return updatePluginSettingsValue<T>(
+                    manifest.id,
+                    key,
+                    patchOrNext,
+                    storage,
+                );
+            },
+            subscribe<T = Record<string, unknown>>(
+                listener: (settings: T) => void,
+                key = "settings",
+            ): () => void {
+                return subscribeToPluginSettings(manifest.id, key, listener);
+            },
+        },
         events: pluginEvents(manifest),
     };
 }

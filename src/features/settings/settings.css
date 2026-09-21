@@ -1226,6 +1226,24 @@
     font-size: 0.9rem;
 }
 
+.plugin-config-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.plugin-config-section-header h4 {
+    margin: 0;
+    color: #ececf1;
+    font-size: 0.9rem;
+}
+
+.declarative-plugin-settings {
+    display: grid;
+    gap: 12px;
+}
+
 .empty-plugin-state {
     display: flex;
     align-items: center;

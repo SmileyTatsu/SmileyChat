@@ -425,14 +425,79 @@ api.ui.h("button", { type: "button" }, "Click me");
 
 Adds custom configuration UI inside the plugin card in **Options > Plugins > Configure**.
 
+Register the settings before registering the panel. SmileyChat then manages panel
+autosaving (700ms debounce), queued writes, unmount flushing, and the
+`Saving...` / `Saved` or error status in the section header.
+
 ```js
+await api.settings.register({
+    defaultValues: { enabled: true },
+});
+
 api.ui.registerSettingsPanel({
     id: "settings",
     label: "Settings",
-    render: ({ pluginId, storage, snapshot }) =>
-        api.ui.h("section", null, [api.ui.h("p", null, `Config for ${pluginId}`)]),
+    render: ({ pluginId, settings, updateSettings, snapshot }) =>
+        api.ui.h("section", null, [
+            api.ui.h(
+                "button",
+                {
+                    type: "button",
+                    onClick: () => updateSettings({ enabled: !settings.enabled }),
+                },
+                settings.enabled ? "Disable" : "Enable",
+            ),
+        ]),
 });
 ```
+
+The render callback also receives `pluginId`, `storage`, `snapshot`,
+`requestState`, and `statusMessage`. For object settings, `updateSettings`
+shallow-merges the supplied patch; non-object settings are replaced.
+
+For a non-default storage key, set the same key on the registration and panel:
+
+```js
+await api.settings.register({
+    key: "advanced",
+    defaultValues: { enabled: false },
+});
+
+api.ui.registerSettingsPanel({
+    id: "advanced",
+    label: "Advanced",
+    settingsKey: "advanced",
+    render: ({ settings, updateSettings }) =>
+        api.ui.h("button", {
+            onClick: () => updateSettings({ enabled: !settings.enabled }),
+        }, settings.enabled ? "Disable" : "Enable"),
+});
+```
+
+Alternatively, provide declarative fields instead of `render`:
+
+```js
+await api.settings.register({
+    defaultValues: { enabled: true, limit: 10 },
+});
+
+api.ui.registerSettingsPanel({
+    id: "settings",
+    label: "Settings",
+    fields: [
+        { type: "toggle", key: "enabled", label: "Enable Feature" },
+        { type: "number", key: "limit", label: "Max Items", min: 1, max: 100 },
+    ],
+});
+```
+
+Declarative field types are `toggle` (or `checkbox`), `number`, `text`,
+`textarea`, and `select`. Every field accepts `key`, `label`, optional
+`description`, and optional `disabled`. Number fields also accept `min`, `max`,
+`step`, and `integer`; textarea fields accept `rows`; text and textarea fields
+accept `placeholder`; and select fields accept `options` with string `value`
+and `label` properties. Fields may also be supplied through
+`api.settings.register({ fields: [...] })`.
 
 Requires `ui:settings`.
 
@@ -1001,6 +1066,64 @@ Structured result fields:
 For an image-producing tool, use `imageContext` and `suppressHistoryProtocol` together. The saved chat still retains tool activity for UI and diagnostics, while future model context contains the final assistant message plus a separate internal visual-continuity message.
 
 Requires `tools:register`.
+
+## `api.settings`
+
+Registers and manages plugin settings with automatic persistence, in-memory caching, normalization, validation, and change subscriptions.
+
+```js
+const settingsHandle = await api.settings.register({
+    key: "settings", // optional, defaults to "settings"
+    defaultValues: { enabled: true, threshold: 10 },
+    normalize: (raw) => ({
+        enabled: Boolean(raw?.enabled),
+        threshold: Number(raw?.threshold ?? 10),
+    }),
+    validate: (val) => {
+        if (val.threshold < 0) return "Threshold must be positive.";
+    },
+});
+
+// Synchronously read cached settings
+const current = settingsHandle.get(); // or api.settings.get()
+
+// Programmatic updates persist immediately. Settings-panel edits are debounced.
+await settingsHandle.set({ threshold: 20 }); // or api.settings.set({ threshold: 20 })
+
+// Subscribe to settings updates
+const unsubscribe = settingsHandle.subscribe((newSettings) => {
+    console.log("Settings changed:", newSettings);
+});
+```
+
+`defaultValues` are used when the storage key has no saved value. `normalize`
+runs after loading and before every write, making it suitable for sanitization
+and migrations. `validate` may return an error string, throw, or return a
+promise; rejected values are not persisted.
+
+Object updates are shallow-merged with the current value. Arrays, primitives,
+and other non-object values are replaced.
+
+The handle returned by `register` is bound to its registration key:
+
+```js
+settingsHandle.get();
+await settingsHandle.set(patchOrNext);
+const unsubscribe = settingsHandle.subscribe(listener);
+```
+
+The plugin-wide API accepts an optional key, which defaults to `"settings"`:
+
+```js
+api.settings.get("advanced");
+await api.settings.set(patchOrNext, "advanced");
+const unsubscribe = api.settings.subscribe(listener, "advanced");
+```
+
+Programmatic `set` calls persist immediately and resolve with the normalized
+saved value. Edits made through a managed settings panel are debounced by 700ms.
+Subscribers run after a successful write and also receive changes made through
+the managed panel.
 
 ## `api.storage`
 

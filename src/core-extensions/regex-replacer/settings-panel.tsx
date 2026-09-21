@@ -17,10 +17,17 @@ import {
 } from "./settings";
 import { runRules } from "./test-utils";
 
-export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
-    const [settings, setSettings] = useState(getRegexSettings());
+export function RegexReplacerSettingsPanel({
+    api,
+    settings: managedSettings,
+    updateSettings,
+}: {
+    api?: SmileyPluginApi;
+    settings?: RegexSettings;
+    updateSettings?: (patch: Partial<RegexSettings> | RegexSettings) => void;
+}) {
+    const settings = managedSettings ?? getRegexSettings();
     const [testInput, setTestInput] = useState("");
-    const [status, setStatus] = useState("");
     const [isDeleteProfileConfirmOpen, setIsDeleteProfileConfirmOpen] = useState(false);
     const [ruleToDelete, setRuleToDelete] = useState<{
         index: number;
@@ -39,10 +46,12 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
         settings.profiles.find((p) => p.id === settings.activeProfileId) ??
         settings.profiles[0];
 
-    async function persist(nextSettings: RegexSettings) {
-        const saved = await saveRegexSettings(api, nextSettings);
-        setSettings(saved);
-        setStatus("Saved.");
+    function persist(nextSettings: RegexSettings) {
+        if (updateSettings) {
+            updateSettings(nextSettings);
+        } else if (api) {
+            void saveRegexSettings(api, nextSettings);
+        }
     }
 
     async function updateProfile(patch: Partial<RegexProfile>) {
@@ -257,10 +266,6 @@ export function RegexReplacerSettingsPanel({ api }: { api: SmileyPluginApi }) {
                     </p>
                 )}
             </section>
-
-            <p className="rr-status wide" aria-live="polite">
-                {status}
-            </p>
 
             {profileModal && (
                 <ProfileModalDialog

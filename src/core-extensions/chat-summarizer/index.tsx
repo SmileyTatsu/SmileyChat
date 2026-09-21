@@ -23,8 +23,13 @@ export async function activate(api: SmileyPluginApi) {
     api.ui.registerSettingsPanel({
         id: "settings",
         label: "Chat Summarizer",
-        render: ({ snapshot }) => (
-            <SummarizerSettingsPanel api={api} snapshot={snapshot} />
+        render: ({ snapshot, settings, updateSettings }) => (
+            <SummarizerSettingsPanel
+                api={api}
+                snapshot={snapshot}
+                settings={settings}
+                updateSettings={updateSettings}
+            />
         ),
     });
 

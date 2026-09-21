@@ -12,18 +12,21 @@ import {
 } from "./settings";
 
 type SettingsPanelProps = {
-    api: SmileyPluginApi;
+    api?: SmileyPluginApi;
     snapshot: PluginAppSnapshot;
+    settings?: SummarizerSettings;
+    updateSettings?: (patch: Partial<SummarizerSettings>) => void;
 };
 
-export function SummarizerSettingsPanel({ api, snapshot }: SettingsPanelProps) {
-    const [settings, setSettings] = useState(getSummarizerSettings());
-    const [status, setStatus] = useState("");
+export function SummarizerSettingsPanel({
+    snapshot,
+    settings: managedSettings,
+    updateSettings,
+}: SettingsPanelProps) {
+    const settings = managedSettings ?? getSummarizerSettings();
 
-    async function update(patch: Partial<SummarizerSettings>) {
-        const nextSettings = await saveSummarizerSettings(api, patch);
-        setSettings(nextSettings);
-        setStatus("Saved.");
+    function update(patch: Partial<SummarizerSettings>) {
+        updateSettings?.(patch);
     }
 
     const profiles = snapshot.connectionSettings.profiles;
@@ -292,8 +295,6 @@ export function SummarizerSettingsPanel({ api, snapshot }: SettingsPanelProps) {
                     </button>
                 </div>
             </section>
-
-            <p className="chs-status">{status}</p>
         </section>
     );
 }

@@ -40,6 +40,20 @@ export function getCachedActiveSummaryText() {
 }
 
 export async function loadSummarizerSettings(api: SmileyPluginApi) {
+    if (api.settings) {
+        await api.settings.register({
+            key: "settings",
+            defaultValues: defaultSummarizerSettings,
+            normalize: normalizeSummarizerSettings,
+        });
+        settingsCache = api.settings.get("settings") ?? defaultSummarizerSettings;
+        api.settings.subscribe((newSettings: SummarizerSettings) => {
+            settingsCache = newSettings;
+            notifySummaryCacheChanged();
+        });
+        return settingsCache;
+    }
+
     settingsCache = normalizeSummarizerSettings(
         await api.storage
             .getJson("settings", defaultSummarizerSettings)
@@ -52,6 +66,13 @@ export async function saveSummarizerSettings(
     api: SmileyPluginApi,
     patch: Partial<SummarizerSettings>,
 ) {
+    if (api.settings) {
+        const saved = await api.settings.set(patch);
+        settingsCache = saved as SummarizerSettings;
+        notifySummaryCacheChanged();
+        return settingsCache;
+    }
+
     settingsCache = normalizeSummarizerSettings({
         ...settingsCache,
         ...patch,

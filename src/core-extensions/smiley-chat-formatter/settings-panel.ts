@@ -1,38 +1,13 @@
 import type { FormatterApi } from "./nodes";
 import type { FormatterSettings } from "./settings";
-import {
-    getFormatterSettings,
-    normalizeFormatterSettings,
-    setFormatterSettings,
-} from "./settings";
+import { getFormatterSettings } from "./settings";
 
 export function renderSettingsPanel(
     api: FormatterApi,
-    registerFormatterRenderer: () => void,
+    currentSettings?: FormatterSettings,
+    updateSettings?: (patch: Partial<FormatterSettings>) => void,
 ) {
-    const statusId = "scf-settings-status";
-
-    const update = async (patch: Partial<FormatterSettings>) => {
-        const nextSettings = normalizeFormatterSettings({
-            ...getFormatterSettings(),
-            ...patch,
-        });
-        const status = document.getElementById(statusId);
-
-        setFormatterSettings(nextSettings);
-
-        try {
-            await api.storage.setJson("settings", nextSettings);
-            registerFormatterRenderer();
-            if (status) {
-                status.textContent = "Saved.";
-            }
-        } catch {
-            if (status) {
-                status.textContent = "Could not save settings.";
-            }
-        }
-    };
+    const active = currentSettings ?? getFormatterSettings();
 
     const checkbox = (
         label: string,
@@ -46,11 +21,11 @@ export function renderSettingsPanel(
             ]),
             api.ui.h("input", {
                 type: "checkbox",
-                checked: Boolean(getFormatterSettings()[key]),
+                checked: Boolean(active[key]),
                 onChange: (event: Event) => {
                     const target = event.currentTarget;
                     if (target instanceof HTMLInputElement) {
-                        void update({ [key]: target.checked });
+                        updateSettings?.({ [key]: target.checked });
                     }
                 },
             }),
@@ -109,6 +84,5 @@ export function renderSettingsPanel(
                 "preserveUnknownTags",
             ),
         ]),
-        api.ui.h("p", { className: "scf-settings-status", id: statusId }, ""),
     ]);
 }

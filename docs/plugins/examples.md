@@ -95,35 +95,97 @@ Usage:
 You are writing with {{active_character}}.
 ```
 
-## Save Plugin Settings
+## Save Plugin Settings (Autosaving)
 
 Requires `ui:settings`.
 
+SmileyChat manages plugin settings autosave, queued writes, unmount flushing,
+and save status indicators automatically. Plugins register their default
+settings and call `updateSettings(patch)` or declare form fields. Panel edits
+are debounced by 700ms; `api.settings.set(...)` is intended for programmatic
+updates and persists immediately.
+
 ```js
-export function activate(api) {
+export async function activate(api) {
+    await api.settings.register({
+        defaultValues: { count: 0 },
+    });
+
     api.ui.registerSettingsPanel({
         id: "settings",
         label: "Counter",
-        render: () => {
-            let count = 0;
-
-            async function increment() {
-                const data = await api.storage.getJson("settings", { count: 0 });
-                count = data.count + 1;
-                await api.storage.setJson("settings", { count });
-            }
-
+        render: ({ settings, updateSettings }) => {
             return api.ui.h(
                 "button",
-                { type: "button", onClick: increment },
-                "Increment",
+                {
+                    type: "button",
+                    onClick: () => updateSettings({ count: (settings.count ?? 0) + 1 }),
+                },
+                `Count: ${settings.count ?? 0}`,
             );
         },
     });
 }
 ```
 
-This example keeps the UI minimal. More complex plugin settings should use a small Preact component bundled into the plugin entry file.
+When registering more than one settings object, give the panel the matching
+`settingsKey`:
+
+```js
+await api.settings.register({
+    key: "advanced",
+    defaultValues: { enabled: false },
+});
+
+api.ui.registerSettingsPanel({
+    id: "advanced",
+    label: "Advanced",
+    settingsKey: "advanced",
+    render: ({ settings, updateSettings }) =>
+        api.ui.h(
+            "button",
+            {
+                type: "button",
+                onClick: () => updateSettings({ enabled: !settings.enabled }),
+            },
+            settings.enabled ? "Disable" : "Enable",
+        ),
+});
+```
+
+Or declare zero-code settings fields:
+
+```js
+export async function activate(api) {
+    await api.settings.register({
+        defaultValues: { enabled: true, limit: 10 },
+    });
+
+    api.ui.registerSettingsPanel({
+        id: "settings",
+        label: "My Extension",
+        fields: [
+            {
+                type: "toggle",
+                key: "enabled",
+                label: "Enable Feature",
+                description: "Turn on processing",
+            },
+            {
+                type: "number",
+                key: "limit",
+                label: "Max items",
+                min: 1,
+                max: 100,
+            },
+        ],
+    });
+}
+```
+
+Supported declarative field types are `toggle`/`checkbox`, `number`, `text`,
+`textarea`, and `select`. See the API reference for their optional constraints
+and presentation properties.
 
 ## Add A Message Action
 

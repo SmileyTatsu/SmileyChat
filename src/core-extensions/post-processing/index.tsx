@@ -31,8 +31,13 @@ export async function activate(api: SmileyPluginApi) {
     api.ui.registerSettingsPanel({
         id: "settings",
         label: "Post Processing",
-        render: ({ snapshot }) => (
-            <PostProcessingSettingsPanel api={api} snapshot={snapshot} />
+        render: ({ snapshot, settings, updateSettings }) => (
+            <PostProcessingSettingsPanel
+                api={api}
+                snapshot={snapshot}
+                settings={settings}
+                updateSettings={updateSettings}
+            />
         ),
     });
 

@@ -116,16 +116,91 @@ export type PluginCharacterPresence = {
     sourcePluginIds: string[];
 };
 
-export type PluginSettingsPanelProps = {
+export type PluginSettingBaseField = {
+    key: string;
+    label: string;
+    description?: string;
+    disabled?: boolean;
+};
+
+export type PluginSettingToggleField = PluginSettingBaseField & {
+    type: "toggle" | "checkbox";
+};
+
+export type PluginSettingTextField = PluginSettingBaseField & {
+    type: "text";
+    placeholder?: string;
+};
+
+export type PluginSettingTextareaField = PluginSettingBaseField & {
+    type: "textarea";
+    placeholder?: string;
+    rows?: number;
+};
+
+export type PluginSettingNumberField = PluginSettingBaseField & {
+    type: "number";
+    min?: number;
+    max?: number;
+    step?: number;
+    integer?: boolean;
+};
+
+export type PluginSettingSelectOption = {
+    value: string;
+    label: string;
+};
+
+export type PluginSettingSelectField = PluginSettingBaseField & {
+    type: "select";
+    options: PluginSettingSelectOption[];
+};
+
+export type PluginSettingField =
+    | PluginSettingToggleField
+    | PluginSettingTextField
+    | PluginSettingTextareaField
+    | PluginSettingNumberField
+    | PluginSettingSelectField;
+
+export type PluginSettingsDefinition<T = Record<string, unknown>> = {
+    /** The storage key under plugin storage. Defaults to "settings". */
+    key?: string;
+    /** Default settings returned when storage is empty. */
+    defaultValues: T;
+    /** Optional normalizer to sanitize/migrate raw JSON from storage. */
+    normalize?: (value: unknown) => T;
+    /** Optional validator. Throw an error or return an error message string to reject a save. */
+    validate?: (value: T) => void | string | Promise<void | string>;
+    /** Optional declarative fields for automatic UI generation. */
+    fields?: PluginSettingField[];
+};
+
+export type PluginSettingsHandle<T = Record<string, unknown>> = {
+    /** Returns current in-memory cached settings synchronously. */
+    get(): T;
+    /** Update settings in memory and persist them immediately. */
+    set(patchOrNext: Partial<T> | T): Promise<T>;
+    /** Subscribe to settings changes. Returns an unsubscribe function. */
+    subscribe(listener: (settings: T) => void): () => void;
+};
+
+export type PluginSettingsPanelProps<T = any> = {
     pluginId: string;
     storage: PluginStorageApi;
     snapshot: PluginAppSnapshot;
+    settings?: T;
+    updateSettings?: (patchOrNext: Partial<T> | T) => void;
+    requestState?: "idle" | "loading" | "success" | "error";
+    statusMessage?: string;
 };
 
-export type PluginSettingsPanel = {
+export type PluginSettingsPanel<T = any> = {
     id: string;
     label: string;
-    render: (props: PluginSettingsPanelProps) => ComponentChildren;
+    settingsKey?: string;
+    render?: (props: PluginSettingsPanelProps<T>) => ComponentChildren;
+    fields?: PluginSettingField[];
 };
 
 export type PluginSidebarPanelProps = {
@@ -586,6 +661,20 @@ export type SmileyPluginApi = {
         registerTool(tool: PluginTool): () => void;
     };
     storage: PluginStorageApi;
+    settings: {
+        register<T = Record<string, unknown>>(
+            definition: PluginSettingsDefinition<T>,
+        ): Promise<PluginSettingsHandle<T>>;
+        get<T = Record<string, unknown>>(key?: string): T | undefined;
+        set<T = Record<string, unknown>>(
+            patchOrNext: Partial<T> | T,
+            key?: string,
+        ): Promise<T>;
+        subscribe<T = Record<string, unknown>>(
+            listener: (settings: T) => void,
+            key?: string,
+        ): () => void;
+    };
     events: PluginEventsApi;
 };
 

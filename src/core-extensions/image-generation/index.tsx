@@ -94,8 +94,13 @@ export async function activate(api: SmileyPluginApi) {
     api.ui.registerSettingsPanel({
         id: "settings",
         label: "Image Generation",
-        render: ({ snapshot }) => (
-            <ImageGenerationSettingsPanel api={api} snapshot={snapshot} />
+        render: ({ snapshot, settings, updateSettings }) => (
+            <ImageGenerationSettingsPanel
+                api={api}
+                snapshot={snapshot}
+                settings={settings}
+                updateSettings={updateSettings}
+            />
         ),
     });
 

@@ -79,6 +79,20 @@ export function createRegexProfile(name: string): RegexProfile {
 }
 
 export async function activate(api: SmileyPluginApi) {
+    if (api.settings) {
+        await api.settings.register({
+            key: "settings",
+            defaultValues: defaultRegexSettings(),
+            normalize: normalizeRegexSettings,
+        });
+        settingsCache =
+            (api.settings.get("settings") as RegexSettings) ?? defaultRegexSettings();
+        api.settings.subscribe((newSettings: RegexSettings) => {
+            settingsCache = newSettings;
+        });
+        return;
+    }
+
     settingsCache = normalizeRegexSettings(
         await api.storage.getJson("settings", settingsCache).catch(() => settingsCache),
     );
@@ -89,6 +103,12 @@ export function getRegexSettings() {
 }
 
 export async function saveRegexSettings(api: SmileyPluginApi, value: RegexSettings) {
+    if (api.settings) {
+        const saved = (await api.settings.set(value)) as RegexSettings;
+        settingsCache = saved;
+        return settingsCache;
+    }
+
     settingsCache = normalizeRegexSettings(value);
     await api.storage.setJson("settings", settingsCache);
     return settingsCache;

@@ -114,6 +114,26 @@ export function getImageGenerationSettings() {
 }
 
 export async function loadImageGenerationSettings(api: SmileyPluginApi) {
+    if (api.settings) {
+        await api.settings.register({
+            key: IMAGE_SETTINGS_KEY,
+            defaultValues: defaultImageGenerationSettings,
+            normalize: normalizeImageGenerationSettings,
+            validate: (settings) => {
+                splitMasterPrompt(settings.masterPrompt);
+            },
+        });
+        cachedSettings =
+            (api.settings.get(IMAGE_SETTINGS_KEY) as ImageGenerationSettings) ??
+            defaultImageGenerationSettings;
+        api.settings.subscribe((newSettings: ImageGenerationSettings) => {
+            cachedSettings = newSettings;
+            notifySettingsChange(newSettings);
+        }, IMAGE_SETTINGS_KEY);
+        notifySettingsChange(cachedSettings);
+        return cachedSettings;
+    }
+
     cachedSettings = normalizeImageGenerationSettings(
         await api.storage.getJson(IMAGE_SETTINGS_KEY, defaultImageGenerationSettings),
     );
@@ -125,6 +145,16 @@ export async function saveImageGenerationSettings(
     api: SmileyPluginApi,
     value: ImageGenerationSettings,
 ) {
+    if (api.settings) {
+        const saved = (await api.settings.set(
+            value,
+            IMAGE_SETTINGS_KEY,
+        )) as ImageGenerationSettings;
+        cachedSettings = saved;
+        notifySettingsChange(saved);
+        return saved;
+    }
+
     const normalized = normalizeImageGenerationSettings(value);
     splitMasterPrompt(normalized.masterPrompt);
     await api.storage.setJson(IMAGE_SETTINGS_KEY, normalized);

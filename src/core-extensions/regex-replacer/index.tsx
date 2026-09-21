@@ -24,7 +24,13 @@ export async function activate(api: SmileyPluginApi) {
     api.ui.registerSettingsPanel({
         id: "settings",
         label: "Regex Replacer",
-        render: () => <RegexReplacerSettingsPanel api={api} />,
+        render: ({ settings, updateSettings }) => (
+            <RegexReplacerSettingsPanel
+                api={api}
+                settings={settings}
+                updateSettings={updateSettings}
+            />
+        ),
     });
 
     api.chat.registerInputMiddleware((content, context) => {

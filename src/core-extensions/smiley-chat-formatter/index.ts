@@ -12,19 +12,25 @@ import {
     getFormatterSettings,
     normalizeFormatterSettings,
     setFormatterSettings,
+    type FormatterSettings,
 } from "./settings";
 import { renderSettingsPanel } from "./settings-panel";
 
 export { smileyChatFormatterManifest };
 
 export async function activate(api: FormatterApi) {
+    await api.settings.register<FormatterSettings>({
+        key: "settings",
+        defaultValues: defaultFormatterSettings,
+        normalize: normalizeFormatterSettings,
+    });
     setFormatterSettings(
-        normalizeFormatterSettings(
-            await api.storage
-                .getJson("settings", defaultFormatterSettings)
-                .catch(() => defaultFormatterSettings),
-        ),
+        api.settings.get<FormatterSettings>("settings") ?? defaultFormatterSettings,
     );
+    api.settings.subscribe<FormatterSettings>((newSettings) => {
+        setFormatterSettings(newSettings);
+        registerFormatterRenderer(api);
+    });
 
     api.ui.addStyles(styles);
     api.ui.addStyles(sharedStyles);
@@ -33,7 +39,8 @@ export async function activate(api: FormatterApi) {
     api.ui.registerSettingsPanel({
         id: "settings",
         label: "Chat Formatter",
-        render: () => renderSettingsPanel(api, () => registerFormatterRenderer(api)),
+        render: ({ settings, updateSettings }) =>
+            renderSettingsPanel(api, settings, updateSettings),
     });
 }
 

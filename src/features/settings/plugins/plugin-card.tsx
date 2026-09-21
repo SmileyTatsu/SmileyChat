@@ -13,7 +13,6 @@ import {
     getLoadedPlugins,
     getPluginSettingsPanels,
 } from "#frontend/lib/plugins/registry";
-import { createPluginStorage } from "#frontend/lib/plugins/runtime";
 import {
     PLUGIN_CATEGORY_LABELS,
     type PluginAppSnapshot,
@@ -23,7 +22,7 @@ import {
 
 import { CATEGORY_ICONS, type RequestState } from "./plugin-settings-helpers";
 import { PluginTrustBadge } from "./plugin-trust-badge";
-import { PluginRenderSurface } from "../../plugins/plugin-error-boundary";
+import { ManagedPluginSettingsSection } from "./managed-plugin-settings-section";
 
 export type PluginCardProps = {
     plugin: PluginManifest;
@@ -184,21 +183,12 @@ export function PluginCard({
                 <div className="plugin-config-panel">
                     {settingsPanels.length > 0 ? (
                         settingsPanels.map((panel) => (
-                            <section className="plugin-config-section" key={panel.id}>
-                                <h4>{panel.label}</h4>
-                                <PluginRenderSurface
-                                    pluginId={plugin.id}
-                                    resetKey={panel.id}
-                                    surface={panel.label}
-                                    render={() =>
-                                        panel.render({
-                                            pluginId: plugin.id,
-                                            snapshot: pluginSnapshot,
-                                            storage: createPluginStorage(plugin.id),
-                                        })
-                                    }
-                                />
-                            </section>
+                            <ManagedPluginSettingsSection
+                                key={panel.id}
+                                plugin={plugin}
+                                panel={panel}
+                                snapshot={pluginSnapshot}
+                            />
                         ))
                     ) : loaded?.status === "loaded" ? (
                         <p>This plugin does not provide custom configuration.</p>

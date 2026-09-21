@@ -23,44 +23,66 @@ import {
 type SettingsPanelProps = {
     api: SmileyPluginApi;
     snapshot: PluginAppSnapshot;
+    settings?: ImageGenerationSettings;
+    updateSettings?: (
+        patchOrNext: Partial<ImageGenerationSettings> | ImageGenerationSettings,
+    ) => void;
 };
 
-export function ImageGenerationSettingsPanel({ api, snapshot }: SettingsPanelProps) {
-    const [draft, setDraft] = useState(getImageGenerationSettings());
-    const { requestState, statusMessage } = useImageSettingsAutosave({
+export function ImageGenerationSettingsPanel({
+    api,
+    snapshot,
+    settings: managedSettings,
+    updateSettings,
+}: SettingsPanelProps) {
+    const isManaged = typeof updateSettings === "function";
+    const [localDraft, setLocalDraft] = useState(getImageGenerationSettings());
+    const draft = isManaged
+        ? (managedSettings ?? getImageGenerationSettings())
+        : localDraft;
+
+    const fallbackAutosave = useImageSettingsAutosave({
         api,
-        settings: draft,
-        onSettingsChange: setDraft,
+        settings: localDraft,
+        onSettingsChange: setLocalDraft,
     });
+
+    const requestState = isManaged ? "idle" : fallbackAutosave.requestState;
+    const statusMessage = isManaged ? "" : fallbackAutosave.statusMessage;
+
     const novelAIProfiles = snapshot.connectionSettings.profiles.filter(
         (profile) => profile.provider === "novelai",
     );
 
     function patch(value: Partial<ImageGenerationSettings>) {
-        setDraft((current) => {
-            const next = { ...current, ...value };
-            if (next.allowModelAspectRatio) {
-                next.width = 832;
-                next.height = 1216;
-            }
-            return next.onlyFree ? applyOnlyFreeLimits(next) : next;
-        });
+        const next = { ...draft, ...value };
+        if (next.allowModelAspectRatio) {
+            next.width = 832;
+            next.height = 1216;
+        }
+        const finalNext = next.onlyFree ? applyOnlyFreeLimits(next) : next;
+        if (isManaged) {
+            updateSettings(finalNext);
+        } else {
+            setLocalDraft(finalNext);
+        }
     }
 
-    const saveBadge = (requestState === "loading" || requestState === "success") && (
-        <span
-            className={`preset-save-badge ${requestState}`}
-            role="status"
-            title={statusMessage}
-        >
-            {requestState === "loading" ? (
-                <LoaderCircle aria-hidden="true" size={14} />
-            ) : (
-                <CheckCircle2 aria-hidden="true" size={14} />
-            )}
-            {requestState === "loading" ? "Saving..." : "Saved"}
-        </span>
-    );
+    const saveBadge = !isManaged &&
+        (requestState === "loading" || requestState === "success") && (
+            <span
+                className={`preset-save-badge ${requestState}`}
+                role="status"
+                title={statusMessage}
+            >
+                {requestState === "loading" ? (
+                    <LoaderCircle aria-hidden="true" size={14} />
+                ) : (
+                    <CheckCircle2 aria-hidden="true" size={14} />
+                )}
+                {requestState === "loading" ? "Saving..." : "Saved"}
+            </span>
+        );
 
     return (
         <section className="sig-settings">

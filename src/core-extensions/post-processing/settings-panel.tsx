@@ -19,29 +19,39 @@ import {
 type SettingsPanelProps = {
     api: SmileyPluginApi;
     snapshot: PluginAppSnapshot;
+    settings?: PostProcessingSettings;
+    updateSettings?: (
+        patch: Partial<PostProcessingSettings> | PostProcessingSettings,
+    ) => void;
 };
 
-export function PostProcessingSettingsPanel({ api, snapshot }: SettingsPanelProps) {
-    const [settings, setSettings] = useState(getPostProcessingSettings());
+export function PostProcessingSettingsPanel({
+    api,
+    snapshot,
+    settings: managedSettings,
+    updateSettings,
+}: SettingsPanelProps) {
+    const settings = managedSettings ?? getPostProcessingSettings();
     const [selectedPassId, setSelectedPassId] = useState(
         activePipeline(settings)?.passes[0]?.id ?? "",
     );
-    const [status, setStatus] = useState("");
     const [passToDelete, setPassToDelete] = useState<PipelinePass | null>(null);
     const pipeline = activePipeline(settings);
     const selectedPass =
         pipeline?.passes.find((pass) => pass.id === selectedPassId) ??
         pipeline?.passes[0];
 
-    async function persist(nextSettings: PostProcessingSettings) {
-        const saved = await savePostProcessingSettings(api, nextSettings);
-        setSettings(saved);
-        setStatus("Saved.");
-        return saved;
+    function persist(nextSettings: PostProcessingSettings) {
+        if (updateSettings) {
+            updateSettings(nextSettings);
+        } else {
+            void savePostProcessingSettings(api, nextSettings);
+        }
+        return nextSettings;
     }
 
     async function updateGlobal(patch: Partial<PostProcessingSettings>) {
-        await persist({ ...settings, ...patch });
+        persist({ ...settings, ...patch });
     }
 
     async function updatePipeline(patch: Partial<PostProcessingPipeline>) {
@@ -49,7 +59,7 @@ export function PostProcessingSettingsPanel({ api, snapshot }: SettingsPanelProp
             return;
         }
 
-        await persist({
+        persist({
             ...settings,
             pipelines: settings.pipelines.map((item) =>
                 item.id === pipeline.id ? { ...item, ...patch } : item,
@@ -278,10 +288,6 @@ export function PostProcessingSettingsPanel({ api, snapshot }: SettingsPanelProp
                     <p className="spp-muted">Add a pass to edit this pipeline.</p>
                 )}
             </section>
-
-            <p className="spp-status" aria-live="polite">
-                {status}
-            </p>
 
             {passToDelete && (
                 <ConfirmDialog

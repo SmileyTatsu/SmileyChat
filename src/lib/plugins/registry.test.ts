@@ -4,6 +4,7 @@ import {
     applyMessageDisplayMiddlewares,
     closePluginModal,
     createPluginApi,
+    deactivatePlugin,
     getInputMiddlewares,
     getMessageUpdateMiddlewares,
     getOutputMiddlewares,
@@ -12,6 +13,10 @@ import {
     getRegisteredPluginTools,
     getPluginMacroValue,
     getPluginModalInstances,
+    getPluginSettingsDefinition,
+    getPluginSettingsPanels,
+    getPluginSettingsRecord,
+    getPluginSettingsValue,
     setPluginModelHandlers,
     setPluginPresetHandlers,
     setPluginAppActionHandlers,
@@ -409,6 +414,143 @@ describe("plugin registry runtime isolation", () => {
         expect(result.title).toBe("Test Lorebook");
 
         setPluginAppActionHandlers({});
+    });
+
+    test("settings register, get, set, normalize, and subscriptions work correctly", async () => {
+        const id = uniqueId("settings-plugin");
+        const api = pluginApi(id, []);
+
+        type MySettings = { enabled: boolean; count: number; name: string };
+        const defaults: MySettings = { enabled: false, count: 0, name: "test" };
+
+        let subscribedValue: MySettings | undefined;
+        const handle = await api.settings.register({
+            defaultValues: defaults,
+            normalize: (raw: any) => ({
+                enabled: Boolean(raw?.enabled),
+                count: typeof raw?.count === "number" ? Math.max(0, raw.count) : 0,
+                name: typeof raw?.name === "string" ? raw.name.trim() : "default",
+            }),
+            validate: (val) => {
+                if (val.count > 100) return "Count cannot exceed 100.";
+            },
+        });
+
+        const unsubscribe = handle.subscribe((settings) => {
+            subscribedValue = settings;
+        });
+
+        expect(handle.get()).toEqual(defaults);
+        expect(api.settings.get<MySettings>()).toEqual(defaults);
+
+        const updated = await handle.set({ count: 42, enabled: true });
+        expect(updated).toEqual({ count: 42, enabled: true, name: "test" });
+        expect(subscribedValue).toEqual({ count: 42, enabled: true, name: "test" });
+        expect(handle.get()).toEqual({ count: 42, enabled: true, name: "test" });
+        expect(getPluginSettingsValue<MySettings>(id)).toEqual({
+            count: 42,
+            enabled: true,
+            name: "test",
+        });
+
+        // Validation rejection
+        await expect(handle.set({ count: 101 })).rejects.toThrow(
+            "Count cannot exceed 100.",
+        );
+
+        unsubscribe();
+        deactivatePlugin(id);
+        expect(getPluginSettingsRecord(id)).toBeUndefined();
+    });
+
+    test("settings registration initializes a record created by an early subscription", async () => {
+        const id = uniqueId("subscribed-settings-plugin");
+        const stored = { enabled: true, count: 7 };
+        const customStorage: PluginStorageApi = {
+            async getJson<T>() {
+                return stored as T;
+            },
+            async setJson() {},
+            async remove() {},
+        };
+        const api = createPluginApi(
+            pluginManifest(id, []),
+            customStorage,
+            (() => null) as never,
+            network,
+        );
+
+        const unsubscribe = api.settings.subscribe(() => undefined);
+        const handle = await api.settings.register({
+            defaultValues: { enabled: false, count: 0 },
+        });
+
+        expect(handle.get()).toEqual(stored);
+        expect(getPluginSettingsValue<typeof stored>(id)).toEqual(stored);
+
+        unsubscribe();
+        deactivatePlugin(id);
+    });
+
+    test("concurrent settings patches are serialized without losing fields", async () => {
+        const id = uniqueId("concurrent-settings-plugin");
+        const writes: Array<{ enabled: boolean; count: number; name: string }> = [];
+        const customStorage: PluginStorageApi = {
+            async getJson(_key, fallback) {
+                return fallback;
+            },
+            async setJson(_key, value) {
+                await Promise.resolve();
+                writes.push(value as (typeof writes)[number]);
+            },
+            async remove() {},
+        };
+        const api = createPluginApi(
+            pluginManifest(id, []),
+            customStorage,
+            (() => null) as never,
+            network,
+        );
+        const handle = await api.settings.register({
+            defaultValues: { enabled: false, count: 0, name: "initial" },
+        });
+
+        await Promise.all([
+            handle.set({ enabled: true, count: 1 }),
+            handle.set({ name: "updated" }),
+        ]);
+
+        expect(handle.get()).toEqual({ enabled: true, count: 1, name: "updated" });
+        expect(writes[writes.length - 1]).toEqual({
+            enabled: true,
+            count: 1,
+            name: "updated",
+        });
+        deactivatePlugin(id);
+    });
+
+    test("settings panel registration preserves declarative fields and settingsKey", () => {
+        const id = uniqueId("declarative-plugin");
+        const api = pluginApi(id, ["ui:settings"]);
+
+        api.ui.registerSettingsPanel({
+            id: "panel-1",
+            label: "Panel 1",
+            settingsKey: "custom-settings",
+            fields: [
+                { type: "toggle", key: "active", label: "Active" },
+                { type: "number", key: "limit", label: "Limit", min: 1, max: 50 },
+            ],
+        });
+
+        const panel = getPluginSettingsPanels().find(
+            (item) => item.id === `${id}:panel-1`,
+        );
+        expect(api.plugin.id).toBe(id);
+        expect(panel?.settingsKey).toBe("custom-settings");
+        expect(panel?.fields).toHaveLength(2);
+        expect(getPluginSettingsDefinition(id, "custom-settings")).toBeUndefined();
+        deactivatePlugin(id);
     });
 });
 

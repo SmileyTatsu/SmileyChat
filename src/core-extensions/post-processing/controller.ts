@@ -67,6 +67,22 @@ let activeModalClose: (() => void) | undefined;
 let latestAcceptedText = "";
 
 export async function loadPostProcessingSettings(api: SmileyPluginApi) {
+    if (api.settings) {
+        await api.settings.register({
+            key: "settings",
+            defaultValues: defaultPostProcessingSettings(),
+            normalize: normalizePostProcessingSettings,
+        });
+        settingsCache =
+            (api.settings.get("settings") as PostProcessingSettings) ??
+            defaultPostProcessingSettings();
+        api.settings.subscribe((newSettings: PostProcessingSettings) => {
+            settingsCache = newSettings;
+            notifyRunChanged();
+        });
+        return settingsCache;
+    }
+
     settingsCache = normalizePostProcessingSettings(
         await api.storage.getJson("settings", settingsCache).catch(() => settingsCache),
     );
@@ -82,6 +98,13 @@ export async function savePostProcessingSettings(
     api: SmileyPluginApi,
     value: PostProcessingSettings,
 ) {
+    if (api.settings) {
+        const saved = (await api.settings.set(value)) as PostProcessingSettings;
+        settingsCache = saved;
+        notifyRunChanged();
+        return settingsCache;
+    }
+
     settingsCache = normalizePostProcessingSettings(value);
     await api.storage.setJson("settings", settingsCache);
     notifyRunChanged();

@@ -60,12 +60,16 @@ export function ToggleRow({
 }
 
 export function NumberInput({
+    disabled = false,
+    integer = true,
     max,
     min,
     step,
     value,
     onChange,
 }: {
+    disabled?: boolean;
+    integer?: boolean;
     max: number;
     min: number;
     step: number;
@@ -79,7 +83,8 @@ export function NumberInput({
             max={max}
             step={step}
             value={value}
-            integer
+            disabled={disabled}
+            integer={integer}
             onCommit={(nextValue) => onChange(nextValue ?? value)}
         />
     );
