@@ -27,7 +27,7 @@ if errorlevel 1 (
 )
 
 if not exist node_modules (
-  echo Required dependencies (node_modules) are not installed.
+  echo Required dependencies ^(node_modules^) are not installed.
   set /p INSTALL_DEPS="Do you want to install dependencies now using Bun? (Y/N): "
   if /I "!INSTALL_DEPS!"=="Y" (
     echo Installing dependencies...
