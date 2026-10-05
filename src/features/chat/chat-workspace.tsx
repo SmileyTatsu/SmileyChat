@@ -63,6 +63,7 @@ type ChatWorkspaceProps = {
     isLoading?: boolean;
     chatLoadRequestId?: number;
     isSending?: boolean;
+    isImpersonating?: boolean;
     uploadingAttachmentCount?: number;
     messages: Message[];
     mode: ChatMode;
@@ -89,6 +90,7 @@ type ChatWorkspaceProps = {
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
     onRemoveAllAttachments: (messageId: string) => void;
     onAbortGeneration: () => void;
+    onImpersonate: (onDraft: (content: string) => void) => Promise<void>;
     onSendMessage: (
         draft: string,
         files?: StagedAttachment[] | File[],
@@ -114,6 +116,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     isLoading,
     chatLoadRequestId = 0,
     isSending,
+    isImpersonating,
     uploadingAttachmentCount,
     messages,
     mode,
@@ -135,6 +138,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     onRemoveAttachment,
     onRemoveAllAttachments,
     onAbortGeneration,
+    onImpersonate,
     onSendMessage,
     onToggleSidebar,
     onToggleCharacter,
@@ -220,7 +224,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     generatingSpeakerName={generatingSpeakerName}
                     defaultCharacterDialogueColor={defaultCharacterDialogueColor}
                     errorMessage={errorMessage}
-                    isTyping={isSending}
+                    isTyping={isSending && !isImpersonating}
                     messages={messages}
                     mode={visualMode}
                     autoScroll={preferences.chat.autoScroll}
@@ -268,6 +272,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     placeholder={pluginComposerState?.placeholder}
                     resetKey={activeChatId}
                     onAbortGeneration={onAbortGeneration}
+                    onImpersonate={onImpersonate}
                     onSubmit={onSendMessage}
                     pluginSnapshot={pluginSnapshot}
                 />

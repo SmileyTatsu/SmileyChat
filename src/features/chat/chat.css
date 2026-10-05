@@ -2814,7 +2814,13 @@
 .chat-composer-area {
     @apply flex w-full items-end gap-3 p-2;
 
-    .composer-image-button {
+    &[data-impersonating="true"] textarea {
+        border-radius: 7px;
+        background: #23252b;
+        color: #a1a6b0;
+    }
+
+    .composer-menu-button {
         display: grid;
         place-items: center;
         flex: 0 0 auto;
@@ -2833,6 +2839,16 @@
             background: #242833;
             color: #ececf1;
         }
+
+        &[aria-expanded="true"] {
+            background: #242833;
+            color: #ececf1;
+        }
+    }
+
+    :is(.composer-menu-button, .send-button, textarea):focus-visible {
+        outline: 2px solid var(--accent, #b9bfd0);
+        outline-offset: 2px;
     }
 
     textarea {
@@ -2865,6 +2881,49 @@
 
         &[data-active="true"][data-state="generating"] svg {
             @apply fill-red-400 text-red-400;
+        }
+    }
+}
+
+.composer-menu-wrap {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.composer-menu {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    z-index: 40;
+    min-width: 180px;
+    padding: 5px;
+    border: 1px solid #343945;
+    border-radius: 10px;
+    background: #191c24;
+    box-shadow: 0 8px 24px #0006;
+
+    button {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #cbd0dc;
+        text-align: left;
+        font-size: 13px;
+
+        &:hover,
+        &:focus-visible {
+            background: #2b3040;
+            color: #fff;
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--accent, #b9bfd0);
+            outline-offset: -2px;
         }
     }
 }

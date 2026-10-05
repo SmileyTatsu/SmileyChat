@@ -458,6 +458,9 @@ export function App() {
         },
         [],
     );
+    const handleImpersonate = useCallback((onDraft: (content: string) => void) => {
+        return latestChatSessionForPluginsRef.current.impersonate(onDraft);
+    }, []);
     const handleUpdateChatMetadata = useCallback(
         (metadata: ChatMetadata) => {
             if (!activeChat) {
@@ -1206,6 +1209,7 @@ export function App() {
                 isLoading={isChatLoading}
                 chatLoadRequestId={chatLoadRequestId}
                 isSending={chatSession.isSending}
+                isImpersonating={chatSession.isImpersonating}
                 uploadingAttachmentCount={chatSession.uploadingAttachmentCount}
                 messages={chatSession.messages}
                 mode={mode}
@@ -1219,6 +1223,7 @@ export function App() {
                 }
                 emptyState={chatEmptyState}
                 onAbortGeneration={handleAbortGeneration}
+                onImpersonate={handleImpersonate}
                 onDeleteMessage={handleDeleteMessage}
                 onDeleteMessageSwipe={handleDeleteMessageSwipe}
                 onEditMessage={handleEditMessage}

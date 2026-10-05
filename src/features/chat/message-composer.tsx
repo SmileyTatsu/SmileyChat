@@ -1,11 +1,4 @@
-import {
-    FileText,
-    LoaderCircle,
-    Paperclip,
-    SendHorizonal,
-    Square,
-    X,
-} from "lucide-preact";
+import { FileText, LoaderCircle, SendHorizonal, Square, X } from "lucide-preact";
 import { memo } from "preact/compat";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
@@ -34,6 +27,7 @@ import type {
 } from "#frontend/lib/plugins/types";
 import type { ChatMode } from "#frontend/types";
 
+import { ComposerMenu } from "./composer-menu";
 import {
     PluginRenderSurface,
     pluginIdFromScopedId,
@@ -50,6 +44,7 @@ type MessageComposerProps = {
     placeholder?: string;
     resetKey: string;
     onAbortGeneration?: () => void;
+    onImpersonate: (onDraft: (content: string) => void) => Promise<void>;
     onSubmit: (
         draft: string,
         files?: StagedAttachment[],
@@ -112,23 +107,27 @@ function mergeStagedFiles(submittedFiles: StagedFile[], currentFiles: StagedFile
 export const MessageComposer = memo(function MessageComposer({
     characterName,
     isGroup,
-    disabled,
+    disabled: externallyDisabled,
     enterToSend,
-    isGenerating,
+    isGenerating: externallyGenerating,
     uploadingAttachmentCount = 0,
     mode,
     placeholder,
     resetKey,
     onAbortGeneration,
+    onImpersonate,
     onSubmit,
     pluginSnapshot,
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const sendButtonRef = useRef<HTMLButtonElement>(null);
+    const impersonationRef = useRef<{ resetKey: string }>();
     const resizeFrameRef = useRef<number>();
     const resetKeyRef = useRef(resetKey);
 
     const [draft, setDraft] = useState("");
+    const [isImpersonating, setIsImpersonating] = useState(false);
     const [registryRevision, setRegistryRevision] = useState(0);
     const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
     const [editingAttachmentId, setEditingAttachmentId] = useState<string | null>(null);
@@ -137,6 +136,9 @@ export const MessageComposer = memo(function MessageComposer({
     const activeEditingFile = stagedFiles.find((item) => item.id === editingAttachmentId);
 
     resetKeyRef.current = resetKey;
+
+    const disabled = externallyDisabled || isImpersonating;
+    const isGenerating = externallyGenerating || isImpersonating;
 
     const hasMessageContent = draft.trim().length > 0 || stagedFiles.length > 0;
     const canSubmit = !disabled || isGenerating;
@@ -178,6 +180,8 @@ export const MessageComposer = memo(function MessageComposer({
     }, [draft]);
 
     useEffect(() => {
+        impersonationRef.current = undefined;
+        setIsImpersonating(false);
         setDraft("");
         setAttachmentError("");
         clearStagedFiles();
@@ -185,6 +189,7 @@ export const MessageComposer = memo(function MessageComposer({
 
     useEffect(function () {
         return () => {
+            impersonationRef.current = undefined;
             clearStagedFiles();
         };
     }, []);
@@ -235,6 +240,7 @@ export const MessageComposer = memo(function MessageComposer({
     }
 
     const insertText = useEventCallback((text: string) => {
+        if (impersonationRef.current) return;
         const textarea = composerRef.current;
 
         if (!textarea) {
@@ -257,6 +263,7 @@ export const MessageComposer = memo(function MessageComposer({
     });
 
     const submitDraft = useEventCallback(async (): Promise<void> => {
+        if (disabled || isGenerating || impersonationRef.current) return;
         const submittedDraft = draft;
         const submittedStagedFiles = stagedFiles;
         const submittedFiles: StagedAttachment[] = submittedStagedFiles.map((item) => ({
@@ -313,32 +320,69 @@ export const MessageComposer = memo(function MessageComposer({
     });
 
     const runComposerAction = useEventCallback(
-        (run: (context: PluginComposerActionContext) => void | Promise<void>) =>
+        (run: (context: PluginComposerActionContext) => void | Promise<void>) => {
+            if (disabled) return;
             void run({
                 draft,
                 insertText,
-                setDraft,
+                setDraft: setPluginDraft,
                 snapshot: pluginSnapshot,
                 submit: submitDraft,
-            }),
+            });
+        },
     );
 
+    const setPluginDraft = useEventCallback((content: string) => {
+        if (!impersonationRef.current) setDraft(content);
+    });
+
     useEffect(() => {
-        setPluginDraftActionHandlers({ insertDraft: insertText, setDraft });
+        setPluginDraftActionHandlers({
+            insertDraft: insertText,
+            setDraft: setPluginDraft,
+        });
 
         return () => setPluginDraftActionHandlers({});
-    }, [insertText]);
+    }, [insertText, setPluginDraft]);
+
+    async function impersonateDraft() {
+        if (disabled || isGenerating || impersonationRef.current) return;
+        const generation = { resetKey };
+        impersonationRef.current = generation;
+        setIsImpersonating(true);
+        requestAnimationFrame(() => sendButtonRef.current?.focus());
+        try {
+            await onImpersonate((content) => {
+                if (
+                    impersonationRef.current === generation &&
+                    resetKeyRef.current === generation.resetKey
+                ) {
+                    setDraft(content);
+                }
+            });
+        } finally {
+            if (impersonationRef.current === generation) {
+                impersonationRef.current = undefined;
+                setIsImpersonating(false);
+                requestAnimationFrame(() => {
+                    if (resetKeyRef.current === generation.resetKey)
+                        composerRef.current?.focus();
+                });
+            }
+        }
+    }
 
     function abortGeneration() {
         onAbortGeneration?.();
     }
 
     function openFilePicker() {
+        if (disabled) return;
         fileInputRef.current?.click();
     }
 
     function stageSelectedFiles(files: File[]) {
-        if (!files.length) {
+        if (disabled || !files.length) {
             return false;
         }
 
@@ -524,6 +568,7 @@ export const MessageComposer = memo(function MessageComposer({
                                 className="composer-staged-alt-input"
                                 placeholder='e.g. "Emerald velvet ballgown" or "Map of the citadel"'
                                 value={activeEditingFile.description ?? ""}
+                                disabled={disabled}
                                 maxLength={300}
                                 autoFocus
                                 onKeyDown={(e) => {
@@ -560,17 +605,19 @@ export const MessageComposer = memo(function MessageComposer({
                 </div>
             )}
 
-            <div className="chat-composer-area">
-                <button
-                    type="button"
-                    title="Attach files"
-                    aria-label="Attach files"
+            {isImpersonating && (
+                <div className="composer-upload-status" role="status" aria-live="polite">
+                    <LoaderCircle size={15} aria-hidden="true" />
+                    <span>Writing your draft… Stop generation to edit it.</span>
+                </div>
+            )}
+
+            <div className="chat-composer-area" data-impersonating={isImpersonating}>
+                <ComposerMenu
                     disabled={disabled}
-                    className="composer-image-button"
-                    onClick={openFilePicker}
-                >
-                    <Paperclip size={18} />
-                </button>
+                    onAttach={openFilePicker}
+                    onImpersonate={() => void impersonateDraft()}
+                />
 
                 <textarea
                     ref={composerRef}
@@ -594,6 +641,7 @@ export const MessageComposer = memo(function MessageComposer({
                 />
 
                 <button
+                    ref={sendButtonRef}
                     className="send-button"
                     type={isGenerating ? "button" : "submit"}
                     data-active={canSubmit}

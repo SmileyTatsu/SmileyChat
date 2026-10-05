@@ -57,6 +57,7 @@ import {
     reconcilePromptDebugBlocks,
 } from "#frontend/lib/prompt/build";
 import type { PromptGenerationTrigger, PromptInjector } from "#frontend/lib/prompt/types";
+import { createImpersonationContext } from "#frontend/lib/prompt/impersonation";
 import type {
     ChatMode,
     ChatSession,
@@ -701,6 +702,7 @@ export function usePromptGeneration({
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
         options: {
+            impersonate?: boolean;
             onImage?: (url: string) => void;
             promptCharacter?: SmileyCharacter;
             onReasoningToken?: (token: string) => void;
@@ -730,7 +732,7 @@ export function usePromptGeneration({
         if (tokenContext) {
             await preloadTokenizer(tokenContext);
         }
-        const sourceGenerationMessages = sourceMessages.filter(
+        let sourceGenerationMessages = sourceMessages.filter(
             (message) => !isActiveSwipeError(message),
         );
         const presetFormatting = activePreset?.formatting;
@@ -756,7 +758,8 @@ export function usePromptGeneration({
         // Preset overrides are resolved first; Auto can then select a matching
         // text-completion template without changing manual selections.
         const rawFormatting = templateResolution?.formatting ?? effectiveFormatting;
-        const promptCharacter = options.promptCharacter ?? sourceCharacter;
+        let promptCharacter = options.promptCharacter ?? sourceCharacter;
+        let promptPersona = persona;
         const promptChat = options.sourceChat ?? latestChatRef.current;
 
         if (!promptChat) {
@@ -764,12 +767,26 @@ export function usePromptGeneration({
         }
 
         const nativeLorebooks = await loadNativeLorebooks(promptChat, promptCharacter);
+        if (options.impersonate) {
+            const reversed = createImpersonationContext({
+                character: promptCharacter,
+                persona,
+                messages: sourceGenerationMessages,
+                mode: sourceMode,
+                userStatus: sourceUserStatus,
+            });
+            promptCharacter = reversed.character;
+            promptPersona = reversed.persona;
+            sourceGenerationMessages = reversed.messages;
+        }
         const promptBuild = await buildPromptForGeneration({
             context: {
-                chat: promptChat,
+                chat: options.impersonate
+                    ? { ...promptChat, messages: sourceGenerationMessages }
+                    : promptChat,
                 character: promptCharacter,
-                group: groupPromptContext(latestChatRef.current),
-                groupCharacters,
+                group: options.impersonate ? undefined : groupPromptContext(promptChat),
+                groupCharacters: options.impersonate ? [] : groupCharacters,
                 generation: {
                     activeCharacterId: sourceCharacter.id,
                     stream: options.stream === true,
@@ -781,7 +798,7 @@ export function usePromptGeneration({
                 lorebooks: nativeLorebooks,
                 messages: sourceGenerationMessages,
                 mode: sourceMode,
-                persona,
+                persona: promptPersona,
                 preferences: {
                     ...preferences,
                     formatting: {
@@ -823,6 +840,7 @@ export function usePromptGeneration({
             promptCharacter,
             sourceMode,
             sourceUserStatus,
+            promptPersona,
         );
         const localPromptMessages = filterLocalChatGenerationMessageAttachments(
             promptMessages,
@@ -838,14 +856,19 @@ export function usePromptGeneration({
         // Use preset formatting overrides if defined, falling back to global formatting
         const formattingMacroContext = {
             character: promptCharacter,
-            group: isGroupChat(promptChat)
-                ? { memberIds: promptChat.members?.map((member) => member.characterId) }
-                : undefined,
+            group:
+                !options.impersonate && isGroupChat(promptChat)
+                    ? {
+                          memberIds: promptChat.members?.map(
+                              (member) => member.characterId,
+                          ),
+                      }
+                    : undefined,
             isTextCompletion,
             messages: sourceGenerationMessages,
             mode: sourceMode,
-            personaDescription: persona.description,
-            personaName: persona.name,
+            personaDescription: promptPersona.description,
+            personaName: promptPersona.name,
             userStatus: sourceUserStatus,
         };
         const sequenceMacroFields = [
@@ -929,7 +952,7 @@ export function usePromptGeneration({
             generation: activePreset?.generation,
             formatting,
             characterName: promptCharacter.data.name,
-            personaName: persona.name,
+            personaName: promptPersona.name,
             groupMemberNames: promptChat.members?.map((member) => member.name) ?? [],
             modelId: profileModelId,
             isTextCompletion,
@@ -1022,6 +1045,7 @@ export function usePromptGeneration({
         sourceCharacter: SmileyCharacter,
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
+        sourcePersona = persona,
     ) {
         let nextMessages = promptMessages;
 
@@ -1030,7 +1054,7 @@ export function usePromptGeneration({
                 character: sourceCharacter,
                 messages,
                 mode: sourceMode,
-                persona,
+                persona: sourcePersona,
                 promptMessages: nextMessages,
                 presetCollection,
                 userStatus: sourceUserStatus,

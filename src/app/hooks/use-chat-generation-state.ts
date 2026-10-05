@@ -8,6 +8,7 @@ export type ActiveGeneratingSpeaker = {
 
 export type ActiveGeneration = {
     controller: AbortController;
+    kind?: "impersonation";
     sourceChat?: ChatSession;
     streamingMessageId?: string;
     swipeMessageId?: string;

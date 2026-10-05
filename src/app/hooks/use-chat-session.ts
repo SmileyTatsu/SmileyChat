@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import { messageFromError } from "#frontend/lib/common/errors";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
-import type { ConnectionSettings } from "#frontend/lib/connections/config";
+import {
+    type ConnectionSettings,
+    getActiveConnectionProfile,
+    isNativeProvider,
+} from "#frontend/lib/connections/config";
 import type { ToolActivity } from "#frontend/lib/connections/types";
 import {
     createCharacterErrorMessage,
@@ -24,6 +28,8 @@ import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { resolvePresetStreaming } from "#frontend/lib/presets/generation";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
+import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
+import { generateImpersonationDraft } from "#frontend/lib/prompt/impersonation";
 import type { PresetCollection } from "#frontend/lib/presets/types";
 import type {
     ChatMode,
@@ -103,6 +109,7 @@ export function useChatSession({
     } = useChatGenerationState();
     const {
         applyInputMiddlewares,
+        buildGenerationRequest,
         generateWithPreset,
         getDebugPayload: buildDebugPayload,
         resolveChatMacros,
@@ -153,6 +160,11 @@ export function useChatSession({
     useEffect(() => {
         setChatError("");
         clearAutomaticResponseTimer();
+        const chatId = chat?.id;
+        return () => {
+            const generation = chatId ? getActiveGeneration(chatId) : undefined;
+            if (generation?.kind === "impersonation") generation.controller.abort();
+        };
     }, [chat?.id]);
 
     useEffect(
@@ -167,6 +179,58 @@ export function useChatSession({
         files: Array<File | { file: File; description?: string }> = [],
     ): Promise<boolean> {
         return sendMessageWithOptions(draft, { files });
+    }
+
+    async function impersonate(onDraft: (content: string) => void): Promise<void> {
+        const sourceChat = latestChatRef.current;
+        if (!sourceChat || isChatPending(sourceChat.id)) return;
+
+        clearAutomaticResponseTimer();
+        setChatError("");
+        const chatId = sourceChat.id;
+        const controller = beginGenerationController(chatId, {
+            kind: "impersonation",
+            sourceChat,
+        });
+        beginChatPending(chatId);
+        try {
+            const profile = getActiveConnectionProfile(connectionSettings);
+            const connection =
+                profile && !isNativeProvider(profile.provider)
+                    ? getAdapterForSettings(connectionSettings, profile.id)
+                    : createServerGenerationConnection(profile?.id);
+            await generateImpersonationDraft({
+                connection,
+                signal: controller.signal,
+                onDraft,
+                buildRequest: () =>
+                    buildGenerationRequest(
+                        sourceChat.messages,
+                        character,
+                        mode,
+                        userStatus,
+                        {
+                            impersonate: true,
+                            promptCharacter: promptCharacterForGeneration({
+                                activeSpeaker: character,
+                                groupCharacters,
+                                sourceChat,
+                            }),
+                            sourceChat,
+                            signal: controller.signal,
+                            stream: streamGeneration,
+                            trigger: "impersonate",
+                        },
+                    ),
+            });
+        } catch (error) {
+            if (!controller.signal.aborted && latestChatRef.current?.id === chatId) {
+                setChatError(`Impersonation failed: ${messageFromError(error)}`);
+            }
+        } finally {
+            endGenerationController(chatId, controller);
+            endChatPending(chatId);
+        }
     }
 
     async function forceGroupMemberResponse(characterId: string) {
@@ -1156,6 +1220,10 @@ export function useChatSession({
         generatingSpeaker: activeChatId ? generatingSpeakers[activeChatId] : undefined,
         getDebugPayload,
         isSending: activeChatId ? pendingChatIds.includes(activeChatId) : false,
+        isImpersonating: activeChatId
+            ? getActiveGeneration(activeChatId)?.kind === "impersonation"
+            : false,
+        impersonate,
         uploadingAttachmentCount,
         injectMessage,
         messages: chat?.messages ?? [],

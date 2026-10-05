@@ -18,6 +18,7 @@ export type PromptGenerationTrigger =
     | "swipe"
     | "regenerate"
     | "continue"
+    | "impersonate"
     | "auto-group"
     | "plugin"
     | "quiet";
