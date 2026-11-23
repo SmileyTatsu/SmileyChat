@@ -51,7 +51,7 @@ type MessageComposerProps = {
         files?: StagedAttachment[],
     ) => boolean | void | Promise<boolean | void>;
     pluginSnapshot: PluginAppSnapshot;
-    statusBar?: ComponentChildren;
+    meta?: ComponentChildren;
 };
 
 export type StagedAttachment = {
@@ -120,7 +120,7 @@ export const MessageComposer = memo(function MessageComposer({
     onImpersonate,
     onSubmit,
     pluginSnapshot,
-    statusBar,
+    meta,
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -643,6 +643,8 @@ export const MessageComposer = memo(function MessageComposer({
                     onPaste={handlePaste}
                 />
 
+                {meta && <div className="composer-meta">{meta}</div>}
+
                 <button
                     ref={sendButtonRef}
                     className="send-button"
@@ -686,7 +688,6 @@ export const MessageComposer = memo(function MessageComposer({
                 </button>
             </div>
 
-            {statusBar && <div className="composer-status-bar">{statusBar}</div>}
         </form>
     );
 });

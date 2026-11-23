@@ -18,8 +18,7 @@ import type {
 } from "#frontend/types";
 
 import { ChatHeader } from "./chat-header";
-import { ComposerStatus } from "./composer-status";
-import { ContextMeter } from "./context-meter";
+import { ComposerMeta } from "./composer-meta";
 import { MessageComposer, type StagedAttachment } from "./message-composer";
 import { MessageList } from "./message-list";
 
@@ -282,16 +281,8 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     onImpersonate={onImpersonate}
                     onSubmit={onSendMessage}
                     pluginSnapshot={pluginSnapshot}
-                    statusBar={
-                        <>
-                            {contextUsage && (
-                                <ContextMeter
-                                    budget={contextUsage.budget}
-                                    usedTokens={contextUsage.usedTokens}
-                                />
-                            )}
-                            <ComposerStatus saveState={saveState} />
-                        </>
+                    meta={
+                        <ComposerMeta contextUsage={contextUsage} saveState={saveState} />
                     }
                 />
             )}

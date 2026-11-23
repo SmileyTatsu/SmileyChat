@@ -2462,17 +2462,20 @@
     @apply col-span-full flex min-w-0 gap-2 overflow-x-auto;
 }
 
-.composer-status-bar {
-    @apply col-span-full flex min-w-0 items-center justify-between gap-3;
-    padding: 0 10px 2px;
-    min-height: 14px;
+.composer-meta {
+    display: flex;
+    flex: 0 0 auto;
+    align-self: center;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
     font-size: 11px;
     line-height: 1.3;
-    color: #9da3b4;
+    color: #7f889b;
+    white-space: nowrap;
 }
 
 .composer-save-state {
-    margin-left: auto;
     font-variant-numeric: tabular-nums;
     color: #7f889b;
     white-space: nowrap;
@@ -2491,7 +2494,7 @@
 
 .composer-context-track {
     display: block;
-    width: 42px;
+    width: 34px;
     height: 4px;
     flex: none;
     overflow: hidden;
@@ -3040,5 +3043,14 @@
     .swipe-controls button {
         width: 34px;
         height: 34px;
+    }
+
+    .composer-context-track {
+        width: 24px;
+    }
+
+    /* With no room to spare, only surface the meter once it matters. */
+    .composer-meta:has(> .composer-context-meter[data-state="ok"]) {
+        display: none;
     }
 }
