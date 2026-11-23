@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import {
+    getPluginArtifactAllowedHostnames,
+    getPluginRegistryAllowedHostnames,
     isDockerBypassEnabled,
     isTailscaleBypassEnabled,
     shouldOpenBrowser,
@@ -10,6 +12,8 @@ const keys = [
     "SMILEYCHAT_BYPASS_AUTH_TAILSCALE",
     "SMILEYCHAT_BYPASS_AUTH_DOCKER",
     "SMILEYCHAT_OPEN_BROWSER",
+    "SMILEYCHAT_PLUGIN_REGISTRY_URL",
+    "SMILEYCHAT_PLUGIN_REGISTRY_ALLOWED_HOSTS",
 ] as const;
 const originalEnvironment = Object.fromEntries(
     keys.map((key) => [key, process.env[key]]),
@@ -45,4 +49,32 @@ test("browser launching is enabled unless explicitly disabled", () => {
 
     process.env.SMILEYCHAT_OPEN_BROWSER = "true";
     expect(shouldOpenBrowser()).toBe(true);
+});
+
+test("registry artifacts may come from GitHub Releases without widening registry fetches", () => {
+    for (const key of keys) delete process.env[key];
+
+    expect(getPluginRegistryAllowedHostnames()).toEqual(["raw.githubusercontent.com"]);
+    expect(getPluginArtifactAllowedHostnames()).toEqual(
+        expect.arrayContaining([
+            "raw.githubusercontent.com",
+            "github.com",
+            "release-assets.githubusercontent.com",
+            "objects.githubusercontent.com",
+        ]),
+    );
+});
+
+test("artifact hosts keep a custom registry host and extra allowed hosts", () => {
+    for (const key of keys) delete process.env[key];
+    process.env.SMILEYCHAT_PLUGIN_REGISTRY_URL =
+        "https://plugins.example.com/registry.json";
+    process.env.SMILEYCHAT_PLUGIN_REGISTRY_ALLOWED_HOSTS = "Cdn.Example.com";
+
+    const hosts = getPluginArtifactAllowedHostnames();
+
+    expect(hosts).toEqual(
+        expect.arrayContaining(["plugins.example.com", "cdn.example.com", "github.com"]),
+    );
+    expect(new Set(hosts).size).toBe(hosts.length);
 });

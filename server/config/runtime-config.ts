@@ -184,6 +184,33 @@ export function getPluginRegistryAllowedHostnames() {
     return Array.from(new Set([registryHost, ...extraHosts]));
 }
 
+/**
+ * Hosts a GitHub Release asset download passes through: the release URL on
+ * `github.com`, then a redirect to the asset CDN (`release-assets` today,
+ * `objects` on older assets). Redirects are re-validated against the allowlist,
+ * so every hop has to be listed.
+ */
+const GITHUB_RELEASE_ARTIFACT_HOSTS = [
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com",
+];
+
+/**
+ * Hosts registry artifacts may be downloaded from. This is wider than the
+ * registry allowlist because the registry file lives on
+ * `raw.githubusercontent.com` while its artifacts are GitHub Release assets.
+ * Registry curation, not this list, is what makes an artifact trusted.
+ */
+export function getPluginArtifactAllowedHostnames() {
+    return Array.from(
+        new Set([
+            ...getPluginRegistryAllowedHostnames(),
+            ...GITHUB_RELEASE_ARTIFACT_HOSTS,
+        ]),
+    );
+}
+
 export function getLogLevel() {
     const value = normalizeEnvValue(Bun.env.SMILEYCHAT_LOG_LEVEL);
     return value === "trace" ||

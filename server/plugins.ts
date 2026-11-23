@@ -19,6 +19,7 @@ import {
 } from "#frontend/lib/plugins/types";
 
 import {
+    getPluginArtifactAllowedHostnames,
     getPluginRegistryAllowedHostnames,
     getPluginRegistryUrl,
     isUnverifiedPluginsAllowed,
@@ -306,7 +307,7 @@ export async function installVerifiedPlugin(body: unknown) {
     const bytes = await downloadArtifact(source.artifactUrl, {
         allowedHostnames:
             source.source === "registry"
-                ? getPluginRegistryAllowedHostnames()
+                ? getPluginArtifactAllowedHostnames()
                 : undefined,
         label: "Plugin artifact",
     });
@@ -348,7 +349,7 @@ export async function updateInstalledPlugin(pluginId: string) {
     const bytes = await downloadArtifact(source.artifactUrl, {
         allowedHostnames:
             source.source === "registry"
-                ? getPluginRegistryAllowedHostnames()
+                ? getPluginArtifactAllowedHostnames()
                 : undefined,
         label: "Plugin artifact",
     });

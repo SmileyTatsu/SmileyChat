@@ -43,6 +43,10 @@ Rules:
 - `artifact.url` must be an HTTPS `.zip` URL.
 - `repository` is optional but recommended so users can inspect source.
 - SHA-256 hashes are not required for release v1.
+- Registry artifacts may be hosted on GitHub Releases (`github.com` and its
+  `*.githubusercontent.com` asset redirects) or on the registry's own host. Any other
+  artifact host must be added to `SMILEYCHAT_PLUGIN_REGISTRY_ALLOWED_HOSTS`
+  (comma-separated). Every redirect hop is checked against the same list.
 
 The registry is a curated trust list. It is not a sandbox and does not make plugin
 code safe to install from unknown authors.
