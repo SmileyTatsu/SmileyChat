@@ -1,3 +1,4 @@
+import { useState } from "preact/hooks";
 import {
     AlertTriangle,
     Boxes,
@@ -5,8 +6,11 @@ import {
     Layers,
     RefreshCw,
     Search,
+    ShieldAlert,
     XCircle,
 } from "lucide-preact";
+
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 
 import {
     PLUGIN_CATEGORIES,
@@ -16,6 +20,8 @@ import {
 } from "#frontend/lib/plugins/types";
 
 import { PluginCard } from "./plugins/plugin-card";
+import { PluginPermissionList } from "./plugins/plugin-permission-list";
+import { findNewPluginPermissions } from "./plugins/plugin-permissions";
 import { ProfileBar } from "./plugins/profile-bar";
 import { CATEGORY_ICONS } from "./plugins/plugin-settings-helpers";
 import { StorePluginCard } from "./plugins/store-plugin-card";
@@ -52,6 +58,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         manualInstallBusy,
         openPluginId,
         plugins,
+        pluginUpdatesById,
         refreshAll,
         refreshRegistry,
         registryCategoryCounts,
@@ -70,6 +77,8 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         settingsPanelsForPlugin,
         statusMessage,
         togglePlugin,
+        uninstallManagedPlugin,
+        uninstallingPluginId,
         updatingPluginId,
         updateManagedPlugin,
         updateStorePlugin,
@@ -92,6 +101,56 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
     const selectedLocalPlugin =
         filteredPlugins.find((plugin) => plugin.id === openPluginId) ??
         filteredPlugins[0];
+    const [uninstallTarget, setUninstallTarget] = useState<PluginManifest | null>(null);
+    const [deletePluginData, setDeletePluginData] = useState(false);
+    const isUninstallingTarget = Boolean(
+        uninstallTarget && uninstallingPluginId === uninstallTarget.id,
+    );
+
+    // Local "Update" re-resolves the registry artifact like the Store does, so
+    // it must ask for consent whenever the new version adds permissions.
+    const [updateConsent, setUpdateConsent] = useState<{
+        plugin: PluginManifest;
+        addedPermissions: string[];
+    } | null>(null);
+
+    function requestManagedUpdate(plugin: PluginManifest) {
+        const registryEntry = registryPlugins.find((item) => item.id === plugin.id);
+        const addedPermissions =
+            plugin.install?.source === "registry"
+                ? findNewPluginPermissions(registryEntry?.permissions, plugin.permissions)
+                : [];
+
+        if (addedPermissions.length === 0) {
+            void updateManagedPlugin(plugin);
+            return;
+        }
+
+        setUpdateConsent({ plugin, addedPermissions });
+    }
+
+    function requestUninstall(plugin: PluginManifest) {
+        setDeletePluginData(false);
+        setUninstallTarget(plugin);
+    }
+
+    async function confirmUninstall() {
+        const target = uninstallTarget;
+
+        if (!target) {
+            return;
+        }
+
+        const result = await uninstallManagedPlugin(target, {
+            deleteData: deletePluginData,
+        });
+
+        if (!result.ok) {
+            throw new Error(result.message);
+        }
+
+        setUninstallTarget(null);
+    }
 
     return (
         <section className="tool-window plugins-settings">
@@ -132,6 +191,14 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                         }}
                     >
                         {label}
+                        {value === "store" && pluginUpdatesById.size > 0 && (
+                            <span
+                                className="plugins-view-dot"
+                                title="Plugin updates available"
+                                role="img"
+                                aria-label="Plugin updates available"
+                            />
+                        )}
                     </button>
                 ))}
             </div>
@@ -268,6 +335,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                         key={plugin.id}
                                         plugin={plugin}
                                         selected={selectedLocalPlugin?.id === plugin.id}
+                                        updateAvailable={pluginUpdatesById.has(plugin.id)}
                                         onSelect={() => setOpenPluginId(plugin.id)}
                                     />
                                 ))}
@@ -308,11 +376,16 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                 )}
                                 pluginSnapshot={pluginSnapshot}
                                 requestState={requestState}
+                                availableVersion={pluginUpdatesById.get(
+                                    selectedLocalPlugin.id,
+                                )}
                                 isUpdating={updatingPluginId === selectedLocalPlugin.id}
-                                onToggle={() => void togglePlugin(selectedLocalPlugin)}
-                                onUpdate={() =>
-                                    void updateManagedPlugin(selectedLocalPlugin)
+                                isUninstalling={
+                                    uninstallingPluginId === selectedLocalPlugin.id
                                 }
+                                onToggle={() => void togglePlugin(selectedLocalPlugin)}
+                                onUpdate={() => requestManagedUpdate(selectedLocalPlugin)}
+                                onUninstall={() => requestUninstall(selectedLocalPlugin)}
                             />
                         ) : (
                             <div className="empty-plugin-state">
@@ -384,9 +457,19 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                 installingPluginId === plugin.id
                             }
                             isUpdating={updatingPluginId === plugin.id}
+                            isUninstalling={uninstallingPluginId === plugin.id}
                             isBlocked={requestState === "loading"}
                             onInstall={() => installStorePlugin(plugin)}
                             onUpdate={() => updateStorePlugin(plugin)}
+                            onUninstall={() => {
+                                const installedPlugin = plugins.find(
+                                    (item) => item.id === plugin.id,
+                                );
+
+                                if (installedPlugin) {
+                                    requestUninstall(installedPlugin);
+                                }
+                            }}
                         />
                     ))}
 
@@ -415,6 +498,64 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     {statusMessage}
                 </p>
             )}
+
+            {updateConsent && (
+                <ConfirmDialog
+                    title={`Update ${updateConsent.plugin.name}?`}
+                    icon={<ShieldAlert size={19} aria-hidden="true" />}
+                    confirmLabel="Update"
+                    onConfirm={() => {
+                        const { plugin } = updateConsent;
+                        setUpdateConsent(null);
+                        return updateManagedPlugin(plugin);
+                    }}
+                    onClose={() => setUpdateConsent(null)}
+                    body={
+                        <>
+                            <p>
+                                This update asks for permissions the installed version did
+                                not declare.
+                            </p>
+                            <PluginPermissionList
+                                permissions={updateConsent.addedPermissions}
+                                label="New permissions"
+                            />
+                        </>
+                    }
+                />
+            )}
+
+            {uninstallTarget && (
+                <ConfirmDialog
+                    title={`Uninstall ${uninstallTarget.name}?`}
+                    message={`${uninstallTarget.name} will stop loading immediately and its plugin files will be removed. Saved plugin data is kept unless you choose to delete it below.`}
+                    confirmLabel={isUninstallingTarget ? "Uninstalling…" : "Uninstall"}
+                    variant="danger"
+                    isBusy={isUninstallingTarget}
+                    confirmDisabled={isUninstallingTarget}
+                    onConfirm={confirmUninstall}
+                    onClose={() => {
+                        if (!isUninstallingTarget) {
+                            setUninstallTarget(null);
+                        }
+                    }}
+                    body={
+                        <label className="checkbox-field">
+                            <input
+                                type="checkbox"
+                                checked={deletePluginData}
+                                disabled={isUninstallingTarget}
+                                onChange={(event) =>
+                                    setDeletePluginData(
+                                        (event.currentTarget as HTMLInputElement).checked,
+                                    )
+                                }
+                            />
+                            <span>Also delete this plugin's saved data</span>
+                        </label>
+                    }
+                />
+            )}
         </section>
     );
 }
@@ -422,10 +563,12 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
 function PluginListItem({
     plugin,
     selected,
+    updateAvailable,
     onSelect,
 }: {
     plugin: PluginManifest;
     selected: boolean;
+    updateAvailable: boolean;
     onSelect: () => void;
 }) {
     const category = plugin.category ?? "other";
@@ -434,7 +577,9 @@ function PluginListItem({
 
     return (
         <button
-            className={`plugin-list-item ${selected ? "active" : ""}`}
+            className={`plugin-list-item ${selected ? "active" : ""} ${
+                updateAvailable ? "has-update" : ""
+            }`.trim()}
             type="button"
             aria-pressed={selected}
             onClick={onSelect}
@@ -446,6 +591,14 @@ function PluginListItem({
                 <strong>{plugin.name}</strong>
                 <small>{PLUGIN_CATEGORY_LABELS[category]}</small>
             </span>
+            {updateAvailable && (
+                <span
+                    className="plugin-list-update"
+                    title="Update available"
+                    role="img"
+                    aria-label="Update available"
+                />
+            )}
             <span className={`plugin-list-status ${enabled ? "enabled" : ""}`}>
                 {enabled ? "On" : "Off"}
             </span>

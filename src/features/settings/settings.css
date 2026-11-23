@@ -387,6 +387,18 @@
     font-size: 0.72rem;
 }
 
+.plugin-list-item.has-update {
+    grid-template-columns: 32px minmax(0, 1fr) auto auto;
+}
+
+.plugin-list-update {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #f1d16f;
+    box-shadow: 0 0 0 2px rgba(241, 209, 111, 0.16);
+}
+
 .plugin-list-status {
     border-radius: 999px;
     background: #272a31;
@@ -423,6 +435,9 @@
 }
 
 .plugins-view-switcher button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     min-height: 32px;
     border: 0;
     border-radius: 6px;
@@ -437,6 +452,13 @@
 .plugins-view-switcher button.active {
     background: #303440;
     color: #ececf1;
+}
+
+.plugins-view-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #f1d16f;
 }
 
 .plugin-card {
@@ -672,6 +694,17 @@
     color: #ffb4bd;
 }
 
+.plugin-version-installed,
+.plugin-version-update {
+    color: #8f96a6;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.plugin-version-update {
+    color: #f1d16f;
+}
+
 .plugin-permissions {
     display: grid;
     gap: 6px;
@@ -892,6 +925,55 @@
 .plugin-update-button:disabled {
     cursor: not-allowed;
     opacity: 0.62;
+}
+
+.plugin-up-to-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    color: #8dd3a6;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0 4px;
+    white-space: nowrap;
+}
+
+.plugin-card-actions button.plugin-uninstall-button,
+.plugin-store-actions button.plugin-uninstall-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    border: 1px solid #42252a;
+    border-radius: 8px;
+    background: #211d22;
+    color: #ffc9cf;
+    font-weight: 700;
+    padding: 0 11px;
+    white-space: nowrap;
+}
+
+.plugin-card-actions button.plugin-uninstall-button:hover:not(:disabled),
+.plugin-store-actions button.plugin-uninstall-button:hover:not(:disabled) {
+    border-color: #5a2f34;
+    background: #2b1f24;
+    color: #ffd4d9;
+}
+
+.plugin-card-actions button.plugin-uninstall-button:disabled,
+.plugin-store-actions button.plugin-uninstall-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+@media (max-width: 600px) {
+    .plugin-card-actions button,
+    .plugin-card-actions button.plugin-uninstall-button,
+    .plugin-store-actions button,
+    .plugin-store-actions button.plugin-uninstall-button {
+        min-height: 40px;
+    }
 }
 
 .store-plugin-card .plugin-meta-grid {

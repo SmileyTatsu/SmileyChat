@@ -10,6 +10,7 @@ import {
     loadPluginRegistry,
     savePluginEnabled,
     savePluginProfilesState,
+    uninstallPlugin,
     updatePlugin,
     type PluginRegistryEntry,
     type PluginProfilesPayload,
@@ -38,6 +39,7 @@ import {
     type PluginCategory,
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
+import { collectAvailablePluginUpdates } from "#frontend/lib/plugins/updates";
 
 import {
     type InstalledFilter,
@@ -67,6 +69,7 @@ export function usePluginSettings() {
     const [manualArtifactUrl, setManualArtifactUrl] = useState("");
     const [installingPluginId, setInstallingPluginId] = useState("");
     const [updatingPluginId, setUpdatingPluginId] = useState("");
+    const [uninstallingPluginId, setUninstallingPluginId] = useState("");
     const [manualInstallBusy, setManualInstallBusy] = useState(false);
     const [, setRegistryRevision] = useState(0);
     const operationInFlightRef = useRef(false);
@@ -192,6 +195,11 @@ export function usePluginSettings() {
         }
         return map;
     }, [registryFailed, registryPlugins]);
+
+    const pluginUpdatesById = useMemo(
+        () => collectAvailablePluginUpdates(plugins, registryPlugins),
+        [plugins, registryPlugins],
+    );
 
     const filteredRegistryPlugins = useMemo(() => {
         const search = searchTerm.trim().toLowerCase();
@@ -496,6 +504,94 @@ export function usePluginSettings() {
         } finally {
             setUpdatingPluginId("");
             operationInFlightRef.current = false;
+        }
+    }
+
+    async function uninstallManagedPlugin(
+        plugin: PluginManifest,
+        options: { deleteData?: boolean } = {},
+    ): Promise<{ ok: boolean; message: string }> {
+        if (!plugin.install || operationInFlightRef.current) {
+            return { ok: false, message: "This plugin cannot be uninstalled." };
+        }
+
+        operationInFlightRef.current = true;
+        setRequestState("loading");
+        setUninstallingPluginId(plugin.id);
+
+        try {
+            const response = await uninstallPlugin(plugin.id, options);
+            deactivatePlugin(plugin.id);
+            setPlugins(mergeCoreAndUserPluginManifests(response.plugins ?? []));
+            setOpenPluginId((current) => (current === plugin.id ? "" : current));
+            await prunePluginProfileState(plugin.id);
+            const message = options.deleteData
+                ? `${plugin.name} uninstalled and its saved data was deleted.`
+                : `${plugin.name} uninstalled. Its saved data was kept for a future reinstall.`;
+            setStatusMessage(message);
+            setRequestState("success");
+            return { ok: true, message };
+        } catch (error) {
+            const message = messageFromError(error, "Could not uninstall plugin.");
+            setStatusMessage(message);
+            setRequestState("error");
+            return { ok: false, message };
+        } finally {
+            setUninstallingPluginId("");
+            operationInFlightRef.current = false;
+        }
+    }
+
+    /**
+     * Stale profile keys are harmless for activation (profiles only iterate
+     * installed plugins), but they would count as a "custom" profile state
+     * after the plugin disappears. Drop the removed id from the two maps that
+     * drive that comparison.
+     */
+    async function prunePluginProfileState(pluginId: string) {
+        if (!profilesPayload) {
+            return;
+        }
+
+        const lastApplied = { ...profilesPayload.lastApplied };
+        let changed = Object.prototype.hasOwnProperty.call(lastApplied, pluginId);
+        delete lastApplied[pluginId];
+
+        const customEnabledByProfile: Record<string, Record<string, boolean>> = {};
+
+        for (const [profileId, overrides] of Object.entries(
+            profilesPayload.customEnabledByProfile,
+        )) {
+            if (Object.prototype.hasOwnProperty.call(overrides, pluginId)) {
+                const next = { ...overrides };
+                delete next[pluginId];
+                changed = true;
+
+                if (Object.keys(next).length > 0) {
+                    customEnabledByProfile[profileId] = next;
+                }
+
+                continue;
+            }
+
+            customEnabledByProfile[profileId] = overrides;
+        }
+
+        if (!changed) {
+            return;
+        }
+
+        try {
+            const saved = await savePluginProfilesState({
+                version: 1,
+                activeProfileId: profilesPayload.activeProfileId,
+                lastApplied,
+                customEnabledByProfile,
+                userProfiles: profilesPayload.userProfiles,
+            });
+            setProfilesStateFromSave(saved.state);
+        } catch {
+            // Profile cleanup is best effort; stale ids never block discovery.
         }
     }
 
@@ -806,6 +902,7 @@ export function usePluginSettings() {
         manualInstallBusy,
         openPluginId,
         plugins,
+        pluginUpdatesById,
         refreshAll,
         refreshRegistry,
         registryCategoryCounts,
@@ -824,6 +921,8 @@ export function usePluginSettings() {
         settingsPanelsForPlugin,
         statusMessage,
         togglePlugin,
+        uninstallManagedPlugin,
+        uninstallingPluginId,
         updatingPluginId,
         updateManagedPlugin,
         updateActiveProfileDetails,

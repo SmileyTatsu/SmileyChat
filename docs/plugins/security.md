@@ -44,6 +44,7 @@ Enabling a listed local plugin from Options > Plugins loads it into the current 
 - Manual artifact installs are hidden unless `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true`. They use the same ZIP validation pipeline but are unverified trusted code.
 - SmileyChat does not require SHA-256 hashes for plugin artifacts in release v1. Registry curation is the trust model.
 - Plugin cleanup/unload is not a full isolation boundary. Supported hooks are filtered when disabled, but arbitrary side effects from plugin code cannot always be undone.
+- Uninstalling an installed plugin removes its files from `userData/plugins` and stops it in the current session. Local development folders without `smileychat-install.json` are never deleted by the app. Saved plugin `data/` is kept unless the user enables "Also delete this plugin's saved data".
 - Provider plugins run from the frontend and are subject to browser CORS rules unless they explicitly use the guarded plugin fetch bridge for non-provider helper requests.
 
 ## Install Trust Model

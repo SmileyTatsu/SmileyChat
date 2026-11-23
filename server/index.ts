@@ -97,6 +97,7 @@ import {
     writePluginStorage,
     writePluginStorageSnapshot,
 } from "./plugins";
+import { uninstallPlugin } from "./plugin-uninstall";
 import {
     deleteUserPluginProfile,
     readPluginProfiles,
@@ -369,6 +370,12 @@ const createServer = () =>
                             : undefined;
 
                     return updatePluginEnabled(request.params.pluginId, enabled);
+                }),
+
+                DELETE: api(async (request) => {
+                    const deleteData =
+                        new URL(request.url).searchParams.get("deleteData") === "true";
+                    return uninstallPlugin(request.params.pluginId, { deleteData });
                 }),
             },
 

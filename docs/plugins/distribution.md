@@ -132,15 +132,47 @@ The installed metadata file looks like this for Store installs:
 
 ## Updates
 
-Options > Plugins shows **Update** for plugins with `smileychat-install.json`.
+Options > Plugins shows **Update** only when the registry version is newer than the
+installed manifest version.
 
 - Registry-installed plugins update from the current registry entry for the same plugin ID.
-- Manual artifact plugins update from the stored `artifactUrl`.
-- Updates use the same staging, validation, swap, rollback, and `data/` preservation flow as installs.
+- The Local Plugins card shows the update target (`Update to 1.2.0`), and the plugin
+  list marks plugins with a small update dot.
+- The Extension Store card shows the installed version, `Update to x.y.z`, or an
+  **Up to date** state when the registry version matches the installed manifest.
+- Manual artifact plugins have no registry version to compare against, so their card
+  keeps a clearly labelled **Reinstall** action that downloads the stored `artifactUrl`.
+- Updates use the same staging, validation, swap, rollback, and `data/` preservation
+  flow as installs.
 - If the registry entry for the update lists permissions the installed plugin did not declare, the Store asks for confirmation again and lists only the added permissions.
 - Local folder plugins are development-only and are not updateable by SmileyChat.
 
+If the registry is unavailable, update information is silently omitted; the
+Extension Store tab still shows its own unavailable state.
+
 Updating never runs `git pull` or a build command.
+
+## Uninstall
+
+Plugins installed by SmileyChat have an **Uninstall** action on their Local Plugins
+card and on their installed Extension Store card. The confirmation dialog also
+offers **Also delete this plugin's saved data**, which is off by default.
+
+`DELETE /api/plugins/{pluginId}` follows these rules:
+
+- Core extensions cannot be uninstalled.
+- Only plugins with a valid `smileychat-install.json` can be uninstalled. Local
+  development folders are refused so a hand-made plugin folder is never deleted.
+- Plugin IDs must be a safe single folder segment; traversal and unknown plugins
+  are rejected.
+- With `?deleteData=true`, the whole plugin folder is removed.
+- Without `deleteData`, plugin code and install metadata are removed but `data/` is
+  kept, so reinstalling the plugin restores its saved settings.
+- `plugin.json` and `smileychat-install.json` are deleted first, so a partially
+  removed folder is never discovered as an installed plugin.
+
+Uninstalling stops the plugin in the current session, removes it from Options >
+Plugins, and clears the removed plugin ID from the active plugin-profile state.
 
 ## Manual Artifact Installs
 
