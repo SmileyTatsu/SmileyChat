@@ -372,6 +372,8 @@ export type PluginRegistryEntry = {
     category: PluginCategory;
     status: "official" | "verified";
     repository?: string;
+    /** Permissions the registry reviewed this artifact for. Absent means unlisted. */
+    permissions?: string[];
     artifact: { url: string };
 };
 

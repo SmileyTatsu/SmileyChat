@@ -47,7 +47,9 @@ Plugins that define `styles` must include the `ui:styles` permission.
 
 `permissions`
 
-Optional list of permission labels. These are displayed to the user and enforced by the runtime for protected plugin APIs. If a plugin calls a protected API without the matching permission, that call throws and the plugin may show as a load error.
+Optional list of permission labels. These are displayed to the user before install and enforced by the runtime for protected plugin APIs. If a plugin calls a protected API without the matching permission, that call throws and the plugin may show as a load error.
+
+Store installs cross-check this list against the registry entry's optional `permissions` list. If the registry lists permissions for the artifact, a manifest that asks for anything else is rejected before it is installed.
 
 Recommended labels:
 
