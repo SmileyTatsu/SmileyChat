@@ -8,7 +8,7 @@ import { formatChatMeta } from "../sidebar-helpers";
 
 export type ChatListProps = {
     activeChatId: string;
-    directChats: ChatSummary[];
+    characterNamesById?: Record<string, string>;
     filteredDirectChats: ChatSummary[];
     hasCharacters: boolean;
     hasSidebarFilter: boolean;
@@ -18,7 +18,7 @@ export type ChatListProps = {
 
 export function ChatList({
     activeChatId,
-    directChats,
+    characterNamesById,
     filteredDirectChats,
     hasCharacters,
     hasSidebarFilter,
@@ -53,11 +53,17 @@ export function ChatList({
                         )}
                         <span>
                             <strong>{chatDisplayTitle(chat)}</strong>
-                            <small>{formatChatMeta(chat)}</small>
+                            <small>
+                                {!isGroupChat(chat) &&
+                                characterNamesById?.[chat.characterId]
+                                    ? `${characterNamesById[chat.characterId]} · `
+                                    : ""}
+                                {formatChatMeta(chat)}
+                            </small>
                         </span>
                     </button>
                 ))
-            ) : directChats.length > 0 && hasSidebarFilter ? (
+            ) : hasSidebarFilter ? (
                 <div className="rail-empty-state">
                     <strong>No matching chats</strong>
                     <span>Try a different filter.</span>

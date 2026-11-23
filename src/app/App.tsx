@@ -989,7 +989,17 @@ export function App() {
         void renameChat(chatId, title);
     });
     const handleSidebarSelectChat = useEventCallback((chatId: string) => {
-        void selectChat(chatId);
+        void (async () => {
+            // Search can return a chat that belongs to another character. Switch
+            // the character first so the rail, header and chat list stay in sync.
+            const summary = chatSummaries.chats.find((chat) => chat.id === chatId);
+
+            if (summary && !isGroupChat(summary) && summary.characterId !== character.id) {
+                await selectCharacter(summary.characterId);
+            }
+
+            await selectChat(chatId);
+        })();
         if (isMobileLayout) {
             setActiveSidebarOpen(false);
         }
@@ -1139,6 +1149,7 @@ export function App() {
                 activeCharacterId={character.id}
                 activeGroupId={activeGroupId}
                 chats={activeCharacterChats}
+                allChats={chatSummaries.chats}
                 groupChats={groupWorkspaces}
                 groupConversations={groupConversations}
                 railOrder={preferences.layout.railOrder}

@@ -20,6 +20,9 @@ import type { RefObject } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
+import { loadChat } from "#frontend/lib/api/client";
+import { messageFromError } from "#frontend/lib/common/errors";
+import { downloadChatExport, type ChatExportFormat } from "#frontend/lib/chats/export";
 import {
     chatDisplayTitle,
     defaultGroupTitle,
@@ -51,6 +54,7 @@ type SidebarProps = {
     activeChatId: string;
     activeCharacterId: string;
     pendingCharacterId?: string;
+    allChats: ChatSummary[];
     chats: ChatSummary[];
     chatCountsByCharacterId: Record<string, number>;
     chatImportStatus?: string;
@@ -339,6 +343,7 @@ export function Sidebar({
     activeChatId,
     activeCharacterId,
     pendingCharacterId,
+    allChats,
     chats,
     chatImportStatus,
     chatImportStatusFading,
@@ -552,6 +557,7 @@ export function Sidebar({
     const [chatDeleteCandidate, setChatDeleteCandidate] = useState<
         ChatSummary | undefined
     >();
+    const [chatExportStatus, setChatExportStatus] = useState("");
     const [groupAvatarTarget, setGroupAvatarTarget] = useState<ChatSummary | undefined>();
     const [groupCreateOpen, setGroupCreateOpen] = useState(false);
     const [groupTitleDraft, setGroupTitleDraft] = useState("");
@@ -594,6 +600,23 @@ export function Sidebar({
         setChatContextMenu(undefined);
         setGroupAvatarTarget(chat);
         groupAvatarInputRef.current?.click();
+    }
+
+    async function exportChat(chat: ChatSummary, format: ChatExportFormat) {
+        setChatContextMenu(undefined);
+        setChatExportStatus("Preparing export...");
+
+        try {
+            const session = await loadChat(chat.id);
+            const characterName = isGroupChat(chat)
+                ? undefined
+                : characters.find((entry) => entry.id === chat.characterId)?.name;
+
+            downloadChatExport(session, format, characterName);
+            setChatExportStatus("");
+        } catch (error) {
+            setChatExportStatus(`Export failed: ${messageFromError(error)}`);
+        }
     }
 
     function submitRename(event: SubmitEvent) {
@@ -813,16 +836,33 @@ export function Sidebar({
         [chatFilter],
     );
     const hasChatFilter = normalizedChatFilter.length > 0;
+    const characterNamesById = useMemo(
+        () =>
+            Object.fromEntries(
+                characters.map((character) => [character.id, character.name]),
+            ) as Record<string, string>,
+        [characters],
+    );
     const filteredContextualChats = useMemo(
         () =>
             hasChatFilter
-                ? contextualChats.filter((chat) =>
+                ? // A filter searches every character's chats; the list is scoped
+                  // to the active character only when the box is empty.
+                  allChats.filter((chat) =>
                       normalizeFilterText(
-                          `${chatDisplayTitle(chat)} ${formatChatMeta(chat)}`,
+                          `${chatDisplayTitle(chat)} ${formatChatMeta(chat)} ${
+                              characterNamesById[chat.characterId] ?? ""
+                          }`,
                       ).includes(normalizedChatFilter),
                   )
                 : contextualChats,
-        [contextualChats, hasChatFilter, normalizedChatFilter],
+        [
+            allChats,
+            characterNamesById,
+            contextualChats,
+            hasChatFilter,
+            normalizedChatFilter,
+        ],
     );
 
     if (!isOpen) {
@@ -1034,8 +1074,8 @@ export function Sidebar({
                                     <input
                                         type="search"
                                         value={chatFilter}
-                                        placeholder="Search chats"
-                                        aria-label="Search chats"
+                                        placeholder="Search all chats"
+                                        aria-label="Search all chats"
                                         onInput={(event) =>
                                             setChatFilter(
                                                 (event.currentTarget as HTMLInputElement)
@@ -1085,7 +1125,9 @@ export function Sidebar({
                                     </div>
                                     <ChatList
                                         activeChatId={activeChatId}
-                                        directChats={contextualChats}
+                                        characterNamesById={
+                                            hasChatFilter ? characterNamesById : undefined
+                                        }
                                         filteredDirectChats={filteredContextualChats}
                                         hasCharacters={hasCharacters}
                                         hasSidebarFilter={hasChatFilter}
@@ -1103,6 +1145,9 @@ export function Sidebar({
                                     )}
                                     {chatLoadError && (
                                         <p className="rail-error">{chatLoadError}</p>
+                                    )}
+                                    {chatExportStatus && (
+                                        <p className="rail-status">{chatExportStatus}</p>
                                     )}
                                 </section>
 
@@ -1362,6 +1407,22 @@ export function Sidebar({
                                 Change group image
                             </button>
                         )}
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => void exportChat(chatContextMenu.chat, "markdown")}
+                        >
+                            <Download size={14} />
+                            Export as Markdown
+                        </button>
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => void exportChat(chatContextMenu.chat, "json")}
+                        >
+                            <Download size={14} />
+                            Export as JSON
+                        </button>
                         <button
                             className="danger-menu-item"
                             type="button"
