@@ -2478,6 +2478,51 @@
     white-space: nowrap;
 }
 
+.composer-context-meter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+    color: #7f889b;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.composer-context-track {
+    display: block;
+    width: 42px;
+    height: 4px;
+    flex: none;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #2c303b;
+}
+
+.composer-context-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #5b6478;
+    transition: width 240ms ease;
+}
+
+.composer-context-meter[data-state="warning"] {
+    color: #c9a35f;
+}
+
+.composer-context-meter[data-state="warning"] .composer-context-fill {
+    background: #c9a35f;
+}
+
+.composer-context-meter[data-state="critical"] {
+    color: #f08a8a;
+}
+
+.composer-context-meter[data-state="critical"] .composer-context-fill {
+    background: #f08a8a;
+}
+
 .composer-save-state[data-state="saved"] {
     color: #7f889b;
 }

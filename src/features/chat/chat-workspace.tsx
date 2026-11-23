@@ -19,6 +19,7 @@ import type {
 
 import { ChatHeader } from "./chat-header";
 import { ComposerStatus } from "./composer-status";
+import { ContextMeter } from "./context-meter";
 import { MessageComposer, type StagedAttachment } from "./message-composer";
 import { MessageList } from "./message-list";
 
@@ -71,6 +72,7 @@ type ChatWorkspaceProps = {
     mode: ChatMode;
     preferences: AppPreferences;
     saveState?: ChatSaveState;
+    contextUsage?: { budget: number; usedTokens: number };
     pendingSwipeMessageId?: string;
     personas: PersonaSummary[];
     canForkMessages: boolean;
@@ -125,6 +127,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     mode,
     preferences,
     saveState,
+    contextUsage,
     pendingSwipeMessageId,
     personas,
     canForkMessages,
@@ -279,7 +282,17 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     onImpersonate={onImpersonate}
                     onSubmit={onSendMessage}
                     pluginSnapshot={pluginSnapshot}
-                    statusBar={<ComposerStatus saveState={saveState} />}
+                    statusBar={
+                        <>
+                            {contextUsage && (
+                                <ContextMeter
+                                    budget={contextUsage.budget}
+                                    usedTokens={contextUsage.usedTokens}
+                                />
+                            )}
+                            <ComposerStatus saveState={saveState} />
+                        </>
+                    }
                 />
             )}
             {isLoading && <ChatLoadingState />}

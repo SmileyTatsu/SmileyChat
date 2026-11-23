@@ -56,6 +56,7 @@ import {
     type AppPreferences,
 } from "#frontend/lib/preferences/types";
 
+import { useContextUsage } from "./hooks/use-context-usage";
 import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
 import type {
     PluginAppSnapshot,
@@ -301,6 +302,26 @@ export function App() {
             profile ? tokenizerContextForProfile(profile) : undefined,
         );
     }, [connectionSettings]);
+
+    const activeConnectionProfile = useMemo(
+        () => getActiveConnectionProfile(connectionSettings),
+        [connectionSettings],
+    );
+    const tokenCountContext = useMemo(
+        () =>
+            activeConnectionProfile
+                ? tokenizerContextForProfile(activeConnectionProfile)
+                : undefined,
+        [activeConnectionProfile],
+    );
+    const tokenContextKey = tokenCountContext
+        ? `${tokenCountContext.provider}:${tokenCountContext.modelId}:${tokenCountContext.selection.mode}:${tokenCountContext.selection.algorithm ?? ""}`
+        : "none";
+    const contextTokenBudget = useMemo(
+        () => getEffectiveContextTokenBudget(activeConnectionProfile).tokenBudget,
+        [activeConnectionProfile],
+    );
+    const contextUsedTokens = useContextUsage(chatSession.messages, tokenContextKey);
 
     useEffect(() => {
         latestPreferencesRef.current = preferences;
@@ -1252,6 +1273,7 @@ export function App() {
                 onToggleSidebar={toggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
+                contextUsage={{ budget: contextTokenBudget, usedTokens: contextUsedTokens }}
                 saveState={chatSaveState}
                 getPluginSnapshot={getPluginSnapshotForActions}
                 pluginSnapshot={pluginSnapshot}
