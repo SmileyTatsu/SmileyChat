@@ -223,6 +223,11 @@
     gap: 8px;
 }
 
+/* Keep the destructive action away from New and Duplicate. */
+.button-row .connection-profile-delete {
+    margin-left: auto;
+}
+
 .button-row button {
     display: flex;
     align-items: center;

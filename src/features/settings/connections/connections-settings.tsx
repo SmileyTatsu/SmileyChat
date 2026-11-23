@@ -1,6 +1,7 @@
 import { Copy, Plus, Trash2 } from "lucide-preact";
 import { useEffect, useState } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
     loadConnectionModels,
     saveConnectionSecrets,
@@ -115,6 +116,8 @@ export function ConnectionsSettings({
     >(() => ({ ...cachedXAIModelsByProfileId }));
     const [requestState, setRequestState] = useState<RequestState>("idle");
     const [statusMessage, setStatusMessage] = useState("");
+    const [profilePendingDeletion, setProfilePendingDeletion] =
+        useState<ConnectionProfile | null>(null);
     const [, setRegistryRevision] = useState(0);
 
     const activeProfile = getActiveConnectionProfile(settings);
@@ -894,45 +897,46 @@ export function ConnectionsSettings({
         setRequestState("success");
     }
 
-    function deleteProfile() {
-        if (!activeProfile || settings.profiles.length <= 1) {
+    function deleteProfile(profile: ConnectionProfile) {
+        if (settings.profiles.length <= 1) {
             return;
         }
 
-        const profiles = settings.profiles.filter(
-            (profile) => profile.id !== activeProfile.id,
-        );
+        const profiles = settings.profiles.filter((entry) => entry.id !== profile.id);
         const nextSettings = {
             ...settings,
-            activeProfileId: profiles[0].id,
+            activeProfileId:
+                settings.activeProfileId === profile.id
+                    ? profiles[0].id
+                    : settings.activeProfileId,
             profiles,
         };
 
         onSettingsChange(nextSettings);
         setOpenRouterModelsByProfileId((current) => {
             const next = { ...current };
-            delete next[activeProfile.id];
+            delete next[profile.id];
             return next;
         });
-        delete cachedOpenRouterModelsByProfileId[activeProfile.id];
+        delete cachedOpenRouterModelsByProfileId[profile.id];
         setGoogleAIModelsByProfileId((current) => {
             const next = { ...current };
-            delete next[activeProfile.id];
+            delete next[profile.id];
             return next;
         });
-        delete cachedGoogleAIModelsByProfileId[activeProfile.id];
+        delete cachedGoogleAIModelsByProfileId[profile.id];
         setAnthropicModelsByProfileId((current) => {
             const next = { ...current };
-            delete next[activeProfile.id];
+            delete next[profile.id];
             return next;
         });
-        delete cachedAnthropicModelsByProfileId[activeProfile.id];
+        delete cachedAnthropicModelsByProfileId[profile.id];
         setXAIModelsByProfileId((current) => {
             const next = { ...current };
-            delete next[activeProfile.id];
+            delete next[profile.id];
             return next;
         });
-        delete cachedXAIModelsByProfileId[activeProfile.id];
+        delete cachedXAIModelsByProfileId[profile.id];
         setStatusMessage("Deleted connection profile. Saving automatically.");
         setRequestState("success");
     }
@@ -982,10 +986,14 @@ export function ConnectionsSettings({
                         Duplicate
                     </button>
                     <button
-                        className="danger-button"
+                        className="danger-button connection-profile-delete"
                         type="button"
                         disabled={isBusy || settings.profiles.length <= 1}
-                        onClick={deleteProfile}
+                        onClick={() => {
+                            if (activeProfile) {
+                                setProfilePendingDeletion(activeProfile);
+                            }
+                        }}
                     >
                         <Trash2 size={16} />
                         Delete
@@ -1235,6 +1243,20 @@ export function ConnectionsSettings({
 
             {statusMessage && (
                 <p className={`connection-status ${requestState}`}>{statusMessage}</p>
+            )}
+
+            {profilePendingDeletion && (
+                <ConfirmDialog
+                    title="Delete connection profile?"
+                    message={`Delete ${profilePendingDeletion.name} and its saved API key? Chats using it will stop generating until another profile is selected.`}
+                    confirmLabel="Delete profile"
+                    variant="danger"
+                    onConfirm={() => {
+                        deleteProfile(profilePendingDeletion);
+                        setProfilePendingDeletion(null);
+                    }}
+                    onClose={() => setProfilePendingDeletion(null)}
+                />
             )}
         </section>
     );
