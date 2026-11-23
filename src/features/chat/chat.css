@@ -2554,7 +2554,7 @@
 
 .composer-plugin-actions button:hover:not(:disabled) {
     border-color: #465065;
-    background: #242833;
+    background: var(--surface-active);
 }
 
 .composer-staged-images {
@@ -2923,12 +2923,12 @@
             color 150ms ease;
 
         &:hover:not(:disabled) {
-            background: #242833;
+            background: var(--surface-active);
             color: #ececf1;
         }
 
         &[aria-expanded="true"] {
-            background: #242833;
+            background: var(--surface-active);
             color: #ececf1;
         }
     }
