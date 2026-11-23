@@ -2462,6 +2462,35 @@
     @apply col-span-full flex min-w-0 gap-2 overflow-x-auto;
 }
 
+.composer-status-bar {
+    @apply col-span-full flex min-w-0 items-center justify-between gap-3;
+    padding: 0 10px 2px;
+    min-height: 14px;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #9da3b4;
+}
+
+.composer-save-state {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    color: #7f889b;
+    white-space: nowrap;
+}
+
+.composer-save-state[data-state="saved"] {
+    color: #7f889b;
+}
+
+.composer-save-state[data-state="saving"],
+.composer-save-state[data-state="pending"] {
+    color: #9da3b4;
+}
+
+.composer-save-state[data-state="error"] {
+    color: #f08a8a;
+}
+
 .composer-plugin-actions button {
     display: inline-flex;
     align-items: center;

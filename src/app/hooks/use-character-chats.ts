@@ -265,6 +265,7 @@ export function useCharacterChats({
         chatLoadRequestId: chatLibrary.chatLoadRequestId,
         completeChatLoad: chatLibrary.completeChatLoad,
         chatLoadError: chatLibrary.chatLoadError,
+        chatSaveState: chatLibrary.chatSaveState,
         createCharacter,
         createGroupChat,
         deleteCharacter,

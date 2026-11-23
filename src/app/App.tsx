@@ -198,6 +198,7 @@ export function App() {
         chatLoadRequestId,
         completeChatLoad,
         chatLoadError,
+        chatSaveState,
         createCharacter,
         createGroupChat,
         createGroupConversation,
@@ -1251,6 +1252,7 @@ export function App() {
                 onToggleSidebar={toggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
+                saveState={chatSaveState}
                 getPluginSnapshot={getPluginSnapshotForActions}
                 pluginSnapshot={pluginSnapshot}
             />

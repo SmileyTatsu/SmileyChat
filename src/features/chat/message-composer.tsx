@@ -1,4 +1,5 @@
 import { FileText, LoaderCircle, SendHorizonal, Square, X } from "lucide-preact";
+import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
@@ -50,6 +51,7 @@ type MessageComposerProps = {
         files?: StagedAttachment[],
     ) => boolean | void | Promise<boolean | void>;
     pluginSnapshot: PluginAppSnapshot;
+    statusBar?: ComponentChildren;
 };
 
 export type StagedAttachment = {
@@ -118,6 +120,7 @@ export const MessageComposer = memo(function MessageComposer({
     onImpersonate,
     onSubmit,
     pluginSnapshot,
+    statusBar,
 }: MessageComposerProps) {
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -682,6 +685,8 @@ export const MessageComposer = memo(function MessageComposer({
                     {isGenerating ? <Square size={17} /> : <SendHorizonal size={18} />}
                 </button>
             </div>
+
+            {statusBar && <div className="composer-status-bar">{statusBar}</div>}
         </form>
     );
 });

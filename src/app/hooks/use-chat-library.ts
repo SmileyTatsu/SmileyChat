@@ -43,6 +43,7 @@ import type {
     UserStatus,
 } from "#frontend/types";
 import type { ChatMetadataPatch } from "#frontend/lib/api/client";
+import type { ChatSaveState } from "#frontend/lib/chats/types";
 
 import { useChatAutosave } from "./use-chat-autosave";
 import {
@@ -83,6 +84,9 @@ export function useChatLibrary({
     const [activeChat, setActiveChatState] = useState<ChatSession | undefined>();
     const [groupCharacters, setGroupCharactersState] = useState<SmileyCharacter[]>([]);
     const [chatLoadError, setChatLoadError] = useState("");
+    const [chatSaveState, setChatSaveState] = useState<ChatSaveState>({
+        status: "idle",
+    });
     const [pendingChatLoad, setPendingChatLoad] = useState<PendingChatLoad>();
     const latestChatRef = useRef(activeChat);
     const latestChatSummariesRef = useRef(chatSummaries);
@@ -101,6 +105,7 @@ export function useChatLibrary({
     } = useChatAutosave({
         latestChatRef,
         latestChatSummariesRef,
+        onSaveStateChange: setChatSaveState,
         setActiveChat,
         setChatLoadError,
         updateChatSummary,
@@ -1305,6 +1310,7 @@ export function useChatLibrary({
         createGroupConversation,
         chatCountsByCharacterId,
         chatLoadError,
+        chatSaveState,
         chatSummaries,
         clearChatState,
         createChatForCharacter,

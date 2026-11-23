@@ -5,6 +5,7 @@ import { chatToSummary } from "#frontend/lib/chats/normalize";
 import { clientLogger } from "#frontend/lib/logging/client-logger";
 import { messageFromError } from "#frontend/lib/common/errors";
 import type { ChatSession, ChatSummary, ChatSummaryCollection } from "#frontend/types";
+import type { ChatSaveState } from "#frontend/lib/chats/types";
 
 import { createLatestSaveQueue, type LatestSaveQueue } from "./latest-save-queue";
 
@@ -15,6 +16,7 @@ type MutableRef<T> = {
 type UseChatAutosaveOptions = {
     latestChatRef: MutableRef<ChatSession | undefined>;
     latestChatSummariesRef: MutableRef<ChatSummaryCollection>;
+    onSaveStateChange: (state: ChatSaveState) => void;
     setActiveChat: (chat: ChatSession | undefined) => void;
     setChatLoadError: (message: string) => void;
     updateChatSummary: (summary: ChatSummary) => void;
@@ -29,6 +31,7 @@ const autosaveDelayMs = 450;
 export function useChatAutosave({
     latestChatRef,
     latestChatSummariesRef,
+    onSaveStateChange,
     setActiveChat,
     setChatLoadError,
     updateChatSummary,
@@ -88,6 +91,7 @@ export function useChatAutosave({
     function queueChatSave(nextChat: ChatSession) {
         updateLocalChatState(nextChat, true);
         setChatLoadError("");
+        onSaveStateChange({ status: "pending", chatId: nextChat.id });
         scheduledChatsRef.current.set(nextChat.id, nextChat);
         clearPendingChatAutosaveTimer(nextChat.id);
         autosaveTimersRef.current.set(
@@ -158,13 +162,21 @@ export function useChatAutosave({
         }
 
         const queue = createLatestSaveQueue<ChatSession, SaveResult>({
-            save: (chat) => saveChat(chat),
+            save: (chat) => {
+                onSaveStateChange({ status: "saving", chatId: chat.id });
+                return saveChat(chat);
+            },
             onIdle: () => {
                 if (saveQueuesRef.current.get(chatId) === queue) {
                     saveQueuesRef.current.delete(chatId);
                 }
             },
-            onSaved: (_chat, result) => {
+            onSaved: (savedChat, result) => {
+                onSaveStateChange({
+                    status: "saved",
+                    chatId: savedChat.id,
+                    savedAt: Date.now(),
+                });
                 if (
                     shouldApplySavedChatSummary(
                         result.summary,
@@ -177,7 +189,13 @@ export function useChatAutosave({
                 setChatLoadError("");
             },
             onError: (error) => {
-                setChatLoadError(messageFromError(error));
+                const message = messageFromError(error);
+                onSaveStateChange({
+                    status: "error",
+                    chatId,
+                    error: message,
+                });
+                setChatLoadError(message);
             },
         });
 

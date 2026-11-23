@@ -120,3 +120,11 @@ export type ChatIndex = {
     /** Compact metadata used to populate the chat rail without reading sessions. */
     summaries: ChatSummary[];
 };
+
+/** Local autosave status for the active chat, shown in the composer status bar. */
+export type ChatSaveState = {
+    status: "idle" | "pending" | "saving" | "saved" | "error";
+    chatId?: string;
+    savedAt?: number;
+    error?: string;
+};
