@@ -57,6 +57,7 @@ import {
 } from "#frontend/lib/preferences/types";
 
 import { useContextUsage } from "./hooks/use-context-usage";
+import { CommandPalette } from "#frontend/features/command-palette/command-palette";
 import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
 import type {
     PluginAppSnapshot,
@@ -322,6 +323,37 @@ export function App() {
         [activeConnectionProfile],
     );
     const contextUsedTokens = useContextUsage(chatSession.messages, tokenContextKey);
+
+    const [paletteOpen, setPaletteOpen] = useState(false);
+
+    useEffect(() => {
+        function handlePaletteHotkey(event: KeyboardEvent) {
+            if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+                return;
+            }
+
+            if (event.key.toLowerCase() !== "k") {
+                return;
+            }
+
+            event.preventDefault();
+            setPaletteOpen((isOpen) => !isOpen);
+        }
+
+        window.addEventListener("keydown", handlePaletteHotkey);
+
+        return () => window.removeEventListener("keydown", handlePaletteHotkey);
+    }, []);
+
+    const characterNamesById = useMemo(() => {
+        const names: Record<string, string> = {};
+
+        for (const summary of characterSummaries.characters) {
+            names[summary.id] = summary.name;
+        }
+
+        return names;
+    }, [characterSummaries.characters]);
 
     useEffect(() => {
         latestPreferencesRef.current = preferences;
@@ -1192,6 +1224,7 @@ export function App() {
                 onImportCharacterFiles={handleSidebarImportCharacterFiles}
                 onImportChatFile={handleSidebarImportChatFile}
                 onNewChat={handleSidebarNewChat}
+                onOpenPalette={() => setPaletteOpen(true)}
                 onNewGroupChat={handleSidebarNewGroupChat}
                 onOpenSettings={handleOpenSettings}
                 onOpenPersonasSettings={handleOpenPersonasSettings}
@@ -1315,6 +1348,26 @@ export function App() {
                     onUpdateChatMetadata={handlePanelUpdateChatMetadata}
                 />
             ) : null}
+
+            <CommandPalette
+                characterNamesById={characterNamesById}
+                characters={characterSummaries.characters}
+                chats={chatSummaries.chats}
+                isOpen={paletteOpen}
+                onClose={() => {
+                    setPaletteOpen(false);
+                    document
+                        .querySelector<HTMLTextAreaElement>(
+                            ".chat-composer-area textarea",
+                        )
+                        ?.focus();
+                }}
+                onNewChat={handleSidebarNewChat}
+                onOpenOptions={handleOpenSettings}
+                onSelectCharacter={handleSidebarSelectCharacter}
+                onSelectChat={handleSidebarSelectChat}
+                onToggleCharacterPanel={() => handleToggleCharacter?.()}
+            />
 
             <OptionsModalHost
                 character={character}

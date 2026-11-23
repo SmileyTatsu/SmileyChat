@@ -87,6 +87,7 @@ type SidebarProps = {
     onOpenPersonasSettings: () => void;
     onChangeGroupAvatar: (chatId: string, file: File) => void;
     onDeleteChat: (chatId: string) => void;
+    onOpenPalette?: () => void;
     onDeleteGroup?: (groupId: string) => void;
     onDeleteCharacter: (characterId: string, options?: { deleteChats?: boolean }) => void;
     onExportCharacter: (characterId: string, format: "json" | "png") => void;
@@ -372,6 +373,7 @@ export function Sidebar({
     onOpenPersonasSettings,
     onChangeGroupAvatar,
     onDeleteChat,
+    onOpenPalette,
     onDeleteGroup,
     onDeleteCharacter,
     onExportCharacter,
@@ -1091,6 +1093,16 @@ export function Sidebar({
                                             onClick={() => setChatFilter("")}
                                         >
                                             <X size={14} />
+                                        </button>
+                                    )}
+                                    {!chatFilter && onOpenPalette && (
+                                        <button
+                                            type="button"
+                                            className="sidebar-filter-hint"
+                                            title="Open the command palette"
+                                            onClick={onOpenPalette}
+                                        >
+                                            Ctrl K
                                         </button>
                                     )}
                                 </div>

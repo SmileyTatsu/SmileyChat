@@ -445,7 +445,7 @@
     top: 0;
     z-index: 2;
     display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) 26px;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
     align-items: center;
     gap: 6px;
     margin-top: -4px;
@@ -455,6 +455,25 @@
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.16);
     color: #8f9ab1;
     padding: 6px 7px 6px 9px;
+}
+
+.sidebar-filter-hint {
+    padding: 2px 6px;
+    border: 1px solid #3a3f4d;
+    border-radius: 5px;
+    background: #23262f;
+    color: #7f889b;
+    font: inherit;
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.sidebar-filter-hint:hover {
+    border-color: #4a5266;
+    color: #b9c0d0;
 }
 
 .sidebar-filter-bar input {
