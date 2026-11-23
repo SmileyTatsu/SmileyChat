@@ -21,6 +21,8 @@ import {
 } from "#frontend/lib/plugins/types";
 
 import { CATEGORY_ICONS, type RequestState } from "./plugin-settings-helpers";
+import { PluginPermissionList } from "./plugin-permission-list";
+import { formatPluginPermissionList } from "./plugin-permissions";
 import { PluginTrustBadge } from "./plugin-trust-badge";
 import { ManagedPluginSettingsSection } from "./managed-plugin-settings-section";
 
@@ -142,7 +144,9 @@ export function PluginCard({
                         ) : (
                             <>
                                 <Power size={14} />
-                                Pending restart
+                                <span title="This plugin is enabled but was not loaded in this session. Reload the page to load it.">
+                                    Needs reload
+                                </span>
                             </>
                         )}
                     </dd>
@@ -150,14 +154,7 @@ export function PluginCard({
             </dl>
 
             {plugin.permissions && plugin.permissions.length > 0 && (
-                <div className="plugin-permissions">
-                    <span>Permissions</span>
-                    <div>
-                        {plugin.permissions.map((permission) => (
-                            <code key={permission}>{permission}</code>
-                        ))}
-                    </div>
-                </div>
+                <PluginPermissionList permissions={plugin.permissions} />
             )}
 
             <div className="plugin-card-actions">
@@ -192,10 +189,15 @@ export function PluginCard({
                         ))
                     ) : loaded?.status === "loaded" ? (
                         <p>This plugin does not provide custom configuration.</p>
+                    ) : loaded?.status === "error" ? (
+                        <p>
+                            This plugin failed to load, so its configuration UI is
+                            unavailable. Check the status above.
+                        </p>
                     ) : enabled ? (
-                        <p>Restart SmileyChat to load this plugin's configuration UI.</p>
+                        <p>Reload the page to load this plugin's configuration UI.</p>
                     ) : (
-                        <p>Enable this plugin and restart SmileyChat to configure it.</p>
+                        <p>Enable this plugin to configure it.</p>
                     )}
                 </div>
             )}
@@ -244,7 +246,7 @@ function pluginSourceClass(
 function UnverifiedPluginWarning({ plugin }: { plugin: PluginManifest }) {
     const claimText =
         plugin.permissions && plugin.permissions.length > 0
-            ? `While it claims to only use ${formatPermissionList(plugin.permissions)}, unverified plugins have full access to your browser, chats, and connection secrets.`
+            ? `While it claims to only use ${formatPluginPermissionList(plugin.permissions)}, unverified plugins have full access to your browser, chats, and connection secrets.`
             : "Even if it declares no special permissions, unverified plugins have full access to your browser, chats, and connection secrets.";
 
     return (
@@ -259,24 +261,4 @@ function UnverifiedPluginWarning({ plugin }: { plugin: PluginManifest }) {
             </div>
         </div>
     );
-}
-
-function formatPermissionList(permissions: string[]) {
-    const labels = permissions.map(formatPermissionName);
-
-    if (labels.length === 1) {
-        return labels[0];
-    }
-
-    if (labels.length === 2) {
-        return `${labels[0]} and ${labels[1]}`;
-    }
-
-    return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
-}
-
-function formatPermissionName(permission: string) {
-    return permission
-        .replace(/[:_-]+/g, " ")
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

@@ -57,7 +57,7 @@ export function activate(api) {
 }
 ```
 
-Restart SmileyChat after adding a new plugin, or open **Options > Plugins** and press **Refresh** to make the server list newly added plugin folders. If a newly discovered enabled plugin is still marked pending, disable and re-enable it or restart the app.
+Open **Options > Plugins** and press **Refresh** after adding a new plugin folder so the server lists it. If a newly discovered enabled plugin shows **Needs reload**, disable and re-enable it or reload the page; enabling a listed plugin loads it into the current session without a restart.
 
 ## Enable And Disable
 

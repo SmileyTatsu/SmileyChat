@@ -33,7 +33,7 @@ Plugins should not:
 
 Disabling an already-loaded plugin takes effect immediately for supported registry hooks.
 
-Enabling a listed local plugin from Options > Plugins loads it into the current browser session. Newly added plugin folders may need **Refresh**, a disable/enable cycle, or a restart before their JavaScript is loaded.
+Enabling a listed local plugin from Options > Plugins loads it into the current browser session; no restart is needed. A plugin folder added after the page loaded needs **Refresh** plus a disable/enable cycle, or a page reload, before its JavaScript runs.
 
 ## Current Limitations
 
