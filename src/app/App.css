@@ -574,10 +574,10 @@
 .plugin-header-actions button {
     display: grid;
     place-items: center;
-    min-width: 38px;
-    height: 38px;
-    border: 1px solid #303440;
-    border-radius: 8px;
+    min-width: 36px;
+    height: 36px;
+    border: 1px solid transparent;
+    border-radius: 6px;
     background: transparent;
     color: #c4cad8;
     padding: 0 9px;
@@ -754,34 +754,21 @@ textarea:disabled {
 }
 
 .theme-picker-trigger {
+    /* Header control box: 36px, radius 6, like the sidebar and panel
+       toggles it sits between. */
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 30px;
+    height: 36px;
     padding: 0 9px;
-    border: 1px solid #2c313d;
-    border-radius: 8px;
-    background: #1c1f27;
-    color: #c9cede;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #c4cad8;
     font-size: 0.78rem;
     font-weight: 600;
-    cursor: pointer;
     transition:
         background-color 150ms ease,
-        border-color 150ms ease,
         color 150ms ease;
-}
-
-.theme-picker-trigger:hover {
-    border-color: #3a4152;
-    background: #232833;
-    color: #ececf1;
-}
-
-.theme-picker-trigger[aria-expanded="true"] {
-    border-color: #3a4152;
-    background: #232833;
-    color: #ececf1;
 }
 
 .theme-picker-menu {
@@ -793,10 +780,7 @@ textarea:disabled {
     gap: 2px;
     width: 232px;
     padding: 5px;
-    border: 1px solid #303440;
-    border-radius: 10px;
-    background: #171a21;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
 }
 
 .theme-picker-option {
@@ -806,19 +790,20 @@ textarea:disabled {
     gap: 8px;
     padding: 7px 8px;
     border: 0;
-    border-radius: 7px;
+    border-radius: 6px;
     background: transparent;
-    color: #c9cede;
+    color: #d9dce6;
     text-align: left;
     cursor: pointer;
 }
 
 .theme-picker-option:hover {
-    background: #232833;
+    background: #242832;
+    color: #ececf1;
 }
 
 .theme-picker-option[data-active="true"] {
-    background: #212632;
+    background: #242832;
     color: #ececf1;
 }
 
@@ -832,13 +817,13 @@ textarea:disabled {
     place-items: center;
     width: 26px;
     height: 26px;
-    border-radius: 7px;
-    background: #1c1f27;
+    border-radius: 6px;
+    background: #1b1e25;
     color: #9aa6c4;
 }
 
 .theme-picker-option[data-active="true"] .theme-picker-option-icon {
-    background: #2b3242;
+    background: #2c313d;
     color: #ececf1;
 }
 
@@ -865,6 +850,7 @@ textarea:disabled {
 .character-toggle-btn,
 .icon-button,
 .plugin-header-actions button,
+.theme-picker-trigger,
 .rail-icon-button,
 .new-chat-button.secondary,
 .inline-group-actions button,
@@ -894,6 +880,8 @@ textarea:disabled {
 .character-toggle-btn:hover,
 .icon-button:hover,
 .plugin-header-actions button:hover,
+.theme-picker-trigger:hover,
+.theme-picker-trigger[aria-expanded="true"],
 .rail-icon-button:hover,
 .new-chat-button.secondary:hover:not(:disabled),
 .inline-group-actions button:hover:not(:disabled),
@@ -1033,6 +1021,7 @@ textarea:disabled {
 .status-menu,
 .persona-picker-panel,
 .export-menu,
+.theme-picker-menu,
 .message-confirm-dialog,
 .character-dialog,
 .plugin-modal,
@@ -1046,7 +1035,8 @@ textarea:disabled {
 .character-context-menu,
 .status-menu,
 .persona-picker-panel,
-.export-menu {
+.export-menu,
+.theme-picker-menu {
     box-shadow: var(--shadow-menu);
 }
 
@@ -1285,9 +1275,8 @@ textarea:disabled {
     }
 
     .theme-picker-menu {
-        right: auto;
-        left: 50%;
-        transform: translateX(-50%);
+        right: 0;
+        left: auto;
         width: min(232px, calc(100vw - 24px));
     }
 
@@ -1594,6 +1583,7 @@ textarea:disabled {
 
     .sidebar-toggle-btn,
     .character-toggle-btn,
+    .theme-picker-trigger,
     .chat-header .plugin-header-actions button,
     .chat-header .icon-button {
         min-width: 40px;
@@ -1606,9 +1596,12 @@ textarea:disabled {
         display: none;
     }
 
+    /* Icon-only on phones, so keep it a square like the other controls. */
     .theme-picker-trigger {
-        gap: 4px;
-        padding: 0 6px;
+        width: 40px;
+        justify-content: center;
+        gap: 0;
+        padding: 0;
     }
 
     /* Anchor to the trigger's right edge so the menu cannot leave the screen. */
