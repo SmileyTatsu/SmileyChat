@@ -1469,3 +1469,18 @@ textarea:disabled {
         justify-self: stretch;
     }
 }
+
+/* Touch pass: header controls were 36-38 px on phones. */
+@media (max-width: 640px) {
+    .chat-header {
+        grid-template-columns: minmax(0, 1fr) 40px;
+    }
+
+    .sidebar-toggle-btn,
+    .character-toggle-btn,
+    .chat-header .plugin-header-actions button,
+    .chat-header .icon-button {
+        min-width: 40px;
+        min-height: 40px;
+    }
+}
