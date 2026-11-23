@@ -191,6 +191,16 @@
     overflow: hidden;
 }
 
+/* The loading overlay spans rows 2..-1, which would otherwise push these two
+   children into implicit 0px rows and leave the list without height. */
+.chat-workspace > .message-list-shell {
+    grid-row: 2;
+}
+
+.chat-workspace > .composer {
+    grid-row: 3 / -1;
+}
+
 .message-list {
     height: 100%;
     min-height: 0;

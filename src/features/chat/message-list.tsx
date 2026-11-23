@@ -18,6 +18,8 @@ import type { ChatMode, Message } from "#frontend/types";
 
 import { MessageItem } from "./message/message-item";
 
+const INITIAL_CONTENT_FALLBACK_MS = 600;
+
 type MessageListProps = {
     autoScroll: boolean;
     characterAvatarPath?: string;
@@ -188,7 +190,18 @@ export const MessageList = memo(function MessageList({
     useEffect(() => {
         if (displayMessages.length === 0) {
             reportInitialContentRendered();
+            return;
         }
+
+        // Virtuoso reports readiness through itemsRendered, but that callback
+        // never fires when the viewport has no height. Keep a timer fallback so
+        // a layout regression cannot strand the workspace in its loading state.
+        const fallbackTimer = window.setTimeout(
+            reportInitialContentRendered,
+            INITIAL_CONTENT_FALLBACK_MS,
+        );
+
+        return () => window.clearTimeout(fallbackTimer);
     }, [displayMessages.length, reportInitialContentRendered]);
 
     useEffect(() => {
