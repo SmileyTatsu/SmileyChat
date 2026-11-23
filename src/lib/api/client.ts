@@ -105,7 +105,7 @@ function markServerReachable() {
 
     serverReachable = true;
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
         window.dispatchEvent(new Event(localApiReachableEventName));
     }
 }
@@ -117,7 +117,7 @@ function markServerUnreachable() {
 
     serverReachable = false;
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
         window.dispatchEvent(new Event(localApiUnreachableEventName));
     }
 }
@@ -293,7 +293,7 @@ function apiErrorMessage(code: string, message: string) {
 }
 
 async function dispatchLocalApiError(response: Response) {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
         return;
     }
 
