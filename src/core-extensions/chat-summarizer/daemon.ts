@@ -22,6 +22,7 @@ type RunOptions = {
 type SummaryCacheListener = () => void;
 
 const summaryCache = new Map<string, ChatSummaryState>();
+const summaryLoads = new Map<string, Promise<ChatSummaryState>>();
 const maxCachedSummaries = 25;
 const cacheListeners = new Set<SummaryCacheListener>();
 const inFlightChatIds = new Set<string>();
@@ -90,14 +91,33 @@ export async function getChatSummaryState(api: SmileyPluginApi, chatId: string) 
         return cached;
     }
 
-    const state = normalizeChatSummaryState(
-        await api.storage
-            .getJson(summaryStorageKey(chatId), defaultSummaryState(chatId))
-            .catch(() => defaultSummaryState(chatId)),
-        chatId,
-    );
-    cacheSummaryState(chatId, state);
-    return state;
+    // Several callers ask for the same chat while the first read is still in
+    // flight (daemon subscription, prompt injection, modal). Share one request
+    // instead of issuing a duplicate read per caller.
+    const pendingLoad = summaryLoads.get(chatId);
+
+    if (pendingLoad) {
+        return pendingLoad;
+    }
+
+    const load = (async () => {
+        const state = normalizeChatSummaryState(
+            await api.storage
+                .getJson(summaryStorageKey(chatId), defaultSummaryState(chatId))
+                .catch(() => defaultSummaryState(chatId)),
+            chatId,
+        );
+        cacheSummaryState(chatId, state);
+        return state;
+    })();
+
+    summaryLoads.set(chatId, load);
+
+    try {
+        return await load;
+    } finally {
+        summaryLoads.delete(chatId);
+    }
 }
 
 export async function saveChatSummaryState(

@@ -4,7 +4,7 @@ import type { ChatGenerationMessage } from "#frontend/lib/connections/types";
 import type { ChatGenerationResult } from "#frontend/lib/connections/types";
 import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
 
-import { runSummarization, saveSummarizerSettings } from "./daemon";
+import { getChatSummaryState, runSummarization, saveSummarizerSettings } from "./daemon";
 import { defaultSummarizerSettings, type SummarizerSettings } from "./settings";
 
 describe("chat summarizer daemon", () => {
@@ -68,6 +68,34 @@ describe("chat summarizer daemon", () => {
 
         expect(generatedPrompt).not.toContain("Old context.");
         expect(generatedPrompt).toContain("New context.");
+    });
+
+    test("shares one storage read across concurrent summary loads", async () => {
+        let reads = 0;
+        const api = {
+            storage: {
+                async getJson<T>(_key: string, fallback: T) {
+                    reads += 1;
+                    await new Promise((resolve) => setTimeout(resolve, 5));
+                    return fallback;
+                },
+                async setJson() {},
+            },
+            logger: {
+                info() {},
+                debug() {},
+                warn() {},
+                error() {},
+            },
+        } as unknown as SmileyPluginApi;
+
+        await Promise.all([
+            getChatSummaryState(api, "chat-concurrent"),
+            getChatSummaryState(api, "chat-concurrent"),
+            getChatSummaryState(api, "chat-concurrent"),
+        ]);
+
+        expect(reads).toBe(1);
     });
 });
 
