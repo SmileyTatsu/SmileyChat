@@ -288,6 +288,7 @@ export function useCharacterChats({
         pendingCharacterId,
         prepareCharacterAvatarUpload,
         patchCharacter: characterLibrary.patchCharacter,
+        toggleCharacterFavorite: characterLibrary.toggleCharacterFavorite,
         patchChatMetadata: chatLibrary.patchChatMetadata,
         queueChatSave: chatLibrary.queueChatSave,
         removeCharacterAvatar,

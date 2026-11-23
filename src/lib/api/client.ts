@@ -689,7 +689,8 @@ export async function saveChatWithKeepAlive(chat: ChatSession) {
     // Browsers cap keepalive bodies at ~64 KiB per origin and reject anything
     // larger, so a full chat can never be flushed that way. Keep the flag only
     // for small chats and fall back to a regular request for the rest.
-    const keepalive = new TextEncoder().encode(body).byteLength <= MAX_KEEPALIVE_BODY_BYTES;
+    const keepalive =
+        new TextEncoder().encode(body).byteLength <= MAX_KEEPALIVE_BODY_BYTES;
 
     const response = await localApiFetch(`/api/chats/${encodeURIComponent(chat.id)}`, {
         body,
@@ -884,6 +885,20 @@ export function patchCharacter(characterId: string, data: Partial<TavernCardData
         character: SmileyCharacter;
         characters?: CharacterSummaryCollection;
     }>(`/api/characters/${encodeURIComponent(characterId)}`, jsonInit("PATCH", { data }));
+}
+
+export function patchCharacterMetadata(
+    characterId: string,
+    metadata: Partial<NonNullable<SmileyCharacter["metadata"]>>,
+) {
+    return requestJson<{
+        ok: true;
+        character: SmileyCharacter;
+        characters?: CharacterSummaryCollection;
+    }>(
+        `/api/characters/${encodeURIComponent(characterId)}`,
+        jsonInit("PATCH", { metadata }),
+    );
 }
 
 export function saveCharacterIndex(index: CharacterSummaryCollection) {

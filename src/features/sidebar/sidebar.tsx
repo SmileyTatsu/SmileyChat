@@ -101,6 +101,8 @@ type SidebarProps = {
     onSelectChat: (chatId: string) => void;
     onSelectCharacter: (characterId: string) => void;
     onSelectPersona: (personaId: string) => void;
+    onToggleCharacterFavorite?: (characterId: string, isFavorite: boolean) => void;
+    onToggleChatFavorite?: (chat: ChatSummary) => void;
     onStatusChange: (status: UserStatus) => void;
 };
 
@@ -389,6 +391,8 @@ export function Sidebar({
     onSelectGroup,
     onSelectPersona,
     onStatusChange,
+    onToggleCharacterFavorite,
+    onToggleChatFavorite,
 }: SidebarProps) {
     const importInputRef = useRef<HTMLInputElement>(null);
     const chatImportInputRef = useRef<HTMLInputElement>(null);
@@ -1163,6 +1167,7 @@ export function Sidebar({
                                         hasSidebarFilter={hasChatFilter}
                                         onOpenChatMenu={openChatMenu}
                                         onSelectChat={onSelectChat}
+                                        onToggleFavorite={onToggleChatFavorite}
                                     />
                                     {chatImportStatus && (
                                         <p
@@ -1355,8 +1360,18 @@ export function Sidebar({
                                 <button
                                     type="button"
                                     role="menuitem"
-                                    disabled={true}
-                                    title="To favorite, open the character panel on the right"
+                                    onClick={() => {
+                                        const item = contextMenu.character;
+                                        if (item.groupChat) {
+                                            onToggleChatFavorite?.(item.groupChat);
+                                        } else {
+                                            onToggleCharacterFavorite?.(
+                                                item.id,
+                                                !item.isFavorite,
+                                            );
+                                        }
+                                        setContextMenu(undefined);
+                                    }}
                                 >
                                     {contextMenu.character.isFavorite ? (
                                         <>
@@ -1425,6 +1440,24 @@ export function Sidebar({
                             <PencilLine size={14} />
                             Rename
                         </button>
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                                onToggleChatFavorite?.(chatContextMenu.chat);
+                                setChatContextMenu(undefined);
+                            }}
+                        >
+                            {chatContextMenu.chat.metadata?.isFavorite ? (
+                                <>
+                                    <StarOff size={14} /> Remove Favorite
+                                </>
+                            ) : (
+                                <>
+                                    <Star size={14} /> Favorite
+                                </>
+                            )}
+                        </button>
                         {isGroupChat(chatContextMenu.chat) && (
                             <button
                                 type="button"
@@ -1440,7 +1473,9 @@ export function Sidebar({
                         <button
                             type="button"
                             role="menuitem"
-                            onClick={() => void exportChat(chatContextMenu.chat, "markdown")}
+                            onClick={() =>
+                                void exportChat(chatContextMenu.chat, "markdown")
+                            }
                         >
                             <Download size={14} />
                             Export as Markdown

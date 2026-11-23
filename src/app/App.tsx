@@ -79,6 +79,7 @@ import type {
     ChatMetadata,
     ChatMode,
     ChatSession,
+    ChatSummary,
     GroupGreetingMode,
     SmileyCharacter,
     SmileyPersona,
@@ -227,6 +228,7 @@ export function App() {
         pendingCharacterId,
         patchCharacter,
         patchChatMetadata,
+        toggleCharacterFavorite,
         prepareCharacterAvatarUpload,
         queueChatSave,
         removeCharacterAvatar,
@@ -533,6 +535,19 @@ export function App() {
             void forkChatAtMessage(messageId);
         },
         [forkChatAtMessage],
+    );
+
+    const handleToggleChatFavorite = useCallback((chat: ChatSummary) => {
+        void patchChatMetadata(chat.id, {
+            metadata: { isFavorite: !chat.metadata?.isFavorite },
+        });
+    }, []);
+
+    const handleToggleCharacterFavorite = useCallback(
+        (characterId: string, isFavorite: boolean) => {
+            void toggleCharacterFavorite(characterId, isFavorite);
+        },
+        [],
     );
 
     const handleThemeChange = useCallback((nextThemeId: string) => {
@@ -1311,6 +1326,8 @@ export function App() {
                 onSelectGroup={handleSidebarSelectGroup}
                 onSelectPersona={handleSidebarSelectPersona}
                 onStatusChange={setUserStatus}
+                onToggleChatFavorite={handleToggleChatFavorite}
+                onToggleCharacterFavorite={handleToggleCharacterFavorite}
             />
 
             <ChatWorkspace

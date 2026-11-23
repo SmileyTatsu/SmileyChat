@@ -1,4 +1,4 @@
-import { MessageSquare } from "lucide-preact";
+import { MessageSquare, Star } from "lucide-preact";
 
 import { chatDisplayTitle, isGroupChat } from "#frontend/lib/chats/normalize";
 import type { ChatSummary } from "#frontend/types";
@@ -14,6 +14,7 @@ export type ChatListProps = {
     hasSidebarFilter: boolean;
     onOpenChatMenu: (event: MouseEvent, chat: ChatSummary) => void;
     onSelectChat: (chatId: string) => void;
+    onToggleFavorite?: (chat: ChatSummary) => void;
 };
 
 export function ChatList({
@@ -24,45 +25,87 @@ export function ChatList({
     hasSidebarFilter,
     onOpenChatMenu,
     onSelectChat,
+    onToggleFavorite,
 }: ChatListProps) {
     return (
         <div className="chat-list">
             {filteredDirectChats.length > 0 ? (
-                filteredDirectChats.map((chat) => (
-                    <button
-                        className={`chat-row ${chat.id === activeChatId ? "active" : ""}`}
-                        key={chat.id}
-                        type="button"
-                        onClick={() => onSelectChat(chat.id)}
-                        onContextMenu={(event) => onOpenChatMenu(event, chat)}
-                    >
-                        {isGroupChat(chat) ? (
-                            <GroupAvatar
-                                className="chat-row-avatar"
-                                customPath={
-                                    chat.group?.avatar?.type === "custom"
-                                        ? chat.group.avatar.path
-                                        : undefined
+                filteredDirectChats.map((chat) => {
+                    const isFavorite = Boolean(chat.metadata?.isFavorite);
+
+                    return (
+                        // A div, not a button: the favorite toggle lives inside the row.
+                        <div
+                            className={`chat-row ${chat.id === activeChatId ? "active" : ""}`}
+                            data-favorite={isFavorite ? "true" : "false"}
+                            key={chat.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => onSelectChat(chat.id)}
+                            onContextMenu={(event) => onOpenChatMenu(event, chat)}
+                            onKeyDown={(event) => {
+                                if (event.key !== "Enter" && event.key !== " ") {
+                                    return;
                                 }
-                                members={chat.members ?? []}
-                            />
-                        ) : (
-                            <span className="chat-row-avatar direct-chat-avatar">
-                                <MessageSquare size={15} />
+
+                                event.preventDefault();
+                                onSelectChat(chat.id);
+                            }}
+                        >
+                            {isGroupChat(chat) ? (
+                                <GroupAvatar
+                                    className="chat-row-avatar"
+                                    customPath={
+                                        chat.group?.avatar?.type === "custom"
+                                            ? chat.group.avatar.path
+                                            : undefined
+                                    }
+                                    members={chat.members ?? []}
+                                />
+                            ) : (
+                                <span className="chat-row-avatar direct-chat-avatar">
+                                    <MessageSquare size={15} />
+                                </span>
+                            )}
+                            <span className="chat-row-text">
+                                <strong>{chatDisplayTitle(chat)}</strong>
+                                <small>
+                                    {!isGroupChat(chat) &&
+                                    characterNamesById?.[chat.characterId]
+                                        ? `${characterNamesById[chat.characterId]} · `
+                                        : ""}
+                                    {formatChatMeta(chat)}
+                                </small>
                             </span>
-                        )}
-                        <span>
-                            <strong>{chatDisplayTitle(chat)}</strong>
-                            <small>
-                                {!isGroupChat(chat) &&
-                                characterNamesById?.[chat.characterId]
-                                    ? `${characterNamesById[chat.characterId]} · `
-                                    : ""}
-                                {formatChatMeta(chat)}
-                            </small>
-                        </span>
-                    </button>
-                ))
+                            {onToggleFavorite && (
+                                <button
+                                    className="chat-row-favorite"
+                                    type="button"
+                                    aria-pressed={isFavorite}
+                                    aria-label={
+                                        isFavorite
+                                            ? "Remove from favorites"
+                                            : "Add to favorites"
+                                    }
+                                    title={
+                                        isFavorite
+                                            ? "Remove from favorites"
+                                            : "Add to favorites"
+                                    }
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onToggleFavorite(chat);
+                                    }}
+                                >
+                                    <Star
+                                        size={13}
+                                        fill={isFavorite ? "currentColor" : "none"}
+                                    />
+                                </button>
+                            )}
+                        </div>
+                    );
+                })
             ) : hasSidebarFilter ? (
                 <div className="rail-empty-state">
                     <strong>No matching chats</strong>

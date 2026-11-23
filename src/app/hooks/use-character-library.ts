@@ -6,6 +6,7 @@ import {
     loadCharacter,
     loadCharacterSummaries,
     patchCharacter as patchCharacterRequest,
+    patchCharacterMetadata as patchCharacterMetadataRequest,
     saveCharacter,
     saveCharacterIndex,
 } from "#frontend/lib/api/client";
@@ -306,6 +307,30 @@ export function useCharacterLibrary() {
         }
     }
 
+    async function toggleCharacterFavorite(characterId: string, isFavorite: boolean) {
+        try {
+            const result = await patchCharacterMetadataRequest(characterId, {
+                isFavorite,
+            });
+            if (result.characters) {
+                setCharacterSummaries(result.characters);
+            } else {
+                updateCharacterSummary(characterToSummary(result.character));
+            }
+            const currentCharacter = latestCharacterRef.current;
+            if (currentCharacter.id === result.character.id) {
+                // Only the favorite flag changed: keep unsaved edits intact.
+                setCharacter({
+                    ...currentCharacter,
+                    metadata: result.character.metadata,
+                });
+            }
+            setCharacterLoadError("");
+        } catch (error) {
+            setCharacterLoadError(messageFromError(error));
+        }
+    }
+
     async function removeCharacterAvatar(characterId: string) {
         await flushPendingCharacterAutosaveWithoutStateUpdate();
 
@@ -456,6 +481,7 @@ export function useCharacterLibrary() {
         setCharacter,
         setCharacterLoadError,
         setCharacterSummaries,
+        toggleCharacterFavorite,
         updateActiveCharacter,
         updateCharacterSummary,
     };

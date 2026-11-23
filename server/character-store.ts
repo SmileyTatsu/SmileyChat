@@ -162,8 +162,12 @@ async function writeCharacterByIdUnlocked(characterId: string, value: unknown) {
 export async function patchCharacterById(characterId: string, value: unknown) {
     return withResourceLock(`character:${characterId}`, async () => {
         const patch = isRecord(value) && isRecord(value.data) ? value.data : undefined;
-        if (!patch) {
-            throw new BadRequestError("Character patch requires a data object.");
+        const metadataPatch =
+            isRecord(value) && isRecord(value.metadata) ? value.metadata : undefined;
+        if (!patch && !metadataPatch) {
+            throw new BadRequestError(
+                "Character patch requires a data or metadata object.",
+            );
         }
 
         const existing = await readCharacterById(characterId);
@@ -173,7 +177,10 @@ export async function patchCharacterById(characterId: string, value: unknown) {
 
         const character = normalizeCharacter({
             ...existing,
-            data: { ...existing.data, ...patch },
+            data: patch ? { ...existing.data, ...patch } : existing.data,
+            metadata: metadataPatch
+                ? { ...existing.metadata, ...metadataPatch }
+                : existing.metadata,
             updatedAt: new Date().toISOString(),
         });
         if (!character) {
