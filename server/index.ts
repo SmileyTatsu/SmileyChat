@@ -1186,12 +1186,14 @@ function api<Path extends string, WebSocketData = undefined>(
                 pathname.endsWith("/avatar") ||
                 pathname.includes("/assets/") ||
                 pathname.includes("/attachments/");
-            const isBackgroundPoll =
-                (request.method === "GET" &&
-                    (pathname === "/api/mcp" ||
-                        pathname === "/api/health" ||
-                        pathname === "/api/csrf")) ||
-                pathname.startsWith("/api/logs");
+            // A plugin storage key that was never written answers 404, which
+            // is the normal "nothing saved yet" case (a chat without a
+            // summary, for example) and not a failure worth a warning.
+            const isExpectedMiss =
+                request.method === "GET" &&
+                pathname.includes("/plugins/") &&
+                pathname.includes("/storage/") &&
+                finalized.status === 404;
 
             if (finalized.status >= 500) {
                 logger.error(
@@ -1203,14 +1205,17 @@ function api<Path extends string, WebSocketData = undefined>(
                     },
                 );
             } else if (finalized.status >= 400) {
-                logger.warn(
-                    "http",
-                    `${request.method} ${pathname} -> ${finalized.status}`,
-                    {
-                        durationMs: Date.now() - startedAt,
-                        ip: pipeline.ip,
-                    },
-                );
+                const details = {
+                    durationMs: Date.now() - startedAt,
+                    ip: pipeline.ip,
+                };
+                const line = `${request.method} ${pathname} -> ${finalized.status}`;
+
+                if (isExpectedMiss) {
+                    logger.debug("http", line, details);
+                } else {
+                    logger.warn("http", line, details);
+                }
             } else {
                 logger.debug(
                     "http",
