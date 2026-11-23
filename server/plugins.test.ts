@@ -4,6 +4,8 @@ import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { CORE_PLUGIN_CATALOG } from "#frontend/lib/plugins/core-catalog";
+
 import { pluginInstallTestInternals, servePluginAsset } from "./plugins";
 
 const tempRoots: string[] = [];
@@ -52,6 +54,22 @@ test("server knows bundled core extensions", () => {
     expect(pluginInstallTestInternals.corePluginIds.has("smiley-image-generation")).toBe(
         true,
     );
+});
+
+test("server core manifests come from the shared catalog", async () => {
+    const manifests = await pluginInstallTestInternals.readCorePluginManifests();
+
+    expect(manifests.map((manifest) => manifest.id).sort()).toEqual(
+        CORE_PLUGIN_CATALOG.map((entry) => entry.id).sort(),
+    );
+
+    for (const entry of CORE_PLUGIN_CATALOG) {
+        const manifest = manifests.find((candidate) => candidate.id === entry.id);
+
+        expect(manifest?.name).toBe(entry.name);
+        expect(manifest?.category).toBe(entry.category);
+        expect(manifest?.defaultEnabled).toBe(entry.defaultEnabled);
+    }
 });
 
 test("telemetry accepts bounded batches and retains single-entry compatibility", () => {

@@ -13,6 +13,10 @@ import {
 } from "node:path";
 
 import {
+    CORE_PLUGIN_IDS,
+    getCorePluginCatalogEntry,
+} from "#frontend/lib/plugins/core-catalog";
+import {
     PLUGIN_CATEGORIES,
     type PluginCategory,
     type PluginManifest,
@@ -30,24 +34,11 @@ import { coreExtensionsDataDir, pluginsDir } from "./paths";
 import { safeFetch } from "./security/safe-fetch";
 import { logger, type LogLevel } from "./logger";
 
-const corePluginIds = new Set([
-    "smiley-chat-formatter",
-    "smiley-lorebooks",
-    "smiley-chat-summarizer",
-    "smiley-post-processing",
-    "smiley-mcp",
-    "smiley-regex-replacer",
-    "smiley-workspace-tools",
-    "smiley-image-generation",
-]);
 const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_TOTAL_BYTES = 50 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_ARCHIVE_ENTRIES = 1000;
 const PLUGIN_REGISTRY_MAX_BYTES = 2 * 1024 * 1024;
-const legacyCorePluginFolders: Record<string, string[]> = {
-    "smiley-chat-formatter": ["chat-formatter", "smiley-chat-formatter"],
-};
 const PLUGIN_FETCH_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const PLUGIN_FETCH_MAX_REQUEST_BODY_BYTES = 1024 * 1024;
 const PLUGIN_FETCH_ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
@@ -177,7 +168,7 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
 }
 
 export async function logPluginTelemetry(pluginId: string, body: unknown) {
-    if (pluginId !== "runtime" && !corePluginIds.has(pluginId)) {
+    if (pluginId !== "runtime" && !CORE_PLUGIN_IDS.has(pluginId)) {
         const manifests = await readPluginManifests();
         if (!manifests.some((manifest) => manifest.id === pluginId)) {
             return json({ error: "Plugin not found." }, 404);
@@ -320,7 +311,7 @@ export async function installVerifiedPlugin(body: unknown) {
 export async function updateInstalledPlugin(pluginId: string) {
     const safePluginId = safeSegment(pluginId);
 
-    if (safePluginId !== pluginId || corePluginIds.has(pluginId)) {
+    if (safePluginId !== pluginId || CORE_PLUGIN_IDS.has(pluginId)) {
         throw new BadRequestError("Plugin cannot be updated.");
     }
 
@@ -395,7 +386,7 @@ async function latestRegistryInstallSource(
         throw new BadRequestError("Plugin is not listed in the verified registry.");
     }
 
-    if (corePluginIds.has(registryPlugin.id)) {
+    if (CORE_PLUGIN_IDS.has(registryPlugin.id)) {
         throw new BadRequestError("Registry plugin ID collides with a core extension.");
     }
 
@@ -457,7 +448,7 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
             );
         }
 
-        if (corePluginIds.has(manifest.id)) {
+        if (CORE_PLUGIN_IDS.has(manifest.id)) {
             throw new BadRequestError(
                 "Plugin manifest ID collides with a core extension.",
             );
@@ -1295,7 +1286,7 @@ export async function proxyPluginFetch(body: unknown) {
 }
 
 async function findPluginById(pluginId: string) {
-    if (corePluginIds.has(pluginId)) {
+    if (CORE_PLUGIN_IDS.has(pluginId)) {
         const manifest = await readCorePluginManifest(pluginId);
         return {
             folderName: safeSegment(pluginId),
@@ -1398,7 +1389,7 @@ function normalizeRegistryCategory(value: unknown, pluginId: string): PluginCate
 async function readCorePluginManifests() {
     const manifests: PluginManifest[] = [];
 
-    for (const pluginId of corePluginIds) {
+    for (const pluginId of CORE_PLUGIN_IDS) {
         manifests.push(await readCorePluginManifest(pluginId));
     }
 
@@ -1407,43 +1398,24 @@ async function readCorePluginManifests() {
 
 async function readCorePluginManifest(pluginId: string): Promise<PluginManifest> {
     const state = await readCorePluginState(pluginId);
-    const defaultEnabled = corePluginDefaultEnabled[pluginId] ?? true;
+    const catalogEntry = getCorePluginCatalogEntry(pluginId);
+    const defaultEnabled = catalogEntry?.defaultEnabled ?? true;
 
     return {
         id: pluginId,
-        name: corePluginNames[pluginId] ?? pluginId,
+        name: catalogEntry?.name ?? pluginId,
         version: "0.0.0",
         main: "",
         defaultEnabled,
         enabled: state.enabled,
         source: "core",
-        category: corePluginCategories[pluginId] ?? "other",
+        category: catalogEntry?.category ?? "other",
     };
 }
 
-const corePluginCategories: Record<string, PluginCategory> = {
-    "smiley-chat-formatter": "interface",
-    "smiley-chat-summarizer": "memory-lore",
-    "smiley-lorebooks": "memory-lore",
-    "smiley-post-processing": "input-output",
-    "smiley-mcp": "tools",
-    "workspace-tools": "tools",
-    "smiley-image-generation": "input-output",
-};
-
-const corePluginNames: Record<string, string> = {
-    "smiley-chat-formatter": "smiley-chat-formatter",
-    "smiley-chat-summarizer": "smiley-chat-summarizer",
-    "smiley-lorebooks": "smiley-lorebooks",
-    "smiley-post-processing": "smiley-post-processing",
-    "smiley-mcp": "MCP Servers",
-    "workspace-tools": "Workspace AI Tools",
-    "smiley-image-generation": "Image Generation",
-};
-
 async function readCorePluginState(pluginId: string) {
     const file = Bun.file(corePluginEnabledPath(pluginId));
-    const defaultEnabled = corePluginDefaultEnabled[pluginId] ?? true;
+    const defaultEnabled = getCorePluginCatalogEntry(pluginId)?.defaultEnabled ?? true;
 
     if (!(await file.exists())) {
         return { enabled: defaultEnabled };
@@ -1464,20 +1436,12 @@ async function readCorePluginState(pluginId: string) {
  * server-side extensions can use this persisted state after a restart too.
  */
 export async function isCorePluginEnabled(pluginId: string): Promise<boolean> {
-    if (!corePluginIds.has(pluginId)) {
+    if (!CORE_PLUGIN_IDS.has(pluginId)) {
         return false;
     }
 
     return (await readCorePluginState(pluginId)).enabled;
 }
-
-const corePluginDefaultEnabled: Record<string, boolean> = {
-    "smiley-chat-summarizer": false,
-    "smiley-post-processing": false,
-    "smiley-mcp": false,
-    "smiley-workspace-tools": false,
-    "smiley-image-generation": false,
-};
 
 async function writeCorePluginEnabled(pluginId: string, enabled: boolean) {
     const folder = pluginDataDir(pluginId, "core");
@@ -1518,7 +1482,7 @@ function pluginStoragePath(
 }
 
 function legacyCorePluginStoragePaths(pluginId: string, key: string) {
-    return (legacyCorePluginFolders[pluginId] ?? []).map((folderName) =>
+    return (getCorePluginCatalogEntry(pluginId)?.legacyFolders ?? []).map((folderName) =>
         pluginStoragePath(folderName, key, "user"),
     );
 }
@@ -1738,7 +1702,7 @@ async function readResponseBytes(
 }
 
 export const pluginInstallTestInternals = {
-    corePluginIds,
+    corePluginIds: CORE_PLUGIN_IDS,
     extractPluginArchive,
     installPluginArtifact,
     normalizePluginRegistry,
@@ -1746,5 +1710,6 @@ export const pluginInstallTestInternals = {
     normalizeHttpsArtifactUrl,
     resolveArchiveEntryPath,
     resolveInstallSource,
+    readCorePluginManifests,
     readPluginInstallMetadata,
 };
