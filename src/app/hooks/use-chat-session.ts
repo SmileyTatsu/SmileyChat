@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 
+import { isAbortError } from "#frontend/lib/common/abort";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { clampInteger, clampNumber } from "#frontend/lib/common/math";
 import {
@@ -1252,12 +1253,6 @@ export function formatInterruptedGeneration(content: string, error: unknown): st
     return `${trimmed}\n\n*[Generation interrupted during streaming: ${errorDetail}]*`;
 }
 
-function isAbortError(error: unknown) {
-    return (
-        (error instanceof DOMException && error.name === "AbortError") ||
-        (error instanceof Error && error.name === "AbortError")
-    );
-}
 
 function isActiveMessageSwipeEmpty(message: Message) {
     const swipe = message.swipes[message.activeSwipeIndex] ?? message.swipes[0];

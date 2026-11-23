@@ -1,5 +1,7 @@
 import type { SmileyPluginApi } from "#frontend/lib/plugins/types";
 
+import { isAbortError } from "#frontend/lib/common/abort";
+
 import { buildBudgetedPassMessages, type PipelineEngineContext } from "./engine";
 import { PostProcessingModal } from "./modal";
 import {
@@ -365,9 +367,3 @@ function notifyRunChanged() {
     }
 }
 
-function isAbortError(error: unknown) {
-    return (
-        (error instanceof DOMException && error.name === "AbortError") ||
-        (error instanceof Error && error.name === "AbortError")
-    );
-}

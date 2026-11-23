@@ -38,7 +38,7 @@ export function useChatAutosave({
     const saveQueuesRef = useRef(new Map<string, LatestSaveQueue<ChatSession>>());
 
     useEffect(() => {
-        function flushBeforePageHide() {
+        function collectPendingChats() {
             clearPendingChatAutosaveTimers();
 
             const pendingChats = new Map(scheduledChatsRef.current);
@@ -51,17 +51,36 @@ export function useChatAutosave({
                 }
             }
 
-            for (const chat of pendingChats.values()) {
+            return Array.from(pendingChats.values());
+        }
+
+        function flushBeforePageHide() {
+            for (const chat of collectPendingChats()) {
                 void saveChatWithKeepAlive(chat).catch((error) => {
                     clientLogger.warn("Could not persist chat before unload", error);
                 });
             }
         }
 
+        // Closing a tab and switching tabs both hide the page while it is still
+        // alive, so a regular request can finish there. Waiting for pagehide
+        // alone loses the last edit whenever the body exceeds the keepalive cap.
+        function flushWhenHidden() {
+            if (document.visibilityState !== "hidden") {
+                return;
+            }
+
+            void flushPendingChatAutosaveWithoutStateUpdate().catch((error) => {
+                clientLogger.warn("Could not persist chat while hidden", error);
+            });
+        }
+
         window.addEventListener("pagehide", flushBeforePageHide);
+        document.addEventListener("visibilitychange", flushWhenHidden);
 
         return () => {
             window.removeEventListener("pagehide", flushBeforePageHide);
+            document.removeEventListener("visibilitychange", flushWhenHidden);
             clearPendingChatAutosave();
         };
     }, []);

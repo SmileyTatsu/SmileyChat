@@ -1,6 +1,7 @@
 import { useMemo } from "preact/hooks";
 
 import { loadLorebook } from "#frontend/lib/api/client";
+import { isAbortError } from "#frontend/lib/common/abort";
 import {
     type ConnectionSettings,
     getActiveConnectionProfile,
@@ -643,12 +644,6 @@ export function usePromptGeneration({
         return new DOMException("The operation was aborted.", "AbortError");
     }
 
-    function isAbortError(error: unknown) {
-        return (
-            (error instanceof DOMException && error.name === "AbortError") ||
-            (error instanceof Error && error.name === "AbortError")
-        );
-    }
 
     async function getDebugPayload(
         sourceMessages: Message[],

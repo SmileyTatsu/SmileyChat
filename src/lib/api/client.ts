@@ -10,6 +10,7 @@ import type {
 } from "#frontend/types";
 import type { TavernCardDataV2 } from "../characters/types";
 import type { ChatMetadata } from "../chats/types";
+import { isAbortError } from "../common/abort";
 
 import type { ConnectionSecrets, ConnectionSettings } from "../connections/config";
 import type { PluginProfile, PluginProfilesState } from "../plugins/profiles";
@@ -29,6 +30,7 @@ const csrfMagicHeaderName = "x-smileychat-csrf-magic";
 const csrfMagicValue = "1";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const defaultApiBasePath = "/api";
+const MAX_KEEPALIVE_BODY_BYTES = 60_000;
 
 export const localApiErrorEventName = "smileychat:local-api-error";
 
@@ -102,7 +104,13 @@ async function fetchLocalApi(
             ...init,
             headers,
         });
-    } catch {
+    } catch (error) {
+        // Callers abort requests on purpose (Stop, chat switches). Wrapping
+        // those in a generic error hides the abort and surfaces a fake failure.
+        if (isAbortError(error)) {
+            throw error;
+        }
+
         throw new Error(
             `${method} ${originalPath} failed: local API request could not reach the server.`,
         );
@@ -621,10 +629,17 @@ export function patchChatMetadata(chatId: string, patch: ChatMetadataPatch) {
 }
 
 export async function saveChatWithKeepAlive(chat: ChatSession) {
+    const body = JSON.stringify(chat);
+
+    // Browsers cap keepalive bodies at ~64 KiB per origin and reject anything
+    // larger, so a full chat can never be flushed that way. Keep the flag only
+    // for small chats and fall back to a regular request for the rest.
+    const keepalive = new TextEncoder().encode(body).byteLength <= MAX_KEEPALIVE_BODY_BYTES;
+
     const response = await localApiFetch(`/api/chats/${encodeURIComponent(chat.id)}`, {
-        body: JSON.stringify(chat),
+        body,
         headers: { "Content-Type": "application/json" },
-        keepalive: true,
+        keepalive,
         method: "PUT",
     });
 

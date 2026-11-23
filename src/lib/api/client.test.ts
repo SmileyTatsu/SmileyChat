@@ -62,6 +62,27 @@ afterEach(() => {
     resetCsrfTokenForTests();
 });
 
+describe("local API abort handling", () => {
+    test("preserves abort errors so callers can tell them from failures", async () => {
+        const abortError = new DOMException("The user aborted a request.", "AbortError");
+
+        globalThis.fetch = (async (url: RequestInfo | URL) => {
+            if (String(url).endsWith("/api/csrf")) {
+                return jsonResponse({ token: "test-csrf-token" });
+            }
+            throw abortError;
+        }) as typeof fetch;
+
+        const attempt = saveChatIndex({
+            version: 1,
+            activeChatIdsByCharacter: {},
+            chats: [],
+        });
+
+        await expect(attempt).rejects.toBe(abortError);
+    });
+});
+
 describe("LoreBook API cache", () => {
     test("deduplicates repeated and concurrent LoreBook loads", async () => {
         let getRequests = 0;
