@@ -5,6 +5,7 @@ import {
     Power,
     RefreshCw,
     Settings,
+    Trash2,
     XCircle,
 } from "lucide-preact";
 
@@ -32,9 +33,13 @@ export type PluginCardProps = {
     settingsPanels: ReturnType<typeof getPluginSettingsPanels>;
     pluginSnapshot: PluginAppSnapshot;
     requestState: RequestState;
+    /** Registry version when it is newer than the installed manifest. */
+    availableVersion?: string;
     isUpdating: boolean;
+    isUninstalling?: boolean;
     onToggle: () => void;
     onUpdate: () => void;
+    onUninstall?: () => void;
     onToggleConfigure?: () => void;
 };
 
@@ -46,9 +51,12 @@ export function PluginCard({
     settingsPanels,
     pluginSnapshot,
     requestState,
+    availableVersion,
     isUpdating,
+    isUninstalling = false,
     onToggle,
     onUpdate,
+    onUninstall,
     onToggleConfigure,
 }: PluginCardProps) {
     const enabled = plugin.enabled !== false;
@@ -59,7 +67,8 @@ export function PluginCard({
     const isUnverified =
         plugin.source !== "core" &&
         (plugin.install ? plugin.install.source !== "registry" : !registryStatus);
-    const canUpdate = plugin.install !== undefined;
+    const canUpdate = plugin.install?.source === "registry" && Boolean(availableVersion);
+    const canReinstall = plugin.install?.source === "manual-artifact";
 
     return (
         <article className="plugin-card">
@@ -113,7 +122,14 @@ export function PluginCard({
             <dl className="plugin-meta-grid">
                 <div>
                     <dt>Version</dt>
-                    <dd>{plugin.version}</dd>
+                    <dd>
+                        {plugin.version}
+                        {availableVersion && (
+                            <small className="plugin-version-update">
+                                Update to {availableVersion}
+                            </small>
+                        )}
+                    </dd>
                 </div>
                 <div>
                     <dt>Status</dt>
@@ -168,13 +184,35 @@ export function PluginCard({
                         onClick={onUpdate}
                     >
                         <RefreshCw size={15} aria-hidden="true" />
-                        {isUpdating ? "Updating…" : "Update"}
+                        {isUpdating ? "Updating…" : `Update to ${availableVersion}`}
+                    </button>
+                )}
+                {canReinstall && (
+                    <button
+                        type="button"
+                        title="Download the stored artifact again"
+                        disabled={requestState === "loading"}
+                        onClick={onUpdate}
+                    >
+                        <RefreshCw size={15} aria-hidden="true" />
+                        {isUpdating ? "Reinstalling…" : "Reinstall"}
                     </button>
                 )}
                 {onToggleConfigure && (
                     <button type="button" onClick={onToggleConfigure}>
                         <Settings size={15} aria-hidden="true" />
                         {showConfiguration ? "Hide Configuration" : "Configure"}
+                    </button>
+                )}
+                {plugin.install && onUninstall && (
+                    <button
+                        type="button"
+                        className="plugin-uninstall-button"
+                        disabled={requestState === "loading" || isUninstalling}
+                        onClick={onUninstall}
+                    >
+                        <Trash2 size={15} aria-hidden="true" />
+                        {isUninstalling ? "Uninstalling…" : "Uninstall"}
                     </button>
                 )}
             </div>

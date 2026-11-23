@@ -409,6 +409,21 @@ export function updatePlugin(pluginId: string) {
     }>(`/api/plugins/${encodeURIComponent(pluginId)}/update`, jsonInit("POST", {}));
 }
 
+export function uninstallPlugin(
+    pluginId: string,
+    options: { deleteData?: boolean } = {},
+) {
+    const query = options.deleteData ? "?deleteData=true" : "";
+    return requestJson<{
+        ok: true;
+        pluginId: string;
+        deleteData: boolean;
+        plugins: PluginManifest[];
+    }>(`/api/plugins/${encodeURIComponent(pluginId)}${query}`, {
+        method: "DELETE",
+    });
+}
+
 export function savePluginEnabled(pluginId: string, enabled: boolean) {
     return requestJson<{
         ok: true;
