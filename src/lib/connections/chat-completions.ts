@@ -141,13 +141,24 @@ export function normalizeChatCompletionResponse(
     response: ChatCompletionResponse,
     options: NormalizeResponseOptions,
 ): ChatGenerationResult {
-    const firstChoice = response.choices[0];
+    const firstChoice = response.choices?.[0];
 
     if (firstChoice?.error?.message) {
         throw new Error(
             options.providerErrorPrefix
                 ? `${options.providerErrorPrefix}: ${firstChoice.error.message}`
                 : firstChoice.error.message,
+        );
+    }
+
+    // Some compatible servers answer 200 with an error envelope and no choices.
+    const envelopeError = (response as { error?: { message?: unknown } }).error;
+
+    if (!firstChoice && typeof envelopeError?.message === "string") {
+        throw new Error(
+            options.providerErrorPrefix
+                ? `${options.providerErrorPrefix}: ${envelopeError.message}`
+                : envelopeError.message,
         );
     }
 
