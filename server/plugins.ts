@@ -888,7 +888,7 @@ async function preserveExistingPluginData(finalRoot: string, tempRoot: string) {
     await cp(dataPath, targetDataPath, { recursive: true });
 }
 
-async function readPluginInstallMetadata(
+export async function readPluginInstallMetadata(
     pluginRoot: string,
 ): Promise<PluginInstallMetadata | undefined> {
     const file = Bun.file(join(pluginRoot, "smileychat-install.json"));
@@ -1511,7 +1511,7 @@ function decodePathParts(pathname: string) {
     }
 }
 
-function isSafeChild(parent: string, child: string) {
+export function isSafeChild(parent: string, child: string) {
     const relativePath = relative(normalize(parent), normalize(child));
     return (
         Boolean(relativePath) &&
@@ -1524,7 +1524,7 @@ function encodePath(path: string) {
     return path.split("/").map(encodeURIComponent).join("/");
 }
 
-function safeSegment(value: string) {
+export function safeSegment(value: string) {
     return basename(value).replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
