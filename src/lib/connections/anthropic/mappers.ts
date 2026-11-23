@@ -34,10 +34,12 @@ export function createAnthropicMessageBody(
         : legacyMessages(request);
     const { systemMessages, conversationMessages } =
         splitLeadingSystemMessages(promptMessages);
-    const messages = mergeConsecutiveMessages(
-        conversationMessages
-            .map(toAnthropicMessage)
-            .filter((message) => hasVisibleContent(message.content)),
+    const messages = dropLeadingAssistantTurns(
+        mergeConsecutiveMessages(
+            conversationMessages
+                .map(toAnthropicMessage)
+                .filter((message) => hasVisibleContent(message.content)),
+        ),
     );
     const maxTokens = config.maxTokens ?? defaultOutputTokenLimit;
     const thinking = cleanAnthropicThinkingConfig(
@@ -451,6 +453,14 @@ function mergeConsecutiveMessages(messages: AnthropicMessage[]) {
     }
 
     return merged;
+}
+
+// Anthropic rejects a conversation that starts with an assistant turn, which
+// happens when history trimming cuts the first user message away.
+function dropLeadingAssistantTurns(messages: AnthropicMessage[]): AnthropicMessage[] {
+    const firstUserIndex = messages.findIndex((message) => message.role === "user");
+
+    return firstUserIndex === -1 ? [] : messages.slice(firstUserIndex);
 }
 
 function mergeAnthropicContent(

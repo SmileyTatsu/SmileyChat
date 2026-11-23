@@ -32,6 +32,26 @@ describe("Anthropic connection mappers", () => {
         ]);
     });
 
+    test("drops a leading assistant turn so trimmed history stays valid", () => {
+        const body = createAnthropicMessageBody(
+            {
+                promptMessages: [
+                    { role: "assistant", content: "Character greeting" },
+                    { role: "user", content: "Hello" },
+                    { role: "assistant", content: "Hi there" },
+                ],
+                messages: [],
+            },
+            {
+                baseUrl: "https://api.anthropic.com/v1",
+                model: { source: "default", id: "claude-sonnet-4-6" },
+            },
+        );
+
+        expect(body.messages[0]).toEqual({ role: "user", content: "Hello" });
+        expect(body.messages).toHaveLength(2);
+    });
+
     test("uses configured max_tokens", () => {
         const body = createAnthropicMessageBody(
             {
