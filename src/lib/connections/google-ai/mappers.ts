@@ -6,6 +6,7 @@ import type {
     ChatGenerationResult,
     ToolCall,
 } from "../types";
+import { trimGeneratedText } from "../generated-text";
 import { ChatGenerationMessageRole } from "../types";
 import { messageContentToText, parseDataImageUrl } from "../images";
 import { legacyMessages } from "../legacy-messages";
@@ -151,7 +152,7 @@ export function normalizeGoogleAIResponse(
     }
 
     const candidate = response.candidates?.[0];
-    const message = extractGoogleAIText(response).trim();
+    const message = trimGeneratedText(extractGoogleAIText(response));
     const images = extractGoogleAIImages(response);
     const reasoning = extractGoogleAIThoughtText(response).trim();
     const reasoningDetails = createGoogleAIReasoningDetails(response, message);
@@ -210,7 +211,7 @@ export function extractGoogleAIThoughtText(response: GoogleAIGenerateContentResp
 
 export function createGoogleAIReasoningDetails(
     response: GoogleAIGenerateContentResponse,
-    visibleText = extractGoogleAIText(response).trim(),
+    visibleText = trimGeneratedText(extractGoogleAIText(response)),
 ): GoogleAIReasoningDetails | undefined {
     const parts = response.candidates?.[0]?.content?.parts;
     const hasSignedParts = parts?.some(hasThoughtSignature) ?? false;

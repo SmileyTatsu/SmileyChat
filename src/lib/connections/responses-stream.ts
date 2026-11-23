@@ -1,5 +1,6 @@
 import { readJsonServerSentEvents } from "./streaming";
 import type { ChatGenerationRequest, ChatGenerationResult } from "./types";
+import { trimGeneratedText } from "./generated-text";
 
 export async function consumeResponsesApiStream(
     response: Response,
@@ -45,7 +46,7 @@ export async function consumeResponsesApiStream(
     }
 
     return {
-        message: message.trim(),
+        message: trimGeneratedText(message),
         provider: options.provider,
         model,
         ...(reasoning.trim() ? { reasoning: reasoning.trim() } : {}),

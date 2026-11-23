@@ -18,6 +18,7 @@ import type {
     ToolDefinition,
 } from "./types";
 import { chatImageSourceIndex, ChatGenerationMessageRole } from "./types";
+import { trimGeneratedText } from "./generated-text";
 
 type ChatCompletionMessage<TRole extends string> = {
     role: TRole | "tool";
@@ -163,7 +164,9 @@ export function normalizeChatCompletionResponse(
     }
 
     const responseMessage = firstChoice?.message;
-    const message = responseMessage?.content?.trim();
+    const message = responseMessage?.content
+        ? trimGeneratedText(responseMessage.content)
+        : undefined;
     const toolCalls = normalizeChatCompletionToolCalls(responseMessage?.tool_calls);
     const images = options.allowImages
         ? extractImageUrls(responseMessage?.images)
@@ -309,7 +312,7 @@ export async function consumeChatCompletionStream(
     }
 
     return {
-        message: message.trim(),
+        message: trimGeneratedText(message),
         ...(images.length ? { images } : {}),
         provider: options.provider,
         model,

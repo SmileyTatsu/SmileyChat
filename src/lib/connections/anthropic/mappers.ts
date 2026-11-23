@@ -24,6 +24,7 @@ import {
 } from "../generation-settings";
 import { splitLeadingSystemMessages } from "../chat-completions";
 import { parseToolArguments } from "../chat-completions";
+import { trimGeneratedText } from "../generated-text";
 
 export function createAnthropicMessageBody(
     request: ChatGenerationRequest,
@@ -94,8 +95,8 @@ export function createAnthropicMessageBody(
 export function normalizeAnthropicResponse(
     response: AnthropicCreateMessageResponse,
 ): ChatGenerationResult {
-    const message = extractAnthropicText(response).trim();
-    const reasoning = extractAnthropicThinking(response).trim();
+    const message = trimGeneratedText(extractAnthropicText(response));
+    const reasoning = trimGeneratedText(extractAnthropicThinking(response));
     const reasoningDetails = createAnthropicReasoningDetails(response, message);
     const toolCalls = extractAnthropicToolCalls(response);
 
@@ -140,7 +141,7 @@ export function extractAnthropicThinking(response: AnthropicCreateMessageRespons
 
 export function createAnthropicReasoningDetails(
     response: AnthropicCreateMessageResponse,
-    visibleText = extractAnthropicText(response).trim(),
+    visibleText = trimGeneratedText(extractAnthropicText(response)),
 ): AnthropicReasoningDetails | undefined {
     const content = response.content?.filter(
         (block) => block.type === "thinking" || block.type === "redacted_thinking",

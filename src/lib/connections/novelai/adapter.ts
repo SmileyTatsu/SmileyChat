@@ -9,6 +9,7 @@ import type {
     ChatGenerationResult,
     ConnectionAdapter,
 } from "../types";
+import { trimGeneratedText } from "../generated-text";
 
 import { defaultNovelAIBaseUrlForModel, usesNovelAITextGenerationApi } from "./constants";
 import {
@@ -216,7 +217,7 @@ async function consumeNovelAITextGenerationStream(
     }
 
     return {
-        message: message.trim(),
+        message: trimGeneratedText(message),
         provider: "novelai",
         model,
     };
