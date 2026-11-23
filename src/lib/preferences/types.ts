@@ -28,12 +28,12 @@ export type AppPreferences = {
         chatFontFamily: string;
         codeblockFontFamily: string;
         customCss: string;
-        chatTheme: string;
+        /** Theme a new chat starts with; each chat can change it. */
+        defaultChatTheme: string;
     };
     chat: {
         enterToSend: boolean;
         autoScroll: boolean;
-        defaultMode: ChatMode;
         streaming: boolean;
         showThoughtProcess: boolean;
         showToolActivity: boolean;
@@ -101,12 +101,11 @@ export const defaultAppPreferences: AppPreferences = {
         chatFontFamily: "",
         codeblockFontFamily: "",
         customCss: "",
-        chatTheme: DEFAULT_CHAT_THEME_ID,
+        defaultChatTheme: DEFAULT_CHAT_THEME_ID,
     },
     chat: {
         enterToSend: true,
         autoScroll: true,
-        defaultMode: "chat",
         streaming: true,
         showThoughtProcess: true,
         showToolActivity: true,
@@ -259,9 +258,9 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 typeof appearance.customCss === "string"
                     ? appearance.customCss.slice(0, 100_000)
                     : defaultAppPreferences.appearance.customCss,
-            chatTheme: normalizeChatTheme(
-                appearance.chatTheme,
-                defaultAppPreferences.appearance.chatTheme,
+            defaultChatTheme: normalizeDefaultChatTheme(
+                appearance.defaultChatTheme ?? appearance.chatTheme,
+                chat.defaultMode,
             ),
         },
         chat: {
@@ -272,10 +271,6 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             autoScroll: booleanOrFallback(
                 chat.autoScroll,
                 defaultAppPreferences.chat.autoScroll,
-            ),
-            defaultMode: normalizeChatMode(
-                chat.defaultMode,
-                defaultAppPreferences.chat.defaultMode,
             ),
             streaming: booleanOrFallback(
                 chat.streaming,
@@ -419,6 +414,23 @@ function normalizeLogLevel(value: unknown): LogLevel {
 
 function normalizeChatMode(value: unknown, fallback: ChatMode) {
     return value === "chat" || value === "rp" ? value : fallback;
+}
+
+/**
+ * Older preference files stored the global theme in `appearance.chatTheme`,
+ * and before that only a two-way `chat.defaultMode`. Both are folded into
+ * the new default so nobody's chats change appearance on upgrade.
+ */
+function normalizeDefaultChatTheme(value: unknown, legacyMode: unknown) {
+    if (typeof value === "string" && isValidChatTheme(value)) {
+        return value;
+    }
+
+    if (legacyMode === "rp") {
+        return "rp";
+    }
+
+    return DEFAULT_CHAT_THEME_ID;
 }
 
 function normalizeChatTheme(value: unknown, fallback: string) {

@@ -53,28 +53,34 @@ import {
     setChatLoadTarget as setPendingChatLoadTarget,
     type PendingChatLoad,
 } from "./chat-load-coordinator";
+import { DEFAULT_CHAT_THEME_ID, isValidChatTheme } from "#frontend/lib/themes/registry";
+import { chatThemeForMode } from "#frontend/lib/chats/normalize";
 
 type UseChatLibraryOptions = {
     activeCharacterId: string;
     defaultNewChatMode: ChatMode;
+    defaultNewChatTheme: string;
     fetchCharacterById: (characterId: string) => Promise<SmileyCharacter>;
     latestCharacterRef: { current: SmileyCharacter };
     latestCharacterSummariesRef: { current: CharacterSummaryCollection };
     latestPersonaRef: { current: SmileyPersona };
     onDisplayCharacterChange: (character: SmileyCharacter) => void;
     setMode: (mode: ChatMode) => void;
+    setTheme: (theme: string) => void;
     userStatus: UserStatus;
 };
 
 export function useChatLibrary({
     activeCharacterId,
     defaultNewChatMode,
+    defaultNewChatTheme,
     fetchCharacterById,
     latestCharacterRef,
     latestCharacterSummariesRef,
     latestPersonaRef,
     onDisplayCharacterChange,
     setMode,
+    setTheme,
     userStatus,
 }: UseChatLibraryOptions) {
     const [chatSummaries, setChatSummariesState] = useState<ChatSummaryCollection>({
@@ -259,6 +265,7 @@ export function useChatLibrary({
                     setActiveChat(loadedChat);
                     await activateGroupCharactersForChat(loadedChat);
                     setMode(loadedChat.mode);
+                    setTheme(loadedChat.theme ?? chatThemeForMode(loadedChat.mode));
                     setChatLoadError("");
                     return { summaries, activeChat: loadedChat };
                 }
@@ -273,6 +280,7 @@ export function useChatLibrary({
             setActiveChat(undefined);
             setGroupCharacters([]);
             setMode(defaultNewChatMode);
+            setTheme(defaultNewChatTheme);
             setChatLoadError("");
             return { summaries, activeChat: undefined };
         }
@@ -306,6 +314,7 @@ export function useChatLibrary({
             setActiveChat(undefined);
             setGroupCharacters([]);
             setMode(defaultNewChatMode);
+            setTheme(defaultNewChatTheme);
             setChatLoadError("");
             if (chatLoadRequestId) finishChatLoad(chatLoadRequestId);
             return undefined;
@@ -326,6 +335,7 @@ export function useChatLibrary({
                 setActiveChat(undefined);
                 setGroupCharacters([]);
                 setMode(defaultNewChatMode);
+                setTheme(defaultNewChatTheme);
                 setChatLoadError("");
                 if (chatLoadRequestId) finishChatLoad(chatLoadRequestId);
                 return undefined;
@@ -334,6 +344,7 @@ export function useChatLibrary({
             setActiveChat(fallbackChat);
             await activateGroupCharactersForChat(fallbackChat);
             setMode(fallbackChat.mode);
+            setTheme(fallbackChat.theme ?? chatThemeForMode(fallbackChat.mode));
             setChatLoadError("");
             if (chatLoadRequestId) setChatLoadTarget(chatLoadRequestId, fallbackChat.id);
             if (summaries.lastActiveChatId !== fallbackChat.id) {
@@ -350,6 +361,7 @@ export function useChatLibrary({
         setActiveChat(loadedChat);
         await activateGroupCharactersForChat(loadedChat);
         setMode(loadedChat.mode);
+        setTheme(loadedChat.theme ?? chatThemeForMode(loadedChat.mode));
         setChatLoadError("");
         if (chatLoadRequestId) setChatLoadTarget(chatLoadRequestId, loadedChat.id);
         if (summaries.lastActiveChatId !== loadedChat.id) {
@@ -547,6 +559,7 @@ export function useChatLibrary({
             character: sourceCharacter,
             messages: [createGreetingMessage(sourceCharacter, chatMode)],
             mode: chatMode,
+            theme: defaultNewChatTheme,
         });
 
         try {
@@ -559,6 +572,7 @@ export function useChatLibrary({
             setActiveChat(createdChat);
             await activateGroupCharactersForChat(createdChat);
             setMode(createdChat.mode);
+            setTheme(createdChat.theme ?? chatThemeForMode(createdChat.mode));
 
             if (result.chats) {
                 setChatSummaries(result.chats);
@@ -608,6 +622,7 @@ export function useChatLibrary({
                 characters: safeCharacters,
                 greetingMode,
                 mode: defaultNewChatMode,
+                theme: defaultNewChatTheme,
                 title,
             });
             const workspaceResult = (await createChatRequest(workspace)) as {
@@ -624,6 +639,7 @@ export function useChatLibrary({
                     greetingMode,
                 ),
                 mode: defaultNewChatMode,
+                theme: defaultNewChatTheme,
             });
             chat.metadata = {
                 ...chat.metadata,
@@ -642,6 +658,7 @@ export function useChatLibrary({
             setGroupCharacters(safeCharacters);
             onDisplayCharacterChange(safeCharacters[0]);
             setMode(createdChat.mode);
+            setTheme(createdChat.theme ?? chatThemeForMode(createdChat.mode));
 
             if (result.chats) {
                 setChatSummaries(result.chats);
@@ -723,6 +740,7 @@ export function useChatLibrary({
                     greetingMode,
                 ),
                 mode: defaultNewChatMode,
+                theme: defaultNewChatTheme,
             });
             conversation.metadata = {
                 ...conversation.metadata,
@@ -736,6 +754,7 @@ export function useChatLibrary({
             setActiveChat(created);
             await activateGroupCharactersForChat(created);
             setMode(created.mode);
+            setTheme(created.theme ?? chatThemeForMode(created.mode));
             if (result.chats) setChatSummaries(result.chats);
             else updateChatSummary(chatToSummary(created));
             return created;
@@ -769,6 +788,7 @@ export function useChatLibrary({
             setActiveChat(forkedChat);
             await activateGroupCharactersForChat(forkedChat);
             setMode(forkedChat.mode);
+            setTheme(forkedChat.theme ?? chatThemeForMode(forkedChat.mode));
 
             if (result.chats) {
                 setChatSummaries(result.chats);
@@ -884,6 +904,7 @@ export function useChatLibrary({
 
             setActiveChat(loadedChat);
             setMode(loadedChat.mode);
+            setTheme(loadedChat.theme ?? chatThemeForMode(loadedChat.mode));
             setChatLoadTarget(chatLoadRequestId, loadedChat.id);
             hydrateGroupDetailsAfterChatSelection(loadedChat, requestId);
 
@@ -1163,6 +1184,7 @@ export function useChatLibrary({
                     setActiveChat(undefined);
                     setGroupCharacters([]);
                     setMode(defaultNewChatMode);
+                    setTheme(defaultNewChatTheme);
                     setChatLoadError("");
                     return;
                 }
@@ -1181,6 +1203,7 @@ export function useChatLibrary({
                         setActiveChat(nextChat);
                         await activateGroupCharactersForChat(nextChat);
                         setMode(nextChat.mode);
+                        setTheme(nextChat.theme ?? chatThemeForMode(nextChat.mode));
                         const nextSummaries = normalizeChatSummaryCollection({
                             ...summaries,
                             lastActiveChatId: nextChat.id,
@@ -1192,6 +1215,7 @@ export function useChatLibrary({
                     setActiveChat(undefined);
                     setGroupCharacters([]);
                     setMode(defaultNewChatMode);
+                    setTheme(defaultNewChatTheme);
                 }
             }
 
@@ -1237,16 +1261,23 @@ export function useChatLibrary({
         }
     }
 
-    function changeMode(nextMode: ChatMode) {
-        setMode(nextMode);
-
+    function changeTheme(nextThemeId: string) {
         const currentChat = latestChatRef.current;
-        if (!currentChat || currentChat.mode === nextMode) {
+        const themeId = isValidChatTheme(nextThemeId)
+            ? nextThemeId
+            : DEFAULT_CHAT_THEME_ID;
+        const nextMode: ChatMode = themeId === "rp" ? "rp" : "chat";
+
+        setMode(nextMode);
+        setTheme(themeId);
+
+        if (!currentChat || currentChat.theme === themeId) {
             return;
         }
 
         queueChatSave({
             ...currentChat,
+            theme: themeId,
             mode: nextMode,
             updatedAt: new Date().toISOString(),
         });
@@ -1287,6 +1318,7 @@ export function useChatLibrary({
         setActiveChat(undefined);
         setGroupCharacters([]);
         setMode(defaultNewChatMode);
+        setTheme(defaultNewChatTheme);
     }
 
     const activeCharacterChats = useMemo(
@@ -1320,7 +1352,7 @@ export function useChatLibrary({
         activeChat,
         activeChatTitle,
         changeGroupAvatar,
-        changeMode,
+        changeTheme,
         createGroupConversation,
         chatCountsByCharacterId,
         chatLoadError,

@@ -24,6 +24,7 @@ import type {
     ChatSummary,
     ChatSummaryCollection,
 } from "./types";
+import { DEFAULT_CHAT_THEME_ID, isValidChatTheme } from "#frontend/lib/themes/registry";
 
 export function normalizeChat(value: unknown): ChatSession | undefined {
     if (!isRecord(value)) {
@@ -60,6 +61,7 @@ export function normalizeChat(value: unknown): ChatSession | undefined {
         defaultTitle,
         ...(title ? { title } : {}),
         mode: normalizeMode(value.mode),
+        theme: normalizeChatTheme(value.theme, value.mode),
         ...(normalizeMetadata(value.metadata)
             ? { metadata: normalizeMetadata(value.metadata) }
             : {}),
@@ -96,6 +98,7 @@ export function normalizeChatSummary(value: unknown): ChatSummary | undefined {
         defaultTitle,
         ...(title ? { title } : {}),
         mode: normalizeMode(value.mode),
+        theme: normalizeChatTheme(value.theme, value.mode),
         ...(normalizeMetadata(value.metadata)
             ? { metadata: normalizeMetadata(value.metadata) }
             : {}),
@@ -161,6 +164,7 @@ export function chatToSummary(chat: ChatSession): ChatSummary {
         defaultTitle: chat.defaultTitle,
         ...(chat.title ? { title: chat.title } : {}),
         mode: chat.mode,
+        theme: chat.theme ?? chatThemeForMode(chat.mode),
         ...(chat.metadata ? { metadata: chat.metadata } : {}),
         messageCount: chat.messages.length,
         ...(chatLastMessageAt(chat) ? { lastMessageAt: chatLastMessageAt(chat) } : {}),
@@ -567,6 +571,17 @@ function normalizeAttachment(value: unknown): ChatAttachment | undefined {
         ...(description ? { description } : {}),
         ...(sizeBytes !== undefined ? { sizeBytes } : {}),
     };
+}
+
+function normalizeChatTheme(value: unknown, mode: unknown) {
+    return typeof value === "string" && isValidChatTheme(value)
+        ? value
+        : chatThemeForMode(mode);
+}
+
+/** Theme a chat shows when it never picked one explicitly. */
+export function chatThemeForMode(mode: unknown) {
+    return mode === "rp" ? "rp" : DEFAULT_CHAT_THEME_ID;
 }
 
 function normalizeMode(value: unknown): ChatMode {

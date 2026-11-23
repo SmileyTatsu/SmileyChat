@@ -69,6 +69,7 @@ type ChatWorkspaceProps = {
     uploadingAttachmentCount?: number;
     messages: Message[];
     mode: ChatMode;
+    theme?: string;
     preferences: AppPreferences;
     saveState?: ChatSaveState;
     contextUsage?: { budget: number; usedTokens: number };
@@ -85,7 +86,7 @@ type ChatWorkspaceProps = {
     onDeleteMessageSwipe: (messageId: string) => void;
     onEditMessage: (messageId: string, content: string) => void;
     onForkMessage: (messageId: string) => void;
-    onModeChange: (mode: ChatMode) => void;
+    onThemeChange?: (themeId: string) => void;
     onNextSwipe: (messageId: string) => void;
     onCreateUserSwipe: (messageId: string) => boolean;
     onContinueGeneration: (messageId: string) => void;
@@ -124,6 +125,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     uploadingAttachmentCount,
     messages,
     mode,
+    theme,
     preferences,
     saveState,
     contextUsage,
@@ -135,7 +137,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     onDeleteMessageSwipe,
     onEditMessage,
     onForkMessage,
-    onModeChange,
+    onThemeChange,
     onNextSwipe,
     onCreateUserSwipe,
     onContinueGeneration,
@@ -152,7 +154,9 @@ export const ChatWorkspace = memo(function ChatWorkspace({
     getPluginSnapshot,
     pluginSnapshot,
 }: ChatWorkspaceProps) {
-    const activeTheme = preferences.appearance.chatTheme || mode || "chat";
+    // The chat owns its theme; the preference is only the default it was
+    // created with, so two chats can look different at the same time.
+    const activeTheme = theme || preferences.appearance.defaultChatTheme;
     const visualMode = (activeTheme === "rp" ? "rp" : "chat") as ChatMode;
     const messageFormatting = messageFormattingForMode(preferences, visualMode);
     const characterDialogueColors = useMemo(() => {
@@ -204,8 +208,9 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                 groupAvatarPath={groupAvatarPath}
                 groupMembers={groupMembers}
                 mode={visualMode}
+                theme={activeTheme}
+                onThemeChange={onThemeChange}
                 pluginSnapshot={pluginSnapshot}
-                onModeChange={onModeChange}
                 onToggleSidebar={onToggleSidebar}
                 onToggleCharacter={onToggleCharacter}
             />

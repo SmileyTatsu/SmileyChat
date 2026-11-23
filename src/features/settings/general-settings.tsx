@@ -118,17 +118,6 @@ export function GeneralSettings({
                     </div>
                 </header>
 
-                <SettingField label="Default new chat mode">
-                    <SegmentedControl<ChatMode>
-                        value={preferences.chat.defaultMode}
-                        options={[
-                            { value: "chat", label: "Chatting" },
-                            { value: "rp", label: "Roleplaying" },
-                        ]}
-                        onChange={(defaultMode) => updateChat({ defaultMode })}
-                    />
-                </SettingField>
-
                 <ToggleRow
                     checked={preferences.layout.characterPanelOpenByDefault}
                     description="Keep the character details sidebar expanded when opening chats."

@@ -748,21 +748,38 @@ textarea:disabled {
     color: #ececf1;
 }
 
-.mode-toggle {
-    border-radius: 10px;
-    background: var(--surface-recessed);
-    box-shadow: var(--ring-control);
-    padding: 4px;
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 9px;
+    background: #1c1f27;
 }
 
-.mode-toggle button {
+.theme-toggle-btn {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 26px;
+    padding: 0;
     border: 0;
-    height: 34px;
     border-radius: 7px;
+    background: transparent;
+    color: #7f889b;
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        color 150ms ease;
 }
 
-.mode-toggle button.active {
-    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.24);
+.theme-toggle-btn:hover {
+    color: #c9cede;
+}
+
+.theme-toggle-btn[data-active="true"] {
+    background: #2a2f3b;
+    color: #ececf1;
 }
 
 .sidebar-toggle-btn,
@@ -1167,7 +1184,7 @@ textarea:disabled {
 @media (max-width: 820px) {
     .chat-header {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 36px;
+        grid-template-columns: minmax(0, 1fr) auto 36px;
         align-items: center;
         gap: 8px;
     }
@@ -1182,15 +1199,14 @@ textarea:disabled {
         display: contents;
     }
 
-    .mode-toggle {
-        grid-column: 1 / -1;
-        grid-row: 2;
-        width: 100%;
-        min-width: 0;
+    .theme-toggle {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
     }
 
     .character-toggle-btn {
-        grid-column: 2;
+        grid-column: 3;
         grid-row: 1;
         justify-self: end;
     }
@@ -1198,11 +1214,6 @@ textarea:disabled {
     .plugin-header-actions {
         grid-column: 1 / -1;
         grid-row: 3;
-    }
-
-    .mode-toggle button {
-        flex: 1;
-        min-width: 0;
     }
 
     .message {

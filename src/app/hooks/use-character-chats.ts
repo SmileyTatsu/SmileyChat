@@ -16,15 +16,19 @@ import { useImportExport } from "./use-import-export";
 
 type UseCharacterChatsOptions = {
     defaultNewChatMode: ChatMode;
+    defaultNewChatTheme: string;
     latestPersonaRef: { current: SmileyPersona };
     setMode: (mode: ChatMode) => void;
+    setTheme: (theme: string) => void;
     userStatus: UserStatus;
 };
 
 export function useCharacterChats({
     defaultNewChatMode,
+    defaultNewChatTheme,
     latestPersonaRef,
     setMode,
+    setTheme,
     userStatus,
 }: UseCharacterChatsOptions) {
     const characterLibrary = useCharacterLibrary();
@@ -33,12 +37,14 @@ export function useCharacterChats({
     const chatLibrary = useChatLibrary({
         activeCharacterId: characterLibrary.character.id,
         defaultNewChatMode,
+        defaultNewChatTheme,
         fetchCharacterById: characterLibrary.fetchCharacterById,
         latestCharacterRef: characterLibrary.latestCharacterRef,
         latestCharacterSummariesRef: characterLibrary.latestCharacterSummariesRef,
         latestPersonaRef,
         onDisplayCharacterChange: characterLibrary.setCharacter,
         setMode,
+        setTheme,
         userStatus,
     });
     const importExport = useImportExport({
@@ -241,8 +247,8 @@ export function useCharacterChats({
         await chatLibrary.updateActiveGroupChat(nextChat);
     }
 
-    function changeMode(nextMode: ChatMode) {
-        chatLibrary.changeMode(nextMode);
+    function changeTheme(nextThemeId: string) {
+        chatLibrary.changeTheme(nextThemeId);
     }
 
     return {
@@ -251,7 +257,7 @@ export function useCharacterChats({
         activeChatTitle: chatLibrary.activeChatTitle,
         applySavedCharacter: characterLibrary.applySavedCharacter,
         changeGroupAvatar: chatLibrary.changeGroupAvatar,
-        changeMode,
+        changeTheme,
         createGroupConversation: chatLibrary.createGroupConversation,
         character: characterLibrary.character,
         characterImportStatus: importExport.characterImportStatus,

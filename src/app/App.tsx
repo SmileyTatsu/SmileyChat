@@ -115,8 +115,14 @@ const CONNECTION_SETTINGS_SAVE_DEBOUNCE_MS = 400;
 const PREFERENCES_SAVE_DEBOUNCE_MS = 400;
 type StartupStatus = "loading" | "ready" | "error";
 
+/** Only the roleplay theme changes how messages are formatted. */
+function chatModeForTheme(theme: string): ChatMode {
+    return theme === "rp" ? "rp" : "chat";
+}
+
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
+    const [theme, setTheme] = useState<string>("chat");
     const {
         characterOpenSignal,
         isCharacterDrawerLayout,
@@ -193,7 +199,7 @@ export function App() {
         groupCharacters,
         applySavedCharacter,
         changeGroupAvatar,
-        changeMode,
+        changeTheme,
         character,
         characterImportStatus,
         characterLoadError,
@@ -233,9 +239,11 @@ export function App() {
         updateActiveGroupChat,
         updateActiveCharacter,
     } = useCharacterChats({
-        defaultNewChatMode: preferences.chat.defaultMode,
+        defaultNewChatMode: chatModeForTheme(preferences.appearance.defaultChatTheme),
+        defaultNewChatTheme: preferences.appearance.defaultChatTheme,
         latestPersonaRef,
         setMode,
+        setTheme,
         userStatus,
     });
     const chatSession = useChatSession({
@@ -252,7 +260,6 @@ export function App() {
         userStatus,
     });
     const latestChatSessionForPluginsRef = useRef(chatSession);
-    const latestChangeModeForWorkspaceRef = useRef(changeMode);
     const latestCreateCharacterForWorkspaceRef = useRef(createCharacter);
     const latestStartNewChatForWorkspaceRef = useRef(startNewChat);
     const latestSelectCharacterForPluginsRef = useRef(selectCharacter);
@@ -273,7 +280,6 @@ export function App() {
     );
 
     latestChatSessionForPluginsRef.current = chatSession;
-    latestChangeModeForWorkspaceRef.current = changeMode;
     latestCreateCharacterForWorkspaceRef.current = createCharacter;
     latestStartNewChatForWorkspaceRef.current = startNewChat;
     latestSelectCharacterForPluginsRef.current = selectCharacter;
@@ -528,8 +534,9 @@ export function App() {
         },
         [forkChatAtMessage],
     );
-    const handleModeChange = useCallback((nextMode: ChatMode) => {
-        latestChangeModeForWorkspaceRef.current(nextMode);
+
+    const handleThemeChange = useCallback((nextThemeId: string) => {
+        changeTheme(nextThemeId);
     }, []);
     const handleNextSwipe = useCallback((messageId: string) => {
         void latestChatSessionForPluginsRef.current.nextSwipe(messageId);
@@ -784,7 +791,9 @@ export function App() {
             preferencesLoadedRef.current = true;
 
             if (applyStartupLayout) {
-                setMode(loadedPreferences.chat.defaultMode);
+                setMode(chatModeForTheme(loadedPreferences.appearance.defaultChatTheme));
+                setTheme(loadedPreferences.appearance.defaultChatTheme);
+                setTheme(loadedPreferences.appearance.defaultChatTheme);
                 desktopCharacterOpen.value =
                     loadedPreferences.layout.characterPanelOpenByDefault;
                 mobileCharacterOpen.value = false;
@@ -802,7 +811,7 @@ export function App() {
         setPreferences(loadedPreferences);
         latestPreferencesRef.current = loadedPreferences;
         preferencesLoadedRef.current = true;
-        setMode(loadedPreferences.chat.defaultMode);
+        setMode(chatModeForTheme(loadedPreferences.appearance.defaultChatTheme));
         desktopCharacterOpen.value = loadedPreferences.layout.characterPanelOpenByDefault;
         mobileCharacterOpen.value = false;
         mobileSidebarOpen.value = false;
@@ -1085,7 +1094,11 @@ export function App() {
             // the character first so the rail, header and chat list stay in sync.
             const summary = chatSummaries.chats.find((chat) => chat.id === chatId);
 
-            if (summary && !isGroupChat(summary) && summary.characterId !== character.id) {
+            if (
+                summary &&
+                !isGroupChat(summary) &&
+                summary.characterId !== character.id
+            ) {
                 await selectCharacter(summary.characterId);
             }
 
@@ -1230,14 +1243,13 @@ export function App() {
             {(serverUnreachable || localApiWarning) && (
                 <div className="app-warning-stack">
                     {serverUnreachable && (
-                        <div className="app-warning-banner" data-tone="danger" role="status">
-                            <span>
-                                Can't reach the local server. Retrying…
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => void pingLocalServer()}
-                            >
+                        <div
+                            className="app-warning-banner"
+                            data-tone="danger"
+                            role="status"
+                        >
+                            <span>Can't reach the local server. Retrying…</span>
+                            <button type="button" onClick={() => void pingLocalServer()}>
                                 Retry now
                             </button>
                         </div>
@@ -1245,10 +1257,7 @@ export function App() {
                     {localApiWarning && (
                         <div className="app-warning-banner" role="alert">
                             <span>{localApiWarning}</span>
-                            <button
-                                type="button"
-                                onClick={handleClearLocalApiWarning}
-                            >
+                            <button type="button" onClick={handleClearLocalApiWarning}>
                                 Dismiss
                             </button>
                         </div>
@@ -1337,6 +1346,7 @@ export function App() {
                 uploadingAttachmentCount={chatSession.uploadingAttachmentCount}
                 messages={chatSession.messages}
                 mode={mode}
+                theme={theme}
                 preferences={preferences}
                 pendingSwipeMessageId={chatSession.pendingSwipeMessageId}
                 personas={personaSummaries.personas}
@@ -1354,7 +1364,7 @@ export function App() {
                 onForkMessage={handleForkMessage}
                 onRemoveAttachment={handleRemoveAttachment}
                 onRemoveAllAttachments={handleRemoveAllAttachments}
-                onModeChange={handleModeChange}
+                onThemeChange={handleThemeChange}
                 onNextSwipe={handleNextSwipe}
                 onCreateUserSwipe={handleCreateUserSwipe}
                 onContinueGeneration={handleContinueGeneration}
@@ -1364,7 +1374,10 @@ export function App() {
                 onToggleSidebar={toggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
-                contextUsage={{ budget: contextTokenBudget, usedTokens: contextUsedTokens }}
+                contextUsage={{
+                    budget: contextTokenBudget,
+                    usedTokens: contextUsedTokens,
+                }}
                 saveState={chatSaveState}
                 getPluginSnapshot={getPluginSnapshotForActions}
                 pluginSnapshot={pluginSnapshot}

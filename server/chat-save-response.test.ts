@@ -19,6 +19,7 @@ describe("chat save acknowledgement", () => {
                 characterId: chat.characterId,
                 defaultTitle: chat.defaultTitle,
                 mode: chat.mode,
+                theme: "chat",
                 messageCount: 1,
                 lastMessageAt: "2026-07-15T11:59:00.000Z",
                 createdAt: chat.createdAt,

@@ -50,7 +50,7 @@ export function ThemesSettings({
     saveStatus,
     onPreferencesChange,
 }: ThemesSettingsProps) {
-    const activeThemeId = preferences.appearance.chatTheme || "chat";
+    const activeThemeId = preferences.appearance.defaultChatTheme || "chat";
     const currentTheme = getChatTheme(activeThemeId);
     const visualMode = (activeThemeId === "rp" ? "rp" : "chat") as ChatMode;
     const formatting = messageFormattingForMode(preferences, visualMode);
@@ -151,11 +151,7 @@ export function ThemesSettings({
             ...preferences,
             appearance: {
                 ...preferences.appearance,
-                chatTheme: theme.id,
-            },
-            chat: {
-                ...preferences.chat,
-                defaultMode: (theme.id === "rp" ? "rp" : "chat") as ChatMode,
+                defaultChatTheme: theme.id,
             },
         });
     }
@@ -166,9 +162,10 @@ export function ThemesSettings({
                 <div>
                     <h2>Chat Themes</h2>
                     <p>
-                        Choose the global visual theme for all your chats. Themes
-                        customize typography, avatars, message bubbles, and reading flow
-                        without affecting prompts or model behavior.
+                        Pick the theme new chats start with. Each chat keeps its own
+                        theme, so you can switch it from the chat header without touching
+                        the rest. Themes customize typography, avatars, message bubbles,
+                        and reading flow without affecting prompts or model behavior.
                     </p>
                 </div>
                 {saveStatus && <span className="settings-save-state">{saveStatus}</span>}

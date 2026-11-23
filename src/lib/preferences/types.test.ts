@@ -53,19 +53,31 @@ describe("app preference normalization", () => {
         expect(preferences.appearance.hideNamePrefixInMessages).toBe(false);
     });
 
-    test("normalizes the global chatTheme preference", () => {
+    test("normalizes the default chat theme preference", () => {
         expect(
-            normalizeAppPreferences({ appearance: { chatTheme: "rp" } }).appearance
-                .chatTheme,
+            normalizeAppPreferences({ appearance: { defaultChatTheme: "rp" } }).appearance
+                .defaultChatTheme,
         ).toBe("rp");
         expect(
-            normalizeAppPreferences({ appearance: { chatTheme: "bubbles" } }).appearance
-                .chatTheme,
+            normalizeAppPreferences({ appearance: { defaultChatTheme: "bubbles" } })
+                .appearance.defaultChatTheme,
         ).toBe("bubbles");
         expect(
-            normalizeAppPreferences({ appearance: { chatTheme: "invalid-theme" } })
-                .appearance.chatTheme,
+            normalizeAppPreferences({ appearance: { defaultChatTheme: "invalid-theme" } })
+                .appearance.defaultChatTheme,
         ).toBe("chat");
+    });
+
+    test("reads the old global chatTheme key as the default theme", () => {
+        expect(
+            normalizeAppPreferences({ appearance: { chatTheme: "rp" } }).appearance
+                .defaultChatTheme,
+        ).toBe("rp");
+        expect(
+            normalizeAppPreferences({
+                appearance: { chatTheme: "rp", defaultChatTheme: "bubbles" },
+            }).appearance.defaultChatTheme,
+        ).toBe("bubbles");
     });
 
     test("normalizes the tool iteration limit", () => {

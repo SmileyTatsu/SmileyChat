@@ -1,6 +1,7 @@
-import { Menu, PanelRight } from "lucide-preact";
+import { BookOpen, Menu, MessageCircle, MessageSquare, PanelRight } from "lucide-preact";
 
 import { getPluginHeaderActions } from "#frontend/lib/plugins/registry";
+import { AVAILABLE_CHAT_THEMES } from "#frontend/lib/themes/registry";
 import type { PluginAppSnapshot } from "#frontend/lib/plugins/types";
 import type { ChatGroupMember, ChatMode } from "#frontend/types";
 
@@ -17,11 +18,23 @@ type ChatHeaderProps = {
     groupMembers?: ChatGroupMember[];
     groupAvatarPath?: string;
     mode: ChatMode;
+    theme: string;
     pluginSnapshot: PluginAppSnapshot;
-    onModeChange?: (mode: ChatMode) => void;
+    onThemeChange?: (themeId: string) => void;
     onToggleSidebar?: () => void;
     onToggleCharacter?: () => void;
 };
+
+const THEME_ICONS = {
+    chat: MessageCircle,
+    rp: BookOpen,
+    bubbles: MessageSquare,
+} as const;
+
+function themeIcon(themeId: string) {
+    const Icon = THEME_ICONS[themeId as keyof typeof THEME_ICONS] ?? MessageCircle;
+    return <Icon size={16} />;
+}
 
 function CharacterAvatar(props: { characterAvatarPath?: string }) {
     if (!props.characterAvatarPath) {
@@ -62,8 +75,9 @@ export function ChatHeader({
     groupMembers,
     groupAvatarPath,
     mode,
+    theme,
     pluginSnapshot,
-    onModeChange,
+    onThemeChange,
     onToggleSidebar,
     onToggleCharacter,
 }: ChatHeaderProps) {
@@ -112,6 +126,23 @@ export function ChatHeader({
             </div>
 
             <div className="header-actions">
+                {onThemeChange && (
+                    <div className="theme-toggle" role="group" aria-label="Chat theme">
+                        {AVAILABLE_CHAT_THEMES.map((themeOption) => (
+                            <button
+                                key={themeOption.id}
+                                className="theme-toggle-btn"
+                                type="button"
+                                data-active={themeOption.id === theme}
+                                aria-pressed={themeOption.id === theme}
+                                title={`${themeOption.name} — ${themeOption.badge}`}
+                                onClick={() => onThemeChange(themeOption.id)}
+                            >
+                                {themeIcon(themeOption.id)}
+                            </button>
+                        ))}
+                    </div>
+                )}
                 {pluginHeaderActions.length > 0 && (
                     <div className="plugin-header-actions">
                         {pluginHeaderActions.map((action) => (

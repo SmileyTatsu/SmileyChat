@@ -8,12 +8,14 @@ type CreateChatOptions = {
     character: SmileyCharacter;
     messages: Message[];
     mode: ChatMode;
+    theme?: string;
 };
 
 export function createChatSession({
     character,
     messages,
     mode,
+    theme,
 }: CreateChatOptions): ChatSession {
     const now = new Date().toISOString();
 
@@ -23,6 +25,7 @@ export function createChatSession({
         characterId: character.id,
         defaultTitle: defaultChatTitle(character.data.name, now),
         mode,
+        theme: theme ?? (mode === "rp" ? "rp" : "chat"),
         messages,
         createdAt: now,
         updatedAt: now,
@@ -33,6 +36,7 @@ export function createGroupChatSession({
     characters,
     messages,
     mode,
+    theme,
     title,
     greetingMode = "all",
 }: {
@@ -40,6 +44,7 @@ export function createGroupChatSession({
     greetingMode?: GroupGreetingMode;
     messages: Message[];
     mode: ChatMode;
+    theme?: string;
     title?: string;
 }): ChatSession {
     const now = new Date().toISOString();
@@ -74,6 +79,7 @@ export function createGroupChatSession({
         defaultTitle,
         ...(title?.trim() ? { title: title.trim() } : {}),
         mode,
+        theme: theme ?? (mode === "rp" ? "rp" : "chat"),
         messages,
         createdAt: now,
         updatedAt: now,
@@ -85,6 +91,7 @@ export function createGroupWorkspaceSession({
     characters,
     greetingMode = "all",
     mode,
+    theme,
     title,
 }: Omit<CreateGroupChatOptions, "messages">) {
     const workspace = createGroupChatSession({
@@ -92,6 +99,7 @@ export function createGroupWorkspaceSession({
         greetingMode,
         messages: [],
         mode,
+        theme,
         title,
     });
     return {
@@ -107,6 +115,7 @@ type CreateGroupChatOptions = {
     characters: SmileyCharacter[];
     greetingMode?: GroupGreetingMode;
     mode: ChatMode;
+    theme?: string;
     title?: string;
 };
 

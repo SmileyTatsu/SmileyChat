@@ -83,6 +83,8 @@ export type ChatSession = {
     defaultTitle: string;
     title?: string;
     mode: ChatMode;
+    /** Chat theme id; when missing it follows `mode`. */
+    theme?: string;
     metadata?: ChatMetadata;
     messages: Message[];
     createdAt: string;
@@ -98,6 +100,8 @@ export type ChatSummary = {
     defaultTitle: string;
     title?: string;
     mode: ChatMode;
+    /** Chat theme id; when missing it follows `mode`. */
+    theme?: string;
     metadata?: ChatMetadata;
     messageCount: number;
     lastMessageAt?: string;
