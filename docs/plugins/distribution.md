@@ -26,6 +26,7 @@ Registry plugins use this shape:
             "category": "tools",
             "status": "verified",
             "repository": "https://github.com/example/example-plugin",
+            "permissions": ["chat:output", "ui:settings"],
             "artifact": {
                 "url": "https://github.com/example/example-plugin/releases/download/v1.0.0/example-plugin-1.0.0.zip"
             }
@@ -42,6 +43,13 @@ Rules:
 - `category` must be one of SmileyChat's plugin categories.
 - `artifact.url` must be an HTTPS `.zip` URL.
 - `repository` is optional but recommended so users can inspect source.
+- `permissions` is optional. When present it must be an array of up to 32 non-empty
+  strings (64 characters each) and lists the permissions this artifact was reviewed
+  for. SmileyChat rejects a Store install or update whose `plugin.json` requests any
+  permission missing from this list, with a `400` naming the extra permissions. An
+  empty array means the artifact must declare no permissions. Entries without the
+  field still install, and the Store shows an explicit "Permissions not listed by the
+  registry" warning before install.
 - SHA-256 hashes are not required for release v1.
 - Registry artifacts may be hosted on GitHub Releases (`github.com` and its
   `*.githubusercontent.com` asset redirects) or on the registry's own host. Any other
@@ -96,17 +104,19 @@ When installing or updating a Store plugin, SmileyChat:
 
 1. Fetches the registry from `SMILEYCHAT_PLUGIN_REGISTRY_URL`.
 2. Validates the registry entry and artifact URL.
-3. Downloads one HTTPS ZIP artifact.
-4. Extracts the ZIP into `userData/plugins/.installing/{pluginId}-{timestamp}`.
-5. Rejects path traversal, absolute paths, Windows drive paths, backslash paths, too many entries, oversized files, and oversized extracted payloads.
-6. Requires root `plugin.json`.
-7. Validates `plugin.json`, `main`, and `styles`.
-8. Rejects plugin IDs that collide with core extensions.
-9. Moves the existing plugin aside if one is installed.
-10. Copies the existing plugin `data/` folder into the staged plugin.
-11. Writes `smileychat-install.json`.
-12. Swaps the staged plugin into `userData/plugins/{pluginId}`.
-13. Restores the previous plugin if validation or swap fails.
+3. Shows the registry-declared permissions and waits for the user to confirm.
+4. Downloads one HTTPS ZIP artifact.
+5. Extracts the ZIP into `userData/plugins/.installing/{pluginId}-{timestamp}`.
+6. Rejects path traversal, absolute paths, Windows drive paths, backslash paths, too many entries, oversized files, and oversized extracted payloads.
+7. Requires root `plugin.json`.
+8. Validates `plugin.json`, `main`, and `styles`.
+9. Rejects plugin IDs that collide with core extensions.
+10. Rejects artifacts whose `plugin.json` requests a permission the registry entry does not list, naming the extra permissions in the error.
+11. Moves the existing plugin aside if one is installed.
+12. Copies the existing plugin `data/` folder into the staged plugin.
+13. Writes `smileychat-install.json`.
+14. Swaps the staged plugin into `userData/plugins/{pluginId}`.
+15. Restores the previous plugin if validation or swap fails.
 
 The installed metadata file looks like this for Store installs:
 
@@ -127,6 +137,7 @@ Options > Plugins shows **Update** for plugins with `smileychat-install.json`.
 - Registry-installed plugins update from the current registry entry for the same plugin ID.
 - Manual artifact plugins update from the stored `artifactUrl`.
 - Updates use the same staging, validation, swap, rollback, and `data/` preservation flow as installs.
+- If the registry entry for the update lists permissions the installed plugin did not declare, the Store asks for confirmation again and lists only the added permissions.
 - Local folder plugins are development-only and are not updateable by SmileyChat.
 
 Updating never runs `git pull` or a build command.
@@ -188,4 +199,4 @@ Changing plugin code should require:
 
 1. A newly built artifact.
 2. A new release URL or versioned artifact path.
-3. A registry entry update.
+3. A registry entry update, including any `permissions` the artifact adds.

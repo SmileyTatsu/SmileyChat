@@ -134,6 +134,115 @@ test("registry rejects invalid category, status, id, and artifact URL", () => {
     ).toThrow("HTTPS ZIP URL");
 });
 
+test("registry permissions are optional, deduped, and bounded", () => {
+    const normalize = pluginInstallTestInternals.normalizePluginRegistry;
+
+    expect(
+        normalize({
+            version: 1,
+            plugins: [registryEntry({ permissions: [" state:read ", "state:read"] })],
+        }).plugins[0].permissions,
+    ).toEqual(["state:read"]);
+
+    expect(
+        normalize({ version: 1, plugins: [registryEntry()] }).plugins[0].permissions,
+    ).toBeUndefined();
+
+    expect(
+        normalize({ version: 1, plugins: [registryEntry({ permissions: [] })] })
+            .plugins[0].permissions,
+    ).toEqual([]);
+
+    expect(() =>
+        normalize({
+            version: 1,
+            plugins: [registryEntry({ permissions: "state:read" })],
+        }),
+    ).toThrow("permissions must be an array");
+
+    expect(() =>
+        normalize({ version: 1, plugins: [registryEntry({ permissions: ["  "] })] }),
+    ).toThrow("invalid permission entry");
+
+    expect(() =>
+        normalize({
+            version: 1,
+            plugins: [registryEntry({ permissions: ["x".repeat(65)] })],
+        }),
+    ).toThrow("longer than 64 characters");
+
+    expect(() =>
+        normalize({
+            version: 1,
+            plugins: [
+                registryEntry({
+                    permissions: Array.from({ length: 33 }, (_, index) => `p:${index}`),
+                }),
+            ],
+        }),
+    ).toThrow("more than 32 permissions");
+});
+
+test("registry install rejects artifacts asking for undeclared permissions", async () => {
+    const pluginsRoot = await tempRoot();
+    const zip = pluginZip({
+        manifest: { permissions: ["state:read", "network:fetch"] },
+    });
+
+    await expect(
+        installZip(pluginsRoot, zip, { permissions: ["state:read"] }),
+    ).rejects.toThrow("does not list these permissions: network:fetch");
+
+    expect(await Bun.file(join(pluginsRoot, "example-plugin")).exists()).toBe(false);
+
+    await expect(installZip(pluginsRoot, zip, { permissions: [] })).rejects.toThrow(
+        "does not list these permissions: network:fetch, state:read",
+    );
+
+    const response = await installZip(pluginsRoot, zip, {
+        permissions: ["network:fetch", "state:read"],
+    });
+    const body = await response.json();
+
+    expect(body.ok).toBe(true);
+    expect(body.plugin.permissions).toEqual(["state:read", "network:fetch"]);
+});
+
+test("registry entries without permissions and manual artifacts stay permissive", async () => {
+    const zip = pluginZip({
+        manifest: { permissions: ["connections:secrets"] },
+    });
+
+    const registryRoot = await tempRoot();
+    const registryResponse = await installZip(registryRoot, zip);
+
+    expect((await registryResponse.json()).ok).toBe(true);
+
+    const manualRoot = await tempRoot();
+    const manualResponse = await pluginInstallTestInternals.installPluginArtifact(zip, {
+        pluginsRoot: manualRoot,
+        source: {
+            source: "manual-artifact",
+            artifactUrl: "https://example.com/example-plugin.zip",
+            unverified: true,
+        },
+    });
+
+    expect((await manualResponse.json()).ok).toBe(true);
+});
+
+test("installed metadata stays free of registry permission allowlists", async () => {
+    const pluginsRoot = await tempRoot();
+
+    await installZip(pluginsRoot, pluginZip(), { permissions: ["state:read"] });
+
+    const metadata = await Bun.file(
+        join(pluginsRoot, "example-plugin", "smileychat-install.json"),
+    ).json();
+
+    expect(metadata).not.toHaveProperty("permissions");
+});
+
 test("manual artifact install request is gated by env flag", async () => {
     delete Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS;
 
@@ -457,11 +566,15 @@ function pluginZip(
     return zip.toBuffer();
 }
 
-async function installZip(pluginsRoot: string, zip: Uint8Array) {
+async function installZip(
+    pluginsRoot: string,
+    zip: Uint8Array,
+    sourcePatch: { permissions?: string[] } = {},
+) {
     return pluginInstallTestInternals.installPluginArtifact(zip, {
         expectedPluginId: "example-plugin",
         pluginsRoot,
-        source: registrySource("example-plugin"),
+        source: { ...registrySource("example-plugin"), ...sourcePatch },
     });
 }
 

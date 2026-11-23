@@ -385,8 +385,8 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                             }
                             isUpdating={updatingPluginId === plugin.id}
                             isBlocked={requestState === "loading"}
-                            onInstall={() => void installStorePlugin(plugin)}
-                            onUpdate={() => void updateStorePlugin(plugin)}
+                            onInstall={() => installStorePlugin(plugin)}
+                            onUpdate={() => updateStorePlugin(plugin)}
                         />
                     ))}
 

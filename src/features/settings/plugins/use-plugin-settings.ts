@@ -356,9 +356,7 @@ export function usePluginSettings() {
                 `${plugin.name} ${nextEnabled ? "enabled" : "disabled"}.${
                     enablingUnverified
                         ? " This plugin is unverified; keep it enabled only if you completely trust the author."
-                        : plugin.source === "core" || nextEnabled || loadedState(plugin)
-                          ? ""
-                          : " Restart SmileyChat to load this plugin into the current session."
+                        : ""
                 }`,
             );
             setRequestState("success");

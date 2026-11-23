@@ -35,6 +35,8 @@ import { safeFetch } from "./security/safe-fetch";
 import { logger, type LogLevel } from "./logger";
 
 const PLUGIN_INSTALL_MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
+const PLUGIN_REGISTRY_MAX_PERMISSIONS = 32;
+const PLUGIN_REGISTRY_MAX_PERMISSION_LENGTH = 64;
 const PLUGIN_INSTALL_MAX_EXTRACTED_FILE_BYTES = 10 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_EXTRACTED_TOTAL_BYTES = 50 * 1024 * 1024;
 const PLUGIN_INSTALL_MAX_ARCHIVE_ENTRIES = 1000;
@@ -82,6 +84,7 @@ type RegistryPlugin = {
     category: PluginCategory;
     status: RegistryPluginStatus;
     repository?: string;
+    permissions?: string[];
     artifact: { url: string };
 };
 
@@ -96,6 +99,8 @@ type PluginInstallSource =
           pluginId: string;
           artifactUrl: string;
           repository?: string;
+          /** Registry-declared permission allowlist for the artifact. */
+          permissions?: string[];
       }
     | {
           source: "manual-artifact";
@@ -395,6 +400,7 @@ async function latestRegistryInstallSource(
         pluginId: registryPlugin.id,
         artifactUrl: registryPlugin.artifact.url,
         repository: registryPlugin.repository,
+        permissions: registryPlugin.permissions,
     };
 }
 
@@ -453,6 +459,8 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
                 "Plugin manifest ID collides with a core extension.",
             );
         }
+
+        assertRegistryPluginPermissions(manifest, options.source);
 
         await assertInstalledManifestFilesExist(tempRoot, manifest);
         finalRoot = join(pluginsRoot, manifest.id);
@@ -514,6 +522,40 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
     }
 }
 
+/**
+ * Registry entries may declare the permissions their artifact is reviewed for.
+ * An artifact that asks for anything else is a bait-and-switch: refuse to install
+ * before any existing plugin folder is touched. Entries without the field keep the
+ * old permissive behavior and rely on the Store UI to warn the user.
+ */
+function assertRegistryPluginPermissions(
+    manifest: PluginManifest,
+    source: PluginInstallSource,
+) {
+    if (source.source !== "registry" || !source.permissions) {
+        return;
+    }
+
+    const allowed = new Set(source.permissions);
+    const undeclared = (manifest.permissions ?? []).filter(
+        (permission) => !allowed.has(permission),
+    );
+
+    if (undeclared.length === 0) {
+        return;
+    }
+
+    throw new BadRequestError(
+        `Registry entry '${manifest.id}' does not list these permissions: ${[
+            ...new Set(undeclared),
+        ]
+            .sort()
+            .join(
+                ", ",
+            )}. Update the registry entry or publish an artifact that asks for fewer permissions.`,
+    );
+}
+
 function normalizePluginRegistry(value: unknown): PluginRegistry {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
         throw new HttpError(502, "Plugin registry must be an object.");
@@ -571,8 +613,51 @@ function normalizeRegistryPlugin(value: unknown): RegistryPlugin {
             typeof plugin.repository === "string" && plugin.repository.trim()
                 ? plugin.repository.trim()
                 : undefined,
+        permissions: normalizeRegistryPermissions(plugin.permissions, id),
         artifact,
     };
+}
+
+function normalizeRegistryPermissions(value: unknown, pluginId: string) {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!Array.isArray(value)) {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' permissions must be an array of strings.`,
+        );
+    }
+
+    if (value.length > PLUGIN_REGISTRY_MAX_PERMISSIONS) {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' lists more than ${PLUGIN_REGISTRY_MAX_PERMISSIONS} permissions.`,
+        );
+    }
+
+    const permissions = value.map((permission) => {
+        if (typeof permission !== "string" || !permission.trim()) {
+            throw new HttpError(
+                502,
+                `Registry plugin '${pluginId}' has an invalid permission entry.`,
+            );
+        }
+
+        const trimmed = permission.trim();
+
+        if (trimmed.length > PLUGIN_REGISTRY_MAX_PERMISSION_LENGTH) {
+            throw new HttpError(
+                502,
+                `Registry plugin '${pluginId}' has a permission longer than ${PLUGIN_REGISTRY_MAX_PERMISSION_LENGTH} characters.`,
+            );
+        }
+
+        return trimmed;
+    });
+
+    return [...new Set(permissions)];
 }
 
 function normalizeRegistryArtifact(value: unknown, pluginId: string) {
@@ -908,8 +993,18 @@ async function writePluginInstallMetadata(
     pluginRoot: string,
     source: PluginInstallSource,
 ) {
+    const installSource =
+        source.source === "registry"
+            ? {
+                  source: source.source,
+                  pluginId: source.pluginId,
+                  artifactUrl: source.artifactUrl,
+                  ...(source.repository ? { repository: source.repository } : {}),
+              }
+            : source;
+
     await writeJsonAtomic(join(pluginRoot, "smileychat-install.json"), {
-        ...source,
+        ...installSource,
         installedAt: new Date().toISOString(),
     });
 }
