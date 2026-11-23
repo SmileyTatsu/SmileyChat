@@ -1204,3 +1204,53 @@
         display: inline-flex;
     }
 }
+
+.chat-undo-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 88px;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: min(420px, calc(100vw - 24px));
+    padding: 9px 10px 9px 14px;
+    border: 1px solid #3a3f4d;
+    border-radius: 10px;
+    background: #22252d;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+    color: #d7dbe6;
+    font-size: 12px;
+    transform: translateX(-50%);
+}
+
+.chat-undo-toast span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-undo-toast strong {
+    font-weight: 600;
+    color: #f0f2f7;
+}
+
+.chat-undo-toast button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid #46506a;
+    border-radius: 7px;
+    background: #2b3040;
+    color: #dfe4ef;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.chat-undo-toast button:hover {
+    border-color: #55617f;
+    background: #343a4c;
+}

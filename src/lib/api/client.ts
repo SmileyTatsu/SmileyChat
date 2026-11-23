@@ -659,6 +659,16 @@ export function deleteChat(chatId: string) {
     });
 }
 
+export function restoreChat(chatId: string) {
+    return requestJson<{
+        ok: true;
+        summary?: ChatSummary;
+        chats?: ChatSummaryCollection;
+    }>(`/api/chats/${encodeURIComponent(chatId)}/restore`, {
+        method: "POST",
+    });
+}
+
 export function deleteChatWorkspace(workspaceId: string) {
     return requestJson<{
         ok: true;

@@ -287,6 +287,7 @@ export function useCharacterChats({
         removeCharacterAvatar,
         reorderCharacters: characterLibrary.reorderCharacters,
         renameChat: chatLibrary.renameChat,
+        restoreChat: chatLibrary.restoreChat,
         selectCharacter,
         selectChat: chatLibrary.selectChat,
         startNewChat,

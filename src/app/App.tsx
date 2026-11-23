@@ -222,6 +222,7 @@ export function App() {
         removeCharacterAvatar,
         reorderCharacters,
         renameChat,
+        restoreChat,
         selectCharacter,
         selectChat,
         startNewChat,
@@ -1225,6 +1226,7 @@ export function App() {
                 onImportChatFile={handleSidebarImportChatFile}
                 onNewChat={handleSidebarNewChat}
                 onOpenPalette={() => setPaletteOpen(true)}
+                onRestoreChat={restoreChat}
                 onNewGroupChat={handleSidebarNewGroupChat}
                 onOpenSettings={handleOpenSettings}
                 onOpenPersonasSettings={handleOpenPersonasSettings}

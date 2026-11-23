@@ -36,6 +36,7 @@ export const chatIndexPath = join(userDataDir, "chats", "index.json");
 export const chatAssetsDir = join(userDataDir, "chats", "assets");
 export const chatSessionsDir = join(userDataDir, "chats", "sessions");
 export const chatOrphanedDir = join(userDataDir, "chats", "orphaned");
+export const chatTrashDir = join(userDataDir, "chats", "trash");
 export const personaIndexPath = join(userDataDir, "personas", "index.json");
 export const personaCardsDir = join(userDataDir, "personas", "cards");
 export const personaAssetsDir = join(userDataDir, "personas", "assets");

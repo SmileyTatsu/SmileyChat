@@ -29,6 +29,8 @@ import {
     createChat,
     deleteChatById,
     deleteChatsByCharacterId,
+    purgeChatTrash,
+    restoreChatFromTrash,
     deleteGroupWorkspaceById,
     forkChatAtMessage,
     readChatById,
@@ -146,6 +148,7 @@ const port = getPort();
 const hostname = getHost();
 
 ensureUserData();
+void purgeChatTrash();
 await importDroppedCharacterFiles();
 
 const envWatcher = startEnvWatcher();
@@ -755,11 +758,23 @@ const createServer = () =>
                 }),
 
                 DELETE: api(async (request) => {
-                    const result = await deleteChatById(request.params.chatId);
+                    const permanent =
+                        new URL(request.url).searchParams.get("permanent") === "true";
+                    const result = await deleteChatById(request.params.chatId, {
+                        permanent,
+                    });
                     return result
                         ? json({ ok: true, ...result })
                         : json({ error: "Chat not found." }, 404);
                 }),
+            },
+            "/api/chats/:chatId/restore": {
+                POST: api(async (request) =>
+                    json({
+                        ok: true,
+                        ...(await restoreChatFromTrash(request.params.chatId)),
+                    }),
+                ),
             },
             "/api/chats/:chatId/metadata": {
                 PATCH: api(async (request) =>

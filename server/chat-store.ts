@@ -1,4 +1,5 @@
-import { rm } from "node:fs/promises";
+import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
 
 import {
     chatLastMessageAt,
@@ -37,7 +38,13 @@ import {
 } from "./file-store";
 import { BadRequestError, NotFoundError, writeJsonAtomic } from "./http";
 import { logger } from "./logger";
-import { chatIndexPath, chatOrphanedDir, chatSessionsDir } from "./paths";
+import {
+    chatAssetsDir,
+    chatIndexPath,
+    chatOrphanedDir,
+    chatSessionsDir,
+    chatTrashDir,
+} from "./paths";
 import { withResourceLock, withResourceLocks } from "./resource-lock";
 
 export async function readChatSummaryCollection(): Promise<ChatSummaryCollection> {
@@ -259,16 +266,51 @@ export function shouldPreserveExistingChat(
     );
 }
 
-export async function deleteChatById(chatId: string) {
+export async function deleteChatById(
+    chatId: string,
+    options: { permanent?: boolean } = {},
+) {
     return withResourceLock(`chat:${chatId}`, async () => {
         const fileExists = await Bun.file(chatFilePath(chatId)).exists();
 
         if (!fileExists) {
+            // A chat already in the trash can still be purged for good.
+            if (
+                options.permanent &&
+                (await pathExists(chatTrashEntryPath(chatId)))
+            ) {
+                await rm(chatTrashEntryPath(chatId), { force: true });
+                await rm(chatTrashEntryAssetsPath(chatId), {
+                    recursive: true,
+                    force: true,
+                });
+
+                return { chats: await readChatSummaryCollection() };
+            }
+
             return undefined;
         }
 
-        await rm(chatFilePath(chatId), { force: true });
-        await deleteChatAssetDirectory(chatId);
+        if (options.permanent) {
+            await rm(chatFilePath(chatId), { force: true });
+            await deleteChatAssetDirectory(chatId);
+            await rm(chatTrashEntryAssetsPath(chatId), { recursive: true, force: true });
+            await rm(chatTrashEntryPath(chatId), { force: true });
+        } else {
+            // Keep the session and its attachments so a misclick is reversible
+            // for a while instead of destroying a long roleplay outright.
+            await mkdir(chatTrashDir, { recursive: true });
+            await rm(chatTrashEntryPath(chatId), { force: true });
+            await rename(chatFilePath(chatId), chatTrashEntryPath(chatId));
+            await rm(chatTrashEntryAssetsPath(chatId), { recursive: true, force: true });
+
+            if (await pathExists(chatAssetDirectoryPath(chatId))) {
+                await rename(
+                    chatAssetDirectoryPath(chatId),
+                    chatTrashEntryAssetsPath(chatId),
+                );
+            }
+        }
 
         await withResourceLock(chatIndexPath, async () => {
             const index = await readChatIndex();
@@ -298,6 +340,97 @@ export async function deleteChatById(chatId: string) {
             chats: await readChatSummaryCollection(),
         };
     });
+}
+
+export async function restoreChatFromTrash(chatId: string) {
+    return withResourceLock(`chat:${chatId}`, async () => {
+        const trashPath = chatTrashEntryPath(chatId);
+
+        if (!(await Bun.file(trashPath).exists())) {
+            throw new NotFoundError("This chat is no longer available to restore.");
+        }
+
+        if (await Bun.file(chatFilePath(chatId)).exists()) {
+            throw new BadRequestError("A chat with this ID already exists.");
+        }
+
+        if (await pathExists(chatTrashEntryAssetsPath(chatId))) {
+            await mkdir(chatAssetsDir, { recursive: true });
+            await rename(chatTrashEntryAssetsPath(chatId), chatAssetDirectoryPath(chatId));
+        }
+
+        const rawJson = await Bun.file(trashPath).json();
+        // Write the session before dropping the trash copy: if the write fails
+        // the user can still try again instead of losing the chat outright.
+        const summary = await writeChatByIdUnlocked(chatId, rawJson);
+        await rm(trashPath, { force: true });
+
+        return {
+            summary,
+            chats: await readChatSummaryCollection(),
+        };
+    });
+}
+
+/** Removes restored or expired trash entries so the folder cannot grow forever. */
+export async function purgeChatTrash({
+    keepCount = 40,
+    maxAgeMs = 7 * 24 * 60 * 60 * 1000,
+} = {}) {
+    if (!(await pathExists(chatTrashDir))) {
+        return;
+    }
+
+    const entries = await readdir(chatTrashDir);
+    const now = Date.now();
+    const candidates: { path: string; mtime: number; isFile: boolean }[] = [];
+
+    for (const entry of entries) {
+        const path = join(chatTrashDir, entry);
+
+        try {
+            const stats = await stat(path);
+            candidates.push({ path, mtime: stats.mtimeMs, isFile: stats.isFile() });
+        } catch {
+            // The entry disappeared while scanning; nothing to purge.
+        }
+    }
+
+    candidates.sort((a, b) => b.mtime - a.mtime);
+
+    for (const [index, candidate] of candidates.entries()) {
+        if (index < keepCount && now - candidate.mtime < maxAgeMs) {
+            continue;
+        }
+
+        await rm(candidate.path, { recursive: !candidate.isFile, force: true });
+    }
+}
+
+function chatTrashEntryPath(chatId: string) {
+    return join(chatTrashDir, `${safePathSegment(chatId)}.json`);
+}
+
+function safePathSegment(value: string) {
+    const clean = basename(value.trim());
+    return clean && clean === value.trim() ? clean : "";
+}
+
+async function pathExists(pathname: string) {
+    try {
+        await stat(pathname);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function chatTrashEntryAssetsPath(chatId: string) {
+    return join(chatTrashDir, `${safePathSegment(chatId)}-assets`);
+}
+
+function chatAssetDirectoryPath(chatId: string) {
+    return resolve(chatAssetsDir, safePathSegment(chatId));
 }
 
 /**

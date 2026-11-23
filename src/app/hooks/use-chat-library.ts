@@ -4,6 +4,7 @@ import {
     createChat as createChatRequest,
     deleteChatAttachment,
     deleteChat as deleteChatRequest,
+    restoreChat as restoreChatRequest,
     deleteChatWorkspace,
     forkChat as forkChatRequest,
     loadChat,
@@ -1200,6 +1201,19 @@ export function useChatLibrary({
         }
     }
 
+    async function restoreChat(chatId: string) {
+        try {
+            const result = await restoreChatRequest(chatId);
+            invalidateCachedChat(chatId);
+            const summaries = normalizeChatSummaryCollection(result.chats);
+            setChatSummaries(summaries);
+            setChatLoadError("");
+            await selectChat(chatId);
+        } catch (error) {
+            setChatLoadError(messageFromError(error));
+        }
+    }
+
     async function deleteGroup(workspaceId: string) {
         await flushPendingChatAutosaveWithoutStateUpdate();
         try {
@@ -1331,6 +1345,7 @@ export function useChatLibrary({
         patchChatMetadata,
         queueChatSave,
         renameChat,
+        restoreChat,
         selectChat,
         beginChatLoad,
         completeChatLoad,

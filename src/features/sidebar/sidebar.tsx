@@ -12,6 +12,7 @@ import {
     Star,
     StarOff,
     Trash2,
+    Undo2,
     UploadCloud,
     Users,
     X,
@@ -88,6 +89,7 @@ type SidebarProps = {
     onChangeGroupAvatar: (chatId: string, file: File) => void;
     onDeleteChat: (chatId: string) => void;
     onOpenPalette?: () => void;
+    onRestoreChat: (chatId: string) => void;
     onDeleteGroup?: (groupId: string) => void;
     onDeleteCharacter: (characterId: string, options?: { deleteChats?: boolean }) => void;
     onExportCharacter: (characterId: string, format: "json" | "png") => void;
@@ -374,6 +376,7 @@ export function Sidebar({
     onChangeGroupAvatar,
     onDeleteChat,
     onOpenPalette,
+    onRestoreChat,
     onDeleteGroup,
     onDeleteCharacter,
     onExportCharacter,
@@ -560,6 +563,10 @@ export function Sidebar({
         ChatSummary | undefined
     >();
     const [chatExportStatus, setChatExportStatus] = useState("");
+    const [deletedChatUndo, setDeletedChatUndo] = useState<
+        { id: string; title: string } | undefined
+    >();
+    const deletedChatUndoTimerRef = useRef<number>();
     const [groupAvatarTarget, setGroupAvatarTarget] = useState<ChatSummary | undefined>();
     const [groupCreateOpen, setGroupCreateOpen] = useState(false);
     const [groupTitleDraft, setGroupTitleDraft] = useState("");
@@ -678,7 +685,18 @@ export function Sidebar({
         if (isGroupWorkspace(chatDeleteCandidate)) {
             onDeleteGroup?.(chatDeleteCandidate.id);
         } else {
-            onDeleteChat(chatDeleteCandidate.id);
+            const deleted = chatDeleteCandidate;
+            onDeleteChat(deleted.id);
+            setDeletedChatUndo({ id: deleted.id, title: chatDisplayTitle(deleted) });
+
+            if (deletedChatUndoTimerRef.current !== undefined) {
+                window.clearTimeout(deletedChatUndoTimerRef.current);
+            }
+
+            deletedChatUndoTimerRef.current = window.setTimeout(() => {
+                deletedChatUndoTimerRef.current = undefined;
+                setDeletedChatUndo(undefined);
+            }, 10_000);
         }
         setChatDeleteCandidate(undefined);
     }
@@ -1568,13 +1586,35 @@ export function Sidebar({
                     message={
                         isGroupWorkspace(chatDeleteCandidate)
                             ? `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and every conversation in the group from userData. This cannot be undone.`
-                            : `This deletes "${chatDisplayTitle(chatDeleteCandidate)}" and its saved messages from userData. This cannot be undone.`
+                            : `This moves "${chatDisplayTitle(chatDeleteCandidate)}" and its saved messages to the trash. You can undo it right after deleting.`
                     }
                     confirmLabel="Delete"
                     variant="danger"
                     onConfirm={confirmChatDelete}
                     onClose={() => setChatDeleteCandidate(undefined)}
                 />
+            )}
+
+            {deletedChatUndo && (
+                <div className="chat-undo-toast" role="status" aria-live="polite">
+                    <span>
+                        Deleted <strong>{deletedChatUndo.title}</strong>
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (deletedChatUndoTimerRef.current !== undefined) {
+                                window.clearTimeout(deletedChatUndoTimerRef.current);
+                                deletedChatUndoTimerRef.current = undefined;
+                            }
+                            onRestoreChat(deletedChatUndo.id);
+                            setDeletedChatUndo(undefined);
+                        }}
+                    >
+                        <Undo2 size={13} />
+                        Undo
+                    </button>
+                </div>
             )}
         </aside>
     );
