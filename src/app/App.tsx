@@ -17,6 +17,9 @@ import {
     loadPresetCollection as loadPresetCollectionRequest,
     localApiFetch,
     localApiErrorEventName,
+    localApiReachableEventName,
+    localApiUnreachableEventName,
+    pingLocalServer,
     saveAppPreferences,
     saveConnectionSecrets,
     saveConnectionSettings,
@@ -144,6 +147,7 @@ export function App() {
     const [preferencesLoadError, setPreferencesLoadError] = useState("");
     const [preferencesSaveStatus, setPreferencesSaveStatus] = useState("");
     const [localApiWarning, setLocalApiWarning] = useState("");
+    const [serverUnreachable, setServerUnreachable] = useState(false);
     const [isPayloadModalOpen, setIsPayloadModalOpen] = useState(false);
     const [debugPayloadData, setDebugPayloadData] =
         useState<DebugGenerationPayload | null>(null);
@@ -295,6 +299,38 @@ export function App() {
             window.removeEventListener(localApiErrorEventName, handleLocalApiError);
         };
     }, []);
+
+    useEffect(() => {
+        function handleUnreachable() {
+            setServerUnreachable(true);
+        }
+
+        function handleReachable() {
+            setServerUnreachable(false);
+        }
+
+        window.addEventListener(localApiUnreachableEventName, handleUnreachable);
+        window.addEventListener(localApiReachableEventName, handleReachable);
+
+        return () => {
+            window.removeEventListener(localApiUnreachableEventName, handleUnreachable);
+            window.removeEventListener(localApiReachableEventName, handleReachable);
+        };
+    }, []);
+
+    // While the server is gone nothing else will tell us it is back, so keep
+    // a light probe running until it answers.
+    useEffect(() => {
+        if (!serverUnreachable) {
+            return undefined;
+        }
+
+        const timer = window.setInterval(() => {
+            void pingLocalServer();
+        }, 4000);
+
+        return () => window.clearInterval(timer);
+    }, [serverUnreachable]);
 
     latestConnectionSettingsRef.current = connectionSettings;
 
@@ -1191,12 +1227,32 @@ export function App() {
                 isMobileLayout={isMobileLayout}
                 sidebarOpenSignal={sidebarOpenSignal}
             />
-            {localApiWarning && (
-                <div className="app-warning-banner" role="alert">
-                    <span>{localApiWarning}</span>
-                    <button type="button" onClick={handleClearLocalApiWarning}>
-                        Dismiss
-                    </button>
+            {(serverUnreachable || localApiWarning) && (
+                <div className="app-warning-stack">
+                    {serverUnreachable && (
+                        <div className="app-warning-banner" data-tone="danger" role="status">
+                            <span>
+                                Can't reach the local server. Retrying…
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => void pingLocalServer()}
+                            >
+                                Retry now
+                            </button>
+                        </div>
+                    )}
+                    {localApiWarning && (
+                        <div className="app-warning-banner" role="alert">
+                            <span>{localApiWarning}</span>
+                            <button
+                                type="button"
+                                onClick={handleClearLocalApiWarning}
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
             <SidebarHost

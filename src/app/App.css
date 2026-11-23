@@ -484,15 +484,22 @@
     --message-font-size: theme(--text-lg);
 }
 
-.app-warning-banner {
+.app-warning-stack {
     position: fixed;
     top: 14px;
     left: 50%;
     z-index: 80;
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(720px, calc(100vw - 28px));
+    transform: translateX(-50%);
+}
+
+.app-warning-banner {
+    display: flex;
     align-items: center;
     gap: 12px;
-    width: min(720px, calc(100vw - 28px));
     box-sizing: border-box;
     padding: 10px 12px;
     border: 1px solid rgba(244, 185, 94, 0.45);
@@ -502,7 +509,18 @@
     color: #ffe0a8;
     font-size: 0.9rem;
     line-height: 1.4;
-    transform: translateX(-50%);
+}
+
+.app-warning-banner[data-tone="danger"] {
+    border-color: rgba(240, 138, 138, 0.45);
+    background: rgba(58, 28, 28, 0.96);
+    color: #f6c4c4;
+}
+
+.app-warning-banner[data-tone="danger"] button {
+    border-color: rgba(246, 196, 196, 0.3);
+    background: rgba(246, 196, 196, 0.08);
+    color: #f6c4c4;
 }
 
 .app-warning-banner span {

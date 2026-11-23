@@ -34,7 +34,13 @@ const MAX_KEEPALIVE_BODY_BYTES = 60_000;
 
 export const localApiErrorEventName = "smileychat:local-api-error";
 
+/** Fired once when a request cannot reach the local server at all. */
+export const localApiUnreachableEventName = "smileychat:local-api-unreachable";
+/** Fired once when the local server answers again. */
+export const localApiReachableEventName = "smileychat:local-api-reachable";
+
 let csrfToken: string | undefined;
+let serverReachable: boolean | undefined;
 const lorebookCache = new Map<string, Promise<Lorebook>>();
 
 export function localApiPath(path: string) {
@@ -92,6 +98,50 @@ function normalizeApiBasePath(value: unknown) {
     return withLeadingSlash.replace(/\/+$/, "") || defaultApiBasePath;
 }
 
+function markServerReachable() {
+    if (serverReachable === true) {
+        return;
+    }
+
+    serverReachable = true;
+
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(localApiReachableEventName));
+    }
+}
+
+function markServerUnreachable() {
+    if (serverReachable === false) {
+        return;
+    }
+
+    serverReachable = false;
+
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(localApiUnreachableEventName));
+    }
+}
+
+/** Cheap liveness probe used while the app knows the server is gone. */
+export async function pingLocalServer() {
+    try {
+        const response = await fetch(localApiPath("/api/health"), {
+            cache: "no-store",
+        });
+
+        if (response.ok) {
+            markServerReachable();
+        } else {
+            markServerUnreachable();
+        }
+
+        return response.ok;
+    } catch {
+        markServerUnreachable();
+        return false;
+    }
+}
+
 async function fetchLocalApi(
     url: string,
     method: string,
@@ -100,16 +150,21 @@ async function fetchLocalApi(
     headers: Headers,
 ) {
     try {
-        return await fetch(url, {
+        const response = await fetch(url, {
             ...init,
             headers,
         });
+
+        markServerReachable();
+        return response;
     } catch (error) {
         // Callers abort requests on purpose (Stop, chat switches). Wrapping
         // those in a generic error hides the abort and surfaces a fake failure.
         if (isAbortError(error)) {
             throw error;
         }
+
+        markServerUnreachable();
 
         throw new Error(
             `${method} ${originalPath} failed: local API request could not reach the server.`,
