@@ -327,7 +327,7 @@
     border-radius: 8px;
     background: transparent;
     color: #d9dce6;
-    padding: 7px 8px;
+    padding: 7px 9px 7px 14px;
     text-align: left;
 }
 
@@ -368,6 +368,24 @@
 .plugin-list-item-copy small {
     color: #8f96a6;
     font-size: 0.72rem;
+}
+
+/* Official registry extensions keep a compact mark in list rows; the full
+   badge stays in the detail card. */
+.plugin-list-item-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.plugin-list-item-title strong {
+    min-width: 0;
+}
+
+.plugin-list-official {
+    flex: 0 0 auto;
+    color: #c3cffa;
 }
 
 .plugin-list-item.has-update {

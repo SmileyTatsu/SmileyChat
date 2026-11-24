@@ -8,6 +8,7 @@ import {
     Search,
     ShieldAlert,
     ShieldCheck,
+    Star,
     XCircle,
 } from "lucide-preact";
 
@@ -427,6 +428,12 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                         plugin={plugin}
                                         selected={selectedLocalPlugin?.id === plugin.id}
                                         updateAvailable={pluginUpdatesById.has(plugin.id)}
+                                        official={
+                                            registryStatusForPlugin(
+                                                plugin,
+                                                registryStatusById,
+                                            ) === "official"
+                                        }
                                         onSelect={() => setOpenPluginId(plugin.id)}
                                     />
                                 ))}
@@ -727,11 +734,13 @@ function PluginListItem({
     plugin,
     selected,
     updateAvailable,
+    official,
     onSelect,
 }: {
     plugin: PluginManifest;
     selected: boolean;
     updateAvailable: boolean;
+    official: boolean;
     onSelect: () => void;
 }) {
     const category = plugin.category ?? "other";
@@ -754,7 +763,10 @@ function PluginListItem({
                 size={32}
             />
             <span className="plugin-list-item-copy">
-                <strong>{plugin.name}</strong>
+                <span className="plugin-list-item-title">
+                    <strong>{plugin.name}</strong>
+                    {official && <OfficialMark />}
+                </span>
                 <small>{PLUGIN_CATEGORY_LABELS[category]}</small>
             </span>
             {updateAvailable && (
@@ -769,6 +781,19 @@ function PluginListItem({
                 {enabled ? "On" : "Off"}
             </span>
         </button>
+    );
+}
+
+function OfficialMark() {
+    return (
+        <Star
+            size={12}
+            fill="currentColor"
+            className="plugin-list-official"
+            role="img"
+            aria-label="Official plugin"
+            title="Official plugin"
+        />
     );
 }
 
@@ -825,7 +850,10 @@ function StorePluginListItem({
                 size={32}
             />
             <span className="plugin-list-item-copy">
-                <strong>{plugin.name}</strong>
+                <span className="plugin-list-item-title">
+                    <strong>{plugin.name}</strong>
+                    {plugin.status === "official" && <OfficialMark />}
+                </span>
                 <small title={description ? `${plugin.name}: ${description}` : undefined}>
                     {PLUGIN_CATEGORY_LABELS[plugin.category]}
                     {description ? ` · ${description}` : ""}
