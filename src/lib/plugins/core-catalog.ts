@@ -58,12 +58,6 @@ export const CORE_PLUGIN_CATALOG: readonly CorePluginCatalogEntry[] = [
         defaultEnabled: false,
     },
     {
-        id: "smiley-workspace-tools",
-        name: "Workspace AI Tools",
-        category: "tools",
-        defaultEnabled: false,
-    },
-    {
         id: "smiley-image-generation",
         name: "Image Generation",
         category: "input-output",

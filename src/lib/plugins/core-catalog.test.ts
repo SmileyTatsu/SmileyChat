@@ -8,7 +8,6 @@ import { mcpManifest } from "#frontend/core-extensions/mcp/manifest";
 import { postProcessingManifest } from "#frontend/core-extensions/post-processing/manifest";
 import { regexReplacerManifest } from "#frontend/core-extensions/regex-replacer/manifest";
 import { smileyChatFormatterManifest } from "#frontend/core-extensions/smiley-chat-formatter/manifest";
-import { workspaceToolsManifest } from "#frontend/core-extensions/workspace-tools/manifest";
 
 import { CORE_PLUGIN_CATALOG, CORE_PLUGIN_IDS } from "./core-catalog";
 import type { PluginManifest } from "./types";
@@ -20,7 +19,6 @@ const bundledManifests: PluginManifest[] = [
     postProcessingManifest,
     regexReplacerManifest,
     mcpManifest,
-    workspaceToolsManifest,
     imageGenerationManifest,
 ];
 
