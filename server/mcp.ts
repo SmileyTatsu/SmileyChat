@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { execFileSync } from "node:child_process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
@@ -9,6 +8,7 @@ import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/typ
 import { json } from "./http";
 import { mcpSecretsPath, mcpSettingsPath } from "./paths";
 import { isCorePluginEnabled } from "./plugins";
+import { killProcessTree } from "./process-tree";
 import { assignProcessToSmileyChatJob } from "./windows-process-job";
 import { logger, updateLoggerMcpSecrets } from "./logger";
 import {
@@ -426,17 +426,7 @@ async function close(id: string) {
 function killTransportProcessTree(transport: Connection["transport"]) {
     if (!(transport instanceof StdioClientTransport) || !transport.pid) return;
 
-    try {
-        if (process.platform === "win32") {
-            execFileSync("taskkill", ["/F", "/T", "/PID", String(transport.pid)], {
-                stdio: "ignore",
-            });
-        } else {
-            process.kill(transport.pid, "SIGKILL");
-        }
-    } catch {
-        // Process might already be dead.
-    }
+    killProcessTree(transport.pid);
 }
 
 export async function closeAll() {
