@@ -43,6 +43,10 @@ Rules:
 - `category` must be one of SmileyChat's plugin categories.
 - `artifact.url` must be an HTTPS `.zip` URL.
 - `repository` is optional but recommended so users can inspect source.
+- `icon` is optional: an HTTPS URL to a square image the Store shows before the
+  plugin is installed. The manifest inside the artifact cannot be read until the
+  download finishes, so the registry carries its own copy. After install the
+  plugin's own `plugin.json` icon takes over.
 - `permissions` is optional. When present it must be an array of up to 32 non-empty
   strings (64 characters each) and lists the permissions this artifact was reviewed
   for. SmileyChat rejects a Store install or update whose `plugin.json` requests any

@@ -1389,10 +1389,6 @@ textarea:disabled {
         overflow: visible;
     }
 
-    .plugin-store-grid {
-        grid-template-columns: 1fr;
-    }
-
     .prompt-order-panel {
         max-height: 420px;
         border-right: 0;

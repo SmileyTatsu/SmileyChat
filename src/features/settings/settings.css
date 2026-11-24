@@ -277,12 +277,6 @@
     padding: 0 11px;
 }
 
-.plugins-list {
-    display: grid;
-    gap: 10px;
-    min-height: 0;
-}
-
 .plugins-workspace {
     display: grid;
     grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.45fr);
@@ -293,7 +287,6 @@
     border-radius: 10px;
     background: #15171c;
 }
-
 .plugin-browser,
 .plugin-detail-pane {
     display: flex;
@@ -354,16 +347,6 @@
     box-shadow: inset 3px 0 0 #9aabdc;
 }
 
-.plugin-list-item-icon {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 7px;
-    background: #252a35;
-    color: #bdc8e8;
-}
-
 .plugin-list-item-copy {
     display: grid;
     min-width: 0;
@@ -414,14 +397,26 @@
     color: #8dd3a6;
 }
 
-.plugin-store-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+/* Store row state: the list answers "installed / update / available" without
+   opening the detail pane. */
+.plugin-list-status.installed {
+    background: rgba(80, 169, 112, 0.12);
+    color: #8dd3a6;
 }
 
-.plugin-store-grid > .manual-plugin-install,
-.plugin-store-grid > .empty-plugin-state {
-    grid-column: 1 / -1;
+.plugin-list-status.update {
+    background: rgba(241, 209, 111, 0.12);
+    color: #f1d16f;
+}
+
+.plugin-list-status.local {
+    background: #272a31;
+    color: #b9bfd0;
+}
+
+.plugin-list-status.blocked {
+    background: rgba(240, 200, 121, 0.12);
+    color: #f0c879;
 }
 
 .plugins-view-switcher {
@@ -571,9 +566,9 @@
 }
 
 .plugin-title .plugin-trust-badge.official {
-    border: 1px solid #8163b2;
-    background: #302440;
-    color: #f1d16f;
+    border: 1px solid #596a8e;
+    background: #30384a;
+    color: #e1e7ff;
 }
 
 .plugin-title .plugin-trust-badge.verified {
@@ -592,6 +587,75 @@
     border: 1px solid rgba(72, 199, 116, 0.36);
     background: rgba(72, 199, 116, 0.1);
     color: #9ee3b3;
+}
+
+/* Plugin artwork: a declared icon, or a muted monogram tile. */
+.plugin-icon,
+.plugin-title .plugin-icon {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    background: #252a35;
+    color: #cfd6e8;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-overflow: clip;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.plugin-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.plugin-icon > span,
+.plugin-title .plugin-icon > span {
+    color: inherit;
+    font-size: inherit;
+    line-height: 1;
+    overflow: visible;
+}
+
+.plugin-icon.plugin-icon-tone-1 {
+    background: #21302e;
+    color: #9fc9bf;
+}
+
+.plugin-icon.plugin-icon-tone-2 {
+    background: #2b2b24;
+    color: #c8c39c;
+}
+
+.plugin-icon.plugin-icon-tone-3 {
+    background: #2b2530;
+    color: #c1adc8;
+}
+
+.plugin-icon.plugin-icon-tone-4 {
+    background: #302624;
+    color: #cfae9f;
+}
+
+.plugin-icon.plugin-icon-tone-5 {
+    background: #232833;
+    color: #aeb9cd;
+}
+
+.plugin-icon.plugin-icon-tone-6 {
+    background: #262b26;
+    color: #b2c2ad;
+}
+
+.plugin-icon.plugin-icon-tone-7 {
+    background: #2c2a24;
+    color: #c9bda0;
 }
 
 .plugin-toggle {
@@ -894,10 +958,10 @@
     align-items: center;
     gap: 10px;
     padding: 10px 11px;
-    border: 1px solid #2d4a52;
+    border: 1px solid #3b4354;
     border-radius: 8px;
-    background: #151f22;
-    color: #8fd3e0;
+    background: #1b1e26;
+    color: #9aabdc;
 }
 
 .plugin-moved svg {
@@ -907,19 +971,15 @@
 
 .plugin-moved-text strong {
     display: block;
-    color: #d7eef3;
+    color: #e1e7ff;
     font-size: 0.92rem;
 }
 
 .plugin-moved-text p {
     margin: 2px 0 0;
-    color: #9dc4cd;
+    color: #b9bfd0;
     font-size: 0.82rem;
     line-height: 1.45;
-}
-
-.plugin-moved .primary-button {
-    white-space: nowrap;
 }
 
 .plugin-global-warning svg,
@@ -1096,6 +1156,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     align-items: end;
+    margin-top: 12px;
     border: 1px solid #303440;
     border-radius: 8px;
     background: #191b21;
@@ -3546,10 +3607,6 @@
     .personas-editor,
     .lorebook-editor {
         grid-template-columns: minmax(250px, 0.75fr) minmax(0, 1.25fr);
-    }
-
-    .plugin-store-grid {
-        grid-template-columns: 1fr;
     }
 }
 

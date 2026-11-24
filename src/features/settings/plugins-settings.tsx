@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
 import {
     AlertTriangle,
     Boxes,
@@ -7,15 +7,18 @@ import {
     RefreshCw,
     Search,
     ShieldAlert,
+    ShieldCheck,
     XCircle,
 } from "lucide-preact";
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
+import type { PluginRegistryEntry } from "#frontend/lib/api/client";
 
 import {
     PLUGIN_CATEGORIES,
     PLUGIN_CATEGORY_LABELS,
     type PluginAppSnapshot,
+    type PluginCategory,
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
 
@@ -24,10 +27,11 @@ import { MOVED_CORE_PLUGINS } from "#frontend/lib/plugins/moved-plugins";
 import { PluginInstallConsentDialog } from "./plugins/plugin-install-consent";
 
 import { PluginCard } from "./plugins/plugin-card";
+import { PluginIcon } from "./plugins/plugin-icon";
 import { PluginPermissionList } from "./plugins/plugin-permission-list";
 import { findNewPluginPermissions } from "./plugins/plugin-permissions";
 import { ProfileBar } from "./plugins/profile-bar";
-import { CATEGORY_ICONS } from "./plugins/plugin-settings-helpers";
+import { CATEGORY_ICONS, storeEntryState } from "./plugins/plugin-settings-helpers";
 import { StorePluginCard } from "./plugins/store-plugin-card";
 import { usePluginSettings } from "./plugins/use-plugin-settings";
 
@@ -131,6 +135,29 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
     const selectedLocalPlugin =
         filteredPlugins.find((plugin) => plugin.id === openPluginId) ??
         filteredPlugins[0];
+    // The Store mirrors Local Plugins: a compact list, and the selected entry
+    // shows its description and permissions on demand instead of stacking a
+    // full card per extension.
+    const [openStorePluginId, setOpenStorePluginId] = useState<string | null>(null);
+    const selectedStorePlugin =
+        filteredRegistryPlugins.find((plugin) => plugin.id === openStorePluginId) ??
+        filteredRegistryPlugins[0];
+    const groupedRegistryPlugins = useMemo(() => {
+        const groups = new Map<PluginCategory, PluginRegistryEntry[]>();
+
+        for (const plugin of filteredRegistryPlugins) {
+            const bucket = groups.get(plugin.category) ?? [];
+            bucket.push(plugin);
+            groups.set(plugin.category, bucket);
+        }
+
+        return PLUGIN_CATEGORIES.filter((category) => groups.has(category)).map(
+            (category) => [category, groups.get(category) ?? []] as const,
+        );
+    }, [filteredRegistryPlugins]);
+    const installedStorePlugin = selectedStorePlugin
+        ? plugins.find((plugin) => plugin.id === selectedStorePlugin.id)
+        : undefined;
     const [uninstallTarget, setUninstallTarget] = useState<PluginManifest | null>(null);
     const [deletePluginData, setDeletePluginData] = useState(false);
     const isUninstallingTarget = Boolean(
@@ -248,7 +275,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                             </div>
                             <button
                                 type="button"
-                                className="primary-button"
+                                className="plugin-install-button"
                                 disabled={
                                     !entry ||
                                     installingPluginId === moved.id ||
@@ -471,7 +498,98 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     </div>
                 </div>
             ) : (
-                <div className="plugins-list plugin-store-grid">
+                <>
+                    <div className="plugins-workspace">
+                        <div className="plugin-browser" aria-label="Extension Store">
+                            {groupedRegistryPlugins.map(([category, list]) => (
+                                <div className="plugin-category-group" key={category}>
+                                    {categoryFilter === "all" && (
+                                        <h3 className="plugin-category-heading">
+                                            {(() => {
+                                                const Icon = CATEGORY_ICONS[category];
+                                                return (
+                                                    <Icon size={15} aria-hidden="true" />
+                                                );
+                                            })()}
+                                            {PLUGIN_CATEGORY_LABELS[category]}
+                                            <span>{list.length}</span>
+                                        </h3>
+                                    )}
+                                    {list.map((plugin) => (
+                                        <StorePluginListItem
+                                            key={plugin.id}
+                                            plugin={plugin}
+                                            installedPlugin={plugins.find(
+                                                (installed) => installed.id === plugin.id,
+                                            )}
+                                            selected={
+                                                selectedStorePlugin?.id === plugin.id
+                                            }
+                                            onSelect={() =>
+                                                setOpenStorePluginId(plugin.id)
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            ))}
+
+                            {registryFailed && (
+                                <div className="empty-plugin-state">
+                                    <XCircle size={20} />
+                                    <p>Extension registry is unavailable.</p>
+                                </div>
+                            )}
+
+                            {!registryFailed && filteredRegistryPlugins.length === 0 && (
+                                <div className="empty-plugin-state">
+                                    <Search size={20} />
+                                    <p>No extensions match these filters.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="plugin-detail-pane" aria-live="polite">
+                            {selectedStorePlugin ? (
+                                <StorePluginCard
+                                    key={selectedStorePlugin.id}
+                                    plugin={selectedStorePlugin}
+                                    installed={localPluginIds.has(selectedStorePlugin.id)}
+                                    installedPlugin={installedStorePlugin}
+                                    isBusy={
+                                        requestState === "loading" &&
+                                        installingPluginId === selectedStorePlugin.id
+                                    }
+                                    isUpdating={
+                                        updatingPluginId === selectedStorePlugin.id
+                                    }
+                                    isUninstalling={
+                                        uninstallingPluginId === selectedStorePlugin.id
+                                    }
+                                    isBlocked={requestState === "loading"}
+                                    onInstall={() =>
+                                        installStorePlugin(selectedStorePlugin)
+                                    }
+                                    onUpdate={() =>
+                                        updateStorePlugin(selectedStorePlugin)
+                                    }
+                                    onUninstall={() => {
+                                        if (installedStorePlugin) {
+                                            requestUninstall(installedStorePlugin);
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <div className="empty-plugin-state">
+                                    <ShieldCheck size={20} aria-hidden="true" />
+                                    <p>
+                                        Select an extension to review its permissions
+                                        before installing.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {manualArtifactAllowed && (
                         <form
                             className="manual-plugin-install"
@@ -518,50 +636,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                             </button>
                         </form>
                     )}
-
-                    {filteredRegistryPlugins.map((plugin) => (
-                        <StorePluginCard
-                            key={plugin.id}
-                            plugin={plugin}
-                            installed={localPluginIds.has(plugin.id)}
-                            installedPlugin={plugins.find(
-                                (installedPlugin) => installedPlugin.id === plugin.id,
-                            )}
-                            isBusy={
-                                requestState === "loading" &&
-                                installingPluginId === plugin.id
-                            }
-                            isUpdating={updatingPluginId === plugin.id}
-                            isUninstalling={uninstallingPluginId === plugin.id}
-                            isBlocked={requestState === "loading"}
-                            onInstall={() => installStorePlugin(plugin)}
-                            onUpdate={() => updateStorePlugin(plugin)}
-                            onUninstall={() => {
-                                const installedPlugin = plugins.find(
-                                    (item) => item.id === plugin.id,
-                                );
-
-                                if (installedPlugin) {
-                                    requestUninstall(installedPlugin);
-                                }
-                            }}
-                        />
-                    ))}
-
-                    {registryFailed && (
-                        <div className="empty-plugin-state">
-                            <XCircle size={20} />
-                            <p>Extension registry is unavailable.</p>
-                        </div>
-                    )}
-
-                    {!registryFailed && filteredRegistryPlugins.length === 0 && (
-                        <div className="empty-plugin-state">
-                            <Search size={20} />
-                            <p>No extensions match these filters.</p>
-                        </div>
-                    )}
-                </div>
+                </>
             )}
 
             {statusMessage && (
@@ -660,7 +735,6 @@ function PluginListItem({
     onSelect: () => void;
 }) {
     const category = plugin.category ?? "other";
-    const CategoryIcon = CATEGORY_ICONS[category];
     const enabled = plugin.enabled !== false;
 
     return (
@@ -672,9 +746,13 @@ function PluginListItem({
             aria-pressed={selected}
             onClick={onSelect}
         >
-            <span className="plugin-list-item-icon">
-                <CategoryIcon size={16} aria-hidden="true" />
-            </span>
+            <PluginIcon
+                id={plugin.id}
+                name={plugin.name}
+                iconUrl={plugin.iconUrl}
+                category={category}
+                size={32}
+            />
             <span className="plugin-list-item-copy">
                 <strong>{plugin.name}</strong>
                 <small>{PLUGIN_CATEGORY_LABELS[category]}</small>
@@ -690,6 +768,77 @@ function PluginListItem({
             <span className={`plugin-list-status ${enabled ? "enabled" : ""}`}>
                 {enabled ? "On" : "Off"}
             </span>
+        </button>
+    );
+}
+
+function StorePluginListItem({
+    plugin,
+    installedPlugin,
+    selected,
+    onSelect,
+}: {
+    plugin: PluginRegistryEntry;
+    installedPlugin?: PluginManifest;
+    selected: boolean;
+    onSelect: () => void;
+}) {
+    const { canUpdate, installed, installedLocally, incompatible } = storeEntryState(
+        plugin,
+        installedPlugin,
+    );
+    const description = plugin.description?.trim();
+    const status = canUpdate
+        ? { label: "Update", tone: "update", title: `Update to ${plugin.version}` }
+        : installedLocally
+          ? {
+                label: "Local",
+                tone: "local",
+                title: "Installed from a local folder",
+            }
+          : installed
+            ? {
+                  label: "Installed",
+                  tone: "installed",
+                  title: "Installed and up to date",
+              }
+            : incompatible
+              ? {
+                    label: "Unavailable",
+                    tone: "blocked",
+                    title: "Not compatible with this SmileyChat version",
+                }
+              : null;
+
+    return (
+        <button
+            className={`plugin-list-item ${selected ? "active" : ""}`.trim()}
+            type="button"
+            aria-pressed={selected}
+            onClick={onSelect}
+        >
+            <PluginIcon
+                id={plugin.id}
+                name={plugin.name}
+                iconUrl={installedPlugin?.iconUrl ?? plugin.icon}
+                category={plugin.category}
+                size={32}
+            />
+            <span className="plugin-list-item-copy">
+                <strong>{plugin.name}</strong>
+                <small title={description ? `${plugin.name}: ${description}` : undefined}>
+                    {PLUGIN_CATEGORY_LABELS[plugin.category]}
+                    {description ? ` · ${description}` : ""}
+                </small>
+            </span>
+            {status && (
+                <span
+                    className={`plugin-list-status ${status.tone}`}
+                    title={status.title}
+                >
+                    {status.label}
+                </span>
+            )}
         </button>
     );
 }

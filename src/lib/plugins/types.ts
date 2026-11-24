@@ -77,6 +77,13 @@ export type PluginManifest = {
     description?: string;
     main: string;
     styles?: string[];
+    /**
+     * Optional icon path inside the plugin folder (`assets/icon.png`).
+     * Rendered as an image; SVG works because it loads through `<img>`.
+     */
+    icon?: string;
+    /** Resolved `/plugins/...` URL for `icon`, filled by the server. */
+    iconUrl?: string;
     permissions?: string[];
     /**
      * Version of the plugin API contract the plugin was built against. Missing

@@ -248,6 +248,56 @@ test("installed metadata stays free of registry permission allowlists", async ()
     expect(metadata).not.toHaveProperty("permissions");
 });
 
+test("manifest icon resolves to a served plugin asset", async () => {
+    const pluginsRoot = await tempRoot();
+    const response = await installZip(
+        pluginsRoot,
+        pluginZip({
+            manifest: { icon: "assets/icon.png" },
+            files: {
+                "plugin.json": JSON.stringify(
+                    baseManifest({ icon: "assets/icon.png" }),
+                ),
+                "dist/index.js": "export function activate() {}",
+                "assets/icon.png": Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+            },
+        }),
+    );
+    const body = await response.json();
+
+    expect(body.plugin.icon).toBe("assets/icon.png");
+    // A manifest-relative icon becomes a cache-busted URL the browser can load.
+    expect(body.plugin.iconUrl).toContain(
+        "/plugins/example-plugin/assets/icon.png?v=",
+    );
+});
+
+test("registry icons must be https URLs", () => {
+    const registry = (icon: unknown) =>
+        pluginInstallTestInternals.normalizePluginRegistry({
+            version: 1,
+            plugins: [
+                {
+                    id: "example-plugin",
+                    name: "Example Plugin",
+                    version: "1.0.0",
+                    category: "tools",
+                    status: "verified",
+                    icon,
+                    artifact: { url: "https://example.com/example-plugin.zip" },
+                },
+            ],
+        });
+
+    expect(registry("https://example.com/icon.png").plugins[0].icon).toBe(
+        "https://example.com/icon.png",
+    );
+    expect(registry(undefined).plugins[0].icon).toBeUndefined();
+    expect(() => registry("http://example.com/icon.png")).toThrow("https URL");
+    expect(() => registry("javascript:alert(1)")).toThrow("https URL");
+    expect(() => registry("data:image/png;base64,AAAA")).toThrow("https URL");
+});
+
 test("manual artifact install request is gated by env flag", async () => {
     delete Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS;
 

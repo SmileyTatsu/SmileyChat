@@ -92,6 +92,12 @@ type RegistryPlugin = {
     category: PluginCategory;
     status: RegistryPluginStatus;
     repository?: string;
+    /**
+     * Optional https icon shown in the Store before the artifact is installed.
+     * The manifest inside the ZIP cannot be read pre-install, so the registry
+     * carries its own URL.
+     */
+    icon?: string;
     permissions?: string[];
     /** Plugin API contract the listed artifact was built against. */
     apiVersion?: number;
@@ -166,6 +172,9 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
                 ...manifest,
                 source: "user",
                 entryUrl: pluginAssetUrl(folderName, manifest.main, cacheKey),
+                iconUrl: manifest.icon
+                    ? pluginAssetUrl(folderName, manifest.icon, cacheKey)
+                    : undefined,
                 styleUrls: (manifest.styles ?? []).map((style) =>
                     pluginAssetUrl(folderName, style, cacheKey),
                 ),
@@ -547,6 +556,9 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
             ...manifest,
             source: "user",
             entryUrl: pluginAssetUrl(manifest.id, manifest.main, cacheKey),
+            iconUrl: manifest.icon
+                ? pluginAssetUrl(manifest.id, manifest.icon, cacheKey)
+                : undefined,
             styleUrls: (manifest.styles ?? []).map((style) =>
                 pluginAssetUrl(manifest.id, style, cacheKey),
             ),
@@ -680,6 +692,7 @@ function normalizeRegistryPlugin(value: unknown): RegistryPlugin {
             typeof plugin.repository === "string" && plugin.repository.trim()
                 ? plugin.repository.trim()
                 : undefined,
+        icon: normalizeRegistryIcon(plugin.icon, id),
         permissions: normalizeRegistryPermissions(plugin.permissions, id),
         apiVersion: normalizeRegistryApiVersion(plugin.apiVersion, id),
         minAppVersion: normalizeRegistryMinAppVersion(plugin.minAppVersion, id),
@@ -715,6 +728,44 @@ function normalizeRegistryMinAppVersion(value: unknown, pluginId: string) {
     }
 
     return value;
+}
+
+/**
+ * Registry icons are rendered by the browser, so only an https URL is allowed.
+ * A data/relative/file URL would either be unreadable or a way to smuggle a
+ * non-network scheme into an `<img>`.
+ */
+function normalizeRegistryIcon(value: unknown, pluginId: string) {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value !== "string" || !value.trim()) {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' icon must be an https URL.`,
+        );
+    }
+
+    let url: URL;
+
+    try {
+        url = new URL(value.trim());
+    } catch {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' icon must be a valid https URL.`,
+        );
+    }
+
+    if (url.protocol !== "https:" || url.username || url.password) {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' icon must be a valid https URL.`,
+        );
+    }
+
+    return url.toString();
 }
 
 function normalizeRegistryPermissions(value: unknown, pluginId: string) {
@@ -1633,6 +1684,10 @@ function normalizePluginManifest(
               (permission): permission is string => typeof permission === "string",
           )
         : [];
+    const icon =
+        typeof manifest.icon === "string" && manifest.icon.trim()
+            ? normalizeManifestRelativePath(manifest.icon.trim())
+            : undefined;
     const apiVersion =
         typeof manifest.apiVersion === "number" &&
         Number.isSafeInteger(manifest.apiVersion) &&
@@ -1652,6 +1707,7 @@ function normalizePluginManifest(
             typeof manifest.description === "string" ? manifest.description : undefined,
         main,
         styles,
+        icon,
         permissions,
         apiVersion,
         minAppVersion,

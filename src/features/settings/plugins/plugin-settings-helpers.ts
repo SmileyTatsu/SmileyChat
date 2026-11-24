@@ -9,8 +9,12 @@ import {
 } from "lucide-preact";
 import type { FunctionComponent } from "preact";
 
+import { APP_VERSION } from "#frontend/lib/app-version";
+import type { PluginRegistryEntry } from "#frontend/lib/api/client";
+import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
 import { BUILT_IN_PROFILES, type PluginProfile } from "#frontend/lib/plugins/profiles";
-import type { PluginCategory } from "#frontend/lib/plugins/types";
+import type { PluginCategory, PluginManifest } from "#frontend/lib/plugins/types";
+import { isNewerVersion } from "#frontend/lib/plugins/version";
 export { pluginIdFromScopedId } from "#frontend/lib/plugins/ids";
 
 export type RequestState = "idle" | "loading" | "success" | "error";
@@ -75,4 +79,45 @@ export function uniqueProfileId(name: string, profiles: PluginProfile[]) {
     }
 
     return `${baseId}-${Date.now()}`;
+}
+
+export type StoreEntryState = {
+    installed: boolean;
+    canUpdate: boolean;
+    upToDate: boolean;
+    installedLocally: boolean;
+    incompatible: boolean;
+    incompatibility: string | undefined;
+};
+
+/**
+ * How a registry entry relates to this install. The Store list and the Store
+ * detail card both read this so a row never says "Installed" above a card that
+ * offers "Install", and updating is only offered for copies SmileyChat manages.
+ */
+export function storeEntryState(
+    entry: PluginRegistryEntry,
+    installedPlugin?: PluginManifest,
+): StoreEntryState {
+    const incompatibility = pluginCompatibilityError(entry, APP_VERSION);
+    const installed = Boolean(installedPlugin);
+    const managesInstalledCopy = installedPlugin?.install !== undefined;
+    const canUpdate = Boolean(
+        installedPlugin &&
+        managesInstalledCopy &&
+        !incompatibility &&
+        isNewerVersion(entry.version, installedPlugin.version),
+    );
+
+    return {
+        installed,
+        canUpdate,
+        upToDate:
+            installedPlugin?.install?.source === "registry" &&
+            !canUpdate &&
+            !incompatibility,
+        installedLocally: installed && !managesInstalledCopy,
+        incompatible: Boolean(incompatibility),
+        incompatibility,
+    };
 }

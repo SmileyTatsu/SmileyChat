@@ -380,6 +380,8 @@ export type PluginRegistryEntry = {
     category: PluginCategory;
     status: "official" | "verified";
     repository?: string;
+    /** Optional icon URL, shown before the artifact is installed. */
+    icon?: string;
     /** Permissions the registry reviewed this artifact for. Absent means unlisted. */
     permissions?: string[];
     /** Plugin API contract the listed artifact was built against. */

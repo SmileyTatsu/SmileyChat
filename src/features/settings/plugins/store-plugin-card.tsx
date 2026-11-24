@@ -1,7 +1,6 @@
 import { useState } from "preact/hooks";
 import {
     AlertTriangle,
-    Boxes,
     CheckCircle2,
     Download,
     ExternalLink,
@@ -12,13 +11,11 @@ import {
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import type { PluginRegistryEntry } from "#frontend/lib/api/client";
-import { APP_VERSION } from "#frontend/lib/app-version";
-import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
 import { PLUGIN_CATEGORY_LABELS, type PluginManifest } from "#frontend/lib/plugins/types";
-import { isNewerVersion } from "#frontend/lib/plugins/version";
 
 import { PluginInstallConsentDialog } from "./plugin-install-consent";
-import { CATEGORY_ICONS } from "./plugin-settings-helpers";
+import { CATEGORY_ICONS, storeEntryState } from "./plugin-settings-helpers";
+import { PluginIcon } from "./plugin-icon";
 import { PluginPermissionList, PluginPermissionUnlisted } from "./plugin-permission-list";
 import { findNewPluginPermissions } from "./plugin-permissions";
 import { PluginTrustBadge } from "./plugin-trust-badge";
@@ -55,32 +52,9 @@ export function StorePluginCard({
     const managesInstalledCopy = installedPlugin?.install !== undefined;
     // The registry entry describes the artifact before it is downloaded, so an
     // incompatible plugin is shown as blocked instead of failing after install.
-    const incompatibility = pluginCompatibilityError(
-        {
-            id: plugin.id,
-            name: plugin.name,
-            apiVersion: plugin.apiVersion,
-            minAppVersion: plugin.minAppVersion,
-        },
-        APP_VERSION,
-    );
-    const canUpdate = Boolean(
-        installed &&
-        installedPlugin &&
-        managesInstalledCopy &&
-        !incompatibility &&
-        isNewerVersion(plugin.version, installedPlugin.version),
-    );
-    const upToDate =
-        Boolean(
-            installed &&
-            installedPlugin &&
-            installedPlugin.install?.source === "registry",
-        ) &&
-        !canUpdate &&
-        !incompatibility;
-    const installedLocally = Boolean(
-        installed && installedPlugin && !managesInstalledCopy,
+    const { canUpdate, upToDate, installedLocally, incompatibility } = storeEntryState(
+        plugin,
+        installedPlugin,
     );
     const permissions = plugin.permissions;
     const consentPermissions =
@@ -117,7 +91,13 @@ export function StorePluginCard({
         <article className="plugin-card store-plugin-card">
             <header>
                 <div className="plugin-title">
-                    <Boxes size={18} />
+                    <PluginIcon
+                        id={plugin.id}
+                        name={plugin.name}
+                        iconUrl={installedPlugin?.iconUrl ?? plugin.icon}
+                        category={plugin.category}
+                        size={34}
+                    />
                     <div>
                         <h3>
                             {plugin.name}
@@ -253,8 +233,8 @@ export function StorePluginCard({
                     body={
                         <>
                             <p>
-                                This update asks for permissions the installed version
-                                did not declare.
+                                This update asks for permissions the installed version did
+                                not declare.
                             </p>
                             <PluginPermissionList
                                 permissions={consentPermissions}
@@ -279,7 +259,6 @@ export function StorePluginCard({
                     onClose={() => setConsentAction(null)}
                 />
             )}
-
         </article>
     );
 }

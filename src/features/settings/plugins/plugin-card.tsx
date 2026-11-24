@@ -1,6 +1,5 @@
 import {
     AlertTriangle,
-    Boxes,
     CheckCircle2,
     Power,
     RefreshCw,
@@ -24,6 +23,7 @@ import type { GrantablePluginPermission } from "#frontend/lib/plugins/grants";
 
 import { CATEGORY_ICONS, type RequestState } from "./plugin-settings-helpers";
 
+import { PluginIcon } from "./plugin-icon";
 import { PluginPermissionGrants } from "./plugin-permission-grants";
 import { PluginPermissionList } from "./plugin-permission-list";
 import { formatPluginPermissionList } from "./plugin-permissions";
@@ -86,7 +86,13 @@ export function PluginCard({
         <article className="plugin-card">
             <header>
                 <div className="plugin-title">
-                    <Boxes size={18} />
+                    <PluginIcon
+                        id={plugin.id}
+                        name={plugin.name}
+                        iconUrl={plugin.iconUrl}
+                        category={category}
+                        size={34}
+                    />
                     <div>
                         <h3>
                             {plugin.name}

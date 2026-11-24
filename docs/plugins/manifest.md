@@ -10,6 +10,7 @@ Each plugin needs a `plugin.json` file at the root of its plugin folder.
     "description": "Short description shown in Options > Plugins.",
     "main": "dist/index.js",
     "styles": ["dist/style.css"],
+    "icon": "assets/icon.png",
     "permissions": ["chat:output", "ui:styles"],
     "enabled": true,
     "category": "interface"
@@ -44,6 +45,10 @@ If omitted or blank, SmileyChat falls back to `dist/index.js`.
 
 Optional list of CSS files, relative to the plugin folder. SmileyChat injects them before activating the plugin.
 Plugins that define `styles` must include the `ui:styles` permission.
+
+`icon`
+
+Optional path to a square image inside the plugin folder (`assets/icon.png`). PNG, WebP, and SVG all work: the app renders it through an `<img>`, so SVG cannot run script. Use at least 128×128. A missing, unsafe, or unreadable icon falls back to a monogram tile made from the plugin name, so the field is never required. Store entries also carry an optional `icon` URL in the registry, shown before the artifact is installed.
 
 `permissions`
 
