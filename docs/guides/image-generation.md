@@ -222,8 +222,10 @@ Undesired-content presets:
 Extension settings are stored at:
 
 ```text
-userData/settings/core-extensions/smiley-image-generation/settings.json
+userData/plugins/smiley-image-generation/data/settings.json
 ```
+
+Settings written by the old bundled extension (`userData/settings/core-extensions/smiley-image-generation/settings.json`) are copied into the plugin's `data/` folder the first time it is installed from the Store.
 
 The NovelAI API token remains in:
 
@@ -266,8 +268,8 @@ Common failures:
 
 ## Implementation Map
 
-- `src/core-extensions/image-generation/`: bundled extension UI, settings, prompt assembly, NovelAI request, and tests.
-- `src/core-extensions/image-generation/default-instruction.ts`: bundled prompt-writer default.
+- `plugins/image-generation/` in the `smileychat-official-plugins` repository: extension UI, settings, prompt assembly, NovelAI request, and tests.
+- `plugins/image-generation/src/default-instruction.ts`: prompt-writer default.
 - `src/lib/presets/compile.ts`: converts tool-generated images to text context and suppresses completed transport-only tool protocol.
 - `src/app/hooks/use-prompt-generation.ts`: executes tools, supplies image context to the immediate continuation, and persists replay metadata.
 - `src/app/hooks/chat-session-attachments.ts`: validates, decodes, and uploads generated image data.

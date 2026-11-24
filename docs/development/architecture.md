@@ -32,9 +32,9 @@ Chats can also be forked at specific messages via `/api/chats/{chatId}/fork`.
 
 SmileyChat is highly extensible via plugins loaded dynamically from `userData/plugins/`. Plugins are trusted local browser ESM modules that run in the SmileyChat page, so permissions guide API access but are not a sandbox.
 
-In addition to user plugins, SmileyChat bundles several **Core Extensions** (e.g. MCP Servers, LoreBooks, Formatting, Regex Replacer) which act internally like plugins but are part of the core distribution. For more information, see the [Plugins Docs](../plugins/README.md).
+In addition to user plugins, SmileyChat bundles a few **Core Extensions** (MCP Servers, LoreBooks, Formatting, Regex Replacer) for features that cannot be a plugin: the message renderer, native LoreBook storage, the on-by-default regex replacer, and MCP's server half. Everything else — Workspace AI Tools, Chat Summarizer, Post Processing, and Image Generation — lives in the `smileychat-official-plugins` repository and is installed from the Store. For more information, see the [Plugins Docs](../plugins/README.md).
 
-The optional Image Generation core extension is implemented in `src/core-extensions/image-generation`. Its first release uses NovelAI, delegates prompt construction to a selected text connection, preserves a literal `{{prompt}}` master-prompt boundary, and returns generated images through the normal tool/image attachment pipeline. See [NovelAI Image Generation](../guides/image-generation.md).
+Image Generation is a Store plugin (`smiley-image-generation`). Its first release uses NovelAI, delegates prompt construction to a selected text connection, preserves a literal `{{prompt}}` master-prompt boundary, and returns generated images through the normal tool/image attachment pipeline. See [NovelAI Image Generation](../guides/image-generation.md).
 
 ## Diagnostics & Logging Architecture
 
