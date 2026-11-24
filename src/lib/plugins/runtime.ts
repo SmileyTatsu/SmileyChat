@@ -7,6 +7,8 @@ import {
 } from "#frontend/core-extensions";
 
 import { localApiFetch } from "../api/client";
+import { APP_VERSION } from "../app-version";
+import { pluginCompatibilityError } from "./compatibility";
 import {
     createPluginApi,
     deactivatePlugin,
@@ -117,6 +119,14 @@ export async function loadRuntimePlugin(manifest: PluginManifest) {
     try {
         if (!manifest.entryUrl) {
             throw new Error(`${manifest.name} does not define a plugin entry URL.`);
+        }
+
+        // Local folders are not gated by the installer, so the loader repeats the
+        // compatibility decision instead of activating against an unknown API.
+        const compatibilityError = pluginCompatibilityError(manifest, APP_VERSION);
+
+        if (compatibilityError) {
+            throw new Error(compatibilityError);
         }
 
         assertLocalPluginAssetUrl(manifest.entryUrl, "entry URL");

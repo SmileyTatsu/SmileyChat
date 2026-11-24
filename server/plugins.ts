@@ -16,11 +16,14 @@ import {
     CORE_PLUGIN_IDS,
     getCorePluginCatalogEntry,
 } from "#frontend/lib/plugins/core-catalog";
+import { APP_VERSION } from "#frontend/lib/app-version";
 import {
     PLUGIN_CATEGORIES,
     type PluginCategory,
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
+import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
+import { isValidVersion } from "#frontend/lib/plugins/version";
 
 import {
     getPluginArtifactAllowedHostnames,
@@ -85,6 +88,10 @@ type RegistryPlugin = {
     status: RegistryPluginStatus;
     repository?: string;
     permissions?: string[];
+    /** Plugin API contract the listed artifact was built against. */
+    apiVersion?: number;
+    /** Oldest SmileyChat release that can run the listed artifact. */
+    minAppVersion?: string;
     artifact: { url: string };
 };
 
@@ -101,6 +108,10 @@ type PluginInstallSource =
           repository?: string;
           /** Registry-declared permission allowlist for the artifact. */
           permissions?: string[];
+          /** Registry-declared plugin API contract for the listed artifact. */
+          apiVersion?: number;
+          /** Registry-declared minimum app version for the listed artifact. */
+          minAppVersion?: string;
       }
     | {
           source: "manual-artifact";
@@ -136,7 +147,8 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
         }
 
         try {
-            const manifest = normalizePluginManifest(await file.json(), folderName);
+            const rawManifest = await file.json();
+            const manifest = normalizePluginManifest(rawManifest, folderName);
 
             if (!manifest) {
                 continue;
@@ -153,6 +165,13 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
                     pluginAssetUrl(folderName, style, cacheKey),
                 ),
                 install: await readPluginInstallMetadata(pluginRoot),
+                // A local folder can predate the app build that loads it, so the
+                // reason travels with the manifest instead of disappearing into
+                // a silent skip. The loader refuses to activate it.
+                compatibilityError: pluginCompatibilityError(
+                    compatibilityInput(manifest, rawManifest),
+                    APP_VERSION,
+                ),
             } as PluginManifest);
         } catch (error) {
             logger.warn("plugins", "Could not load plugin manifest", {
@@ -300,6 +319,7 @@ async function loadPluginRegistry() {
 
 export async function installVerifiedPlugin(body: unknown) {
     const source = await resolveInstallSource(body);
+    assertInstallSourceCompatibility(source);
     const bytes = await downloadArtifact(source.artifactUrl, {
         allowedHostnames:
             source.source === "registry"
@@ -341,6 +361,8 @@ export async function updateInstalledPlugin(pluginId: string) {
             "Manual plugin updates are disabled. Set SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true to update this plugin.",
         );
     }
+
+    assertInstallSourceCompatibility(source);
 
     const bytes = await downloadArtifact(source.artifactUrl, {
         allowedHostnames:
@@ -401,7 +423,34 @@ async function latestRegistryInstallSource(
         artifactUrl: registryPlugin.artifact.url,
         repository: registryPlugin.repository,
         permissions: registryPlugin.permissions,
+        apiVersion: registryPlugin.apiVersion,
+        minAppVersion: registryPlugin.minAppVersion,
     };
+}
+
+/**
+ * The registry entry describes the artifact before it is downloaded, so an
+ * incompatible plugin is refused without spending the user's bandwidth. The
+ * manifest inside the ZIP is re-checked by `installPluginArtifact` because the
+ * registry entry is only a claim.
+ */
+function assertInstallSourceCompatibility(source: PluginInstallSource) {
+    if (source.source !== "registry") {
+        return;
+    }
+
+    const reason = pluginCompatibilityError(
+        {
+            id: source.pluginId,
+            apiVersion: source.apiVersion,
+            minAppVersion: source.minAppVersion,
+        },
+        APP_VERSION,
+    );
+
+    if (reason) {
+        throw new BadRequestError(reason);
+    }
 }
 
 async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifactOptions) {
@@ -431,7 +480,8 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
             );
         }
 
-        const manifest = normalizePluginManifest(await manifestFile.json(), "");
+        const rawManifest = await manifestFile.json();
+        const manifest = normalizePluginManifest(rawManifest, "");
 
         if (!manifest) {
             throw new BadRequestError("Downloaded plugin manifest is invalid.");
@@ -461,6 +511,17 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
         }
 
         assertRegistryPluginPermissions(manifest, options.source);
+
+        // A plugin built for a newer contract would activate against an API it
+        // does not know. Refuse before the existing folder is touched.
+        const compatibilityError = pluginCompatibilityError(
+            compatibilityInput(manifest, rawManifest),
+            APP_VERSION,
+        );
+
+        if (compatibilityError) {
+            throw new BadRequestError(compatibilityError);
+        }
 
         await assertInstalledManifestFilesExist(tempRoot, manifest);
         finalRoot = join(pluginsRoot, manifest.id);
@@ -614,8 +675,40 @@ function normalizeRegistryPlugin(value: unknown): RegistryPlugin {
                 ? plugin.repository.trim()
                 : undefined,
         permissions: normalizeRegistryPermissions(plugin.permissions, id),
+        apiVersion: normalizeRegistryApiVersion(plugin.apiVersion, id),
+        minAppVersion: normalizeRegistryMinAppVersion(plugin.minAppVersion, id),
         artifact,
     };
+}
+
+function normalizeRegistryApiVersion(value: unknown, pluginId: string) {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' apiVersion must be a whole number of 1 or higher.`,
+        );
+    }
+
+    return value;
+}
+
+function normalizeRegistryMinAppVersion(value: unknown, pluginId: string) {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value !== "string" || !isValidVersion(value)) {
+        throw new HttpError(
+            502,
+            `Registry plugin '${pluginId}' minAppVersion must be a version such as 1.2.0.`,
+        );
+    }
+
+    return value;
 }
 
 function normalizeRegistryPermissions(value: unknown, pluginId: string) {
@@ -1444,6 +1537,16 @@ function normalizePluginManifest(
               (permission): permission is string => typeof permission === "string",
           )
         : [];
+    const apiVersion =
+        typeof manifest.apiVersion === "number" &&
+        Number.isSafeInteger(manifest.apiVersion) &&
+        manifest.apiVersion >= 1
+            ? manifest.apiVersion
+            : undefined;
+    const minAppVersion =
+        typeof manifest.minAppVersion === "string" && manifest.minAppVersion.trim()
+            ? manifest.minAppVersion.trim()
+            : undefined;
 
     return {
         id,
@@ -1454,12 +1557,32 @@ function normalizePluginManifest(
         main,
         styles,
         permissions,
+        apiVersion,
+        minAppVersion,
         defaultEnabled:
             typeof manifest.defaultEnabled === "boolean"
                 ? manifest.defaultEnabled
                 : manifest.enabled !== false,
         enabled: manifest.enabled !== false,
         category: normalizeCategory(manifest.category),
+    };
+}
+
+/**
+ * Compatibility is decided from the raw manifest so a malformed `apiVersion`
+ * or `minAppVersion` is reported instead of being dropped by normalization.
+ */
+function compatibilityInput(manifest: PluginManifest, rawManifest: unknown) {
+    const raw =
+        rawManifest && typeof rawManifest === "object"
+            ? (rawManifest as Record<string, unknown>)
+            : {};
+
+    return {
+        id: manifest.id,
+        name: manifest.name,
+        apiVersion: raw.apiVersion ?? manifest.apiVersion,
+        minAppVersion: raw.minAppVersion ?? manifest.minAppVersion,
     };
 }
 
@@ -1798,6 +1921,7 @@ async function readResponseBytes(
 
 export const pluginInstallTestInternals = {
     corePluginIds: CORE_PLUGIN_IDS,
+    assertInstallSourceCompatibility,
     extractPluginArchive,
     installPluginArtifact,
     normalizePluginRegistry,

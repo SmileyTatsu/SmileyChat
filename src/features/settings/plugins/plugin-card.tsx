@@ -119,6 +119,16 @@ export function PluginCard({
 
             {plugin.description && <p>{plugin.description}</p>}
 
+            {plugin.compatibilityError && (
+                <div className="plugin-warning-panel" role="note">
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <div>
+                        <strong>Not compatible with this version</strong>
+                        <p>{plugin.compatibilityError}</p>
+                    </div>
+                </div>
+            )}
+
             {isUnverified && <UnverifiedPluginWarning plugin={plugin} />}
 
             <dl className="plugin-meta-grid">

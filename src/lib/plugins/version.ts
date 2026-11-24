@@ -130,6 +130,11 @@ export function isNewerVersion(candidate: string, current: string): boolean {
     return compareVersions(candidate, current) > 0;
 }
 
+/** True when `value` parses as a `major.minor.patch[-prerelease]` version. */
+export function isValidVersion(value: string): boolean {
+    return parseVersion(value) !== undefined;
+}
+
 function comparePrerelease(left: string[], right: string[]): number {
     // A release outranks any prerelease of the same core version.
     if (left.length === 0 && right.length === 0) {

@@ -374,6 +374,10 @@ export type PluginRegistryEntry = {
     repository?: string;
     /** Permissions the registry reviewed this artifact for. Absent means unlisted. */
     permissions?: string[];
+    /** Plugin API contract the listed artifact was built against. */
+    apiVersion?: number;
+    /** Oldest SmileyChat release that can run the listed artifact. */
+    minAppVersion?: string;
     artifact: { url: string };
 };
 

@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import {
+    AlertTriangle,
     Boxes,
     CheckCircle2,
     Download,
@@ -11,6 +12,8 @@ import {
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import type { PluginRegistryEntry } from "#frontend/lib/api/client";
+import { APP_VERSION } from "#frontend/lib/app-version";
+import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
 import { PLUGIN_CATEGORY_LABELS, type PluginManifest } from "#frontend/lib/plugins/types";
 import { isNewerVersion } from "#frontend/lib/plugins/version";
 
@@ -49,10 +52,22 @@ export function StorePluginCard({
     const [consentAction, setConsentAction] = useState<ConsentAction | null>(null);
     const CategoryIcon = CATEGORY_ICONS[plugin.category];
     const managesInstalledCopy = installedPlugin?.install !== undefined;
+    // The registry entry describes the artifact before it is downloaded, so an
+    // incompatible plugin is shown as blocked instead of failing after install.
+    const incompatibility = pluginCompatibilityError(
+        {
+            id: plugin.id,
+            name: plugin.name,
+            apiVersion: plugin.apiVersion,
+            minAppVersion: plugin.minAppVersion,
+        },
+        APP_VERSION,
+    );
     const canUpdate = Boolean(
         installed &&
         installedPlugin &&
         managesInstalledCopy &&
+        !incompatibility &&
         isNewerVersion(plugin.version, installedPlugin.version),
     );
     const upToDate =
@@ -60,7 +75,9 @@ export function StorePluginCard({
             installed &&
             installedPlugin &&
             installedPlugin.install?.source === "registry",
-        ) && !canUpdate;
+        ) &&
+        !canUpdate &&
+        !incompatibility;
     const installedLocally = Boolean(
         installed && installedPlugin && !managesInstalledCopy,
     );
@@ -157,17 +174,32 @@ export function StorePluginCard({
                         <button
                             type="button"
                             className="plugin-install-button"
-                            disabled={isBlocked || isBusy}
+                            disabled={isBlocked || isBusy || Boolean(incompatibility)}
+                            title={incompatibility}
                             onClick={() => setConsentAction("install")}
                         >
                             <Download size={15} aria-hidden="true" />
-                            {isBusy ? "Installing..." : "Install"}
+                            {isBusy
+                                ? "Installing..."
+                                : incompatibility
+                                  ? "Unavailable"
+                                  : "Install"}
                         </button>
                     )}
                 </div>
             </header>
 
             {plugin.description && <p>{plugin.description}</p>}
+
+            {incompatibility && (
+                <div className="plugin-warning-panel" role="note">
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <div>
+                        <strong>Not compatible with this version</strong>
+                        <p>{incompatibility}</p>
+                    </div>
+                </div>
+            )}
 
             <dl className="plugin-meta-grid">
                 <div>

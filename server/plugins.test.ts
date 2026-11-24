@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { CORE_PLUGIN_CATALOG } from "#frontend/lib/plugins/core-catalog";
+import { APP_VERSION } from "#frontend/lib/app-version";
+import { PLUGIN_API_VERSION } from "#frontend/lib/plugins/compatibility";
 
 import { pluginInstallTestInternals, servePluginAsset } from "./plugins";
 
@@ -625,4 +627,149 @@ test("servePluginAsset rejects path traversal attempts and malformed encoding", 
 
     const resEmpty = await servePluginAsset(new URL("http://localhost:4173/plugins/"));
     expect(resEmpty.status).toBe(404);
+});
+
+test("registry entries may declare apiVersion and minAppVersion", () => {
+    const registry = pluginInstallTestInternals.normalizePluginRegistry({
+        version: 1,
+        plugins: [
+            {
+                id: "example-plugin",
+                name: "Example Plugin",
+                version: "1.0.0",
+                category: "tools",
+                status: "verified",
+                apiVersion: PLUGIN_API_VERSION,
+                minAppVersion: "0.0.1",
+                artifact: {
+                    url: "https://example.com/releases/example-plugin-1.0.0.zip",
+                },
+            },
+        ],
+    });
+
+    expect(registry.plugins[0].apiVersion).toBe(PLUGIN_API_VERSION);
+    expect(registry.plugins[0].minAppVersion).toBe("0.0.1");
+});
+
+test("registry rejects malformed compatibility fields", () => {
+    const entry = {
+        id: "example-plugin",
+        name: "Example Plugin",
+        version: "1.0.0",
+        category: "tools",
+        status: "verified",
+        artifact: { url: "https://example.com/releases/example-plugin-1.0.0.zip" },
+    };
+
+    for (const apiVersion of ["2", 0, 1.5]) {
+        expect(() =>
+            pluginInstallTestInternals.normalizePluginRegistry({
+                version: 1,
+                plugins: [{ ...entry, apiVersion }],
+            }),
+        ).toThrow("apiVersion must be a whole number of 1 or higher");
+    }
+
+    for (const minAppVersion of ["", "next", 1.2]) {
+        expect(() =>
+            pluginInstallTestInternals.normalizePluginRegistry({
+                version: 1,
+                plugins: [{ ...entry, minAppVersion }],
+            }),
+        ).toThrow("minAppVersion must be a version such as 1.2.0");
+    }
+});
+
+test("registry compatibility is refused before the artifact download", () => {
+    expect(() =>
+        pluginInstallTestInternals.assertInstallSourceCompatibility({
+            source: "registry",
+            pluginId: "future-plugin",
+            artifactUrl: "https://example.com/future-plugin.zip",
+            apiVersion: PLUGIN_API_VERSION + 1,
+        }),
+    ).toThrow("targets plugin API");
+
+    expect(() =>
+        pluginInstallTestInternals.assertInstallSourceCompatibility({
+            source: "registry",
+            pluginId: "newer-app-plugin",
+            artifactUrl: "https://example.com/newer-app-plugin.zip",
+            minAppVersion: "999.0.0",
+        }),
+    ).toThrow(`needs SmileyChat 999.0.0 or newer. This is SmileyChat ${APP_VERSION}.`);
+
+    expect(() =>
+        pluginInstallTestInternals.assertInstallSourceCompatibility({
+            source: "registry",
+            pluginId: "compatible-plugin",
+            artifactUrl: "https://example.com/compatible-plugin.zip",
+            apiVersion: PLUGIN_API_VERSION,
+            minAppVersion: APP_VERSION,
+        }),
+    ).not.toThrow();
+});
+
+test("installer refuses a plugin built for a newer plugin API", async () => {
+    const pluginsRoot = await tempRoot();
+
+    await expect(
+        installZip(
+            pluginsRoot,
+            pluginZip({ manifest: { apiVersion: PLUGIN_API_VERSION + 1 } }),
+        ),
+    ).rejects.toThrow("targets plugin API");
+
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).exists(),
+    ).toBe(false);
+});
+
+test("installer refuses an artifact that needs a newer app version", async () => {
+    const pluginsRoot = await tempRoot();
+
+    await expect(
+        installZip(pluginsRoot, pluginZip({ manifest: { minAppVersion: "999.0.0" } })),
+    ).rejects.toThrow("needs SmileyChat 999.0.0 or newer");
+
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).exists(),
+    ).toBe(false);
+});
+
+test("a rejected incompatible update keeps the installed plugin folder", async () => {
+    const pluginsRoot = await tempRoot();
+
+    await installZip(pluginsRoot, pluginZip({ version: "1.0.0" }));
+
+    await expect(
+        installZip(
+            pluginsRoot,
+            pluginZip({
+                version: "2.0.0",
+                manifest: { apiVersion: PLUGIN_API_VERSION + 1 },
+            }),
+        ),
+    ).rejects.toThrow("targets plugin API");
+
+    const manifest = await Bun.file(
+        join(pluginsRoot, "example-plugin", "plugin.json"),
+    ).json();
+
+    expect(manifest.version).toBe("1.0.0");
+});
+
+test("installer accepts a manifest that declares the supported contract", async () => {
+    const pluginsRoot = await tempRoot();
+
+    const response = await installZip(
+        pluginsRoot,
+        pluginZip({ manifest: { apiVersion: PLUGIN_API_VERSION } }),
+    );
+    const body = await response.json();
+
+    expect(body.ok).toBe(true);
+    expect(body.plugin.apiVersion).toBe(PLUGIN_API_VERSION);
+    expect(body.plugin.compatibilityError).toBeUndefined();
 });

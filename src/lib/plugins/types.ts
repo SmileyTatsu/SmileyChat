@@ -64,6 +64,19 @@ export type PluginManifest = {
     main: string;
     styles?: string[];
     permissions?: string[];
+    /**
+     * Version of the plugin API contract the plugin was built against. Missing
+     * means the original contract (`PLUGIN_API_VERSION` 1).
+     */
+    apiVersion?: number;
+    /** Oldest SmileyChat release that can run this plugin. */
+    minAppVersion?: string;
+    /**
+     * Why this plugin cannot run in the current app build. Computed by the
+     * server during discovery from `apiVersion` / `minAppVersion`; never stored
+     * in `plugin.json`.
+     */
+    compatibilityError?: string;
     /** The state a plugin ships with, before a user or profile changes it. */
     defaultEnabled?: boolean;
     enabled?: boolean;
