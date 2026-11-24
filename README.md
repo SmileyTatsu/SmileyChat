@@ -31,19 +31,27 @@ SmileyChat is a local-first frontend application designed for interacting with A
 - **NovelAI Image Generation**: Optional Store extension with context-aware prompt writing, exact master-prompt preservation, automatic character image tools, local image saving, and text-only generated-image history.
 - **Context Management & Local Tokenizer**: Profile-aware local token counting with automatic model detection (GPT-4o, Claude, Llama 3, Mistral, Gemma, DeepSeek) and manual overrides to ensure prompt stability and prevent token overflow.
 - **Diagnostics & Logging**: In-app real-time diagnostics viewer, live SSE log streaming, granular subsystem filters, automatic secret scrubbing, and daily rotating log files.
-- **Extensible Plugin System**: Customize and extend the core functionality using local ESM plugins.
+- **Extensible Plugin System**: Install verified extensions from the Extension Store, or build your own against the published plugin API typings and load it as a local ESM module.
 
 ### Built-in Utilities
 
-Included as bundled plugins, SmileyChat provides powerful tools right out of the box:
+These ship inside SmileyChat because the app itself depends on them:
 
 - **LoreBooks**: Manage World Info with native support for creating, importing, and exporting LoreBooks to inject dynamic contextual information into your active chats.
 - **Chat Formatter**: A dedicated formatter for cleaner chat presentation.
 - **Regex Replacer**: Automatically format and replace text in messages using custom regular expressions.
+- **MCP Servers**: Built-in support for Model Context Protocol integration.
+
+### Extension Store
+
+Everything else installs from the Store in Options → Plugins, so it can be updated without a new app release. Extensions you already have keep their settings: installing the Store version adopts the data the bundled copy had saved.
+
+- **Workspace AI Tools**: Exposes workspace actions (LoreBooks, characters, personas, chats) directly to AI models.
 - **Chat Summarizer**: Generate concise summaries of long conversations to save context tokens.
 - **Post Processing**: Apply custom processing prompts to refine or alter the AI's final output.
-- **MCP Servers**: Built-in support for Model Context Protocol integration.
 - **Image Generation**: Generate NovelAI images from character and conversation context using an editable prompt guide and master prompt.
+
+The first-party extensions live in [smileychat-official-plugins](https://github.com/SmileyTatsu/smileychat-official-plugins) and are distributed through the verified registry.
 
 ---
 
@@ -158,6 +166,7 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 ### Ecosystem Repositories
 
 - [**smileychat-plugins**](https://github.com/SmileyTatsu/smileychat-plugins): Verified plugin registry, schemas, and contribution docs.
+- [**smileychat-official-plugins**](https://github.com/SmileyTatsu/smileychat-official-plugins): First-party extensions (Workspace AI Tools, Chat Summarizer, Post Processing, Image Generation) built and released from a monorepo.
 - [**smileychat-plugin-template**](https://github.com/SmileyTatsu/smileychat-plugin-template): Starter template for building distributable plugins.
 
 ### Running in Dev Mode
