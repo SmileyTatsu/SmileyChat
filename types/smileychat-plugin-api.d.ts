@@ -94,6 +94,23 @@ type ChatSession = {
 	createdAt: string;
 	updatedAt: string;
 };
+type ChatSummary = {
+	id: string;
+	kind?: ChatKind;
+	characterId: string;
+	members?: ChatGroupMember[];
+	group?: ChatGroup;
+	defaultTitle: string;
+	title?: string;
+	mode: ChatMode;
+	/** Chat theme id; when missing it follows `mode`. */
+	theme?: string;
+	metadata?: ChatMetadata;
+	messageCount: number;
+	lastMessageAt?: string;
+	createdAt: string;
+	updatedAt: string;
+};
 type TavernCardDataV2 = {
 	name: string;
 	description: string;
@@ -160,6 +177,16 @@ type SmileyCharacter = {
 	createdAt: string;
 	updatedAt: string;
 };
+type CharacterSummary = {
+	id: string;
+	name: string;
+	tagline: string;
+	tags?: string[];
+	avatar?: SmileyCharacter["avatar"];
+	importedFrom?: SmileyCharacter["importedFrom"];
+	isFavorite?: boolean;
+	updatedAt: string;
+};
 type SmileyPersona = {
 	id: string;
 	version: 1;
@@ -175,6 +202,13 @@ type SmileyPersona = {
 		[key: string]: unknown;
 	};
 	createdAt: string;
+	updatedAt: string;
+};
+type PersonaSummary = {
+	id: string;
+	name: string;
+	dialogueColor?: string;
+	avatar?: SmileyPersona["avatar"];
 	updatedAt: string;
 };
 type PresetPromptRole = "system" | "user" | "assistant";
@@ -1452,8 +1486,16 @@ export type PluginActionsApi = {
 	editMessage(messageId: string, content: string): Promise<void>;
 	generateResponse(): Promise<void>;
 	switchCharacter(characterId: string): Promise<void>;
+	/**
+	 * Library reads. Tools need the collection, not just the active card, and
+	 * the snapshot only carries what the workspace is showing.
+	 */
+	listCharacters(): Promise<CharacterSummary[]>;
+	getCharacter(characterId: string): Promise<SmileyCharacter>;
 	createCharacter(character: SmileyCharacter): Promise<SmileyCharacter>;
 	updateCharacter(characterId: string, patch: Partial<TavernCardDataV2>): Promise<void>;
+	listPersonas(): Promise<PersonaSummary[]>;
+	getPersona(personaId: string): Promise<SmileyPersona>;
 	createPersona(persona: SmileyPersona): Promise<SmileyPersona>;
 	updatePersona(personaId: string, patch: Partial<SmileyPersona>): Promise<void>;
 	createLorebook(data: Partial<Lorebook>): Promise<LorebookSummary>;
@@ -1461,6 +1503,8 @@ export type PluginActionsApi = {
 	addLorebookEntry(lorebookId: string, entry: Partial<LorebookEntry>): Promise<void>;
 	updateLorebookEntry(lorebookId: string, entryId: string, patch: Partial<LorebookEntry>): Promise<void>;
 	deleteLorebookEntry(lorebookId: string, entryId: string): Promise<void>;
+	listChats(): Promise<ChatSummary[]>;
+	getChat(chatId: string): Promise<ChatSession>;
 	updateChatMetadata(chatId: string, patch: ChatMetadataPatch): Promise<void>;
 	setCharacterPresence(status: PluginCharacterPresenceStatus): void;
 	setDraft(text: string): void;

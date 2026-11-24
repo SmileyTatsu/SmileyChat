@@ -9,8 +9,10 @@ import type {
     SmileyPersona,
     UserStatus,
 } from "#frontend/types";
-import type { TavernCardDataV2 } from "../characters/types";
+import type { CharacterSummary, TavernCardDataV2 } from "../characters/types";
 import type { ChatMetadataPatch } from "../api/client";
+import type { ChatSummary } from "../chats/types";
+import type { PersonaSummary } from "../personas/types";
 import type { Lorebook, LorebookEntry, LorebookSummary } from "../lorebooks/types";
 
 import type { ConnectionProfile, ConnectionSettings } from "../connections/config";
@@ -541,8 +543,16 @@ export type PluginActionsApi = {
     editMessage(messageId: string, content: string): Promise<void>;
     generateResponse(): Promise<void>;
     switchCharacter(characterId: string): Promise<void>;
+    /**
+     * Library reads. Tools need the collection, not just the active card, and
+     * the snapshot only carries what the workspace is showing.
+     */
+    listCharacters(): Promise<CharacterSummary[]>;
+    getCharacter(characterId: string): Promise<SmileyCharacter>;
     createCharacter(character: SmileyCharacter): Promise<SmileyCharacter>;
     updateCharacter(characterId: string, patch: Partial<TavernCardDataV2>): Promise<void>;
+    listPersonas(): Promise<PersonaSummary[]>;
+    getPersona(personaId: string): Promise<SmileyPersona>;
     createPersona(persona: SmileyPersona): Promise<SmileyPersona>;
     updatePersona(personaId: string, patch: Partial<SmileyPersona>): Promise<void>;
     createLorebook(data: Partial<Lorebook>): Promise<LorebookSummary>;
@@ -554,6 +564,8 @@ export type PluginActionsApi = {
         patch: Partial<LorebookEntry>,
     ): Promise<void>;
     deleteLorebookEntry(lorebookId: string, entryId: string): Promise<void>;
+    listChats(): Promise<ChatSummary[]>;
+    getChat(chatId: string): Promise<ChatSession>;
     updateChatMetadata(chatId: string, patch: ChatMetadataPatch): Promise<void>;
     setCharacterPresence(status: PluginCharacterPresenceStatus): void;
     setDraft(text: string): void;

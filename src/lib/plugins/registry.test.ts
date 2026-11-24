@@ -439,6 +439,34 @@ describe("plugin registry runtime isolation", () => {
         setPluginAppActionHandlers({});
     });
 
+    test("library reads delegate to app handlers and report when unavailable", async () => {
+        const denied = pluginApi(uniqueId("reads-denied"), []);
+        expect(() => denied.actions.listChats()).toThrow('needs "actions" permission');
+
+        const api = pluginApi(uniqueId("reads-allowed"), ["actions"]);
+
+        // Nothing wired yet: the message must say so instead of returning [].
+        await expect(api.actions.listChats()).rejects.toThrow("not available");
+
+        setPluginAppActionHandlers({
+            listCharacters: async () => [{ id: "char-1", name: "Luna" }] as never,
+            getCharacter: async (id) => ({ id, name: "Luna" }) as never,
+            listPersonas: async () => [{ id: "persona-1", name: "Anon" }] as never,
+            getPersona: async (id) => ({ id, name: "Anon" }) as never,
+            listChats: async () => [{ id: "chat-1", defaultTitle: "First" }] as never,
+            getChat: async (id) => ({ id, messages: [] }) as never,
+        });
+
+        expect((await api.actions.listCharacters())[0].id).toBe("char-1");
+        expect((await api.actions.getCharacter("char-2")).id).toBe("char-2");
+        expect((await api.actions.listPersonas())[0].id).toBe("persona-1");
+        expect((await api.actions.getPersona("persona-2")).id).toBe("persona-2");
+        expect((await api.actions.listChats())[0].id).toBe("chat-1");
+        expect((await api.actions.getChat("chat-2")).id).toBe("chat-2");
+
+        setPluginAppActionHandlers({});
+    });
+
     test("settings register, get, set, normalize, and subscriptions work correctly", async () => {
         const id = uniqueId("settings-plugin");
         const api = pluginApi(id, []);

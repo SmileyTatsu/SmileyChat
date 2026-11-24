@@ -250,8 +250,12 @@ type PluginAppActionHandlers = Pick<
     | "generateResponse"
     | "sendMessage"
     | "switchCharacter"
+    | "listCharacters"
+    | "getCharacter"
     | "createCharacter"
     | "updateCharacter"
+    | "listPersonas"
+    | "getPersona"
     | "createPersona"
     | "updatePersona"
     | "createLorebook"
@@ -259,6 +263,8 @@ type PluginAppActionHandlers = Pick<
     | "addLorebookEntry"
     | "updateLorebookEntry"
     | "deleteLorebookEntry"
+    | "listChats"
+    | "getChat"
     | "updateChatMetadata"
 > & {
     injectMessage: (
@@ -1350,6 +1356,19 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
 
             await handler(characterId);
         },
+        async listCharacters() {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.listCharacters;
+            if (!handler)
+                throw new Error("Plugin listCharacters action is not available.");
+            return handler();
+        },
+        async getCharacter(characterId) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.getCharacter;
+            if (!handler) throw new Error("Plugin getCharacter action is not available.");
+            return handler(characterId);
+        },
         async updateCharacter(characterId, patch) {
             requireDeclaredPluginPermission(manifest, "actions");
             const handler = appActionHandlers.updateCharacter;
@@ -1363,6 +1382,18 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             if (!handler)
                 throw new Error("Plugin createCharacter action is not available.");
             return handler(character);
+        },
+        async listPersonas() {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.listPersonas;
+            if (!handler) throw new Error("Plugin listPersonas action is not available.");
+            return handler();
+        },
+        async getPersona(personaId) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.getPersona;
+            if (!handler) throw new Error("Plugin getPersona action is not available.");
+            return handler(personaId);
         },
         async updatePersona(personaId, patch) {
             requireDeclaredPluginPermission(manifest, "actions");
@@ -1411,6 +1442,18 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             if (!handler)
                 throw new Error("Plugin deleteLorebookEntry action is not available.");
             await handler(lorebookId, entryId);
+        },
+        async listChats() {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.listChats;
+            if (!handler) throw new Error("Plugin listChats action is not available.");
+            return handler();
+        },
+        async getChat(chatId) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.getChat;
+            if (!handler) throw new Error("Plugin getChat action is not available.");
+            return handler(chatId);
         },
         async updateChatMetadata(chatId, patch) {
             requireDeclaredPluginPermission(manifest, "actions");

@@ -30,7 +30,13 @@ import {
     createLorebook,
     createPersona,
     deleteLorebookEntry,
+    loadCharacter,
+    loadCharacterSummaries,
+    loadChat,
+    loadChatSummaries,
     loadLorebook,
+    loadPersona,
+    loadPersonaSummaries,
     saveCharacterIndex,
     updateLorebookEntry,
 } from "#frontend/lib/api/client";
@@ -209,6 +215,14 @@ export function useAppPluginBridge({
                 await loadersRef.current.loadCharacterCollection();
                 return result.character;
             },
+            // Library reads stay on the API client instead of the collection
+            // loaders: a tool asking for a card must not refresh the workspace.
+            listCharacters: async () => (await loadCharacterSummaries()).characters,
+            getCharacter: (characterId) => loadCharacter(characterId),
+            listPersonas: async () => (await loadPersonaSummaries()).personas,
+            getPersona: (personaId) => loadPersona(personaId),
+            listChats: async () => (await loadChatSummaries()).chats,
+            getChat: (chatId) => loadChat(chatId),
             updateCharacter: patchCharacter,
             updateChatMetadata: patchChatMetadata,
             createPersona: async (persona) => {
