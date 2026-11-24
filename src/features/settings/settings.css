@@ -882,6 +882,46 @@
     padding: 10px;
 }
 
+/* Extensions that moved to the Store: informational row with its install action. */
+.plugin-moved-list {
+    display: grid;
+    gap: 8px;
+}
+
+.plugin-moved {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 11px;
+    border: 1px solid #2d4a52;
+    border-radius: 8px;
+    background: #151f22;
+    color: #8fd3e0;
+}
+
+.plugin-moved svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+.plugin-moved-text strong {
+    display: block;
+    color: #d7eef3;
+    font-size: 0.92rem;
+}
+
+.plugin-moved-text p {
+    margin: 2px 0 0;
+    color: #9dc4cd;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.plugin-moved .primary-button {
+    white-space: nowrap;
+}
+
 .plugin-global-warning svg,
 .plugin-warning-panel svg {
     flex: 0 0 auto;

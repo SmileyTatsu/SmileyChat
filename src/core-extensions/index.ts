@@ -1,20 +1,14 @@
 import type { PluginManifest } from "../lib/plugins/types";
-import { chatSummarizerPlugin } from "./chat-summarizer";
 import { lorebooksPlugin } from "./lorebooks";
-import { postProcessingPlugin } from "./post-processing";
 import { regexReplacerPlugin } from "./regex-replacer";
 import { smileyChatFormatterPlugin } from "./smiley-chat-formatter";
 import { mcpPlugin } from "./mcp";
-import { imageGenerationPlugin } from "./image-generation";
 
 export const corePlugins = [
     smileyChatFormatterPlugin,
     lorebooksPlugin,
-    chatSummarizerPlugin,
-    postProcessingPlugin,
     regexReplacerPlugin,
     mcpPlugin,
-    imageGenerationPlugin,
 ];
 export const corePluginIds = new Set(corePlugins.map((plugin) => plugin.manifest.id));
 

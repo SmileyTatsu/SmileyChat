@@ -19,6 +19,8 @@ import {
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
 
+import { MOVED_CORE_PLUGINS } from "#frontend/lib/plugins/moved-plugins";
+
 import { PluginCard } from "./plugins/plugin-card";
 import { PluginPermissionList } from "./plugins/plugin-permission-list";
 import { findNewPluginPermissions } from "./plugins/plugin-permissions";
@@ -87,6 +89,15 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         updateStorePlugin,
         updateActiveProfileDetails,
     } = pluginSettings;
+    // Extensions that left the bundle: shown while they are missing so an
+    // update does not look like a feature silently disappearing.
+    const movedPluginRows = MOVED_CORE_PLUGINS.filter(
+        (moved) => !plugins.some((plugin) => plugin.id === moved.id),
+    ).map((moved) => ({
+        moved,
+        entry: registryPlugins.find((plugin) => plugin.id === moved.id),
+    }));
+
     const unverifiedLocalPlugins = plugins.filter((plugin) => {
         if (plugin.source === "core") {
             return false;
@@ -205,6 +216,40 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                     </button>
                 ))}
             </div>
+
+            {activeView === "local" && movedPluginRows.length > 0 && (
+                <div className="plugin-moved-list">
+                    {movedPluginRows.map(({ moved, entry }) => (
+                        <div className="plugin-moved" key={moved.id} role="note">
+                            <Boxes size={17} aria-hidden="true" />
+                            <div className="plugin-moved-text">
+                                <strong>{moved.name}</strong>
+                                <p>
+                                    {moved.description} This extension now installs from
+                                    the Store, so it can be updated without an app
+                                    release. Your saved settings move with it.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="primary-button"
+                                disabled={
+                                    !entry ||
+                                    installingPluginId === moved.id ||
+                                    requestState === "loading"
+                                }
+                                onClick={() => entry && void installStorePlugin(entry)}
+                            >
+                                {installingPluginId === moved.id
+                                    ? "Installing…"
+                                    : entry
+                                      ? "Install"
+                                      : "Not in Store"}
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {activeView === "local" && (
                 <ProfileBar

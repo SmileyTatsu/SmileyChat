@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { CORE_PLUGIN_CATALOG } from "#frontend/lib/plugins/core-catalog";
+import { MOVED_CORE_PLUGINS } from "#frontend/lib/plugins/moved-plugins";
 import { APP_VERSION } from "#frontend/lib/app-version";
 import { PLUGIN_API_VERSION } from "#frontend/lib/plugins/compatibility";
 
@@ -50,12 +51,14 @@ test("registry accepts release artifact entries", () => {
 });
 
 test("server knows bundled core extensions", () => {
-    expect(pluginInstallTestInternals.corePluginIds.has("smiley-post-processing")).toBe(
-        true,
-    );
-    expect(pluginInstallTestInternals.corePluginIds.has("smiley-image-generation")).toBe(
-        true,
-    );
+    expect(pluginInstallTestInternals.corePluginIds.has("smiley-mcp")).toBe(true);
+    expect(pluginInstallTestInternals.corePluginIds.has("smiley-lorebooks")).toBe(true);
+});
+
+test("extensions that moved to the Store are no longer reserved core ids", () => {
+    for (const plugin of MOVED_CORE_PLUGINS) {
+        expect(pluginInstallTestInternals.corePluginIds.has(plugin.id)).toBe(false);
+    }
 });
 
 test("server core manifests come from the shared catalog", async () => {
@@ -290,6 +293,50 @@ test("installs prebuilt artifact and writes install metadata", async () => {
         artifactUrl: "https://example.com/example-plugin.zip",
     });
     expect(body.plugin.entryUrl).toContain("?v=");
+});
+
+test("installing a moved extension adopts its bundled data", async () => {
+    const root = await tempRoot();
+    const legacyRoot = join(root, "core-extensions");
+    const pluginDir = join(root, "smiley-chat-summarizer");
+    const legacyDir = join(legacyRoot, "smiley-chat-summarizer");
+
+    await mkdir(legacyDir, { recursive: true });
+    await Bun.write(join(legacyDir, "settings.json"), '{"summaryWindow":12}');
+    await Bun.write(join(legacyDir, "summary-chat-1.json"), '{"summary":"kept"}');
+    await Bun.write(join(legacyDir, "enabled.json"), '{"enabled":true}');
+    await mkdir(pluginDir, { recursive: true });
+    await Bun.write(join(pluginDir, "settings.json"), '{"summaryWindow":3}');
+
+    await pluginInstallTestInternals.adoptMovedCorePluginData(
+        "smiley-chat-summarizer",
+        pluginDir,
+        legacyRoot,
+    );
+
+    // Missing keys come across, an existing one wins (a reinstall must not roll
+    // settings back), and the app's enable state is not plugin data.
+    expect(await Bun.file(join(pluginDir, "data", "summary-chat-1.json")).text()).toBe(
+        '{"summary":"kept"}',
+    );
+    expect(await Bun.file(join(pluginDir, "data", "enabled.json")).exists()).toBe(false);
+    expect(await Bun.file(join(pluginDir, "settings.json")).text()).toBe(
+        '{"summaryWindow":3}',
+    );
+});
+
+test("adopting data ignores plugins that never lived in the bundle", async () => {
+    const root = await tempRoot();
+    const pluginDir = join(root, "unrelated-plugin");
+    await mkdir(pluginDir, { recursive: true });
+
+    await pluginInstallTestInternals.adoptMovedCorePluginData(
+        "unrelated-plugin",
+        pluginDir,
+        join(root, "core-extensions"),
+    );
+
+    expect(await Bun.file(join(pluginDir, "data")).exists()).toBe(false);
 });
 
 test("artifact accepts standard leading dot slash manifest paths", async () => {

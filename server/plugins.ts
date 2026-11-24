@@ -23,6 +23,7 @@ import {
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
 import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
+import { getMovedCorePlugin } from "#frontend/lib/plugins/moved-plugins";
 import { isValidVersion } from "#frontend/lib/plugins/version";
 
 import {
@@ -535,6 +536,7 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
         await writePluginInstallMetadata(tempRoot, options.source);
         await rename(tempRoot, finalRoot);
         finalSwapped = true;
+        await adoptMovedCorePluginData(manifest.id, finalRoot);
 
         const cacheKey = await pluginCacheKey(finalRoot, manifest);
         const plugin = {
@@ -1052,6 +1054,65 @@ async function pluginCacheKey(root: string, manifest: PluginManifest) {
     }
 
     return newestMtime > 0 ? String(Math.trunc(newestMtime)) : "";
+}
+
+/**
+ * Copies the data a former bundled extension left behind into the installed
+ * plugin's own `data/` folder.
+ *
+ * This is what makes the move invisible for someone who was already using the
+ * extension: same plugin id, same storage keys, so summaries, pipelines and image
+ * settings keep working after installing from the Store. `enabled.json` is
+ * skipped because it is the app's enable state, not plugin data, and an existing
+ * file always wins so a reinstall cannot roll settings back.
+ */
+async function adoptMovedCorePluginData(
+    pluginId: string,
+    finalRoot: string,
+    legacyRoot = coreExtensionsDataDir,
+) {
+    const moved = getMovedCorePlugin(pluginId);
+
+    if (!moved) {
+        return;
+    }
+
+    const legacyDir = join(legacyRoot, moved.legacyDataFolder);
+
+    if (!(await pathExists(legacyDir))) {
+        return;
+    }
+
+    const dataDir = join(finalRoot, "data");
+    await mkdir(dataDir, { recursive: true });
+
+    let copied = 0;
+
+    for (const file of await readdir(legacyDir, { withFileTypes: true })) {
+        if (
+            !file.isFile() ||
+            !file.name.endsWith(".json") ||
+            file.name === "enabled.json"
+        ) {
+            continue;
+        }
+
+        const target = join(dataDir, file.name);
+
+        if (await pathExists(target)) {
+            continue;
+        }
+
+        await cp(join(legacyDir, file.name), target);
+        copied += 1;
+    }
+
+    if (copied > 0) {
+        logger.info(
+            "plugins",
+            `Adopted ${copied} data file(s) from the bundled ${pluginId} install`,
+        );
+    }
 }
 
 async function preserveExistingPluginData(finalRoot: string, tempRoot: string) {
@@ -1965,4 +2026,5 @@ export const pluginInstallTestInternals = {
     resolveInstallSource,
     readCorePluginManifests,
     readPluginInstallMetadata,
+    adoptMovedCorePluginData,
 };

@@ -34,18 +34,6 @@ export const CORE_PLUGIN_CATALOG: readonly CorePluginCatalogEntry[] = [
         defaultEnabled: true,
     },
     {
-        id: "smiley-chat-summarizer",
-        name: "Smiley Chat Summarizer",
-        category: "memory-lore",
-        defaultEnabled: false,
-    },
-    {
-        id: "smiley-post-processing",
-        name: "Smiley Post Processing",
-        category: "input-output",
-        defaultEnabled: false,
-    },
-    {
         id: "smiley-regex-replacer",
         name: "Regex Replacer",
         category: "input-output",
@@ -55,12 +43,6 @@ export const CORE_PLUGIN_CATALOG: readonly CorePluginCatalogEntry[] = [
         id: "smiley-mcp",
         name: "MCP Servers",
         category: "tools",
-        defaultEnabled: false,
-    },
-    {
-        id: "smiley-image-generation",
-        name: "Image Generation",
-        category: "input-output",
         defaultEnabled: false,
     },
 ];

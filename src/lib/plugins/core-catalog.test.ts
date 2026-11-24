@@ -1,11 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { chatSummarizerManifest } from "#frontend/core-extensions/chat-summarizer/manifest";
 import { corePlugins } from "#frontend/core-extensions";
-import { imageGenerationManifest } from "#frontend/core-extensions/image-generation/manifest";
 import { lorebooksManifest } from "#frontend/core-extensions/lorebooks/manifest";
 import { mcpManifest } from "#frontend/core-extensions/mcp/manifest";
-import { postProcessingManifest } from "#frontend/core-extensions/post-processing/manifest";
 import { regexReplacerManifest } from "#frontend/core-extensions/regex-replacer/manifest";
 import { smileyChatFormatterManifest } from "#frontend/core-extensions/smiley-chat-formatter/manifest";
 
@@ -15,11 +12,8 @@ import type { PluginManifest } from "./types";
 const bundledManifests: PluginManifest[] = [
     smileyChatFormatterManifest,
     lorebooksManifest,
-    chatSummarizerManifest,
-    postProcessingManifest,
     regexReplacerManifest,
     mcpManifest,
-    imageGenerationManifest,
 ];
 
 describe("core plugin catalog", () => {
