@@ -527,7 +527,7 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
         finalRoot = join(pluginsRoot, manifest.id);
 
         if (await pathExists(finalRoot)) {
-            await rename(finalRoot, backupRoot);
+            await replacePluginFolder(finalRoot, backupRoot);
             backupCreated = true;
             await preserveExistingPluginData(backupRoot, tempRoot);
         }
@@ -1752,6 +1752,40 @@ async function pathExists(pathname: string) {
         return true;
     } catch {
         return false;
+    }
+}
+
+/**
+ * Moves the currently installed plugin folder out of the way.
+ *
+ * The rename is retried because Windows refuses it while any process still has
+ * a file inside the folder open (an editor, the antivirus scanner, or a dev
+ * server watching userData). Those handles are usually gone in well under a
+ * second, so a short retry turns a spurious failure into a successful update.
+ * When the handle is real, the user gets an actionable message instead of the
+ * bare `EPERM: operation not permitted, rename ...` string.
+ */
+export async function replacePluginFolder(from: string, to: string) {
+    const lockCodes = new Set(["EPERM", "EBUSY", "EACCES"]);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+        try {
+            await rename(from, to);
+            return;
+        } catch (error) {
+            const code = (error as NodeJS.ErrnoException).code ?? "";
+
+            if (!lockCodes.has(code) || attempt === 4) {
+                if (!lockCodes.has(code)) throw error;
+
+                throw new HttpError(
+                    409,
+                    `Could not replace the installed plugin folder (${code}). Another program still has its files open. Close anything using that folder, or restart SmileyChat, then try again.`,
+                );
+            }
+
+            await Bun.sleep(60 * (attempt + 1));
+        }
     }
 }
 

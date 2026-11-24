@@ -57,6 +57,13 @@ export default defineConfig(function ({ mode }) {
         plugins: [tailwindcss(), preact(), pluginSdkImportMap()],
         server: {
             port: Number(FRONTEND_PORT),
+            watch: {
+                // userData is app state, not source. Watching it made Vite
+                // reload the page on every saved chat, and on Windows the
+                // watcher held handles inside userData/plugins so installing or
+                // updating a plugin failed with EPERM on the folder rename.
+                ignored: ["**/userData/**"],
+            },
             proxy: {
                 "/api": {
                     target: `http://127.0.0.1:${BACKEND_PORT}`,
