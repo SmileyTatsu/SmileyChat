@@ -154,7 +154,7 @@ describe("plugin registry runtime isolation", () => {
         expect(String(warnings[0]?.[0])).toContain("duplicate plugin key");
     });
 
-    test("connection secrets are available only to explicitly capable core extensions", () => {
+    test("connection secrets need a core capability or an explicit user approval", () => {
         const storedProfile = {
             id: "novelai-profile",
             name: "NovelAI Images",
@@ -182,9 +182,32 @@ describe("plugin registry runtime isolation", () => {
         expect(returnedProfile).toEqual(storedProfile);
         expect(returnedProfile).not.toBe(storedProfile);
 
+        // A user plugin can declare the permission and still be refused: what
+        // grants access is the user's runtime approval, not the manifest.
         const userApi = pluginApi("user-image", ["connections:secrets"]);
         expect(() => userApi.connections.hasApiKey("novelai-profile")).toThrow(
-            "not a bundled core extension",
+            "needs your approval",
+        );
+
+        const approvedApi = createPluginApi(
+            pluginManifest("user-image-approved", ["connections:secrets"]),
+            storage,
+            (() => null) as never,
+            network,
+            { grantedPermissions: ["connections:secrets"] },
+        );
+        expect(approvedApi.connections.hasApiKey("novelai-profile")).toBe(true);
+
+        // The approval is per permission: anything else stays closed.
+        const unrelatedApi = createPluginApi(
+            pluginManifest("user-image-other-grant", ["connections:secrets"]),
+            storage,
+            (() => null) as never,
+            network,
+            { grantedPermissions: ["ui:settings"] },
+        );
+        expect(() => unrelatedApi.connections.hasApiKey("novelai-profile")).toThrow(
+            "needs your approval",
         );
     });
 

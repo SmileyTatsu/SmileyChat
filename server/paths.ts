@@ -52,5 +52,6 @@ export const coreExtensionsDataDir = join(userDataDir, "settings", "core-extensi
 export const mcpSettingsPath = join(coreExtensionsDataDir, "mcp.json");
 export const mcpSecretsPath = join(coreExtensionsDataDir, "mcp-secrets.json");
 export const pluginProfilesPath = join(userDataDir, "settings", "plugin-profiles.json");
+export const pluginGrantsPath = join(userDataDir, "settings", "plugin-grants.json");
 
 export const maxAvatarBytes = 20 * 1024 * 1024;

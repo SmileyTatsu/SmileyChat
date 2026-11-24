@@ -774,6 +774,62 @@
     line-height: 1.35;
 }
 
+/* Runtime approvals sit next to the declared permissions, styled as the same
+   list so the card reads as one block instead of two competing widgets. */
+.plugin-grants {
+    display: grid;
+    gap: 6px;
+}
+
+.plugin-grants > span {
+    color: #8f96a6;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.plugin-grant-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.plugin-grant-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #303440;
+    border-radius: 7px;
+    background: #1d2029;
+    padding: 6px 8px;
+    min-width: 0;
+}
+
+.plugin-grant-list li.plugin-grant-granted {
+    border-color: #2f4a37;
+    background: #1a231d;
+}
+
+.plugin-grant-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.plugin-grant-list small {
+    color: #9ea4b3;
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+
+.plugin-grant-granted .plugin-permission-name {
+    color: #8fd6a4;
+}
+
 .plugin-permission-unlisted {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

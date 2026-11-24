@@ -39,6 +39,12 @@ import {
     type PluginCategory,
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
+import {
+    type GrantablePluginPermission,
+    getCachedPluginGrants,
+    loadPluginPermissionGrants,
+    setPluginPermissionGrant,
+} from "#frontend/lib/plugins/grants";
 import { collectAvailablePluginUpdates } from "#frontend/lib/plugins/updates";
 
 import {
@@ -70,6 +76,10 @@ export function usePluginSettings() {
     const [installingPluginId, setInstallingPluginId] = useState("");
     const [updatingPluginId, setUpdatingPluginId] = useState("");
     const [uninstallingPluginId, setUninstallingPluginId] = useState("");
+    const [grantedByPlugin, setGrantedByPlugin] = useState<Record<string, string[]>>(() =>
+        mapGrantedPermissions(getCachedPluginGrants().grants),
+    );
+    const [grantSavingPluginId, setGrantSavingPluginId] = useState("");
     const [manualInstallBusy, setManualInstallBusy] = useState(false);
     const [, setRegistryRevision] = useState(0);
     const operationInFlightRef = useRef(false);
@@ -261,6 +271,9 @@ export function usePluginSettings() {
             ]);
             setPlugins(mergeCoreAndUserPluginManifests(manifestResponse.plugins));
             setProfilesPayload(profilesResponse);
+            setGrantedByPlugin(
+                mapGrantedPermissions((await loadPluginPermissionGrants()).grants),
+            );
             void refreshRegistry(false);
             setStatusMessage("");
             setRequestState("success");
@@ -290,6 +303,47 @@ export function usePluginSettings() {
                 );
                 setRequestState("error");
             }
+        }
+    }
+
+    /**
+     * Saves one runtime approval and reactivates the plugin.
+     *
+     * The capability is baked into the API object handed to `activate()`, so a
+     * live plugin only sees the new answer after it is loaded again.
+     */
+    async function togglePluginGrant(
+        plugin: PluginManifest,
+        permission: GrantablePluginPermission,
+        granted: boolean,
+    ) {
+        setGrantSavingPluginId(plugin.id);
+
+        try {
+            const payload = await setPluginPermissionGrant(
+                plugin.id,
+                permission,
+                granted,
+            );
+            setGrantedByPlugin(mapGrantedPermissions(payload.grants));
+            setStatusMessage(
+                granted
+                    ? `Allowed ${plugin.name} to read connection secrets.`
+                    : `Revoked connection secret access for ${plugin.name}.`,
+            );
+
+            if (plugin.enabled !== false) {
+                await loadRuntimePlugin(plugin);
+            }
+
+            setRequestState("success");
+        } catch (error) {
+            setStatusMessage(
+                messageFromError(error, "Could not save the plugin approval."),
+            );
+            setRequestState("error");
+        } finally {
+            setGrantSavingPluginId("");
         }
     }
 
@@ -920,11 +974,24 @@ export function usePluginSettings() {
         setSearchTerm,
         settingsPanelsForPlugin,
         statusMessage,
+        grantSavingPluginId,
+        grantedByPlugin,
         togglePlugin,
+        togglePluginGrant,
         uninstallManagedPlugin,
         uninstallingPluginId,
         updatingPluginId,
         updateManagedPlugin,
         updateActiveProfileDetails,
     };
+}
+
+function mapGrantedPermissions(
+    grants: Record<string, { permissions: string[] }>,
+): Record<string, string[]> {
+    const map: Record<string, string[]> = {};
+    for (const [pluginId, grant] of Object.entries(grants)) {
+        map[pluginId] = grant.permissions;
+    }
+    return map;
 }

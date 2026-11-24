@@ -9,6 +9,7 @@ import {
 import { localApiFetch } from "../api/client";
 import { APP_VERSION } from "../app-version";
 import { pluginCompatibilityError } from "./compatibility";
+import { getPluginGrantedPermissions, loadPluginPermissionGrants } from "./grants";
 // Side-effect import: publishes the app's Preact instance for plugin modules
 // built with `--external preact` before any plugin is imported.
 import "./preact-sdk";
@@ -30,6 +31,9 @@ import type {
 
 export async function loadRuntimePlugins(manifests: PluginManifest[]) {
     const startedAt = performance.now();
+    // Grants are read synchronously by createPluginApi, so the cache has to be
+    // warm before the first activation. Failure here is treated as "no grants".
+    await loadPluginPermissionGrants();
     const runtimeManifests = mergeCoreAndUserPluginManifests(manifests);
     initializePluginEnabledStates(runtimeManifests);
 
@@ -120,6 +124,9 @@ export async function loadCoreRuntimePlugin(pluginId: string) {
 
 export async function loadRuntimePlugin(manifest: PluginManifest) {
     try {
+        // Reloading one plugin (enable, grant toggle) must see the same grants
+        // as the initial activation.
+        await loadPluginPermissionGrants();
         if (!manifest.entryUrl) {
             throw new Error(`${manifest.name} does not define a plugin entry URL.`);
         }
@@ -158,6 +165,7 @@ export async function loadRuntimePlugin(manifest: PluginManifest) {
                 createPluginStorage(manifest.id),
                 h,
                 createPluginNetwork(manifest.id),
+                { grantedPermissions: getPluginGrantedPermissions(manifest.id) },
             ),
         );
 

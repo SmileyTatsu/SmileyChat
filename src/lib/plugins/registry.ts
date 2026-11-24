@@ -278,6 +278,11 @@ type PluginConnectionAccessHandlers = {
 
 type PluginApiCapabilities = {
     coreConnectionSecrets?: boolean;
+    /**
+     * Permissions the user approved at runtime for this plugin (Options >
+     * Plugins). Install consent only covers what the artifact declares.
+     */
+    grantedPermissions?: string[];
 };
 
 export function subscribeToPluginRegistry(listener: Listener) {
@@ -1026,7 +1031,7 @@ export function createPluginApi(
                 }
             },
             hasApiKey(profileId) {
-                requireCoreConnectionSecretAccess(manifest, capabilities);
+                requireConnectionSecretAccess(manifest, capabilities);
                 const profile = connectionAccessHandlers.getProfile?.(profileId);
                 const apiKey =
                     profile && "apiKey" in profile.config
@@ -1035,7 +1040,7 @@ export function createPluginApi(
                 return typeof apiKey === "string" && Boolean(apiKey.trim());
             },
             getProfileWithSecrets(profileId) {
-                requireCoreConnectionSecretAccess(manifest, capabilities);
+                requireConnectionSecretAccess(manifest, capabilities);
                 const profile = connectionAccessHandlers.getProfile?.(profileId);
                 return profile ? structuredClone(profile) : undefined;
             },
@@ -1212,16 +1217,27 @@ export function createPluginApi(
     };
 }
 
-function requireCoreConnectionSecretAccess(
+function requireConnectionSecretAccess(
     manifest: PluginManifest,
     capabilities: PluginApiCapabilities,
 ) {
     requireDeclaredPluginPermission(manifest, "connections:secrets");
-    if (manifest.source !== "core" || capabilities.coreConnectionSecrets !== true) {
-        throw new Error(
-            `${manifest.name} cannot access connection secrets because it is not a bundled core extension.`,
-        );
+
+    // Bundled extensions ship with the app, so the app is the one shipping the
+    // code that reads the secret. Every other plugin has to be approved by the
+    // user at runtime, because install consent only covers what the artifact
+    // *declares*.
+    if (manifest.source === "core" && capabilities.coreConnectionSecrets === true) {
+        return;
     }
+
+    if (capabilities.grantedPermissions?.includes("connections:secrets")) {
+        return;
+    }
+
+    throw new Error(
+        `${manifest.name} needs your approval to read connection secrets. Open Options > Plugins, select ${manifest.name}, and enable "Use connection secrets" under Approvals.`,
+    );
 }
 
 function pluginLogger(manifest: PluginManifest): PluginLoggerApi {

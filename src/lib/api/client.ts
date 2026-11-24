@@ -13,6 +13,7 @@ import type { ChatMetadata } from "../chats/types";
 import { isAbortError } from "../common/abort";
 
 import type { ConnectionSecrets, ConnectionSettings } from "../connections/config";
+import type { PluginGrantsPayload } from "../plugins/grants";
 import type { PluginProfile, PluginProfilesState } from "../plugins/profiles";
 import type { PluginCategory, PluginManifest } from "../plugins/types";
 import type { AppPreferences } from "../preferences/types";
@@ -461,6 +462,17 @@ export function deletePluginProfile(profileId: string) {
     return requestJson<{ ok: true; state: PluginProfilesState }>(
         `/api/plugins/profiles/${encodeURIComponent(profileId)}`,
         { method: "DELETE" },
+    );
+}
+
+export function loadPluginPermissionGrants() {
+    return requestJson<PluginGrantsPayload>("/api/plugins/grants");
+}
+
+export function savePluginPermissionGrant(pluginId: string, permissions: string[]) {
+    return requestJson<PluginGrantsPayload>(
+        `/api/plugins/grants/${encodeURIComponent(pluginId)}`,
+        jsonInit("PUT", { permissions }),
     );
 }
 

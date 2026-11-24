@@ -20,8 +20,11 @@ import {
     type PluginCategory,
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
+import type { GrantablePluginPermission } from "#frontend/lib/plugins/grants";
 
 import { CATEGORY_ICONS, type RequestState } from "./plugin-settings-helpers";
+
+import { PluginPermissionGrants } from "./plugin-permission-grants";
 import { PluginPermissionList } from "./plugin-permission-list";
 import { formatPluginPermissionList } from "./plugin-permissions";
 import { PluginTrustBadge } from "./plugin-trust-badge";
@@ -43,6 +46,10 @@ export type PluginCardProps = {
     onUpdate: () => void;
     onUninstall?: () => void;
     onToggleConfigure?: () => void;
+    /** Runtime approvals granted to this plugin (Options > Plugins). */
+    grantedPermissions?: readonly string[];
+    grantBusy?: boolean;
+    onToggleGrant?: (permission: GrantablePluginPermission, granted: boolean) => void;
 };
 
 export function PluginCard({
@@ -60,6 +67,9 @@ export function PluginCard({
     onUpdate,
     onUninstall,
     onToggleConfigure,
+    grantedPermissions = [],
+    grantBusy = false,
+    onToggleGrant,
 }: PluginCardProps) {
     const enabled = plugin.enabled !== false;
     const category: PluginCategory = plugin.category ?? "other";
@@ -181,6 +191,15 @@ export function PluginCard({
 
             {plugin.permissions && plugin.permissions.length > 0 && (
                 <PluginPermissionList permissions={plugin.permissions} />
+            )}
+
+            {onToggleGrant && plugin.source !== "core" && plugin.permissions && (
+                <PluginPermissionGrants
+                    declared={plugin.permissions}
+                    granted={grantedPermissions}
+                    busy={grantBusy}
+                    onToggle={onToggleGrant}
+                />
             )}
 
             <div className="plugin-card-actions">

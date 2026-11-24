@@ -98,6 +98,7 @@ import {
     writePluginStorageSnapshot,
 } from "./plugins";
 import { uninstallPlugin } from "./plugin-uninstall";
+import { readPluginGrants, writePluginPermissionGrant } from "./plugin-grants";
 import {
     deleteUserPluginProfile,
     readPluginProfiles,
@@ -269,6 +270,21 @@ const createServer = () =>
             "/api/plugins/profiles/:profileId": {
                 DELETE: api(async (request) => {
                     return deleteUserPluginProfile(request.params.profileId);
+                }),
+            },
+
+            "/api/plugins/grants": {
+                GET: api(async () => {
+                    return readPluginGrants();
+                }),
+            },
+
+            "/api/plugins/grants/:pluginId": {
+                PUT: api(async (request) => {
+                    return writePluginPermissionGrant(
+                        request.params.pluginId,
+                        await readJsonBody(request),
+                    );
                 }),
             },
 

@@ -45,6 +45,8 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         duplicateActiveProfile,
         filteredPlugins,
         filteredRegistryPlugins,
+        grantSavingPluginId,
+        grantedByPlugin,
         groupedPlugins,
         installedFilter,
         installingPluginId,
@@ -77,6 +79,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         settingsPanelsForPlugin,
         statusMessage,
         togglePlugin,
+        togglePluginGrant,
         uninstallManagedPlugin,
         uninstallingPluginId,
         updatingPluginId,
@@ -384,6 +387,17 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                     uninstallingPluginId === selectedLocalPlugin.id
                                 }
                                 onToggle={() => void togglePlugin(selectedLocalPlugin)}
+                                grantedPermissions={
+                                    grantedByPlugin[selectedLocalPlugin.id] ?? []
+                                }
+                                grantBusy={grantSavingPluginId === selectedLocalPlugin.id}
+                                onToggleGrant={(permission, granted) =>
+                                    void togglePluginGrant(
+                                        selectedLocalPlugin,
+                                        permission,
+                                        granted,
+                                    )
+                                }
                                 onUpdate={() => requestManagedUpdate(selectedLocalPlugin)}
                                 onUninstall={() => requestUninstall(selectedLocalPlugin)}
                             />
