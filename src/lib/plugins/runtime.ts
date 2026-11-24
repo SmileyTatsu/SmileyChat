@@ -9,6 +9,9 @@ import {
 import { localApiFetch } from "../api/client";
 import { APP_VERSION } from "../app-version";
 import { pluginCompatibilityError } from "./compatibility";
+// Side-effect import: publishes the app's Preact instance for plugin modules
+// built with `--external preact` before any plugin is imported.
+import "./preact-sdk";
 import {
     createPluginApi,
     deactivatePlugin,
