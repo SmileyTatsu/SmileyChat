@@ -41,7 +41,9 @@ import {
     updateLorebookEntry,
 } from "#frontend/lib/api/client";
 import type { ChatMetadataPatch } from "#frontend/lib/api/client";
+import { createBlankCharacter } from "#frontend/lib/characters/normalize";
 import type { TavernCardDataV2 } from "#frontend/lib/characters/types";
+import { createBlankPersona } from "#frontend/lib/personas/defaults";
 import type { SmileyPersona } from "#frontend/lib/personas/types";
 
 import { openSettings } from "../ui-state";
@@ -223,6 +225,8 @@ export function useAppPluginBridge({
             getPersona: (personaId) => loadPersona(personaId),
             listChats: async () => (await loadChatSummaries()).chats,
             getChat: (chatId) => loadChat(chatId),
+            createBlankCharacter,
+            createBlankPersona,
             updateCharacter: patchCharacter,
             updateChatMetadata: patchChatMetadata,
             createPersona: async (persona) => {

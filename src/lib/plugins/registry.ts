@@ -252,6 +252,8 @@ type PluginAppActionHandlers = Pick<
     | "switchCharacter"
     | "listCharacters"
     | "getCharacter"
+    | "createBlankCharacter"
+    | "createBlankPersona"
     | "createCharacter"
     | "updateCharacter"
     | "listPersonas"
@@ -1368,6 +1370,22 @@ function pluginActions(manifest: PluginManifest): PluginActionsApi {
             const handler = appActionHandlers.getCharacter;
             if (!handler) throw new Error("Plugin getCharacter action is not available.");
             return handler(characterId);
+        },
+        createBlankCharacter(name) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.createBlankCharacter;
+            if (!handler) {
+                throw new Error("Plugin createBlankCharacter action is not available.");
+            }
+            return handler(name);
+        },
+        createBlankPersona(name) {
+            requireDeclaredPluginPermission(manifest, "actions");
+            const handler = appActionHandlers.createBlankPersona;
+            if (!handler) {
+                throw new Error("Plugin createBlankPersona action is not available.");
+            }
+            return handler(name);
         },
         async updateCharacter(characterId, patch) {
             requireDeclaredPluginPermission(manifest, "actions");

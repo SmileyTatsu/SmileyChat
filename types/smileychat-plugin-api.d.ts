@@ -1492,6 +1492,12 @@ export type PluginActionsApi = {
 	 */
 	listCharacters(): Promise<CharacterSummary[]>;
 	getCharacter(characterId: string): Promise<SmileyCharacter>;
+	/**
+	 * Blank cards built by the app, so a plugin never has to guess which fields
+	 * a new character or persona needs. Pure: nothing is saved.
+	 */
+	createBlankCharacter(name?: string): SmileyCharacter;
+	createBlankPersona(name?: string): SmileyPersona;
 	createCharacter(character: SmileyCharacter): Promise<SmileyCharacter>;
 	updateCharacter(characterId: string, patch: Partial<TavernCardDataV2>): Promise<void>;
 	listPersonas(): Promise<PersonaSummary[]>;
