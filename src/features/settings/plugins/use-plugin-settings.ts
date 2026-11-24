@@ -71,6 +71,14 @@ export function usePluginSettings() {
     const [registryPlugins, setRegistryPlugins] = useState<PluginRegistryEntry[]>([]);
     const [registryLoaded, setRegistryLoaded] = useState(false);
     const [registryFailed, setRegistryFailed] = useState(false);
+    /**
+     * Only set after a successful manifest load: an empty list while the
+     * request is in flight must not look like "everything is missing".
+     */
+    const [manifestsLoaded, setManifestsLoaded] = useState(false);
+    const [movedCorePluginLegacyIds, setMovedCorePluginLegacyIds] = useState<string[]>(
+        [],
+    );
     const [manualArtifactAllowed, setManualArtifactAllowed] = useState(false);
     const [manualArtifactUrl, setManualArtifactUrl] = useState("");
     const [installingPluginId, setInstallingPluginId] = useState("");
@@ -271,6 +279,8 @@ export function usePluginSettings() {
             ]);
             setPlugins(mergeCoreAndUserPluginManifests(manifestResponse.plugins));
             setProfilesPayload(profilesResponse);
+            setMovedCorePluginLegacyIds(manifestResponse.movedCorePluginLegacyIds ?? []);
+            setManifestsLoaded(true);
             setGrantedByPlugin(
                 mapGrantedPermissions((await loadPluginPermissionGrants()).grants),
             );
@@ -955,6 +965,8 @@ export function usePluginSettings() {
         manualArtifactUrl,
         manualInstallBusy,
         openPluginId,
+        manifestsLoaded,
+        movedCorePluginLegacyIds,
         plugins,
         pluginUpdatesById,
         refreshAll,

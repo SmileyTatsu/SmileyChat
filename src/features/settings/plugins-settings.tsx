@@ -62,6 +62,8 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         manualArtifactAllowed,
         manualArtifactUrl,
         manualInstallBusy,
+        manifestsLoaded,
+        movedCorePluginLegacyIds,
         openPluginId,
         plugins,
         pluginUpdatesById,
@@ -91,14 +93,19 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         updateStorePlugin,
         updateActiveProfileDetails,
     } = pluginSettings;
-    // Extensions that left the bundle: shown while they are missing so an
-    // update does not look like a feature silently disappearing.
-    const movedPluginRows = MOVED_CORE_PLUGINS.filter(
-        (moved) => !plugins.some((plugin) => plugin.id === moved.id),
-    ).map((moved) => ({
-        moved,
-        entry: registryPlugins.find((plugin) => plugin.id === moved.id),
-    }));
+    // Extensions that left the bundle are announced only when this install
+    // actually used them: their data folder is the evidence. A fresh install
+    // never had them, so nothing is shown as "missing".
+    const movedPluginRows = !manifestsLoaded
+        ? []
+        : MOVED_CORE_PLUGINS.filter(
+              (moved) =>
+                  movedCorePluginLegacyIds.includes(moved.id) &&
+                  !plugins.some((plugin) => plugin.id === moved.id),
+          ).map((moved) => ({
+              moved,
+              entry: registryPlugins.find((plugin) => plugin.id === moved.id),
+          }));
     // Installing from the notice asks for permissions first, exactly like the
     // Store card: the same extension must not install differently depending on
     // which button was clicked.

@@ -87,6 +87,7 @@ import {
     installVerifiedPlugin,
     logPluginTelemetry,
     proxyPluginFetch,
+    readMovedCorePluginLegacyIds,
     readPluginManifests,
     readPluginRegistry,
     readPluginStorage,
@@ -204,7 +205,12 @@ const createServer = () =>
 
             "/api/plugins": {
                 GET: api(async () => {
-                    return json({ plugins: await readPluginManifests() });
+                    const [plugins, movedCorePluginLegacyIds] = await Promise.all([
+                        readPluginManifests(),
+                        readMovedCorePluginLegacyIds(),
+                    ]);
+
+                    return json({ plugins, movedCorePluginLegacyIds });
                 }),
             },
 

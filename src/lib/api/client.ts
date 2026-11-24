@@ -361,7 +361,14 @@ export function saveAppPreferences(preferences: AppPreferences) {
 }
 
 export function loadPluginManifests() {
-    return requestJson<{ plugins: PluginManifest[] }>("/api/plugins");
+    return requestJson<{
+        plugins: PluginManifest[];
+        /**
+         * Moved extensions that left data behind on this install. A fresh
+         * install has none, so nothing is announced.
+         */
+        movedCorePluginLegacyIds?: string[];
+    }>("/api/plugins");
 }
 
 export type PluginRegistryEntry = {

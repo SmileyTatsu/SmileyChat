@@ -26,6 +26,7 @@ import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
 import {
     getMovedCorePlugin,
     legacyDataFolderCandidates,
+    MOVED_CORE_PLUGINS,
 } from "#frontend/lib/plugins/moved-plugins";
 import { isValidVersion } from "#frontend/lib/plugins/version";
 
@@ -1060,6 +1061,37 @@ async function pluginCacheKey(root: string, manifest: PluginManifest) {
 }
 
 /**
+ * Ids of moved extensions that actually left something behind on this install.
+ *
+ * A fresh install never had these extensions bundled, so announcing them would
+ * describe a loss that never happened. The data folder is the only evidence
+ * that matters: it exists only after the user used the bundled extension.
+ */
+export async function readMovedCorePluginLegacyIds(
+    legacyRoot = coreExtensionsDataDir,
+): Promise<string[]> {
+    const ids: string[] = [];
+
+    for (const plugin of MOVED_CORE_PLUGINS) {
+        for (const folder of legacyDataFolderCandidates(plugin.id)) {
+            const dir = join(legacyRoot, folder);
+            const entries = await readdir(dir, { withFileTypes: true }).catch(
+                () => undefined,
+            );
+
+            if (
+                entries?.some((entry) => entry.isFile() && entry.name.endsWith(".json"))
+            ) {
+                ids.push(plugin.id);
+                break;
+            }
+        }
+    }
+
+    return ids;
+}
+
+/**
  * Copies the data a former bundled extension left behind into the installed
  * plugin's own `data/` folder.
  *
@@ -2028,6 +2060,7 @@ export const pluginInstallTestInternals = {
     resolveArchiveEntryPath,
     resolveInstallSource,
     readCorePluginManifests,
+    readMovedCorePluginLegacyIds,
     readPluginInstallMetadata,
     adoptMovedCorePluginData,
 };

@@ -340,6 +340,43 @@ test("adopting data ignores plugins that never lived in the bundle", async () =>
     expect(await Bun.file(join(pluginDir, "data")).exists()).toBe(false);
 });
 
+test("a fresh install announces no moved extensions", async () => {
+    const root = await tempRoot();
+
+    // userData/settings/core-extensions does not exist yet.
+    expect(
+        await pluginInstallTestInternals.readMovedCorePluginLegacyIds(
+            join(root, "core-extensions"),
+        ),
+    ).toEqual([]);
+});
+
+test("a moved extension is announced only when it left data behind", async () => {
+    const root = await tempRoot();
+    const legacyRoot = join(root, "core-extensions");
+
+    // A folder without JSON is not evidence of use either.
+    await mkdir(join(legacyRoot, "smiley-image-generation"), { recursive: true });
+
+    expect(
+        await pluginInstallTestInternals.readMovedCorePluginLegacyIds(legacyRoot),
+    ).toEqual([]);
+
+    await Bun.write(
+        join(legacyRoot, "smiley-image-generation", "settings.json"),
+        '{"quality":"standard"}',
+    );
+    // The pre-prefix folder spelling must count too.
+    await mkdir(join(legacyRoot, "chat-summarizer"), { recursive: true });
+    await Bun.write(join(legacyRoot, "chat-summarizer", "enabled.json"), "{}");
+
+    expect(
+        (
+            await pluginInstallTestInternals.readMovedCorePluginLegacyIds(legacyRoot)
+        ).sort(),
+    ).toEqual(["smiley-chat-summarizer", "smiley-image-generation"]);
+});
+
 test("artifact accepts standard leading dot slash manifest paths", async () => {
     const pluginsRoot = await tempRoot();
     const response = await installZip(
