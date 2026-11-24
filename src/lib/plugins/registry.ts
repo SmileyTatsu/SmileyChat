@@ -36,6 +36,7 @@ import type {
     PluginConnectionProvider,
     PluginEventsApi,
     PluginHeaderAction,
+    PluginHostApi,
     PluginLoggerApi,
     PluginMacroResolver,
     PluginMacroResolveOptions,
@@ -1131,6 +1132,7 @@ export function createPluginApi(
                 return profile ? structuredClone(profile) : undefined;
             },
         },
+        host: pluginHost(manifest, capabilities),
         formatting: {
             formatInstructPrompt,
             formatCustomInstructPrompt,
@@ -1324,6 +1326,129 @@ function requireConnectionSecretAccess(
     throw new Error(
         `${manifest.name} needs your approval to read connection secrets. Open Options > Plugins, select ${manifest.name}, and enable "Use connection secrets" under Approvals.`,
     );
+}
+
+/**
+ * Gate for `api.host`: the manifest must declare `server:process`, the plugin
+ * must not be a bundled extension (core extensions never have a server
+ * module), and the user must have approved it separately in Options > Plugins.
+ */
+function requirePluginHostAccess(
+    manifest: PluginManifest,
+    capabilities: PluginApiCapabilities,
+) {
+    requireDeclaredPluginPermission(manifest, "server:process");
+
+    if (manifest.source === "core") {
+        throw new Error(
+            `${manifest.name} is a core extension and cannot run a server module.`,
+        );
+    }
+
+    if (capabilities.grantedPermissions?.includes("server:process")) {
+        return;
+    }
+
+    throw new Error(
+        `${manifest.name} needs your approval to run programs on your computer. Open Options > Plugins, select ${manifest.name}, and enable "Run programs on your computer" under Approvals.`,
+    );
+}
+
+function pluginHost(
+    manifest: PluginManifest,
+    capabilities: PluginApiCapabilities,
+): PluginHostApi {
+    return {
+        async fetch(path, init = {}) {
+            requirePluginHostAccess(manifest, capabilities);
+            assertPluginHostPath(path);
+
+            return localApiFetch(
+                pluginHostUrl(manifest.id, path),
+                pluginHostRequestInit(init),
+            );
+        },
+    };
+}
+
+/**
+ * A host path is appended to `/api/plugins/{id}/host`, so anything that could
+ * climb out of that prefix (or turn it into another URL) is refused here.
+ */
+function assertPluginHostPath(path: unknown): asserts path is string {
+    if (typeof path !== "string" || !path.length) {
+        throw new Error('Plugin host fetch needs a path such as "/status".');
+    }
+
+    if (/[\u0000-\u001f\u007f]/.test(path)) {
+        throw new Error("Plugin host path cannot contain control characters.");
+    }
+
+    if (path.includes("\\")) {
+        throw new Error('Plugin host path cannot contain backslashes; use "/".');
+    }
+
+    if (!path.startsWith("/")) {
+        throw new Error(
+            `Plugin host path must start with "/" (relative to the plugin's server module), got "${path}".`,
+        );
+    }
+
+    const [pathname] = path.split(/[?#]/);
+
+    if (pathname.includes("//")) {
+        throw new Error(
+            'Plugin host path cannot contain empty segments ("//"); use a single slash.',
+        );
+    }
+
+    if (
+        pathname
+            .slice(1)
+            .split("/")
+            .some((segment) => segment === "." || segment === "..")
+    ) {
+        throw new Error('Plugin host path cannot contain "." or ".." segments.');
+    }
+
+    for (const segment of pathname.slice(1).split("/")) {
+        let decoded: string;
+
+        try {
+            decoded = decodeURIComponent(segment);
+        } catch {
+            throw new Error("Plugin host path contains malformed percent-encoding.");
+        }
+
+        // Percent-encoded variants ("%2e%2e", "%2f") must not sneak past the
+        // raw checks: the server decodes before it routes.
+        if (decoded === "." || decoded === "..") {
+            throw new Error('Plugin host path cannot contain "." or ".." segments.');
+        }
+
+        if (decoded.includes("/") || decoded.includes("\\")) {
+            throw new Error("Plugin host path segments cannot contain slashes.");
+        }
+
+        if (/[\u0000-\u001f\u007f]/.test(decoded)) {
+            throw new Error("Plugin host path cannot contain control characters.");
+        }
+    }
+}
+
+/**
+ * `credentials` and `mode` stay the app's choice: a plugin must not be able to
+ * opt into sending cookies elsewhere or force a different fetch mode.
+ */
+function pluginHostRequestInit(init: RequestInit): RequestInit {
+    const next: RequestInit = { ...init };
+    delete next.credentials;
+    delete next.mode;
+    return next;
+}
+
+function pluginHostUrl(pluginId: string, path: string) {
+    return `/api/plugins/${encodeURIComponent(pluginId)}/host${path}`;
 }
 
 function pluginLogger(manifest: PluginManifest): PluginLoggerApi {

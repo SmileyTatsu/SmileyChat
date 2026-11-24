@@ -38,10 +38,14 @@ import type {
 } from "./types";
 
 const originalWarn = console.warn;
+const originalFetch = globalThis.fetch;
+let mockedRequests: Array<{ url: string; init?: RequestInit }> = [];
 let idCounter = 0;
 
 afterEach(() => {
     console.warn = originalWarn;
+    globalThis.fetch = originalFetch;
+    mockedRequests = [];
     setPluginModelHandlers({});
     setPluginConnectionAccessHandlers({});
 });
@@ -699,6 +703,117 @@ describe("plugin registry runtime isolation", () => {
     });
 });
 
+describe("plugin host api", () => {
+    test("host fetch requires the declared server:process permission", async () => {
+        mockFetchServer(() => new Response("unreachable"));
+        const api = pluginApi(uniqueId("host-undeclared"), []);
+
+        await expect(api.host.fetch("/status")).rejects.toThrow(
+            'needs "server:process" permission',
+        );
+        expect(mockedRequests).toHaveLength(0);
+    });
+
+    test("host fetch needs the user's approval even when declared", async () => {
+        mockFetchServer(() => new Response("unreachable"));
+        const api = pluginApi(uniqueId("host-ungranted"), ["server:process"]);
+
+        await expect(api.host.fetch("/status")).rejects.toThrow(
+            "needs your approval to run programs on your computer",
+        );
+        await expect(api.host.fetch("/status")).rejects.toThrow("Options > Plugins");
+        expect(mockedRequests).toHaveLength(0);
+    });
+
+    test("core extensions can never reach a host module", async () => {
+        mockFetchServer(() => new Response("unreachable"));
+        const manifest = pluginManifest(uniqueId("host-core"), ["server:process"]);
+        manifest.source = "core";
+        const api = createPluginApi(manifest, storage, (() => null) as never, network, {
+            grantedPermissions: ["server:process"],
+        });
+
+        await expect(api.host.fetch("/status")).rejects.toThrow(
+            "core extension and cannot run a server module",
+        );
+        expect(mockedRequests).toHaveLength(0);
+    });
+
+    test("host fetch GET reaches the plugin host route and returns the response", async () => {
+        const response = new Response("pong", { status: 200 });
+        mockFetchServer(() => response);
+        const pluginId = uniqueId("host-read");
+        const api = hostApi(pluginId);
+
+        const result = await api.host.fetch("/status?verbose=1");
+
+        expect(result).toBe(response);
+        expect(mockedRequests.map((request) => request.url)).toEqual([
+            `/api/plugins/${pluginId}/host/status?verbose=1`,
+        ]);
+    });
+
+    test("host fetch writes carry CSRF headers and the app's own credentials/mode", async () => {
+        const response = new Response("saved", { status: 201 });
+        mockFetchServer(() => response);
+        const pluginId = uniqueId("host-write");
+        const api = hostApi(pluginId);
+
+        const result = await api.host.fetch("/items", {
+            method: "POST",
+            body: JSON.stringify({ name: "one" }),
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            mode: "no-cors",
+        });
+
+        expect(result).toBe(response);
+
+        const request = mockedRequests.find((entry) => entry.url.includes("/host/"));
+        expect(request?.url).toBe(`/api/plugins/${pluginId}/host/items`);
+        expect(request?.init?.credentials).toBeUndefined();
+        expect(request?.init?.mode).toBeUndefined();
+
+        const headers = new Headers(request?.init?.headers);
+        expect(headers.get("content-type")).toBe("application/json");
+        expect(headers.get("x-smileychat-csrf")).toBeTruthy();
+        expect(headers.get("x-smileychat-csrf-magic")).toBe("1");
+    });
+
+    test("host fetch rejects paths that could escape the plugin host route", async () => {
+        mockFetchServer(() => new Response("unreachable"));
+        const api = hostApi(uniqueId("host-bad-path"));
+        const badPaths = [
+            "",
+            "status",
+            "//evil.example/status",
+            "http://evil.example/status",
+            "/../settings",
+            "/status/../../settings",
+            "/./status",
+            "/status/./nested",
+            "\\status",
+            "/status\\nested",
+            "/status//nested",
+            "/status\u0000",
+            "/%2e%2e/settings",
+            "/%2E%2E/settings",
+            "/status/%2f..%2fsettings",
+            "/%00status",
+        ];
+
+        for (const path of badPaths) {
+            await expect(api.host.fetch(path)).rejects.toThrow(
+                /Plugin host (path|fetch)/,
+            );
+        }
+
+        expect(
+            mockedRequests.filter((entry) => entry.url.includes("/host/")),
+        ).toHaveLength(0);
+    });
+});
+
 function pluginApi(id: string, permissions: string[]) {
     return createPluginApi(
         pluginManifest(id, permissions),
@@ -706,6 +821,36 @@ function pluginApi(id: string, permissions: string[]) {
         (() => null) as never,
         network,
     );
+}
+
+function hostApi(id: string, granted: string[] = ["server:process"]) {
+    return createPluginApi(
+        pluginManifest(id, ["server:process"]),
+        storage,
+        (() => null) as never,
+        network,
+        { grantedPermissions: granted },
+    );
+}
+
+/**
+ * `api.host` goes through `localApiFetch`, so these tests stand in for the Bun
+ * server with a global fetch stub and record what the client asked for.
+ */
+function mockFetchServer(respond: (url: string) => Response) {
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        mockedRequests.push({ url, init });
+
+        if (url.endsWith("/api/csrf")) {
+            return new Response(JSON.stringify({ token: "test-csrf-token" }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+
+        return respond(url);
+    }) as typeof fetch;
 }
 
 function pluginManifest(id: string, permissions: string[]): PluginManifest {

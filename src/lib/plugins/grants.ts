@@ -10,6 +10,18 @@ import {
     loadPluginPermissionGrants as requestPluginGrants,
     savePluginPermissionGrant as persistPluginGrant,
 } from "../api/client";
+import {
+    GRANTABLE_PLUGIN_PERMISSIONS,
+    isGrantablePluginPermission,
+    type GrantablePluginPermission,
+} from "./core-catalog";
+
+/**
+ * The grantable list and its guard live in `core-catalog.ts` so the UI and the
+ * server cannot drift; this module re-exports them for existing importers.
+ */
+export { GRANTABLE_PLUGIN_PERMISSIONS, isGrantablePluginPermission };
+export type { GrantablePluginPermission };
 
 export type PluginPermissionGrant = {
     permissions: string[];
@@ -20,23 +32,6 @@ export type PluginGrantsPayload = {
     version: 1;
     grants: Record<string, PluginPermissionGrant>;
 };
-
-/**
- * Mirror of `GRANTABLE_PLUGIN_PERMISSIONS` on the server.
- *
- * Kept as a literal here because the plugin UI must not import server modules
- * at runtime; the server refuses anything outside its own list, so a drift can
- * only ever narrow what the UI offers.
- */
-export const GRANTABLE_PLUGIN_PERMISSIONS = ["connections:secrets"] as const;
-
-export type GrantablePluginPermission = (typeof GRANTABLE_PLUGIN_PERMISSIONS)[number];
-
-export function isGrantablePluginPermission(
-    permission: string,
-): permission is GrantablePluginPermission {
-    return (GRANTABLE_PLUGIN_PERMISSIONS as readonly string[]).includes(permission);
-}
 
 const emptyPayload = (): PluginGrantsPayload => ({ version: 1, grants: {} });
 
