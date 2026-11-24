@@ -14,13 +14,21 @@ export type MovedCorePlugin = {
     name: string;
     description: string;
     category: PluginCategory;
-    /**
-     * Folder under `userData/settings/core-extensions` that held the bundled
-     * extension's data. Installs copy `*.json` from here into the plugin's own
-     * `data/` folder.
-     */
-    legacyDataFolder: string;
 };
+
+/**
+ * Folders that may hold the bundled extension's data.
+ *
+ * Core data folders were named after the plugin id only later; older installs
+ * use the id without the `smiley-` prefix (for example `chat-summarizer`). Rather
+ * than pin a mapping that would silently miss old data, adoption looks at both
+ * spellings and merges whatever it finds.
+ */
+export function legacyDataFolderCandidates(pluginId: string): string[] {
+    const short = pluginId.replace(/^smiley-/, "");
+
+    return short === pluginId ? [pluginId] : [pluginId, short];
+}
 
 export const MOVED_CORE_PLUGINS: readonly MovedCorePlugin[] = [
     {
@@ -29,7 +37,6 @@ export const MOVED_CORE_PLUGINS: readonly MovedCorePlugin[] = [
         description:
             "Maintains editable rolling chat summaries and injects them into prompts.",
         category: "memory-lore",
-        legacyDataFolder: "smiley-chat-summarizer",
     },
     {
         id: "smiley-post-processing",
@@ -37,7 +44,6 @@ export const MOVED_CORE_PLUGINS: readonly MovedCorePlugin[] = [
         description:
             "Runs a pipeline of AI passes that rewrite each reply before it is saved.",
         category: "input-output",
-        legacyDataFolder: "smiley-post-processing",
     },
     {
         id: "smiley-image-generation",
@@ -45,7 +51,6 @@ export const MOVED_CORE_PLUGINS: readonly MovedCorePlugin[] = [
         description:
             "Generates NovelAI images from chat context and attaches them to messages.",
         category: "input-output",
-        legacyDataFolder: "smiley-image-generation",
     },
 ];
 

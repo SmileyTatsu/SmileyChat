@@ -23,7 +23,10 @@ import {
     type PluginManifest,
 } from "#frontend/lib/plugins/types";
 import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
-import { getMovedCorePlugin } from "#frontend/lib/plugins/moved-plugins";
+import {
+    getMovedCorePlugin,
+    legacyDataFolderCandidates,
+} from "#frontend/lib/plugins/moved-plugins";
 import { isValidVersion } from "#frontend/lib/plugins/version";
 
 import {
@@ -1071,46 +1074,46 @@ async function adoptMovedCorePluginData(
     finalRoot: string,
     legacyRoot = coreExtensionsDataDir,
 ) {
-    const moved = getMovedCorePlugin(pluginId);
-
-    if (!moved) {
-        return;
-    }
-
-    const legacyDir = join(legacyRoot, moved.legacyDataFolder);
-
-    if (!(await pathExists(legacyDir))) {
+    if (!getMovedCorePlugin(pluginId)) {
         return;
     }
 
     const dataDir = join(finalRoot, "data");
-    await mkdir(dataDir, { recursive: true });
-
     let copied = 0;
 
-    for (const file of await readdir(legacyDir, { withFileTypes: true })) {
-        if (
-            !file.isFile() ||
-            !file.name.endsWith(".json") ||
-            file.name === "enabled.json"
-        ) {
+    for (const folder of legacyDataFolderCandidates(pluginId)) {
+        const legacyDir = join(legacyRoot, folder);
+
+        if (!(await pathExists(legacyDir))) {
             continue;
         }
 
-        const target = join(dataDir, file.name);
+        for (const file of await readdir(legacyDir, { withFileTypes: true })) {
+            if (
+                !file.isFile() ||
+                !file.name.endsWith(".json") ||
+                file.name === "enabled.json"
+            ) {
+                continue;
+            }
 
-        if (await pathExists(target)) {
-            continue;
+            await mkdir(dataDir, { recursive: true });
+
+            const target = join(dataDir, file.name);
+
+            if (await pathExists(target)) {
+                continue;
+            }
+
+            await cp(join(legacyDir, file.name), target);
+            copied += 1;
         }
-
-        await cp(join(legacyDir, file.name), target);
-        copied += 1;
     }
 
     if (copied > 0) {
         logger.info(
             "plugins",
-            `Adopted ${copied} data file(s) from the bundled ${pluginId} install`,
+            `Adopted ${copied} data file(s) left by the bundled ${pluginId}`,
         );
     }
 }

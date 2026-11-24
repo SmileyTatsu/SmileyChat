@@ -21,6 +21,8 @@ import {
 
 import { MOVED_CORE_PLUGINS } from "#frontend/lib/plugins/moved-plugins";
 
+import { PluginInstallConsentDialog } from "./plugins/plugin-install-consent";
+
 import { PluginCard } from "./plugins/plugin-card";
 import { PluginPermissionList } from "./plugins/plugin-permission-list";
 import { findNewPluginPermissions } from "./plugins/plugin-permissions";
@@ -97,6 +99,13 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
         moved,
         entry: registryPlugins.find((plugin) => plugin.id === moved.id),
     }));
+    // Installing from the notice asks for permissions first, exactly like the
+    // Store card: the same extension must not install differently depending on
+    // which button was clicked.
+    const [movedConsentId, setMovedConsentId] = useState<string | null>(null);
+    const movedConsentEntry = movedPluginRows.find(
+        (row) => row.moved.id === movedConsentId,
+    )?.entry;
 
     const unverifiedLocalPlugins = plugins.filter((plugin) => {
         if (plugin.source === "core") {
@@ -238,7 +247,7 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                                     installingPluginId === moved.id ||
                                     requestState === "loading"
                                 }
-                                onClick={() => entry && void installStorePlugin(entry)}
+                                onClick={() => entry && setMovedConsentId(moved.id)}
                             >
                                 {installingPluginId === moved.id
                                     ? "Installing…"
@@ -581,6 +590,19 @@ export function PluginsSettings({ pluginSnapshot }: PluginsSettingsProps) {
                             />
                         </>
                     }
+                />
+            )}
+
+            {movedConsentEntry && (
+                <PluginInstallConsentDialog
+                    plugin={movedConsentEntry}
+                    isBusy={installingPluginId === movedConsentEntry.id}
+                    onConfirm={async () => {
+                        const entry = movedConsentEntry;
+                        setMovedConsentId(null);
+                        await installStorePlugin(entry);
+                    }}
+                    onClose={() => setMovedConsentId(null)}
                 />
             )}
 

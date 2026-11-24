@@ -17,6 +17,7 @@ import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
 import { PLUGIN_CATEGORY_LABELS, type PluginManifest } from "#frontend/lib/plugins/types";
 import { isNewerVersion } from "#frontend/lib/plugins/version";
 
+import { PluginInstallConsentDialog } from "./plugin-install-consent";
 import { CATEGORY_ICONS } from "./plugin-settings-helpers";
 import { PluginPermissionList, PluginPermissionUnlisted } from "./plugin-permission-list";
 import { findNewPluginPermissions } from "./plugin-permissions";
@@ -82,7 +83,6 @@ export function StorePluginCard({
         installed && installedPlugin && !managesInstalledCopy,
     );
     const permissions = plugin.permissions;
-    const isConsentOpen = consentAction !== null;
     const consentPermissions =
         consentAction === "update"
             ? findNewPluginPermissions(plugin.permissions, installedPlugin?.permissions)
@@ -241,15 +241,11 @@ export function StorePluginCard({
                 <PluginPermissionList permissions={permissions} />
             )}
 
-            {isConsentOpen && (
+            {consentAction === "update" && (
                 <ConfirmDialog
-                    title={
-                        consentAction === "install"
-                            ? `Install ${plugin.name}?`
-                            : `Update ${plugin.name}?`
-                    }
+                    title={`Update ${plugin.name}?`}
                     icon={<ShieldAlert size={19} aria-hidden="true" />}
-                    confirmLabel={consentAction === "install" ? "Install" : "Update"}
+                    confirmLabel="Update"
                     isBusy={isBusy || isUpdating}
                     confirmDisabled={isBlocked}
                     onConfirm={confirmConsent}
@@ -257,26 +253,13 @@ export function StorePluginCard({
                     body={
                         <>
                             <p>
-                                {consentAction === "install"
-                                    ? "SmileyChat will download this extension from the verified registry, install it, and enable it right away."
-                                    : "This update asks for permissions the installed version did not declare."}
+                                This update asks for permissions the installed version
+                                did not declare.
                             </p>
-                            {consentAction === "install" ? (
-                                permissions === undefined ? (
-                                    <PluginPermissionUnlisted />
-                                ) : permissions.length === 0 ? (
-                                    <p className="plugin-permission-none">
-                                        This extension declares no permissions.
-                                    </p>
-                                ) : (
-                                    <PluginPermissionList permissions={permissions} />
-                                )
-                            ) : (
-                                <PluginPermissionList
-                                    permissions={consentPermissions}
-                                    label="New permissions"
-                                />
-                            )}
+                            <PluginPermissionList
+                                permissions={consentPermissions}
+                                label="New permissions"
+                            />
                             <p className="plugin-permission-note">
                                 Permissions describe what a plugin may use, but they are
                                 not a sandbox: installed plugins run as trusted browser
@@ -286,6 +269,17 @@ export function StorePluginCard({
                     }
                 />
             )}
+
+            {consentAction === "install" && (
+                <PluginInstallConsentDialog
+                    plugin={plugin}
+                    isBusy={isBusy}
+                    confirmDisabled={isBlocked}
+                    onConfirm={confirmConsent}
+                    onClose={() => setConsentAction(null)}
+                />
+            )}
+
         </article>
     );
 }

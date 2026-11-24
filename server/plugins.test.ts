@@ -299,7 +299,8 @@ test("installing a moved extension adopts its bundled data", async () => {
     const root = await tempRoot();
     const legacyRoot = join(root, "core-extensions");
     const pluginDir = join(root, "smiley-chat-summarizer");
-    const legacyDir = join(legacyRoot, "smiley-chat-summarizer");
+    // The bundled copy predates the `smiley-` prefix on data folders.
+    const legacyDir = join(legacyRoot, "chat-summarizer");
 
     await mkdir(legacyDir, { recursive: true });
     await Bun.write(join(legacyDir, "settings.json"), '{"summaryWindow":12}');
