@@ -14,11 +14,11 @@
 
 import { ComponentChildren, VNode } from 'preact';
 
-type ChatKind = "direct" | "group";
-type GroupReplyOrder = "natural" | "list" | "pooled";
-type GroupGenerationMode = "swap-character-cards" | "join-character-cards";
-type GroupGreetingMode = "all" | "first" | "none";
-type ChatGroupMember = {
+export type ChatKind = "direct" | "group";
+export type GroupReplyOrder = "natural" | "list" | "pooled";
+export type GroupGenerationMode = "swap-character-cards" | "join-character-cards";
+export type GroupGreetingMode = "all" | "first" | "none";
+export type ChatGroupMember = {
 	characterId: string;
 	name: string;
 	avatarPath?: string;
@@ -26,7 +26,7 @@ type ChatGroupMember = {
 	order: number;
 	talkativeness?: number;
 };
-type ChatGroup = {
+export type ChatGroup = {
 	title?: string;
 	avatar?: {
 		type: "collage" | "custom";
@@ -45,7 +45,7 @@ type ChatGroup = {
 	joinPrefix?: string;
 	scenarioOverride?: string;
 };
-type ChatRuntimeState = {
+export type ChatRuntimeState = {
 	lorebooks?: {
 		entries: Record<string, {
 			activationCount?: number;
@@ -56,13 +56,13 @@ type ChatRuntimeState = {
 		}>;
 	};
 };
-type ChatAuthorNote = {
+export type ChatAuthorNote = {
 	content: string;
 	depth?: number;
 	role?: "system" | "user" | "assistant";
 	isEnabled?: boolean;
 };
-type ChatMetadata = {
+export type ChatMetadata = {
 	/** SmileyChat's local-only grouping marker. Kept in metadata for backwards compatibility. */
 	smileychatGroup?: {
 		groupId: string;
@@ -77,7 +77,7 @@ type ChatMetadata = {
 	};
 	[key: string]: unknown;
 };
-type ChatSession = {
+export type ChatSession = {
 	id: string;
 	version: 1;
 	kind?: ChatKind;
@@ -94,7 +94,7 @@ type ChatSession = {
 	createdAt: string;
 	updatedAt: string;
 };
-type ChatSummary = {
+export type ChatSummary = {
 	id: string;
 	kind?: ChatKind;
 	characterId: string;
@@ -111,7 +111,7 @@ type ChatSummary = {
 	createdAt: string;
 	updatedAt: string;
 };
-type TavernCardDataV2 = {
+export type TavernCardDataV2 = {
 	name: string;
 	description: string;
 	personality: string;
@@ -128,7 +128,7 @@ type TavernCardDataV2 = {
 	character_version: string;
 	extensions: Record<string, unknown>;
 };
-type CharacterBook = {
+export type CharacterBook = {
 	name?: string;
 	description?: string;
 	scan_depth?: number;
@@ -137,7 +137,7 @@ type CharacterBook = {
 	extensions: Record<string, unknown>;
 	entries: CharacterBookEntry[];
 };
-type CharacterBookEntry = {
+export type CharacterBookEntry = {
 	keys: string[];
 	content: string;
 	extensions: Record<string, unknown>;
@@ -153,8 +153,8 @@ type CharacterBookEntry = {
 	constant?: boolean;
 	position?: "before_char" | "after_char";
 };
-type CharacterImportFormat = "json" | "png" | "seed" | "manual";
-type SmileyCharacter = {
+export type CharacterImportFormat = "json" | "png" | "seed" | "manual";
+export type SmileyCharacter = {
 	id: string;
 	version: 1;
 	data: TavernCardDataV2;
@@ -177,7 +177,7 @@ type SmileyCharacter = {
 	createdAt: string;
 	updatedAt: string;
 };
-type CharacterSummary = {
+export type CharacterSummary = {
 	id: string;
 	name: string;
 	tagline: string;
@@ -187,7 +187,7 @@ type CharacterSummary = {
 	isFavorite?: boolean;
 	updatedAt: string;
 };
-type SmileyPersona = {
+export type SmileyPersona = {
 	id: string;
 	version: 1;
 	name: string;
@@ -204,17 +204,17 @@ type SmileyPersona = {
 	createdAt: string;
 	updatedAt: string;
 };
-type PersonaSummary = {
+export type PersonaSummary = {
 	id: string;
 	name: string;
 	dialogueColor?: string;
 	avatar?: SmileyPersona["avatar"];
 	updatedAt: string;
 };
-type PresetPromptRole = "system" | "user" | "assistant";
-type PresetInjectionPosition = "none" | "before" | "after";
-type PresetPromptAnchor = "after-character" | "after-examples" | "after-history" | "after-scenario" | "before-character" | "before-examples" | "before-history" | "before-scenario";
-type PresetPrompt = {
+export type PresetPromptRole = "system" | "user" | "assistant";
+export type PresetInjectionPosition = "none" | "before" | "after";
+export type PresetPromptAnchor = "after-character" | "after-examples" | "after-history" | "after-scenario" | "before-character" | "before-examples" | "before-history" | "before-scenario";
+export type PresetPrompt = {
 	id: string;
 	title: string;
 	role: PresetPromptRole;
@@ -226,11 +226,11 @@ type PresetPrompt = {
 	forbidOverrides: boolean;
 	anchor?: PresetPromptAnchor;
 };
-type PresetPromptOrderEntry = {
+export type PresetPromptOrderEntry = {
 	promptId: string;
 	enabled: boolean;
 };
-type SmileyPreset = {
+export type SmileyPreset = {
 	id: string;
 	title: string;
 	prompts: PresetPrompt[];
@@ -242,9 +242,9 @@ type SmileyPreset = {
 	createdAt: string;
 	updatedAt: string;
 };
-type PresetInstructTemplate = "auto" | "none" | "chatml" | "llama3" | "mistral" | "gemma2" | "alpaca" | "deepseek-r1" | "custom";
-type InstructNamesBehavior = "never" | "force" | "always";
-type PresetFormattingSettings = {
+export type PresetInstructTemplate = "auto" | "none" | "chatml" | "llama3" | "mistral" | "gemma2" | "alpaca" | "deepseek-r1" | "custom";
+export type InstructNamesBehavior = "never" | "force" | "always";
+export type PresetFormattingSettings = {
 	/** Enabled by default; false preserves authored whitespace at sequence seams. */
 	collapseConsecutiveNewlines?: boolean;
 	namesAsStopStrings?: boolean;
@@ -279,7 +279,7 @@ type PresetFormattingSettings = {
 	skipExamples?: boolean;
 	activationRegex?: string;
 };
-type PresetGenerationSettings = {
+export type PresetGenerationSettings = {
 	dryAllowedLength?: number;
 	dryBase?: number;
 	dryMultiplier?: number;
@@ -306,19 +306,19 @@ type PresetGenerationSettings = {
 	mirostatEta?: number;
 	samplerOrder?: number[];
 };
-type PresetCollection = {
+export type PresetCollection = {
 	activePresetId: string;
 	presets: SmileyPreset[];
 };
-type ChatMode = "chat" | "rp";
-type UserStatus = "online" | "away" | "dnd" | "offline";
+export type ChatMode = "chat" | "rp";
+export type UserStatus = "online" | "away" | "dnd" | "offline";
 declare const MessageRole: {
 	readonly Character: "character";
 	readonly System: "system";
 	readonly User: "user";
 };
-type MessageRole = (typeof MessageRole)[keyof typeof MessageRole];
-type Message = {
+export type MessageRole = (typeof MessageRole)[keyof typeof MessageRole];
+export type Message = {
 	id: string;
 	author: string;
 	authorCharacterId?: string;
@@ -332,7 +332,7 @@ type Message = {
 	activeSwipeIndex: number;
 	swipes: MessageSwipe[];
 };
-type MessageToolCall = {
+export type MessageToolCall = {
 	id: string;
 	name: string;
 	displayName?: string;
@@ -340,7 +340,7 @@ type MessageToolCall = {
 	arguments?: Record<string, unknown>;
 	providerState?: unknown;
 };
-type MessageToolResult = {
+export type MessageToolResult = {
 	toolCallId: string;
 	name: string;
 	content: string;
@@ -348,7 +348,7 @@ type MessageToolResult = {
 	imageContext?: string;
 	suppressHistoryProtocol?: boolean;
 };
-type MessageToolActivity = {
+export type MessageToolActivity = {
 	call: MessageToolCall;
 	result: MessageToolResult;
 	/** Present only while the tool call is still in flight. */
@@ -358,7 +358,7 @@ type MessageToolActivity = {
 	/** Total time spent running this tool activity, in milliseconds. */
 	durationMs?: number;
 };
-type SwipeTimelineEntry = {
+export type SwipeTimelineEntry = {
 	id: string;
 	type: "thought";
 	content: string;
@@ -372,7 +372,7 @@ type SwipeTimelineEntry = {
 	type: "tool";
 	activity: MessageToolActivity;
 };
-type MessageMetadata = {
+export type MessageMetadata = {
 	origin?: "plugin";
 	pluginId?: string;
 	displayRole?: "system";
@@ -388,7 +388,7 @@ type MessageMetadata = {
 	};
 	authorDialogueColorSnapshot?: string;
 };
-type ChatAttachment = {
+export type ChatAttachment = {
 	id: string;
 	type: "image" | "file";
 	url: string;
@@ -397,7 +397,7 @@ type ChatAttachment = {
 	sizeBytes?: number;
 	description?: string;
 };
-type MessageSwipe = {
+export type MessageSwipe = {
 	id: string;
 	content: string;
 	attachments?: ChatAttachment[];
@@ -413,12 +413,12 @@ type MessageSwipe = {
 		toolCalls: MessageToolCall[];
 	};
 };
-type LorebookCollection = {
+export type LorebookCollection = {
 	version: 1;
 	activeLorebookId: string;
 	lorebooks: LorebookSummary[];
 };
-type LorebookSummary = {
+export type LorebookSummary = {
 	id: string;
 	title: string;
 	description: string;
@@ -428,7 +428,7 @@ type LorebookSummary = {
 	importedFrom?: LorebookImportMetadata;
 	updatedAt: string;
 };
-type Lorebook = {
+export type Lorebook = {
 	id: string;
 	version: 1;
 	title: string;
@@ -441,7 +441,7 @@ type Lorebook = {
 	createdAt: string;
 	updatedAt: string;
 };
-type LorebookSettings = {
+export type LorebookSettings = {
 	scanDepth: number;
 	tokenBudget: {
 		mode: "percent" | "tokens";
@@ -458,7 +458,7 @@ type LorebookSettings = {
 	insertionStrategy: "sorted-evenly" | "character-first" | "global-first";
 	overflowAlert: boolean;
 };
-type LorebookEntry = {
+export type LorebookEntry = {
 	id: string;
 	uid?: number;
 	enabled: boolean;
@@ -510,18 +510,18 @@ type LorebookEntry = {
 	ignoreBudget: boolean;
 	extensions: Record<string, unknown>;
 };
-type LorebookInsertionPosition = "before-char" | "after-char" | "before-examples" | "after-examples" | "author-note-top" | "author-note-bottom" | "at-depth" | "outlet";
-type LorebookGenerationTrigger = "normal" | "continue" | "impersonate" | "swipe" | "regenerate" | "quiet";
-type LorebookImportMetadata = {
+export type LorebookInsertionPosition = "before-char" | "after-char" | "before-examples" | "after-examples" | "author-note-top" | "author-note-bottom" | "at-depth" | "outlet";
+export type LorebookGenerationTrigger = "normal" | "continue" | "impersonate" | "swipe" | "regenerate" | "quiet";
+export type LorebookImportMetadata = {
 	format: "smiley" | "sillytavern";
 	importedAt?: string;
 	sourceFileName?: string;
 };
-type MessageDensity = "compact" | "comfortable" | "spacious";
-type FontScale = "small" | "default" | "large";
-type TimeFormat = "12h" | "24h";
-type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
-type AppPreferences = {
+export type MessageDensity = "compact" | "comfortable" | "spacious";
+export type FontScale = "small" | "default" | "large";
+export type TimeFormat = "12h" | "24h";
+export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
+export type AppPreferences = {
 	version: 1;
 	appearance: {
 		messageDensity: MessageDensity;
@@ -612,25 +612,25 @@ declare const tokenizerAlgorithms: readonly [
 	"nerdstash",
 	"heuristic"
 ];
-type TokenizerAlgorithm = (typeof tokenizerAlgorithms)[number];
-type TokenizerSelection = {
+export type TokenizerAlgorithm = (typeof tokenizerAlgorithms)[number];
+export type TokenizerSelection = {
 	mode: "auto" | "manual";
 	algorithm?: Exclude<TokenizerAlgorithm, "auto">;
 };
-type TokenCountContext = {
+export type TokenCountContext = {
 	provider: ConnectionProviderId;
 	modelId: string;
 	selection: TokenizerSelection;
 };
-type PromptGenerationTrigger = "send" | "swipe" | "regenerate" | "continue" | "impersonate" | "auto-group" | "plugin" | "quiet";
-type PromptGenerationContext = {
+export type PromptGenerationTrigger = "send" | "swipe" | "regenerate" | "continue" | "impersonate" | "auto-group" | "plugin" | "quiet";
+export type PromptGenerationContext = {
 	activeCharacterId: string;
 	forcedCharacterId?: string;
 	stream: boolean;
 	targetMessageId?: string;
 	trigger: PromptGenerationTrigger;
 };
-type PromptAnchor = "before-character" | "after-character" | "before-examples" | "after-examples" | "before-scenario" | "after-scenario" | "before-history" | "after-history" | "at-depth" | "outlet";
+export type PromptAnchor = "before-character" | "after-character" | "before-examples" | "after-examples" | "before-scenario" | "after-scenario" | "before-history" | "after-history" | "at-depth" | "outlet";
 export type PromptBuildContext = {
 	chat: ChatSession;
 	character: SmileyCharacter;
@@ -673,14 +673,14 @@ export type PromptInjection = {
 	tokenBudgetBehavior?: "counted" | "ignore-budget";
 	metadata?: Record<string, unknown>;
 };
-type PromptBudgetPlan = {
+export type PromptBudgetPlan = {
 	availableHistoryTokens: number;
 	injectionTokens: number;
 	reservedTokens: number;
 	staticPromptTokens: number;
 	tokenBudget: number;
 };
-type PromptBuildDebug = {
+export type PromptBuildDebug = {
 	blocks: PromptDebugBlock[];
 	budget: PromptBudgetPlan;
 	injections: PromptInjection[];
@@ -689,7 +689,7 @@ type PromptBuildDebug = {
 	trimmedMessageIds: string[];
 	warnings: string[];
 };
-type PromptDebugBlock = {
+export type PromptDebugBlock = {
 	/** Matches a compiled message so its label can survive prompt middleware. */
 	messageFingerprint: string;
 	kind: "prompt" | "source";
@@ -699,7 +699,7 @@ type PromptDebugBlock = {
 export type PromptContextMiddleware = (context: PromptBuildContext) => PromptBuildContext | Promise<PromptBuildContext>;
 export type PromptInjector = (context: PromptBuildContext) => PromptInjection[] | Promise<PromptInjection[]>;
 declare const chatImageSourceIndex: unique symbol;
-type ChatGenerationMessageContentPart = {
+export type ChatGenerationMessageContentPart = {
 	type: "text";
 	text: string;
 } | {
@@ -719,13 +719,13 @@ type ChatGenerationMessageContentPart = {
 		url?: string;
 	};
 };
-type ToolDefinition = {
+export type ToolDefinition = {
 	name: string;
 	displayName?: string;
 	description: string;
 	parameters: Record<string, unknown>;
 };
-type ToolCall = {
+export type ToolCall = {
 	id: string;
 	name: string;
 	displayName?: string;
@@ -734,7 +734,7 @@ type ToolCall = {
 	/** Provider-specific content that must be replayed verbatim on the next turn. */
 	providerState?: unknown;
 };
-type ToolResult = {
+export type ToolResult = {
 	toolCallId: string;
 	name: string;
 	content: string;
@@ -746,7 +746,7 @@ type ToolResult = {
 	/** Do not replay this completed tool call/result protocol in later prompts. */
 	suppressHistoryProtocol?: boolean;
 };
-type ToolActivity = {
+export type ToolActivity = {
 	call: ToolCall;
 	result: ToolResult;
 };
@@ -756,8 +756,8 @@ declare const ChatGenerationMessageRole: {
 	readonly System: "system";
 	readonly User: "user";
 };
-type ChatGenerationMessageRole = (typeof ChatGenerationMessageRole)[keyof typeof ChatGenerationMessageRole];
-type ChatGenerationMessage = {
+export type ChatGenerationMessageRole = (typeof ChatGenerationMessageRole)[keyof typeof ChatGenerationMessageRole];
+export type ChatGenerationMessage = {
 	role: ChatGenerationMessageRole;
 	content: string | ChatGenerationMessageContentPart[];
 	/**
@@ -774,7 +774,7 @@ type ChatGenerationMessage = {
 	toolCalls?: ToolCall[];
 	toolResult?: ToolResult;
 };
-type ChatGenerationRequest = {
+export type ChatGenerationRequest = {
 	context?: string;
 	debug?: PromptBuildDebug;
 	generation?: PresetGenerationSettings;
@@ -793,7 +793,7 @@ type ChatGenerationRequest = {
 	stream?: boolean;
 	tools?: ToolDefinition[];
 };
-type ChatGenerationResult = {
+export type ChatGenerationResult = {
 	message: string;
 	images?: string[];
 	provider: string;
@@ -804,7 +804,7 @@ type ChatGenerationResult = {
 	toolCalls?: ToolCall[];
 	toolActivities?: ToolActivity[];
 };
-type ConnectionAdapter = {
+export type ConnectionAdapter = {
 	id: string;
 	label: string;
 	/** The request shape the adapter accepts after prompt compilation. */
@@ -812,7 +812,7 @@ type ConnectionAdapter = {
 	buildPayload: (request: ChatGenerationRequest) => Promise<unknown> | unknown;
 	generate: (request: ChatGenerationRequest) => Promise<ChatGenerationResult>;
 };
-type AnthropicConnectionConfig = {
+export type AnthropicConnectionConfig = {
 	baseUrl: string;
 	apiKey?: string;
 	maxTokens?: number;
@@ -820,7 +820,7 @@ type AnthropicConnectionConfig = {
 	thinking?: AnthropicThinkingConfig;
 	promptCaching?: AnthropicPromptCachingConfig;
 };
-type AnthropicModelSelection = {
+export type AnthropicModelSelection = {
 	source: "default";
 	id: string;
 } | {
@@ -830,7 +830,7 @@ type AnthropicModelSelection = {
 	source: "custom";
 	id: string;
 };
-type AnthropicThinkingConfig = {
+export type AnthropicThinkingConfig = {
 	mode: "off";
 } | {
 	mode: "adaptive";
@@ -841,27 +841,27 @@ type AnthropicThinkingConfig = {
 	budgetTokens?: number;
 	display?: "summarized" | "omitted";
 };
-type AnthropicPromptCachingConfig = {
+export type AnthropicPromptCachingConfig = {
 	mode: "off";
 } | {
 	mode: "auto";
 	ttl: "5m" | "1h";
 };
-type GoogleAIConnectionConfig = {
+export type GoogleAIConnectionConfig = {
 	baseUrl: string;
 	apiKey?: string;
 	maxOutputTokens?: number;
 	model: GoogleAIModelSelection;
 	thinking?: GoogleAIThinkingConfig;
 };
-type GoogleAIThinkingLevel = "minimal" | "low" | "medium" | "high";
-type GoogleAIThinkingConfig = {
+export type GoogleAIThinkingLevel = "minimal" | "low" | "medium" | "high";
+export type GoogleAIThinkingConfig = {
 	includeThoughts?: boolean;
 	mode?: "auto" | "level" | "budget";
 	thinkingLevel?: GoogleAIThinkingLevel;
 	thinkingBudget?: number;
 };
-type GoogleAIModelSelection = {
+export type GoogleAIModelSelection = {
 	source: "default";
 	id: string;
 } | {
@@ -871,20 +871,20 @@ type GoogleAIModelSelection = {
 	source: "custom";
 	id: string;
 };
-type NovelAIConnectionConfig = {
+export type NovelAIConnectionConfig = {
 	apiKey?: string;
 	baseUrl?: string;
 	maxOutputTokens?: number;
 	model: NovelAIModelSelection;
 };
-type NovelAIModelSelection = {
+export type NovelAIModelSelection = {
 	source: "default";
 	id: string;
 } | {
 	source: "custom";
 	id: string;
 };
-type OpenAICompatibleConnectionConfig = {
+export type OpenAICompatibleConnectionConfig = {
 	baseUrl: string;
 	apiKey?: string;
 	cachedModels?: OpenAICompatibleModel[];
@@ -892,7 +892,7 @@ type OpenAICompatibleConnectionConfig = {
 	model: OpenAICompatibleModelSelection;
 	reasoning?: OpenAICompatibleReasoningConfig;
 };
-type OpenAICompatibleModelSelection = {
+export type OpenAICompatibleModelSelection = {
 	source: "default";
 	id: string;
 } | {
@@ -902,30 +902,30 @@ type OpenAICompatibleModelSelection = {
 	source: "custom";
 	id: string;
 };
-type OpenAICompatibleReasoningConfig = {
+export type OpenAICompatibleReasoningConfig = {
 	enabled?: boolean;
 	effort?: "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
 	wireFormat?: "chat-reasoning-effort" | "chat-reasoning-object";
 };
-type OpenAICompatibleModel = {
+export type OpenAICompatibleModel = {
 	id: string;
 	object: "model";
 	created: number;
 	owned_by: string;
 };
-type OpenRouterConnectionConfig = {
+export type OpenRouterConnectionConfig = {
 	apiKey?: string;
 	maxCompletionTokens?: number;
 	model: OpenRouterModelSelection;
 	providerPreferences: OpenRouterProviderPreferences;
 	reasoning?: OpenRouterReasoningConfig;
 };
-type OpenRouterModelSelection = {
+export type OpenRouterModelSelection = {
 	source: "api";
 	id: string;
 	supportedParameters?: string[];
 };
-type OpenRouterProviderPreferences = {
+export type OpenRouterProviderPreferences = {
 	sort?: OpenRouterSort;
 	allow_fallbacks?: boolean;
 	require_parameters?: boolean;
@@ -935,20 +935,20 @@ type OpenRouterProviderPreferences = {
 	only?: string[];
 	ignore?: string[];
 };
-type OpenRouterSort = "price" | "throughput" | "latency";
-type OpenRouterReasoningConfig = {
+export type OpenRouterSort = "price" | "throughput" | "latency";
+export type OpenRouterReasoningConfig = {
 	effort?: "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
 	max_tokens?: number;
 	exclude?: boolean;
 };
-type XAIConnectionConfig = {
+export type XAIConnectionConfig = {
 	baseUrl: string;
 	apiKey?: string;
 	maxCompletionTokens?: number;
 	model: XAIModelSelection;
 	reasoning?: XAIReasoningConfig;
 };
-type XAIModelSelection = {
+export type XAIModelSelection = {
 	source: "default";
 	id: string;
 } | {
@@ -958,13 +958,13 @@ type XAIModelSelection = {
 	source: "custom";
 	id: string;
 };
-type XAIReasoningConfig = {
+export type XAIReasoningConfig = {
 	enabled?: false;
 } | {
 	enabled: true;
 	effort?: "low" | "medium" | "high" | "xhigh";
 };
-type KoboldCPPConnectionConfig = {
+export type KoboldCPPConnectionConfig = {
 	apiKey?: string;
 	baseUrl: string;
 	maxOutputTokens?: number;
@@ -974,8 +974,8 @@ type KoboldCPPConnectionConfig = {
 		id: string;
 	};
 };
-type ConnectionProviderId = "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai" | "koboldcpp" | (string & {});
-type OpenAICompatibleConnectionProfile = {
+export type ConnectionProviderId = "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai" | "koboldcpp" | (string & {});
+export type OpenAICompatibleConnectionProfile = {
 	id: string;
 	name: string;
 	provider: "openai-compatible";
@@ -988,7 +988,7 @@ type OpenAICompatibleConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-type OpenRouterConnectionProfile = {
+export type OpenRouterConnectionProfile = {
 	id: string;
 	name: string;
 	provider: "openrouter";
@@ -1000,7 +1000,7 @@ type OpenRouterConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-type GoogleAIConnectionProfile = {
+export type GoogleAIConnectionProfile = {
 	id: string;
 	name: string;
 	provider: "google-ai";
@@ -1012,7 +1012,7 @@ type GoogleAIConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-type AnthropicConnectionProfile = {
+export type AnthropicConnectionProfile = {
 	id: string;
 	name: string;
 	provider: "anthropic";
@@ -1024,7 +1024,7 @@ type AnthropicConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-type NovelAIConnectionProfile = {
+export type NovelAIConnectionProfile = {
 	id: string;
 	name: string;
 	provider: "novelai";
@@ -1036,7 +1036,7 @@ type NovelAIConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-type XAIConnectionProfile = {
+export type XAIConnectionProfile = {
 	id: string;
 	name: string;
 	provider: "xai";
@@ -1048,11 +1048,11 @@ type XAIConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-type KoboldCPPConnectionProfile = Omit<XAIConnectionProfile, "provider" | "config"> & {
+export type KoboldCPPConnectionProfile = Omit<XAIConnectionProfile, "provider" | "config"> & {
 	provider: "koboldcpp";
 	config: KoboldCPPConnectionConfig;
 };
-type PluginConnectionProfile = {
+export type PluginConnectionProfile = {
 	id: string;
 	name: string;
 	provider: Exclude<ConnectionProviderId, "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai" | "koboldcpp">;
@@ -1064,26 +1064,26 @@ type PluginConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-type ConnectionProfile = OpenAICompatibleConnectionProfile | OpenRouterConnectionProfile | GoogleAIConnectionProfile | AnthropicConnectionProfile | NovelAIConnectionProfile | XAIConnectionProfile | KoboldCPPConnectionProfile | PluginConnectionProfile;
-type ConnectionSettings = {
+export type ConnectionProfile = OpenAICompatibleConnectionProfile | OpenRouterConnectionProfile | GoogleAIConnectionProfile | AnthropicConnectionProfile | NovelAIConnectionProfile | XAIConnectionProfile | KoboldCPPConnectionProfile | PluginConnectionProfile;
+export type ConnectionSettings = {
 	version: 1;
 	activeProfileId: string;
 	profiles: ConnectionProfile[];
 };
-type InstructTemplateId = "auto" | "llama3" | "chatml" | "mistral" | "gemma2" | "alpaca" | "deepseek-r1";
-type ChatMetadataPatch = Partial<Pick<ChatSession, "title" | "defaultTitle" | "mode">> & {
+export type InstructTemplateId = "auto" | "llama3" | "chatml" | "mistral" | "gemma2" | "alpaca" | "deepseek-r1";
+export type ChatMetadataPatch = Partial<Pick<ChatSession, "title" | "defaultTitle" | "mode">> & {
 	metadata?: Partial<ChatMetadata>;
 };
-type MessageFormattingOptions = {
+export type MessageFormattingOptions = {
 	highlightQuotes: boolean;
 	italicizeMessages: boolean;
 	hideNamePrefix?: boolean;
 };
-type PromptOutletRegistry = {
+export type PromptOutletRegistry = {
 	add(outletName: string, injection: PromptInjection): void;
 	render(outletName: string): string;
 };
-type MacroContext = {
+export type MacroContext = {
 	character: SmileyCharacter;
 	formatting?: PresetFormattingSettings;
 	group?: {
