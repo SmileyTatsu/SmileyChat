@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
+import { createBlankCharacter } from "../characters/normalize";
 import {
     applyMessageDisplayMiddlewares,
     closePluginModal,
@@ -15,7 +16,9 @@ import {
     getPluginModalInstances,
     getPluginSettingsDefinition,
     getPluginSettingsPanels,
+    getPendingPluginConfirms,
     getPluginSettingsRecord,
+    resolvePluginConfirm,
     getPluginSettingsValue,
     setPluginModelHandlers,
     setPluginPresetHandlers,
@@ -374,6 +377,97 @@ describe("plugin registry runtime isolation", () => {
         expect(api.presets.resolveMacros("Hi {{char}}")).toBe("Hi Luna");
 
         setPluginPresetHandlers({});
+    });
+
+    test("message helpers report the active swipe", () => {
+        const api = pluginApi(uniqueId("message-helper"), []);
+
+        const message = {
+            id: "message-1",
+            role: "assistant",
+            activeSwipeIndex: 1,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            swipes: [
+                { id: "swipe-1", content: "first draft" },
+                { id: "swipe-2", content: "second draft" },
+            ],
+        } as never;
+
+        expect(api.messages.content(message)).toBe("second draft");
+        expect(api.messages.content({ swipes: [] } as never)).toBe("");
+    });
+
+    test("util helpers are the app's own implementations", () => {
+        const api = pluginApi(uniqueId("util-helper"), []);
+
+        expect(api.util.createId("thing")).toStartWith("thing-");
+        expect(api.util.isAbortError(new DOMException("stop", "AbortError"))).toBe(true);
+        expect(api.util.isAbortError(new Error("other"))).toBe(false);
+    });
+
+    test("confirm queues a host dialog and resolves with the answer", async () => {
+        const api = pluginApi(uniqueId("confirm-plugin"), ["ui:modals"]);
+
+        const first = api.ui.confirm({ title: "Delete?", message: "Sure?" });
+        const second = api.ui.confirm({ title: "Second", message: "Later?" });
+
+        const queued = getPendingPluginConfirms().filter(
+            (item) => item.options.title === "Delete?" || item.options.title === "Second",
+        );
+
+        expect(queued).toHaveLength(2);
+        expect(queued[0].options.title).toBe("Delete?");
+
+        resolvePluginConfirm(queued[0].id, true);
+        expect(await first).toBe(true);
+
+        resolvePluginConfirm(queued[1].id, false);
+        expect(await second).toBe(false);
+        expect(getPendingPluginConfirms()).toHaveLength(0);
+    });
+
+    test("confirm requires the modals permission", () => {
+        const api = pluginApi(uniqueId("confirm-no-permission"), []);
+
+        expect(() => api.ui.confirm({ title: "Nope", message: "Nope" })).toThrow(
+            'needs "ui:modals" permission',
+        );
+    });
+
+    test("preset compilation needs its own permission", () => {
+        const macroOnly = pluginApi(uniqueId("compile-no-permission"), [
+            "presets:macros",
+        ]);
+
+        expect(() => macroOnly.presets.compileMessages(undefined, {} as never)).toThrow(
+            'needs "presets:compile" permission',
+        );
+    });
+
+    test("preset compilation returns the default prompt order for history", () => {
+        const api = pluginApi(uniqueId("compile-ok"), ["presets:compile"]);
+        const character = createBlankCharacter("Luna");
+        const messages = [
+            {
+                id: "message-1",
+                role: "user",
+                createdAt: "2026-01-01T00:00:00.000Z",
+                activeSwipeIndex: 0,
+                swipes: [{ id: "swipe-1", content: "Hello there" }],
+            },
+        ] as never;
+
+        const compiled = api.presets.compileMessages(undefined, {
+            character,
+            messages,
+            mode: "chat",
+            personaDescription: "",
+            personaName: "Anon",
+            userStatus: "online",
+        });
+
+        expect(compiled.length).toBeGreaterThan(0);
+        expect(compiled[compiled.length - 1]?.content).toContain("Hello there");
     });
 
     test("model token estimate uses the shared generation message estimator", () => {

@@ -85,6 +85,10 @@ const PERMISSION_DETAILS: Record<string, { label: string; description: string }>
         label: "Add preset macros",
         description: "Provides and resolves {{macro}} placeholders in presets.",
     },
+    "presets:compile": {
+        label: "Compile presets",
+        description: "Turns one saved preset into the prompt sent to the model.",
+    },
     "tools:register": {
         label: "Register AI tools",
         description: "Exposes tools that the AI can call during a chat.",

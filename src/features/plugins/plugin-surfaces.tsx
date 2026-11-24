@@ -1,11 +1,14 @@
 import { X } from "lucide-preact";
 import { useEffect, useRef } from "preact/hooks";
 
+import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
     closePluginModal,
+    getPendingPluginConfirms,
     getPluginCharacterDetailsSections,
     getPluginModalInstances,
     getPluginSidebarPanels,
+    resolvePluginConfirm,
 } from "#frontend/lib/plugins/registry";
 import { createPluginStorage } from "#frontend/lib/plugins/runtime";
 import type {
@@ -157,6 +160,33 @@ export function PluginModalHost({ snapshot }: PluginModalHostProps) {
                 <PluginModalFrame key={modal.id} modal={modal} snapshot={snapshot} />
             ))}
         </>
+    );
+}
+
+/**
+ * Draws the confirmation a plugin asked for with `api.ui.confirm`.
+ *
+ * The head of the queue only, so a second request waits instead of opening a
+ * dialog on top of the one the user is already reading.
+ */
+export function PluginConfirmHost() {
+    const [pending] = getPendingPluginConfirms();
+
+    if (!pending) {
+        return null;
+    }
+
+    return (
+        <ConfirmDialog
+            title={pending.options.title}
+            message={pending.options.message}
+            details={pending.options.details}
+            confirmLabel={pending.options.confirmLabel}
+            cancelLabel={pending.options.cancelLabel}
+            variant={pending.options.destructive ? "danger" : "default"}
+            onConfirm={() => resolvePluginConfirm(pending.id, true)}
+            onClose={() => resolvePluginConfirm(pending.id, false)}
+        />
     );
 }
 

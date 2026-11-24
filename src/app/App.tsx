@@ -5,7 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 
 import { ChatWorkspace } from "#frontend/features/chat/chat-workspace";
 import { ChatPayloadModal } from "#frontend/features/chat/chat-payload-modal";
-import { PluginModalHost } from "#frontend/features/plugins/plugin-surfaces";
+import {
+    PluginConfirmHost,
+    PluginModalHost,
+} from "#frontend/features/plugins/plugin-surfaces";
 
 import {
     loadAppPreferences,
@@ -1493,6 +1496,7 @@ export function App() {
             />
 
             <PluginModalHost snapshot={pluginSnapshot} />
+            <PluginConfirmHost />
             {isPayloadModalOpen && debugPayloadData ? (
                 <ChatPayloadModal
                     data={debugPayloadData}

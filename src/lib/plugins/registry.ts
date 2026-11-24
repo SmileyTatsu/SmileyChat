@@ -1,6 +1,9 @@
 import type { h } from "preact";
 
+import { isAbortError } from "../common/abort";
 import { createId } from "../common/ids";
+import { getMessageContent } from "../messages";
+import { compilePresetMessages } from "../presets/compile";
 import { localApiFetch } from "../api/client";
 import { clientLogger, createClientLogger } from "../logging/client-logger";
 import type { ConnectionProfile } from "../connections/config";
@@ -29,6 +32,7 @@ import type {
     PluginComposerOption,
     PluginComposerCommand,
     PluginAppDataChangedEvent,
+    PluginConfirmOptions,
     PluginConnectionProvider,
     PluginEventsApi,
     PluginHeaderAction,
@@ -384,6 +388,8 @@ export function recordPluginDisposer(
 }
 
 export function deactivatePlugin(pluginId: string) {
+    // A dialog left open by a plugin that is being unloaded would hang forever.
+    cancelPluginConfirms(pluginId);
     const dispose = pluginDisposers.get(pluginId);
 
     if (dispose) {
@@ -540,6 +546,49 @@ export function getPluginHeaderActions() {
 
 export function getPluginModalInstances() {
     return enabledValues(modalInstances);
+}
+
+type PendingPluginConfirm = {
+    id: string;
+    pluginId: string;
+    options: PluginConfirmOptions;
+    resolve: (confirmed: boolean) => void;
+};
+
+const pendingConfirms: PendingPluginConfirm[] = [];
+
+/**
+ * Queues a host-rendered confirmation and returns its answer.
+ *
+ * Only one is shown at a time: the app renders the head of the queue, so two
+ * plugins asking at once cannot stack dialogs on top of each other.
+ */
+export function getPendingPluginConfirms(): PendingPluginConfirm[] {
+    return [...pendingConfirms];
+}
+
+export function resolvePluginConfirm(confirmId: string, confirmed: boolean) {
+    const index = pendingConfirms.findIndex((item) => item.id === confirmId);
+
+    if (index < 0) {
+        return;
+    }
+
+    const [pending] = pendingConfirms.splice(index, 1);
+    pending.resolve(confirmed);
+    notifyRegistryChanged();
+}
+
+/** Answers every open confirmation with `false` when its plugin goes away. */
+function cancelPluginConfirms(pluginId: string) {
+    for (let index = pendingConfirms.length - 1; index >= 0; index -= 1) {
+        if (pendingConfirms[index].pluginId !== pluginId) {
+            continue;
+        }
+
+        const [pending] = pendingConfirms.splice(index, 1);
+        pending.resolve(false);
+    }
 }
 
 export function closePluginModal(modalId: string) {
@@ -890,6 +939,18 @@ export function createPluginApi(
                 });
                 notifyRegistryChanged();
             },
+            confirm(options) {
+                requireDeclaredPluginPermission(manifest, "ui:modals");
+                return new Promise<boolean>((resolve) => {
+                    pendingConfirms.push({
+                        id: createId("confirm"),
+                        pluginId: manifest.id,
+                        options,
+                        resolve,
+                    });
+                    notifyRegistryChanged();
+                });
+            },
             openModal(modal) {
                 requireDeclaredPluginPermission(manifest, "ui:modals");
                 const modalId = pluginScopedId(
@@ -1021,6 +1082,23 @@ export function createPluginApi(
                 }
 
                 return handler(text, options);
+            },
+            compileMessages(preset, context) {
+                requireDeclaredPluginPermission(manifest, "presets:compile");
+                return compilePresetMessages(preset, context);
+            },
+        },
+        messages: {
+            content(message) {
+                return getMessageContent(message);
+            },
+        },
+        util: {
+            createId(prefix) {
+                return createId(prefix);
+            },
+            isAbortError(error) {
+                return isAbortError(error);
             },
         },
         connections: {

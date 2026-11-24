@@ -1540,6 +1540,39 @@ export type PluginModelGenerateRequest = {
 	onToken?: (token: string) => void;
 	stream?: boolean;
 };
+/**
+ * The subset of the compile context a plugin can fill in.
+ *
+ * Mirrors the app's own context without exposing fields plugins have no source
+ * for (group joins, outlets, generation overrides), so the published typings
+ * cannot promise more than the runtime reads.
+ */
+export type PluginPresetCompileContext = {
+	character: SmileyCharacter;
+	messages: Message[];
+	mode: ChatMode;
+	personaDescription: string;
+	personaName: string;
+	userStatus: UserStatus;
+	formatting?: PresetFormattingSettings;
+	isTextCompletion?: boolean;
+	historyMessages?: Message[];
+};
+/**
+ * Read-only helpers for the message model.
+ *
+ * Plugins render and transform message text constantly; without this they each
+ * hand-roll the "visible swipe" rule and drift from the app.
+ */
+export type PluginMessagesApi = {
+	/** Text of the active swipe, or an empty string. */
+	content(message: Message): string;
+};
+/** Small pure helpers, exposed so plugins stop reimplementing them. */
+export type PluginUtilApi = {
+	createId(prefix: string): string;
+	isAbortError(error: unknown): boolean;
+};
 export type PluginModelContextBudgetRequest = {
 	profileId?: string;
 };
@@ -1562,6 +1595,22 @@ export type PluginLoggerApi = {
 	debug(message: string, detail?: Record<string, unknown>): void;
 	warn(message: string, detail?: Record<string, unknown>): void;
 	error(message: string, error?: unknown): void;
+};
+/**
+ * A yes/no question the app renders with its own dialog.
+ *
+ * Plugins run inside the host page, so letting them render a modal of their own
+ * would either duplicate the app's dialog styling or bypass its focus handling.
+ * The host draws this one and resolves the promise with the answer.
+ */
+export type PluginConfirmOptions = {
+	title: string;
+	message: string;
+	/** Extra lines shown under the message. */
+	details?: string[];
+	confirmLabel?: string;
+	cancelLabel?: string;
+	destructive?: boolean;
 };
 export type PluginModalProps = {
 	close: () => void;
@@ -1599,6 +1648,7 @@ export type SmileyPluginApi = {
 		registerComposerOption(option: PluginComposerOption): void;
 		registerHeaderAction(action: PluginHeaderAction): void;
 		openModal(modal: PluginModal): () => void;
+		confirm(options: PluginConfirmOptions): Promise<boolean>;
 		addStyles(cssText: string): () => void;
 		setComposerState(state: PluginComposerStatePatch): void;
 	};
@@ -1613,7 +1663,15 @@ export type SmileyPluginApi = {
 	presets: {
 		registerMacro(name: string, resolver: PluginMacroResolver): void;
 		resolveMacros(text: string, options?: PluginMacroResolveOptions): string;
+		/**
+		 * Compiles one preset into ordered chat-completion messages. Passing
+		 * `undefined` compiles the default prompt order, which is what a plugin
+		 * wants when its pass only needs history plus a task instruction.
+		 */
+		compileMessages(preset: SmileyPreset | undefined, context: PluginPresetCompileContext): ChatGenerationMessage[];
 	};
+	messages: PluginMessagesApi;
+	util: PluginUtilApi;
 	connections: PluginConnectionsApi;
 	formatting: PluginFormattingApi;
 	commands: {
