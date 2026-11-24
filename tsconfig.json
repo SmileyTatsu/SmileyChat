@@ -23,6 +23,6 @@
             "#frontend/*": ["./src/*"]
         }
     },
-    "include": ["src", "server"],
+    "include": ["src", "server", "scripts"],
     "references": []
 }

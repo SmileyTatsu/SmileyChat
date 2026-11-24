@@ -46,6 +46,14 @@ export const PLUGIN_CATEGORIES = [
 
 export type PluginCategory = (typeof PLUGIN_CATEGORIES)[number];
 
+/**
+ * Plugin API contract this app build exposes. A plugin manifest declares the
+ * contract it was built against with `apiVersion`; anything newer is refused.
+ * Bump this when the plugin surface breaks in a way an old plugin cannot
+ * survive.
+ */
+export const PLUGIN_API_VERSION = 1;
+
 export const PLUGIN_CATEGORY_LABELS: Record<PluginCategory, string> = {
     interface: "Interface",
     "input-output": "Input & Output",

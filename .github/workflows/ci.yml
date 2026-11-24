@@ -25,6 +25,9 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Plugin API typings are up to date
+        run: bun run plugin-types:check
+
       - name: Tests
         run: bun test
 

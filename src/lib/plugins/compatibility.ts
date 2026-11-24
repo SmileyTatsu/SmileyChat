@@ -15,10 +15,10 @@
  */
 
 import type { PluginManifest } from "./types";
+import { PLUGIN_API_VERSION } from "./types";
 import { compareVersions, isValidVersion } from "./version";
 
-/** Plugin API contract exposed by this app build. Bump when the surface breaks. */
-export const PLUGIN_API_VERSION = 1;
+export { PLUGIN_API_VERSION };
 
 /** Raw manifest values; validated here so a malformed field reports a reason. */
 export type PluginCompatibilityInput = {
