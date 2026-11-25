@@ -301,6 +301,29 @@ describe("plugin registry runtime isolation", () => {
         dispose();
     });
 
+    test("a tool whose availability check throws is unavailable instead of breaking discovery", () => {
+        console.warn = () => {};
+        const pluginId = uniqueId("tool-throws");
+        const api = pluginApi(pluginId, ["tools:register"]);
+
+        const dispose = api.tools.registerTool({
+            name: uniqueId("tool"),
+            description: "A test tool.",
+            parameters: { type: "object" },
+            isAvailable: () => {
+                throw new Error("needs approval");
+            },
+            run: () => "unused",
+        });
+        const tool = getRegisteredPluginTools({} as PluginAppSnapshot).find(
+            (entry) => entry.pluginId === pluginId,
+        );
+
+        expect(tool?.isAvailable).toBe(false);
+
+        dispose();
+    });
+
     test("display middleware failures preserve the original message text", () => {
         console.warn = () => {};
         const api = pluginApi(uniqueId("message-display"), ["chat:display"]);

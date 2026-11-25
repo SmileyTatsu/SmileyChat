@@ -680,6 +680,43 @@ export type RegisteredPluginTool = {
     tool: PluginTool;
 };
 
+/**
+ * Runs a plugin tool's `isAvailable` check without letting it break rendering.
+ *
+ * The check runs while components render (the chat details panel lists tools on
+ * every snapshot change). A plugin that throws here, for example because it asks
+ * for connection secrets it has not been granted, aborted the whole app render:
+ * connection settings, favorites and loaded model lists stopped updating until a
+ * reload. A throwing check now counts as "unavailable" and is logged once.
+ */
+function isPluginToolAvailable(
+    pluginId: string,
+    tool: PluginTool,
+    snapshot: PluginAppSnapshot | undefined,
+) {
+    if (!snapshot || !tool.isAvailable) {
+        return true;
+    }
+
+    try {
+        return tool.isAvailable(snapshot);
+    } catch (error) {
+        const key = `${pluginId}:${tool.name}`;
+
+        if (!toolAvailabilityFailures.has(key)) {
+            toolAvailabilityFailures.add(key);
+            createClientLogger(pluginId).warn(
+                `Tool ${tool.name} availability check failed; treating it as unavailable`,
+                error,
+            );
+        }
+
+        return false;
+    }
+}
+
+const toolAvailabilityFailures = new Set<string>();
+
 export function getRegisteredPluginTools(
     snapshot = latestSnapshot,
 ): RegisteredPluginTool[] {
@@ -699,7 +736,7 @@ export function getRegisteredPluginTools(
                 groupLabel: group?.label?.trim() || manifest?.name || pluginId,
                 ...(group?.category ? { category: group.category } : {}),
                 source,
-                isAvailable: !snapshot || !tool.isAvailable || tool.isAvailable(snapshot),
+                isAvailable: isPluginToolAvailable(pluginId, tool, snapshot),
                 tool,
             };
         });
@@ -723,7 +760,7 @@ export function getPluginTool(name: string, snapshot = latestSnapshot) {
     const tool = pluginTools.get(name);
     return tool &&
         isPluginEnabled(tool.pluginId) &&
-        (!snapshot || !tool.value.isAvailable || tool.value.isAvailable(snapshot))
+        isPluginToolAvailable(tool.pluginId, tool.value, snapshot)
         ? tool.value
         : undefined;
 }
