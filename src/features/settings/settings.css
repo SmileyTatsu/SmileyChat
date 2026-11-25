@@ -973,6 +973,19 @@
     color: #ffb4bd;
 }
 
+/*
+ * Phone touch target: the grant track is 38x22 with no label text, so the
+ * switch's only hit area is the track itself. Symmetric padding grows the
+ * label to 44x44 and the matching negative margins pull the box back, so the
+ * switch keeps its position and the row keeps its height.
+ */
+@media (max-width: 640px) {
+    .plugin-grant-list .plugin-toggle {
+        padding: 11px 3px;
+        margin: -11px -3px;
+    }
+}
+
 .plugin-permission-unlisted {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
