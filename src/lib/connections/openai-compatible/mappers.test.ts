@@ -24,6 +24,44 @@ describe("OpenAI-compatible connection mappers", () => {
         expect(body.reasoning).toBeUndefined();
     });
 
+    test("passes max reasoning_effort through", () => {
+        const body = createChatCompletionBody(
+            {
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+            },
+            {
+                baseUrl: "https://api.openai.com/v1",
+                model: { source: "default", id: "gpt-5.5" },
+                reasoning: {
+                    enabled: true,
+                    effort: "max",
+                    wireFormat: "chat-reasoning-effort",
+                },
+            },
+        );
+
+        expect(body.reasoning_effort).toBe("max");
+
+        const objectBody = createChatCompletionBody(
+            {
+                messages: [],
+                promptMessages: [{ role: "user", content: "Hello" }],
+            },
+            {
+                baseUrl: "https://api.openai.com/v1",
+                model: { source: "default", id: "gpt-5.5" },
+                reasoning: {
+                    enabled: true,
+                    effort: "max",
+                    wireFormat: "chat-reasoning-object",
+                },
+            },
+        );
+
+        expect(objectBody.reasoning).toEqual({ effort: "max" });
+    });
+
     test("uses configured max_completion_tokens", () => {
         const body = createChatCompletionBody(
             {

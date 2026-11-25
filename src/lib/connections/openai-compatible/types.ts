@@ -28,7 +28,7 @@ export type OpenAICompatibleModelSelection =
 
 export type OpenAICompatibleReasoningConfig = {
     enabled?: boolean;
-    effort?: "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
+    effort?: "max" | "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
     wireFormat?: "chat-reasoning-effort" | "chat-reasoning-object";
 };
 

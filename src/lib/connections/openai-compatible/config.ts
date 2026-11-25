@@ -97,7 +97,8 @@ function normalizeOpenAICompatibleReasoningConfig(
 function normalizeOpenAICompatibleReasoningEffort(
     value: unknown,
 ): OpenAICompatibleReasoningConfig["effort"] | undefined {
-    return value === "xhigh" ||
+    return value === "max" ||
+        value === "xhigh" ||
         value === "high" ||
         value === "medium" ||
         value === "low" ||
