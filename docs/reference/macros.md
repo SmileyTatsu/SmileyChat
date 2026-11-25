@@ -51,6 +51,15 @@ These macros provide access to the current chat session's flow. Note: To prevent
 - `{{// your comment here }}`: A comment macro. Everything inside will be removed entirely during preset compilation. Useful for adding notes to your preset prompts.
 - `{{outlet::outlet_name}}`: Used internally and by plugins to inject dynamic content registered via prompt outlets.
 
+## Random choice
+
+These macros pick one option from a list, so a prompt can vary details between generations.
+
+- `{{random::sunny::rainy::cloudy}}`: Replaced with a freshly rolled option on every compilation.
+- `{{pick::sunny::rainy::cloudy}}`: Replaced with an option that stays the same for the current chat turn. Every `pick` with the same list inside one prompt agrees, and regenerating that turn keeps the same option; the next turn rolls again. Use it for details that must stay self-consistent (an outfit, a location, a name), and `random` when you want a fresh roll each time.
+
+Options are separated by `::` (SillyTavern style); a plain comma list works too: `{{random::sunny, rainy, cloudy}}`. Each option is trimmed and empty options are ignored. Options cannot contain other macros, because `{{…}}` tokens do not nest, and a `random` / `pick` macro written without options is left as literal text.
+
 ## Preset conditionals
 
 Preset blocks support `{{#if macro}}...{{else}}...{{/if}}` and `{{#unless macro}}...{{else}}...{{/unless}}`. Conditionals can be nested; each closing tag matches its own enclosing block. The macro name is evaluated by whether its resolved value contains non-whitespace content.

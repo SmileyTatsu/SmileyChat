@@ -63,6 +63,26 @@ describe("compilePresetMessages", () => {
         ]);
     });
 
+    test("resolves random and pick macros inside compiled prompts and character text", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.character, "Character Description", ""),
+            prompt("weather", "Weather", "Weather: {{random::sunny::rainy::cloudy}}"),
+            prompt("mood", "Mood", "Mood: {{pick::calm::tense}}"),
+        ]);
+        const character = createCharacter();
+        character.data.description = "Wearing {{random::a red coat::a blue coat}}.";
+
+        const text = textContents(
+            compilePresetMessages(preset, { ...context(), character }),
+        ).join("\n");
+
+        expect(
+            text.includes("Wearing a red coat.") || text.includes("Wearing a blue coat."),
+        ).toBe(true);
+        expect(text).toMatch(/Weather: (sunny|rainy|cloudy)/);
+        expect(text).toMatch(/Mood: (calm|tense)/);
+    });
+
     test("does not append dynamic content when slot prompts contain text", () => {
         const preset = presetWithPrompts([
             prompt(

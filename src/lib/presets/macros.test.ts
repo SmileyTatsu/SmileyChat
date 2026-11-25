@@ -162,6 +162,74 @@ describe("resolvePresetMacros", () => {
         ).toBe("Top|Bottom");
     });
 
+    test("resolves {{random::}} to one of its options", () => {
+        const context = createMacroContext();
+        const options = ["sunny", "rainy", "cloudy"];
+        const resolved = resolvePresetMacros("{{random::sunny::rainy::cloudy}}", context);
+
+        expect(options).toContain(resolved);
+    });
+
+    test("resolves {{random::}} with a comma separated list and trims options", () => {
+        const context = createMacroContext();
+        const resolved = resolvePresetMacros("{{random:: one, two , three }}", context);
+
+        expect(["one", "two", "three"]).toContain(resolved);
+    });
+
+    test("keeps a {{random}} macro without options literal", () => {
+        const context = createMacroContext();
+
+        expect(resolvePresetMacros("{{random}}", context)).toBe("{{random}}");
+        expect(resolvePresetMacros("{{random::}}", context)).toBe("{{random::}}");
+    });
+
+    test("rolls different options across compilations", () => {
+        const context = createMacroContext();
+        const seen = new Set<string>();
+
+        for (let index = 0; index < 200; index += 1) {
+            seen.add(resolvePresetMacros("{{random::a::b::c}}", context));
+        }
+
+        expect(seen.size).toBeGreaterThan(1);
+    });
+
+    test("keeps {{pick::}} stable for every occurrence in the same turn", () => {
+        const context = createMacroContext();
+        const resolved = resolvePresetMacros(
+            "{{pick::red::green::blue}}|{{pick::red::green::blue}}",
+            context,
+        );
+        const [first, second] = resolved.split("|");
+
+        expect(["red", "green", "blue"]).toContain(first);
+        expect(second).toBe(first);
+        expect(resolvePresetMacros("{{pick::red::green::blue}}", context)).toBe(first);
+    });
+
+    test("changes {{pick::}} when the chat turn moves on", () => {
+        const options = ["red", "green", "blue", "amber", "violet"];
+        const template = "{{pick::red::green::blue::amber::violet}}";
+        const seen = new Set<string>();
+
+        for (let index = 0; index < 40; index += 1) {
+            seen.add(
+                resolvePresetMacros(
+                    template,
+                    createMacroContext({
+                        messages: [message(`m-${index}`, "user", "next turn")],
+                    }),
+                ),
+            );
+        }
+
+        expect(seen.size).toBeGreaterThan(1);
+        for (const value of seen) {
+            expect(options).toContain(value);
+        }
+    });
+
     test("resolves {{chat_history}} respecting namesBehavior setting", () => {
         const messages = [
             message("m1", "user", "Hello there"),

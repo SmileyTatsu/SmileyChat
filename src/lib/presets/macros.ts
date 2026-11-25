@@ -39,6 +39,7 @@ type MacroValue = {
 
 const commentMacroPattern = /\{\{\/\/[\s\S]*?\}\}/g;
 const macroPattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
+const randomMacroPattern = /^(random|pick)\s*(?:::|:)([\s\S]*)$/i;
 const maxNestedMacroDepth = 8;
 
 export function resolvePresetMacros(content: string, context: MacroContext) {
@@ -431,6 +432,12 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
         return { recursive: true, value: context.outlets?.render(outletName) ?? "" };
     }
 
+    const randomValue = randomMacroValue(key, context);
+
+    if (randomValue) {
+        return randomValue;
+    }
+
     const lower = key.toLowerCase().replace(/[\s_-]+/g, "");
 
     // System prompt alias that checks formatting.systemPrompt fallback if character prompt is empty (text completion only)
@@ -566,6 +573,67 @@ function characterCardMacroValue(
 function outletMacroName(key: string) {
     const match = /^outlet::(.+)$/i.exec(key.trim());
     return match ? match[1].trim() : undefined;
+}
+
+/**
+ * `{{random::a::b}}` rolls a fresh option on every compilation.
+ * `{{pick::a::b}}` keeps one option per chat turn: the roll is derived from the
+ * last message, so every `pick` with the same options in this prompt (and a
+ * regeneration of this turn) agrees, while the next turn rolls again.
+ */
+function randomMacroValue(key: string, context: MacroContext): MacroValue | undefined {
+    const match = randomMacroPattern.exec(key.trim());
+
+    if (!match) {
+        return undefined;
+    }
+
+    const options = randomMacroOptions(match[2]);
+
+    if (options.length === 0) {
+        return undefined;
+    }
+
+    const choice =
+        match[1].toLowerCase() === "pick"
+            ? options[stablePickIndex(match[2], options.length, context)]
+            : options[Math.floor(Math.random() * options.length)];
+
+    return { value: choice };
+}
+
+/** `::` is the SillyTavern separator; a bare comma list works too. */
+function randomMacroOptions(body: string) {
+    const separator = body.includes("::") ? "::" : ",";
+
+    return body
+        .split(separator)
+        .map((option) => option.trim())
+        .filter((option) => option.length > 0);
+}
+
+// FNV-1a over the turn seed and the option list keeps `pick` reproducible.
+function stablePickIndex(body: string, count: number, context: MacroContext) {
+    const input = `${pickSeed(context)}\u0000${body}`;
+    let hash = 2166136261;
+
+    for (let index = 0; index < input.length; index += 1) {
+        hash ^= input.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+
+    return Math.abs(hash % count);
+}
+
+function pickSeed(context: MacroContext) {
+    const lastMessage = context.messages[context.messages.length - 1];
+
+    return [
+        context.character.id,
+        context.mode,
+        String(context.messages.length),
+        lastMessage?.id ?? "",
+    ].join("\u0000");
 }
 
 function pluginMacroValue(key: string, context: MacroContext) {
