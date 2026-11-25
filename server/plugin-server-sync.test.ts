@@ -4,7 +4,11 @@ import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { pluginHasGrant, writePluginPermissionGrant } from "./plugin-grants";
+import {
+    pluginHasGrant,
+    readPluginGrantsState,
+    writePluginPermissionGrant,
+} from "./plugin-grants";
 import {
     getPluginServerStatus,
     handlePluginServerRequest,
@@ -155,7 +159,7 @@ async function writeInstallMetadata(pluginRoot: string, pluginId: string) {
     });
 }
 
-async function grantServerProcess(
+async function grantPermissions(
     pluginId: string,
     grantsPath: string,
     permissions: string[] = ["server:process"],
@@ -164,8 +168,9 @@ async function grantServerProcess(
         pluginId,
         { permissions },
         {
+            // The writer only checks that the manifest declares what is asked.
             readManifests: async () => [
-                { id: pluginId, permissions: ["server:process"] },
+                { id: pluginId, permissions: ["server:process", "connections:secrets"] },
             ],
             pathname: grantsPath,
         },
@@ -240,7 +245,7 @@ describe("plugin server sync", () => {
         const grantsPath = join(root, "settings", "plugin-grants.json");
         const fixture = await makeServerPlugin(root, uniqueId("granted"));
 
-        await grantServerProcess(fixture.pluginId, grantsPath);
+        await grantPermissions(fixture.pluginId, grantsPath);
         await syncWith(root, grantsPath);
 
         expect(await readText(fixture.markerPath)).toBe("activated");
@@ -266,7 +271,7 @@ describe("plugin server sync", () => {
         const grantsPath = join(root, "settings", "plugin-grants.json");
         const fixture = await makeServerPlugin(root, uniqueId("disabled"));
 
-        await grantServerProcess(fixture.pluginId, grantsPath);
+        await grantPermissions(fixture.pluginId, grantsPath);
         await syncWith(root, grantsPath);
 
         const pid = await readPid(fixture.pidPath);
@@ -313,13 +318,13 @@ describe("plugin server sync", () => {
         const grantsPath = join(root, "settings", "plugin-grants.json");
         const fixture = await makeServerPlugin(root, uniqueId("revoked"));
 
-        await grantServerProcess(fixture.pluginId, grantsPath);
+        await grantPermissions(fixture.pluginId, grantsPath);
         await syncWith(root, grantsPath);
 
         const pid = await readPid(fixture.pidPath);
         expect(isRunning(pid)).toBe(true);
 
-        await grantServerProcess(fixture.pluginId, grantsPath, []);
+        await grantPermissions(fixture.pluginId, grantsPath, []);
         await syncWith(root, grantsPath);
 
         expect(await waitUntilDead(pid)).toBe(true);
@@ -332,7 +337,7 @@ describe("plugin server sync", () => {
         const fixture = await makeServerPlugin(root, uniqueId("privileged-update"));
 
         await writeInstallMetadata(fixture.pluginRoot, fixture.pluginId);
-        await grantServerProcess(fixture.pluginId, grantsPath);
+        await grantPermissions(fixture.pluginId, grantsPath);
         await syncWith(root, grantsPath);
 
         const pid = await readPid(fixture.pidPath);
@@ -379,7 +384,7 @@ describe("plugin server sync", () => {
         const fixture = await makeServerPlugin(root, uniqueId("uninstall"));
 
         await writeInstallMetadata(fixture.pluginRoot, fixture.pluginId);
-        await grantServerProcess(fixture.pluginId, grantsPath);
+        await grantPermissions(fixture.pluginId, grantsPath);
         await syncWith(root, grantsPath);
 
         const pid = await readPid(fixture.pidPath);
@@ -394,6 +399,54 @@ describe("plugin server sync", () => {
         expect(await exists(fixture.pluginRoot)).toBe(false);
     });
 
+    test("uninstalling clears that plugin's grants and leaves the others alone", async () => {
+        const root = await tempRoot();
+        const grantsRoot = await tempRoot();
+        const grantsPath = join(grantsRoot, "settings", "plugin-grants.json");
+        const removed = await makeServerPlugin(root, uniqueId("granted-uninstall"));
+        const kept = await makeServerPlugin(root, uniqueId("kept"), {
+            enabled: false,
+            permissions: ["connections:secrets"],
+        });
+
+        await writeInstallMetadata(removed.pluginRoot, removed.pluginId);
+        await writeInstallMetadata(kept.pluginRoot, kept.pluginId);
+        await grantPermissions(removed.pluginId, grantsPath, ["server:process"]);
+        await grantPermissions(kept.pluginId, grantsPath, ["connections:secrets"]);
+
+        // `deleteData` stays false on purpose: grants are settings, not plugin
+        // data, so the entry goes either way.
+        await uninstallPlugin(removed.pluginId, { grantsPath, pluginsRoot: root });
+
+        expect(await pluginHasGrant(removed.pluginId, "server:process", grantsPath)).toBe(
+            false,
+        );
+        expect(
+            await pluginHasGrant(kept.pluginId, "connections:secrets", grantsPath),
+        ).toBe(true);
+
+        // Gone from the file itself, not just invisible to a helper.
+        const state = await readPluginGrantsState(grantsPath);
+        expect(Object.keys(state.plugins)).toEqual([kept.pluginId]);
+    });
+
+    test("a failed uninstall keeps the grant", async () => {
+        const root = await tempRoot();
+        const grantsPath = join(await tempRoot(), "settings", "plugin-grants.json");
+        // No smileychat-install.json: the route answers 400 and removes nothing.
+        const localFolder = await makeServerPlugin(root, uniqueId("local-folder"));
+
+        await grantPermissions(localFolder.pluginId, grantsPath);
+
+        await expect(
+            uninstallPlugin(localFolder.pluginId, { grantsPath, pluginsRoot: root }),
+        ).rejects.toThrow("Only plugins installed by SmileyChat can be uninstalled");
+
+        expect(
+            await pluginHasGrant(localFolder.pluginId, "server:process", grantsPath),
+        ).toBe(true);
+    });
+
     test("one failing module does not block the others and reports an error status", async () => {
         const root = await tempRoot();
         const grantsPath = join(root, "settings", "plugin-grants.json");
@@ -405,8 +458,8 @@ describe("plugin server sync", () => {
         });
         const good = await makeServerPlugin(root, uniqueId("survivor"));
 
-        await grantServerProcess(bad.pluginId, grantsPath);
-        await grantServerProcess(good.pluginId, grantsPath);
+        await grantPermissions(bad.pluginId, grantsPath);
+        await grantPermissions(good.pluginId, grantsPath);
         await syncWith(root, grantsPath);
 
         expect(getPluginServerStatus(bad.pluginId).state).toBe("error");
@@ -427,7 +480,7 @@ describe("plugin server sync", () => {
         const grantsPath = join(root, "settings", "plugin-grants.json");
         const fixture = await makeServerPlugin(root, uniqueId("resignature"));
 
-        await grantServerProcess(fixture.pluginId, grantsPath);
+        await grantPermissions(fixture.pluginId, grantsPath);
         await syncWith(root, grantsPath);
 
         const firstPid = await readPid(fixture.pidPath);

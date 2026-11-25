@@ -239,6 +239,40 @@ export async function writePluginPermissionGrant(
     return json({ version: state.version, grants: state.plugins });
 }
 
+/**
+ * Drops every runtime grant of one plugin.
+ *
+ * Approval belongs to the code the user approved: reinstalling the same id
+ * ships different code, so an uninstall must take the grant with it and a
+ * reinstall has to ask again. This covers `connections:secrets` and
+ * `server:process` alike, because they share this file and the same semantics.
+ *
+ * A plugin without an entry is a no-op, and a grants file that cannot be
+ * rewritten is logged instead of thrown: a completed uninstall must not become
+ * a failure because cleanup of a settings file went wrong.
+ */
+export async function clearPluginGrants(
+    pluginId: string,
+    pathname: string = pluginGrantsPath,
+): Promise<void> {
+    try {
+        const state = await readPluginGrantsState(pathname);
+
+        if (!state.plugins[pluginId]) {
+            return;
+        }
+
+        delete state.plugins[pluginId];
+        await mkdir(dirname(pathname), { recursive: true });
+        await writeJsonAtomic(pathname, state);
+        logger.info("plugins", `Cleared the runtime grants of ${pluginId}`);
+    } catch (error) {
+        logger.error("plugins", `Could not clear the runtime grants of ${pluginId}`, {
+            error: error instanceof Error ? error.message : String(error),
+        });
+    }
+}
+
 export const pluginGrantsTestInternals = {
     normalizePluginGrantsState,
     isGrantablePluginPermission,
