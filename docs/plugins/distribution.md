@@ -53,7 +53,8 @@ Rules:
   permission missing from this list, with a `400` naming the extra permissions. An
   empty array means the artifact must declare no permissions. Entries without the
   field still install, and the Store shows an explicit "Permissions not listed by the
-  registry" warning before install.
+  registry" warning before install. An artifact that ships a server module must list
+  `server:process` both in `plugin.json` and in the registry entry's `permissions`.
 - SHA-256 hashes are not required for release v1.
 - Registry artifacts may be hosted on GitHub Releases (`github.com` and its
   `*.githubusercontent.com` asset redirects) or on the registry's own host. Any other
@@ -73,6 +74,8 @@ example-plugin-1.0.0.zip
   dist/
     index.js
     style.css
+  server/
+    main.js
   assets/
     icon.png
 ```
@@ -87,6 +90,10 @@ An artifact must include:
 - Root `plugin.json`.
 - The built browser ESM file referenced by `plugin.json.main`.
 - Every CSS file referenced by `plugin.json.styles`.
+- The ESM file referenced by `plugin.json.serverMain`, when the plugin declares one.
+  Bundle it like the browser entry: the module loads from a private copy of the
+  plugin folder, so bare imports resolve only against what the artifact itself ships,
+  never SmileyChat's own dependencies.
 
 Artifacts should not include:
 
@@ -112,15 +119,21 @@ When installing or updating a Store plugin, SmileyChat:
 4. Downloads one HTTPS ZIP artifact.
 5. Extracts the ZIP into `userData/plugins/.installing/{pluginId}-{timestamp}`.
 6. Rejects path traversal, absolute paths, Windows drive paths, backslash paths, too many entries, oversized files, and oversized extracted payloads.
-7. Requires root `plugin.json`.
-8. Validates `plugin.json`, `main`, and `styles`.
-9. Rejects plugin IDs that collide with core extensions.
-10. Rejects artifacts whose `plugin.json` requests a permission the registry entry does not list, naming the extra permissions in the error.
-11. Moves the existing plugin aside if one is installed.
-12. Copies the existing plugin `data/` folder into the staged plugin.
-13. Writes `smileychat-install.json`.
-14. Swaps the staged plugin into `userData/plugins/{pluginId}`.
-15. Restores the previous plugin if validation or swap fails.
+7. Requires root `plugin.json` and a valid manifest ID.
+8. Rejects plugin IDs that collide with core extensions.
+9. Rejects artifacts whose `plugin.json` requests a permission the registry entry does not list, naming the extra permissions in the error.
+10. Rejects a manifest whose `apiVersion` or `minAppVersion` does not fit this build.
+11. Validates `plugin.json`, `main`, `styles`, and `serverMain`. A declared `serverMain` that is missing, escapes the plugin folder, or comes without the `server:process` permission is rejected.
+12. Stops the plugin's running server module and releases its module copy.
+13. Moves the existing plugin aside, then copies its `data/` folder into the staged plugin.
+14. Writes `smileychat-install.json`.
+15. Moves the staged plugin into `userData/plugins/{pluginId}`.
+16. Restores the previous plugin if validation or swap fails.
+
+Installing or updating over a plugin that already holds the `server:process` grant
+needs privileged access, because it replaces code the user approved to run programs
+on this computer. Without loopback access or the admin secret the request is refused
+with `403` before anything is swapped, and the existing plugin keeps running.
 
 The installed metadata file looks like this for Store installs:
 
@@ -148,6 +161,9 @@ installed manifest version.
   keeps a clearly labelled **Reinstall** action that downloads the stored `artifactUrl`.
 - Updates use the same staging, validation, swap, rollback, and `data/` preservation
   flow as installs.
+- Updating a plugin that has the `server:process` grant needs privileged access,
+  because it replaces approved code. The running module is stopped before the folder
+  swap, then started again if the plugin is still enabled and approved.
 - If the registry entry for the update lists permissions the installed plugin did not declare, the Store asks for confirmation again and lists only the added permissions.
 - Local folder plugins are development-only and are not updateable by SmileyChat.
 
@@ -169,9 +185,16 @@ offers **Also delete this plugin's saved data**, which is off by default.
   development folders are refused so a hand-made plugin folder is never deleted.
 - Plugin IDs must be a safe single folder segment; traversal and unknown plugins
   are rejected.
+- Uninstalling stops the plugin's server module and the programs it started before
+  any file is removed, because a Windows delete fails while the module still holds
+  files in the folder.
 - With `?deleteData=true`, the whole plugin folder is removed.
 - Without `deleteData`, plugin code and install metadata are removed but `data/` is
   kept, so reinstalling the plugin restores its saved settings.
+- Uninstalling keeps `data/` but drops the plugin's runtime approvals too: its
+  entry in `userData/settings/plugin-grants.json` is removed, for `server:process` and
+  `connections:secrets` alike, whatever `deleteData` says. A reinstall has to approve
+  them again.
 - `plugin.json` and `smileychat-install.json` are deleted first, so a partially
   removed folder is never discovered as an installed plugin.
 
@@ -216,7 +239,8 @@ Local development can be loose and fast:
 Distribution should be release-oriented:
 
 1. Build the plugin in the developer repository.
-2. Package only `plugin.json`, built `dist/` files, declared styles, and needed assets.
+2. Package only `plugin.json`, built `dist/` files, declared styles, the optional
+   server module, and needed assets.
 3. Upload the ZIP to a release host.
 4. Add or update the registry entry with `artifact.url`.
 5. Users install or update from the Extension Store.

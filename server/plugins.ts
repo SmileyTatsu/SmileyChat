@@ -39,6 +39,8 @@ import {
 } from "./config/runtime-config";
 import { BadRequestError, HttpError, json, writeJsonAtomic } from "./http";
 import { coreExtensionsDataDir, pluginsDir } from "./paths";
+import { pluginHasGrant } from "./plugin-grants";
+import { getPluginServerStatus, stopPluginServer } from "./plugin-server-runtime";
 import { safeFetch } from "./security/safe-fetch";
 import { logger, type LogLevel } from "./logger";
 
@@ -138,19 +140,47 @@ type InstallArtifactOptions = {
     expectedPluginId?: string;
     pluginsRoot?: string;
     source: PluginInstallSource;
+    /**
+     * Whether the request passed the privileged-access gate. Replacing code
+     * that already holds `server:process` requires it.
+     */
+    privileged?: boolean;
+    /** Override the grants file for tests. */
+    grantsPath?: string;
 };
 
-export async function readPluginManifests(): Promise<PluginManifest[]> {
-    const startedAt = Date.now();
-    const coreManifests = await readCorePluginManifests();
-    await mkdir(pluginsDir, { recursive: true });
+export type UserPluginRecord = {
+    folderName: string;
+    pluginRoot: string;
+    manifest: PluginManifest;
+    /** Manifest as read from disk, kept for compatibility diagnostics. */
+    rawManifest: unknown;
+    /**
+     * Why this plugin cannot run in the current app build. A local folder can
+     * predate the app build that loads it, so the reason travels with the
+     * record instead of disappearing into a silent skip.
+     */
+    compatibilityError?: string;
+};
 
-    const manifests: PluginManifest[] = [...coreManifests];
+/**
+ * Normalized manifests of every plugin folder in `pluginsRoot`, together with
+ * the folder each one lives in.
+ *
+ * Shared by `readPluginManifests` and the server-module sync: the sync needs
+ * the folder to start `serverMain`, and both need the same normalization.
+ */
+export async function readUserPluginRecords(
+    pluginsRoot: string = pluginsDir,
+): Promise<UserPluginRecord[]> {
+    await mkdir(pluginsRoot, { recursive: true });
+
+    const records: UserPluginRecord[] = [];
     const glob = new Glob("*/plugin.json");
 
-    for await (const manifestFile of glob.scan(pluginsDir)) {
+    for await (const manifestFile of glob.scan(pluginsRoot)) {
         const folderName = dirname(manifestFile);
-        const manifestPath = join(pluginsDir, manifestFile);
+        const manifestPath = join(pluginsRoot, manifestFile);
         const file = Bun.file(manifestPath);
 
         if (!(await file.exists())) {
@@ -165,34 +195,54 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
                 continue;
             }
 
-            const pluginRoot = join(pluginsDir, folderName);
-            const cacheKey = await pluginCacheKey(pluginRoot, manifest);
-
-            manifests.push({
-                ...manifest,
-                source: "user",
-                entryUrl: pluginAssetUrl(folderName, manifest.main, cacheKey),
-                iconUrl: manifest.icon
-                    ? pluginAssetUrl(folderName, manifest.icon, cacheKey)
-                    : undefined,
-                styleUrls: (manifest.styles ?? []).map((style) =>
-                    pluginAssetUrl(folderName, style, cacheKey),
-                ),
-                install: await readPluginInstallMetadata(pluginRoot),
-                // A local folder can predate the app build that loads it, so the
-                // reason travels with the manifest instead of disappearing into
-                // a silent skip. The loader refuses to activate it.
+            records.push({
+                folderName,
+                pluginRoot: join(pluginsRoot, folderName),
+                manifest,
+                rawManifest,
                 compatibilityError: pluginCompatibilityError(
                     compatibilityInput(manifest, rawManifest),
                     APP_VERSION,
                 ),
-            } as PluginManifest);
+            });
         } catch (error) {
             logger.warn("plugins", "Could not load plugin manifest", {
                 path: manifestPath,
                 error: error instanceof Error ? error.message : String(error),
             });
         }
+    }
+
+    return records;
+}
+
+export async function readPluginManifests(
+    pluginsRoot: string = pluginsDir,
+): Promise<PluginManifest[]> {
+    const startedAt = Date.now();
+    const coreManifests = await readCorePluginManifests();
+    const records = await readUserPluginRecords(pluginsRoot);
+
+    const manifests: PluginManifest[] = [...coreManifests];
+
+    for (const { folderName, pluginRoot, manifest, compatibilityError } of records) {
+        const cacheKey = await pluginCacheKey(pluginRoot, manifest);
+        const record = {
+            ...manifest,
+            source: "user",
+            entryUrl: pluginAssetUrl(folderName, manifest.main, cacheKey),
+            iconUrl: manifest.icon
+                ? pluginAssetUrl(folderName, manifest.icon, cacheKey)
+                : undefined,
+            styleUrls: (manifest.styles ?? []).map((style) =>
+                pluginAssetUrl(folderName, style, cacheKey),
+            ),
+            install: await readPluginInstallMetadata(pluginRoot),
+            compatibilityError,
+        } as PluginManifest;
+
+        await applyPluginServerStatus(record, pluginRoot);
+        manifests.push(record);
     }
 
     logger.debug("plugins", "Discovered plugin manifests", {
@@ -203,6 +253,107 @@ export async function readPluginManifests(): Promise<PluginManifest[]> {
     });
 
     return manifests;
+}
+
+/**
+ * Adds `serverStatus` to a discovered manifest.
+ *
+ * A plugin whose `serverMain` cannot be trusted (unsafe path, missing file, or
+ * no `server:process` in the manifest) stays listed so its browser half still
+ * loads, but the module is dropped and the status says why: a plugin the user
+ * can see but that silently never runs would be worse than an error.
+ */
+async function applyPluginServerStatus(manifest: PluginManifest, pluginRoot: string) {
+    if (!manifest.serverMain) {
+        return;
+    }
+
+    const entry = await resolvePluginServerEntry(pluginRoot, manifest.serverMain);
+    const permissionError = manifest.permissions?.includes("server:process")
+        ? undefined
+        : SERVER_PROCESS_PERMISSION_ERROR;
+
+    if (entry.ok && !permissionError) {
+        const status = getPluginServerStatus(manifest.id);
+
+        manifest.serverStatus = {
+            state: status.state,
+            ...(status.error ? { error: status.error } : {}),
+            ...(status.lastRequestError
+                ? { lastRequestError: status.lastRequestError }
+                : {}),
+        };
+        return;
+    }
+
+    delete manifest.serverMain;
+    manifest.serverStatus = {
+        state: "error",
+        error: entry.ok ? (permissionError as string) : entry.error,
+    };
+}
+
+const SERVER_PROCESS_PERMISSION_ERROR =
+    "Plugins with a server module must declare the server:process permission in plugin.json.";
+
+export type PluginServerEntry =
+    | {
+          ok: true;
+          serverMain: string;
+          path: string;
+          mtimeMs: number;
+          size: number;
+      }
+    | { ok: false; error: string };
+
+/**
+ * Validates a `serverMain` path against the plugin folder it belongs to.
+ *
+ * The rules are the ones `main` and `styles` use: relative only, no drive, no
+ * backslashes, no `.`/`..`/empty segments, and the result must stay inside the
+ * folder. The signature inputs (mtime and size of the entry file) travel along
+ * so the sync can decide whether a running server still matches the files.
+ */
+export async function resolvePluginServerEntry(
+    pluginRoot: string,
+    serverMain: string,
+): Promise<PluginServerEntry> {
+    const normalized = normalizeManifestRelativePath(serverMain.trim());
+
+    try {
+        validateManifestRelativePath(normalized, "Plugin server module path");
+    } catch {
+        return {
+            ok: false,
+            error: `Plugin server module "${serverMain}" is not a safe relative path inside the plugin folder.`,
+        };
+    }
+
+    const entryPath = resolve(pluginRoot, ...normalized.split("/"));
+
+    if (!isSafeChild(pluginRoot, entryPath)) {
+        return {
+            ok: false,
+            error: `Plugin server module "${normalized}" is outside the plugin folder.`,
+        };
+    }
+
+    const stats = await stat(entryPath).catch(() => null);
+
+    if (!stats?.isFile()) {
+        return {
+            ok: false,
+            error: `Plugin server module "${normalized}" does not exist in the plugin folder.`,
+        };
+    }
+
+    return {
+        ok: true,
+        serverMain: normalized,
+        path: entryPath,
+        mtimeMs: stats.mtimeMs,
+        size: stats.size,
+    };
 }
 
 export async function logPluginTelemetry(pluginId: string, body: unknown) {
@@ -331,7 +482,15 @@ async function loadPluginRegistry() {
     }
 }
 
-export async function installVerifiedPlugin(body: unknown) {
+export type PluginInstallOptions = {
+    /** True only when the request cleared the privileged-access gate. */
+    privileged?: boolean;
+};
+
+export async function installVerifiedPlugin(
+    body: unknown,
+    options: PluginInstallOptions = {},
+) {
     const source = await resolveInstallSource(body);
     assertInstallSourceCompatibility(source);
     const bytes = await downloadArtifact(source.artifactUrl, {
@@ -343,23 +502,47 @@ export async function installVerifiedPlugin(body: unknown) {
     });
     return installPluginArtifact(bytes, {
         expectedPluginId: source.source === "registry" ? source.pluginId : undefined,
+        privileged: options.privileged === true,
         source,
     });
 }
 
-export async function updateInstalledPlugin(pluginId: string) {
+export async function updateInstalledPlugin(
+    pluginId: string,
+    options: PluginInstallOptions = {},
+    dependencies: {
+        /**
+         * Test seam: proving that the privileged gate runs before anything is
+         * fetched needs the download to be observable. Routes never pass this.
+         */
+        downloadArtifact?: typeof downloadArtifact;
+        pluginsRoot?: string;
+        grantsPath?: string;
+    } = {},
+) {
     const safePluginId = safeSegment(pluginId);
 
     if (safePluginId !== pluginId || CORE_PLUGIN_IDS.has(pluginId)) {
         throw new BadRequestError("Plugin cannot be updated.");
     }
 
-    const installRoot = join(pluginsDir, pluginId);
+    const pluginsRoot = dependencies.pluginsRoot ?? pluginsDir;
+    const installRoot = join(pluginsRoot, pluginId);
     const metadata = await readPluginInstallMetadata(installRoot);
 
     if (!metadata) {
         throw new BadRequestError("Plugin was not installed by SmileyChat.");
     }
+
+    // This runs before the source is resolved and before the artifact is
+    // downloaded: resolving a registry entry is already a request the client
+    // caused, and an unauthorised client should not be able to make this server
+    // fetch anything on its behalf. `installPluginArtifact` keeps its own copy
+    // of the gate for installs over an existing id from other callers.
+    await assertPluginReplacementAllowed(pluginId, {
+        grantsPath: dependencies.grantsPath,
+        privileged: options.privileged === true,
+    });
 
     const source =
         metadata.source === "registry"
@@ -378,7 +561,8 @@ export async function updateInstalledPlugin(pluginId: string) {
 
     assertInstallSourceCompatibility(source);
 
-    const bytes = await downloadArtifact(source.artifactUrl, {
+    const download = dependencies.downloadArtifact ?? downloadArtifact;
+    const bytes = await download(source.artifactUrl, {
         allowedHostnames:
             source.source === "registry"
                 ? getPluginArtifactAllowedHostnames()
@@ -388,7 +572,10 @@ export async function updateInstalledPlugin(pluginId: string) {
 
     return installPluginArtifact(bytes, {
         expectedPluginId: pluginId,
+        privileged: options.privileged === true,
         source,
+        ...(dependencies.grantsPath ? { grantsPath: dependencies.grantsPath } : {}),
+        ...(dependencies.pluginsRoot ? { pluginsRoot: dependencies.pluginsRoot } : {}),
     });
 }
 
@@ -537,8 +724,21 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
             throw new BadRequestError(compatibilityError);
         }
 
+        // Replacing a plugin that already holds `server:process` swaps out code
+        // the user approved to run on this machine, so it needs the same
+        // privileged access as granting that permission in the first place.
+        await assertPluginReplacementAllowed(manifest.id, {
+            grantsPath: options.grantsPath,
+            privileged: options.privileged === true,
+        });
+
         await assertInstalledManifestFilesExist(tempRoot, manifest);
         finalRoot = join(pluginsRoot, manifest.id);
+
+        // A running server module (or a child it spawned) keeps handles inside
+        // the plugin folder; on Windows the rename below would then fail with
+        // EPERM. Stop it and release its module copy before swapping folders.
+        await stopPluginServer(manifest.id);
 
         if (await pathExists(finalRoot)) {
             await replacePluginFolder(finalRoot, backupRoot);
@@ -599,6 +799,31 @@ async function installPluginArtifact(bytes: Uint8Array, options: InstallArtifact
         }
         throw error;
     }
+}
+
+/**
+ * Installing over a plugin that already holds `server:process` replaces code
+ * the user approved to run programs on this computer. A remote Basic-Auth
+ * client must not be able to do that by uploading a new artifact, so the
+ * install route passes whether it cleared the privileged gate.
+ */
+async function assertPluginReplacementAllowed(
+    pluginId: string,
+    options: { privileged: boolean; grantsPath?: string },
+) {
+    if (options.privileged) {
+        return;
+    }
+
+    if (!(await pluginHasGrant(pluginId, "server:process", options.grantsPath))) {
+        return;
+    }
+
+    throw new HttpError(
+        403,
+        `Updating "${pluginId}" replaces a plugin that can run programs on this computer. ` +
+            "That requires privileged access from the computer running SmileyChat, or the admin secret.",
+    );
 }
 
 /**
@@ -1024,6 +1249,21 @@ async function assertInstalledManifestFilesExist(
             );
         }
     }
+
+    if (manifest.serverMain) {
+        const entry = await resolvePluginServerEntry(tempRoot, manifest.serverMain);
+
+        if (!entry.ok) {
+            throw new BadRequestError(entry.error);
+        }
+
+        // The module runs inside the Bun server, so install consent alone is not
+        // enough: the artifact has to declare that power and the user grants it
+        // separately before anything starts.
+        if (!manifest.permissions?.includes("server:process")) {
+            throw new BadRequestError(SERVER_PROCESS_PERMISSION_ERROR);
+        }
+    }
 }
 
 function resolveManifestPath(root: string, relativePath: string, label: string) {
@@ -1435,6 +1675,82 @@ export async function servePluginAsset(url: URL) {
     return new Response(file);
 }
 
+/**
+ * The plugin-relative path of a `/api/plugins/{id}/host/...` request.
+ *
+ * Percent-encoding is left untouched: the plugin's own handler decides how to
+ * decode its path. Only what could climb out of the host prefix is refused, on
+ * the raw segment and on its decoded form (`.`/`..`, backslashes, malformed
+ * encoding).
+ */
+export function pluginHostRequestSubpath(
+    pathname: string,
+): { ok: true; subpath: string } | { ok: false; error: string } {
+    // ["", "api", "plugins", "<id>", "host", ...rest]
+    const segments = pathname.split("/").slice(5);
+
+    if (!segments.length || (segments.length === 1 && segments[0] === "")) {
+        return { ok: true, subpath: "/" };
+    }
+
+    for (const segment of segments) {
+        if (segment.includes("\\")) {
+            return {
+                ok: false,
+                error: 'Plugin host path cannot contain backslashes; use "/".',
+            };
+        }
+
+        let decoded: string;
+
+        try {
+            decoded = decodeURIComponent(segment);
+        } catch {
+            return {
+                ok: false,
+                error: "Plugin host path contains malformed percent-encoding.",
+            };
+        }
+
+        if (decoded.includes("\\")) {
+            return {
+                ok: false,
+                error: 'Plugin host path cannot contain backslashes; use "/".',
+            };
+        }
+
+        if (decoded === "." || decoded === "..") {
+            return {
+                ok: false,
+                error: 'Plugin host path cannot contain "." or ".." segments.',
+            };
+        }
+    }
+
+    return { ok: true, subpath: `/${segments.join("/")}` };
+}
+
+/**
+ * Whether a `/host` request comes from another site.
+ *
+ * `api()` only CSRF-checks unsafe methods, so without this a page open in the
+ * user's browser could fire a cross-site `GET`/`HEAD` at a plugin's server
+ * module and trigger whatever its handler does on a read. Browsers always send
+ * `Sec-Fetch-Site` (`same-origin` for the app, including through the Vite dev
+ * proxy, `none` for a direct navigation, `same-site` for a sibling origin,
+ * `cross-site` for another site); scripts and non-browser clients send nothing,
+ * which is why an absent header stays allowed.
+ */
+export function hostRequestIsCrossSite(headers: Headers): boolean {
+    const site = headers.get("sec-fetch-site")?.trim().toLowerCase();
+
+    if (!site) {
+        return false;
+    }
+
+    return site !== "same-origin" && site !== "none";
+}
+
 export async function readPluginStorage(pluginId: string, key: string) {
     const pluginRecord = await findPluginById(pluginId);
 
@@ -1698,6 +2014,10 @@ function normalizePluginManifest(
         typeof manifest.minAppVersion === "string" && manifest.minAppVersion.trim()
             ? manifest.minAppVersion.trim()
             : undefined;
+    const serverMain =
+        typeof manifest.serverMain === "string" && manifest.serverMain.trim()
+            ? normalizeManifestRelativePath(manifest.serverMain.trim())
+            : undefined;
 
     return {
         id,
@@ -1708,6 +2028,7 @@ function normalizePluginManifest(
         main,
         styles,
         icon,
+        ...(serverMain ? { serverMain } : {}),
         permissions,
         apiVersion,
         minAppVersion,

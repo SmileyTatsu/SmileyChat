@@ -9,7 +9,12 @@ import { MOVED_CORE_PLUGINS } from "#frontend/lib/plugins/moved-plugins";
 import { APP_VERSION } from "#frontend/lib/app-version";
 import { PLUGIN_API_VERSION } from "#frontend/lib/plugins/compatibility";
 
-import { pluginInstallTestInternals, servePluginAsset } from "./plugins";
+import { writePluginPermissionGrant } from "./plugin-grants";
+import {
+    pluginInstallTestInternals,
+    servePluginAsset,
+    updateInstalledPlugin,
+} from "./plugins";
 
 const tempRoots: string[] = [];
 const originalManualFlag = Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS;
@@ -255,9 +260,7 @@ test("manifest icon resolves to a served plugin asset", async () => {
         pluginZip({
             manifest: { icon: "assets/icon.png" },
             files: {
-                "plugin.json": JSON.stringify(
-                    baseManifest({ icon: "assets/icon.png" }),
-                ),
+                "plugin.json": JSON.stringify(baseManifest({ icon: "assets/icon.png" })),
                 "dist/index.js": "export function activate() {}",
                 "assets/icon.png": Buffer.from([0x89, 0x50, 0x4e, 0x47]),
             },
@@ -267,9 +270,7 @@ test("manifest icon resolves to a served plugin asset", async () => {
 
     expect(body.plugin.icon).toBe("assets/icon.png");
     // A manifest-relative icon becomes a cache-busted URL the browser can load.
-    expect(body.plugin.iconUrl).toContain(
-        "/plugins/example-plugin/assets/icon.png?v=",
-    );
+    expect(body.plugin.iconUrl).toContain("/plugins/example-plugin/assets/icon.png?v=");
 });
 
 test("registry icons must be https URLs", () => {
@@ -907,4 +908,207 @@ test("installer accepts a manifest that declares the supported contract", async 
     expect(body.ok).toBe(true);
     expect(body.plugin.apiVersion).toBe(PLUGIN_API_VERSION);
     expect(body.plugin.compatibilityError).toBeUndefined();
+});
+
+test("a server module must be a safe, packaged file inside the plugin folder", async () => {
+    const pluginsRoot = await tempRoot();
+    const withServerModule = (serverMain: string) =>
+        pluginZip({
+            files: {
+                "plugin.json": JSON.stringify(
+                    baseManifest({ serverMain, permissions: ["server:process"] }),
+                ),
+                "dist/index.js": "export function activate() {}",
+                "server.js": "export function activate() {}",
+            },
+        });
+
+    await expect(
+        installZip(pluginsRoot, withServerModule("../outside.js")),
+    ).rejects.toThrow("not a safe relative path");
+    await expect(
+        installZip(pluginsRoot, withServerModule("/etc/outside.js")),
+    ).rejects.toThrow("not a safe relative path");
+    await expect(
+        installZip(pluginsRoot, withServerModule("C:/outside.js")),
+    ).rejects.toThrow("not a safe relative path");
+    await expect(
+        installZip(pluginsRoot, withServerModule("server/missing.js")),
+    ).rejects.toThrow("does not exist");
+
+    expect(await Bun.file(join(pluginsRoot, "example-plugin")).exists()).toBe(false);
+});
+
+test("an artifact with a server module must declare server:process", async () => {
+    const pluginsRoot = await tempRoot();
+    const files = {
+        // No permissions at all: the module would run code the user never
+        // consented to.
+        "plugin.json": JSON.stringify(baseManifest({ serverMain: "server.js" })),
+        "dist/index.js": "export function activate() {}",
+        "server.js": "export function activate() {}",
+    };
+
+    await expect(installZip(pluginsRoot, pluginZip({ files }))).rejects.toThrow(
+        "must declare the server:process permission",
+    );
+    expect(await Bun.file(join(pluginsRoot, "example-plugin")).exists()).toBe(false);
+
+    const response = await installZip(
+        pluginsRoot,
+        pluginZip({
+            files: {
+                "plugin.json": JSON.stringify(
+                    baseManifest({
+                        serverMain: "./server/main.js",
+                        permissions: ["server:process"],
+                    }),
+                ),
+                "dist/index.js": "export function activate() {}",
+                "server/main.js": "export function activate() {}",
+            },
+        }),
+    );
+    const body = await response.json();
+
+    expect(body.ok).toBe(true);
+    // `./` is normalized like `main` and `styles`.
+    expect(body.plugin.serverMain).toBe("server/main.js");
+});
+
+test("replacing a plugin that holds server:process needs privileged access", async () => {
+    const pluginsRoot = await tempRoot();
+    const grantsRoot = await tempRoot();
+    const grantsPath = join(grantsRoot, "settings", "plugin-grants.json");
+
+    await installZip(pluginsRoot, pluginZip({ version: "1.0.0" }));
+    await writePluginPermissionGrant(
+        "example-plugin",
+        { permissions: ["server:process"] },
+        {
+            readManifests: async () => [
+                { id: "example-plugin", permissions: ["server:process"] },
+            ],
+            pathname: grantsPath,
+        },
+    );
+
+    const update = (privileged?: boolean) =>
+        pluginInstallTestInternals.installPluginArtifact(
+            pluginZip({ version: "2.0.0" }),
+            {
+                expectedPluginId: "example-plugin",
+                grantsPath,
+                pluginsRoot,
+                privileged,
+                source: registrySource("example-plugin"),
+            },
+        );
+
+    await expect(update(false)).rejects.toThrow("requires privileged access");
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).json(),
+    ).toMatchObject({ version: "1.0.0" });
+
+    const response = await update(true);
+
+    expect((await response.json()).ok).toBe(true);
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).json(),
+    ).toMatchObject({ version: "2.0.0" });
+});
+
+test("a non-privileged update is refused before anything is downloaded", async () => {
+    const pluginsRoot = await tempRoot();
+    const grantsRoot = await tempRoot();
+    const grantsPath = join(grantsRoot, "settings", "plugin-grants.json");
+    const downloads: string[] = [];
+
+    await installZip(pluginsRoot, pluginZip({ version: "1.0.0" }));
+    // A manual artifact keeps the registry lookup out of the way, so this test
+    // observes only the download it is meant to observe.
+    await Bun.write(
+        join(pluginsRoot, "example-plugin", "smileychat-install.json"),
+        JSON.stringify({
+            source: "manual-artifact",
+            pluginId: "example-plugin",
+            artifactUrl: "https://example.com/example-plugin.zip",
+            unverified: true,
+            installedAt: new Date().toISOString(),
+        }),
+    );
+    Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS = "true";
+    await writePluginPermissionGrant(
+        "example-plugin",
+        { permissions: ["server:process"] },
+        {
+            readManifests: async () => [
+                { id: "example-plugin", permissions: ["server:process"] },
+            ],
+            pathname: grantsPath,
+        },
+    );
+
+    const download = async (artifactUrl: string) => {
+        downloads.push(artifactUrl);
+        return pluginZip({ version: "2.0.0" });
+    };
+
+    await expect(
+        updateInstalledPlugin(
+            "example-plugin",
+            { privileged: false },
+            { downloadArtifact: download, grantsPath, pluginsRoot },
+        ),
+    ).rejects.toThrow("requires privileged access");
+
+    // The gate ran before the artifact download: a remote client cannot make
+    // this server fetch code it is not allowed to install.
+    expect(downloads).toEqual([]);
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).json(),
+    ).toMatchObject({ version: "1.0.0" });
+
+    // Cleared for this client, the same call downloads once and replaces.
+    const response = await updateInstalledPlugin(
+        "example-plugin",
+        { privileged: true },
+        { downloadArtifact: download, grantsPath, pluginsRoot },
+    );
+
+    expect(downloads).toHaveLength(1);
+    expect((await response.json()).ok).toBe(true);
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).json(),
+    ).toMatchObject({ version: "2.0.0" });
+});
+
+test("a plugin without the server grant updates without privileged access", async () => {
+    const pluginsRoot = await tempRoot();
+    const grantsRoot = await tempRoot();
+    const grantsPath = join(grantsRoot, "settings", "plugin-grants.json");
+
+    await installZip(pluginsRoot, pluginZip({ version: "1.0.0" }));
+    await writePluginPermissionGrant(
+        "example-plugin",
+        { permissions: ["connections:secrets"] },
+        {
+            readManifests: async () => [
+                { id: "example-plugin", permissions: ["connections:secrets"] },
+            ],
+            pathname: grantsPath,
+        },
+    );
+
+    const response = await pluginInstallTestInternals.installPluginArtifact(
+        pluginZip({ version: "2.0.0" }),
+        {
+            expectedPluginId: "example-plugin",
+            grantsPath,
+            pluginsRoot,
+            source: registrySource("example-plugin"),
+        },
+    );
+
+    expect((await response.json()).ok).toBe(true);
 });

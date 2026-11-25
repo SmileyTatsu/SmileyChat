@@ -20,6 +20,7 @@ const HIGH_IMPACT_PERMISSIONS = new Set([
     "network:fetch",
     "connections:secrets",
     "connections:providers",
+    "server:process",
     "chat:input",
     "chat:prompt",
     "chat:output",
@@ -48,6 +49,11 @@ const PERMISSION_DETAILS: Record<string, { label: string; description: string }>
     "connections:secrets": {
         label: "Use connection secrets",
         description: "Can read the API keys saved for your model connections.",
+    },
+    "server:process": {
+        label: "Run programs on your computer",
+        description:
+            "This plugin includes code that runs on your computer, outside the browser. It can start programs and use your files and graphics card. Only approve plugins you trust.",
     },
     "connections:providers": {
         label: "Register connections",
@@ -183,6 +189,46 @@ export function describePluginPermissions(
     }
 
     return described;
+}
+
+/**
+ * The permission that runs code on the user's computer. It is read first and
+ * carries one extra line, because it is the only permission that can start
+ * programs outside the browser.
+ */
+export const SERVER_PROCESS_PERMISSION = "server:process";
+
+const PERMISSION_EMPHASIS_NOTES: Record<string, string> = {
+    [SERVER_PROCESS_PERMISSION]: "Runs on your computer, not in the browser.",
+};
+
+/** Extra line for permissions whose scope needs a warning the label cannot carry. */
+export function pluginPermissionEmphasisNote(permission: string) {
+    return PERMISSION_EMPHASIS_NOTES[permission.trim()];
+}
+
+/**
+ * Same list, ordered for review: `server:process` first, the rest as declared.
+ *
+ * Every surface that lists permissions uses this, so the permission that can
+ * run programs is never buried under cosmetic ones.
+ */
+export function describePluginPermissionsForReview(
+    permissions: readonly string[] | undefined,
+): PluginPermissionInfo[] {
+    const described = describePluginPermissions(permissions);
+    const first = described.filter(
+        (permission) => permission.key === SERVER_PROCESS_PERMISSION,
+    );
+
+    if (first.length === 0) {
+        return described;
+    }
+
+    return [
+        ...first,
+        ...described.filter((permission) => permission.key !== SERVER_PROCESS_PERMISSION),
+    ];
 }
 
 /**

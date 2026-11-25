@@ -13,7 +13,11 @@ import { APP_VERSION } from "#frontend/lib/app-version";
 import type { PluginRegistryEntry } from "#frontend/lib/api/client";
 import { pluginCompatibilityError } from "#frontend/lib/plugins/compatibility";
 import { BUILT_IN_PROFILES, type PluginProfile } from "#frontend/lib/plugins/profiles";
-import type { PluginCategory, PluginManifest } from "#frontend/lib/plugins/types";
+import type {
+    PluginCategory,
+    PluginManifest,
+    PluginServerStatus,
+} from "#frontend/lib/plugins/types";
 import { isNewerVersion } from "#frontend/lib/plugins/version";
 export { pluginIdFromScopedId } from "#frontend/lib/plugins/ids";
 
@@ -120,4 +124,63 @@ export function storeEntryState(
         incompatible: Boolean(incompatibility),
         incompatibility,
     };
+}
+
+export type PluginServerStatusTone = "pending" | "running" | "stopped" | "error";
+
+export type PluginServerStatusLine = {
+    text: string;
+    tone: PluginServerStatusTone;
+    /** Secondary muted line, only when the last host request failed. */
+    detail?: string;
+};
+
+/**
+ * One compact line for the optional server part of a plugin.
+ *
+ * The server fills `serverStatus` on `GET /api/plugins` when the manifest
+ * declares `serverMain`. Declaring it is not approval, so the module is
+ * reported as waiting until `server:process` is granted; after that the line
+ * follows the runtime state the server reported.
+ */
+export function pluginServerStatusLine(
+    plugin: Pick<PluginManifest, "serverMain" | "serverStatus">,
+    grantedPermissions: readonly string[],
+): PluginServerStatusLine | undefined {
+    const declaresServer = Boolean(plugin.serverMain?.trim());
+    const status: PluginServerStatus | undefined = plugin.serverStatus;
+
+    if (!declaresServer && !status) {
+        return undefined;
+    }
+
+    const detail = status?.lastRequestError
+        ? `Last request failed: ${status.lastRequestError}`
+        : undefined;
+
+    if (declaresServer && !grantedPermissions.includes("server:process")) {
+        return {
+            text: "Server part waiting for your approval",
+            tone: "pending",
+            detail,
+        };
+    }
+
+    if (!status) {
+        return undefined;
+    }
+
+    if (status.state === "error") {
+        return {
+            text: status.error?.trim() || "Server part failed to start",
+            tone: "error",
+            detail,
+        };
+    }
+
+    if (status.state === "stopped") {
+        return { text: "Server part stopped", tone: "stopped", detail };
+    }
+
+    return { text: "Server part running", tone: "running", detail };
 }

@@ -48,6 +48,10 @@ import {
 import { collectAvailablePluginUpdates } from "#frontend/lib/plugins/updates";
 
 import {
+    pluginGrantErrorMessage,
+    pluginGrantStatusMessage,
+} from "./plugin-grant-descriptors";
+import {
     type InstalledFilter,
     nextProfileName,
     pluginIdFromScopedId,
@@ -317,10 +321,30 @@ export function usePluginSettings() {
     }
 
     /**
+     * Replaces the manifest list with the server's current one.
+     *
+     * `serverStatus` is computed per request, so any operation that can start or
+     * stop a plugin's server module has to re-read the list or the card keeps
+     * showing the old state.
+     */
+    async function refreshPluginManifests() {
+        try {
+            const response = await loadPluginManifests();
+            setPlugins(mergeCoreAndUserPluginManifests(response.plugins));
+            setMovedCorePluginLegacyIds(response.movedCorePluginLegacyIds ?? []);
+        } catch {
+            // The mutation already succeeded; a stale status line is better than
+            // reporting a failure the user did not cause.
+        }
+    }
+
+    /**
      * Saves one runtime approval and reactivates the plugin.
      *
      * The capability is baked into the API object handed to `activate()`, so a
-     * live plugin only sees the new answer after it is loaded again.
+     * live plugin only sees the new answer after it is loaded again. The server
+     * also starts or stops the plugin's server module before it answers, which
+     * is why the manifest list is re-read afterwards.
      */
     async function togglePluginGrant(
         plugin: PluginManifest,
@@ -336,21 +360,18 @@ export function usePluginSettings() {
                 granted,
             );
             setGrantedByPlugin(mapGrantedPermissions(payload.grants));
-            setStatusMessage(
-                granted
-                    ? `Allowed ${plugin.name} to read connection secrets.`
-                    : `Revoked connection secret access for ${plugin.name}.`,
-            );
+            setStatusMessage(pluginGrantStatusMessage(permission, plugin.name, granted));
 
             if (plugin.enabled !== false) {
                 await loadRuntimePlugin(plugin);
             }
 
+            await refreshPluginManifests();
             setRequestState("success");
         } catch (error) {
-            setStatusMessage(
-                messageFromError(error, "Could not save the plugin approval."),
-            );
+            // Nothing was granted, so the switch stays off and the message says
+            // why this machine cannot approve it.
+            setStatusMessage(pluginGrantErrorMessage(error));
             setRequestState("error");
         } finally {
             setGrantSavingPluginId("");
@@ -392,6 +413,8 @@ export function usePluginSettings() {
             } else {
                 deactivatePlugin(plugin.id);
             }
+
+            await refreshPluginManifests();
 
             if (profilesPayload && activeProfile) {
                 const profileDefaults = buildAppliedEnabledMap(activeProfile, plugins);
@@ -690,6 +713,10 @@ export function usePluginSettings() {
         } else {
             deactivatePlugin(pluginId);
         }
+
+        // Install/update can restart a server module; the returned manifests
+        // predate that, so re-read them once the activation settled.
+        await refreshPluginManifests();
 
         return { ...installedPlugin, enabled };
     }

@@ -70,6 +70,20 @@ export const PLUGIN_CATEGORY_LABELS: Record<PluginCategory, string> = {
     other: "Other",
 };
 
+/**
+ * How the plugin's optional server module (`serverMain`) is doing right now.
+ *
+ * Filled by the server on `GET /api/plugins` when the manifest declares a
+ * server module. `lastRequestError` keeps the most recent failure from one of
+ * this plugin's `/host` calls, so a settings panel can explain why the last
+ * request failed without logging to the console.
+ */
+export type PluginServerStatus = {
+    state: "running" | "stopped" | "error";
+    error?: string;
+    lastRequestError?: string;
+};
+
 export type PluginManifest = {
     id: string;
     name: string;
@@ -84,6 +98,18 @@ export type PluginManifest = {
     icon?: string;
     /** Resolved `/plugins/...` URL for `icon`, filled by the server. */
     iconUrl?: string;
+    /**
+     * Optional server module the Bun server runs on this machine
+     * (`server/main.ts` inside the plugin folder). Declaring it requires the
+     * `server:process` permission *and* a separate user approval before the
+     * browser side can reach it through `api.host`.
+     */
+    serverMain?: string;
+    /**
+     * Runtime state of `serverMain`, computed by the server when the manifest
+     * declares one; never stored in `plugin.json`.
+     */
+    serverStatus?: PluginServerStatus;
     permissions?: string[];
     /**
      * Version of the plugin API contract the plugin was built against. Missing
@@ -461,11 +487,32 @@ export type PluginConnectionProvider = {
 
 export type PluginConnectionsApi = {
     registerProvider(provider: PluginConnectionProvider): void;
-    /** Core-only capability. User plugins never receive access to connection secrets. */
+    /**
+     * Requires `connections:secrets` declared *and* granted by the user (core
+     * extensions ship with the approval already in place).
+     */
     hasApiKey(profileId: string): boolean;
-    /** Core-only capability. Returns a detached copy of one profile, including its key. */
+    /**
+     * Requires `connections:secrets` declared *and* granted by the user.
+     * Returns a detached copy of one profile, including its key.
+     */
     getProfileWithSecrets(profileId: string): ConnectionProfile | undefined;
 };
+
+/**
+ * Reaches the plugin's own server module (`serverMain`) through the app.
+ *
+ * Requires `server:process` declared *and* granted: declaring it only records
+ * intent, and the user approves "Run programs on your computer" in Options >
+ * Plugins. `path` is relative to the plugin's server module, so it must start
+ * with a single "/" (no "//", no absolute URL, no "." or ".." segment); the
+ * request can never leave this plugin's own host. The promise resolves with
+ * whatever the module's `handle()` returned, including a 404/503 when the
+ * module is missing or the server could not start it.
+ */
+export interface PluginHostApi {
+    fetch(path: string, init?: RequestInit): Promise<Response>;
+}
 
 /** Text-completion prompt serialization helpers for connection provider plugins. */
 export type PluginFormattingApi = {
@@ -767,6 +814,7 @@ export type SmileyPluginApi = {
     messages: PluginMessagesApi;
     util: PluginUtilApi;
     connections: PluginConnectionsApi;
+    host: PluginHostApi;
     formatting: PluginFormattingApi;
     commands: {
         register(command: PluginComposerCommand): () => void;

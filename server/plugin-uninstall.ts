@@ -6,6 +6,8 @@ import { CORE_PLUGIN_IDS } from "#frontend/lib/plugins/core-catalog";
 import { BadRequestError, HttpError, NotFoundError, json } from "./http";
 import { logger } from "./logger";
 import { pluginsDir } from "./paths";
+import { clearPluginGrants } from "./plugin-grants";
+import { stopPluginServer } from "./plugin-server-runtime";
 import {
     isSafeChild,
     readPluginInstallMetadata,
@@ -18,6 +20,11 @@ export type UninstallPluginOptions = {
     deleteData?: boolean;
     /** Override the plugins root for tests. */
     pluginsRoot?: string;
+    /**
+     * Override the grants file. Grants are not plugin data, so they are always
+     * dropped, whatever `deleteData` says.
+     */
+    grantsPath?: string;
 };
 
 /**
@@ -66,6 +73,11 @@ export async function uninstallPlugin(
         );
     }
 
+    // A live server module (or a child process it spawned) keeps handles inside
+    // the folder; on Windows that turns the delete below into EPERM. Stop it and
+    // release its module copy before anything is removed.
+    await stopPluginServer(pluginId);
+
     // Stop discovery before touching anything else. A failure later can leave
     // files behind, but never a plugin the app still lists or loads.
     await removeEntry(join(pluginRoot, "plugin.json"), false);
@@ -106,6 +118,13 @@ export async function uninstallPlugin(
         // empty shell behind when the plugin never stored anything.
         await rmdir(pluginRoot).catch(() => undefined);
     }
+
+    // The plugin is gone once its manifest is: its runtime grants go with the
+    // code they approved, so a reinstall of the same id has to ask again. This
+    // runs on both `deleteData` paths (grants are settings, not plugin data) and
+    // before the partial-failure throw below, because a folder whose manifest
+    // was already deleted no longer holds a plugin the user approved.
+    await clearPluginGrants(pluginId, options.grantsPath);
 
     if (failedEntries.length > 0) {
         throw new HttpError(

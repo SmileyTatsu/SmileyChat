@@ -54,3 +54,27 @@ export const CORE_PLUGIN_IDS: ReadonlySet<string> = new Set(
 export function getCorePluginCatalogEntry(pluginId: string) {
     return CORE_PLUGIN_CATALOG.find((entry) => entry.id === pluginId);
 }
+
+/**
+ * Permissions a plugin may be granted at runtime.
+ *
+ * This is the single list for both sides: the server refuses anything outside
+ * it (`server/plugin-grants.ts`) and the client offers exactly these in Options
+ * > Plugins (`src/lib/plugins/grants.ts`). Everything else a plugin needs is
+ * covered by install consent plus declaring it in the manifest, so granting it
+ * here would only add a second, weaker gate.
+ *
+ * Keep this module free of browser-only imports: the Bun server imports it too.
+ */
+export const GRANTABLE_PLUGIN_PERMISSIONS = [
+    "connections:secrets",
+    "server:process",
+] as const;
+
+export type GrantablePluginPermission = (typeof GRANTABLE_PLUGIN_PERMISSIONS)[number];
+
+export function isGrantablePluginPermission(
+    permission: string,
+): permission is GrantablePluginPermission {
+    return (GRANTABLE_PLUGIN_PERMISSIONS as readonly string[]).includes(permission);
+}
