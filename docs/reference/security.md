@@ -354,6 +354,12 @@ The shared list of permissions that can be granted at runtime is
 `GRANTABLE_PLUGIN_PERMISSIONS` in `src/lib/plugins/core-catalog.ts`; the server and
 the options UI both read it.
 
+What has and has not actually been run is recorded in
+[Verification status](../plugins/api-reference.md#verification-status): the feature
+was built and exercised on Windows only, ZIP installs through the real Store or
+manual-artifact route were not exercised in the app, and the non-Windows process
+handling has no real-host coverage.
+
 ## Hot-reload
 
 Settings live in `.env`. SmileyChat polls the file every 2 seconds

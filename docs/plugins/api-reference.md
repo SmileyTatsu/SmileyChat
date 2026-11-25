@@ -1304,6 +1304,33 @@ Consequences worth designing around:
 If the copy itself fails, the module is imported from the real plugin folder
 instead, and the log warns that a restart may reuse previously cached code.
 
+### Verification status
+
+What has actually been run, on a Windows build of the app with a probe plugin:
+grant and revoke, `api.host.fetch`, disable/revoke/uninstall killing the spawned
+child, a hard kill of the app taking the child down through the job object, start
+at boot, `SIGBREAK` shutdown running `dispose` and killing the child, and the
+privileged gate from a non-loopback address. `bun test` covers the runtime, sync,
+grants, and installer modules.
+
+What that does not prove:
+
+- Linux, macOS, and Termux: nothing was run on those platforms. The non-Windows
+  kill path (`SIGKILL` to the spawned pid only) and the process behaviour around it
+  are untested on a real host; CI runs only on `main` pushes and pull requests, not
+  on pushes to feature branches.
+- Installing a server-module plugin from a real ZIP through the Store or the manual
+  artifact flow in the built app: the installer's HTTPS-only policy and host
+  allowlist prevented it. ZIP install, update, and uninstall are covered only by
+  unit tests using ZIPs in temp folders; the app test used a local folder with
+  install metadata.
+- Shutdown through `SIGINT`, `SIGTERM`, and `SIGHUP`: they share the handler that
+  `SIGBREAK` exercised. The 4.5 s shutdown cap and the 15 s `activate` timeout are
+  implemented but not exercised by any test.
+- Updating an approved plugin from a remote client through the real update route:
+  the gate is covered by unit tests, not by a request against a running server.
+- The UI check covered two widths (390 and 1440 px) in the dark theme only.
+
 ## Local Plugin API Routes
 
 These routes are used by the app and plugin runtime:
