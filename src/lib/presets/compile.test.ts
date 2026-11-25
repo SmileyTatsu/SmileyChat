@@ -83,6 +83,39 @@ describe("compilePresetMessages", () => {
         expect(text).toMatch(/Mood: (calm|tense)/);
     });
 
+    test("gates compiled prompt content on another prompt's toggle", () => {
+        const voice = prompt("voice", "Voice & SFX", "Voice block");
+        const gated = prompt(
+            "gated",
+            "Gated",
+            "{{#if isPrompt::Voice & SFX}}Voice on{{else}}Voice off{{/if}}",
+        );
+        const base: SmileyPreset = {
+            ...presetWithPrompts([voice, gated]),
+            promptOrder: [
+                { promptId: "voice", enabled: true },
+                { promptId: "gated", enabled: true },
+            ],
+        };
+
+        expect(textContents(compilePresetMessages(base, context()))).toEqual([
+            "Voice block",
+            "Voice on",
+        ]);
+
+        const voiceDisabled: SmileyPreset = {
+            ...base,
+            promptOrder: [
+                { promptId: "voice", enabled: false },
+                { promptId: "gated", enabled: true },
+            ],
+        };
+
+        expect(textContents(compilePresetMessages(voiceDisabled, context()))).toEqual([
+            "Voice off",
+        ]);
+    });
+
     test("does not append dynamic content when slot prompts contain text", () => {
         const preset = presetWithPrompts([
             prompt(

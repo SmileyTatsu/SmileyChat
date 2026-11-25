@@ -60,6 +60,22 @@ These macros pick one option from a list, so a prompt can vary details between g
 
 Options are separated by `::` (SillyTavern style); a plain comma list works too: `{{random::sunny, rainy, cloudy}}`. Each option is trimmed and empty options are ignored. Options cannot contain other macros, because `{{…}}` tokens do not nest, and a `random` / `pick` macro written without options is left as literal text.
 
+## Prompt state
+
+- `{{isPrompt::Title}}` / `{{hasPrompt::Title}}`: `true` when the preset being compiled includes an enabled prompt with that title or prompt id, otherwise an empty string. Matching ignores case and repeated whitespace, so `{{isPrompt::🍂 | Voice & SFX (Lewd)}}` works with the title exactly as the Preset editor shows it.
+
+Because the disabled case resolves to nothing, this macro pairs with the conditionals to make one prompt depend on another:
+
+```
+{{#if isPrompt::🍂 | Voice & SFX (Lewd)}}
+Keep replies short and always mention the sounds in the scene.
+{{else}}
+Write full descriptive paragraphs.
+{{/if}}
+```
+
+A reference that matches no prompt at all is left as literal text, so a typo shows up in the preset preview instead of silently reading as "disabled". Prompt state is read from the preset being compiled, which covers preset prompts, character card fields, Story Strings, and the Options > Preset preview; content resolved outside compilation (author notes, instruct sequences) does not see it.
+
 ## Preset conditionals
 
 Preset blocks support `{{#if macro}}...{{else}}...{{/if}}` and `{{#unless macro}}...{{else}}...{{/unless}}`. Conditionals can be nested; each closing tag matches its own enclosing block. The macro name is evaluated by whether its resolved value contains non-whitespace content.

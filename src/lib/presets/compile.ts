@@ -50,6 +50,11 @@ type CompilePresetContext = {
     outlets?: PromptOutletRegistry;
     personaDescription: string;
     personaName: string;
+    /**
+     * Active preset. `compilePresetMessagesWithMetadata` fills it from its own
+     * argument so prompt-state macros (`{{isPrompt::Title}}`) can read toggles.
+     */
+    preset?: SmileyPreset;
     userStatus: UserStatus;
     worldInfoBefore?: string;
     worldInfoAfter?: string;
@@ -74,6 +79,7 @@ function macroContextForCompile(context: CompilePresetContext) {
         outlets: context.outlets,
         personaDescription: context.personaDescription,
         personaName: context.personaName,
+        preset: context.preset,
         userStatus: context.userStatus,
         worldInfoBefore: context.worldInfoBefore,
         worldInfoAfter: context.worldInfoAfter,
@@ -109,6 +115,13 @@ export function compilePresetMessagesWithMetadata(
     preset: SmileyPreset | undefined,
     context: CompilePresetContext,
 ): AnchoredPromptMessage[] {
+    // Prompt-state macros (`{{isPrompt::Title}}`) read the compiled preset's
+    // prompt toggles, so bind the preset from the argument before any helper
+    // builds a macro context from this one.
+    if (preset) {
+        context = { ...context, preset };
+    }
+
     // An explicitly empty preset is intentional. In particular, do not let the
     // text-completion story-string fallback silently recreate prompt context.
     if (preset && preset.prompts.length === 0) {

@@ -8,7 +8,7 @@ import { messageTextForHistory } from "./message-format";
 import type { PromptOutletRegistry } from "../prompt/outlets";
 import type { PromptGenerationContext } from "../prompt/types";
 
-import type { PresetFormattingSettings } from "./types";
+import type { PresetFormattingSettings, SmileyPreset } from "./types";
 
 export type MacroContext = {
     character: SmileyCharacter;
@@ -25,6 +25,8 @@ export type MacroContext = {
     outlets?: PromptOutletRegistry;
     personaName: string;
     personaDescription: string;
+    /** Active preset, so prompt-state macros can read its prompt toggles. */
+    preset?: SmileyPreset;
     userStatus: UserStatus;
     worldInfoBefore?: string;
     worldInfoAfter?: string;
@@ -40,6 +42,7 @@ type MacroValue = {
 const commentMacroPattern = /\{\{\/\/[\s\S]*?\}\}/g;
 const macroPattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
 const randomMacroPattern = /^(random|pick)\s*(?:::|:)([\s\S]*)$/i;
+const promptStateMacroPattern = /^(isPrompt|hasPrompt)\s*(?:::|:)([\s\S]*)$/i;
 const maxNestedMacroDepth = 8;
 
 export function resolvePresetMacros(content: string, context: MacroContext) {
@@ -275,7 +278,10 @@ function evaluateConditionals(
         }
         cursor = tokenPattern.lastIndex;
         const token = match[1].trim();
-        const start = /^#(if|unless)\s+([a-zA-Z0-9_]+)$/.exec(token);
+        // Keys may carry `::` arguments (`{{#if isPrompt::Voice & SFX}}`), but
+        // still have to start with a plain macro name so malformed templates
+        // without a macro were left untouched before and stay untouched.
+        const start = /^#(if|unless)\s+([a-zA-Z0-9_]+(?:::+[\s\S]+)?)$/.exec(token);
         const close = /^\/(if|unless)$/.exec(token);
 
         if (start) {
@@ -436,6 +442,12 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
 
     if (randomValue) {
         return randomValue;
+    }
+
+    const promptState = promptStateMacroValue(key, context);
+
+    if (promptState) {
+        return promptState;
     }
 
     const lower = key.toLowerCase().replace(/[\s_-]+/g, "");
@@ -634,6 +646,63 @@ function pickSeed(context: MacroContext) {
         String(context.messages.length),
         lastMessage?.id ?? "",
     ].join("\u0000");
+}
+
+/**
+ * `{{isPrompt::Title}}` / `{{hasPrompt::Title}}` reports whether the active
+ * preset compiles that prompt, so `{{#if isPrompt::…}}` can gate content on a
+ * prompt toggle. The reference matches a prompt title or its internal id,
+ * case-insensitively and ignoring repeated whitespace.
+ *
+ * An existing prompt that is disabled resolves to an empty string, which makes
+ * `{{#if}}` take its else branch. A reference that matches no prompt is left as
+ * literal text instead, so a typo stays visible in the preset preview.
+ */
+function promptStateMacroValue(
+    key: string,
+    context: MacroContext,
+): MacroValue | undefined {
+    const match = promptStateMacroPattern.exec(key.trim());
+    const preset = context.preset;
+
+    if (!match || !preset) {
+        return undefined;
+    }
+
+    const query = normalizePromptReference(match[2]);
+
+    if (!query) {
+        return undefined;
+    }
+
+    const enabledIds = new Set(
+        preset.promptOrder
+            .filter((entry) => entry.enabled)
+            .map((entry) => entry.promptId),
+    );
+    let known = false;
+
+    for (const prompt of preset.prompts) {
+        const matches =
+            normalizePromptReference(prompt.id) === query ||
+            normalizePromptReference(prompt.title) === query;
+
+        if (!matches) {
+            continue;
+        }
+
+        known = true;
+
+        if (enabledIds.has(prompt.id)) {
+            return { value: "true" };
+        }
+    }
+
+    return known ? { value: "" } : undefined;
+}
+
+function normalizePromptReference(value: string) {
+    return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function pluginMacroValue(key: string, context: MacroContext) {

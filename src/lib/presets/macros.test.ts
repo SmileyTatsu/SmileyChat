@@ -4,6 +4,7 @@ import type { Message, SmileyCharacter } from "#frontend/types";
 
 import { defaultCharacterData } from "../characters/defaults";
 import { renderStoryString, resolvePresetMacros, type MacroContext } from "./macros";
+import type { PresetPrompt, SmileyPreset } from "./types";
 
 describe("resolvePresetMacros", () => {
     test("returns plain text without scanning when no macros are present", () => {
@@ -230,6 +231,57 @@ describe("resolvePresetMacros", () => {
         }
     });
 
+    test("resolves prompt state for enabled and disabled preset prompts", () => {
+        const context = createMacroContext({ preset: createPreset() });
+
+        expect(
+            resolvePresetMacros("{{isPrompt::🍂 | Voice & SFX (Lewd)}}", context),
+        ).toBe("true");
+        expect(resolvePresetMacros("{{hasPrompt::voice}}", context)).toBe("true");
+        expect(resolvePresetMacros("{{isPrompt::Style & Prose}}", context)).toBe("");
+        expect(
+            resolvePresetMacros("{{isPrompt::  🍂 |  VOICE & sfx (lewd) }}", context),
+        ).toBe("true");
+        expect(resolvePresetMacros("{{isPrompt::Never Listed}}", context)).toBe("");
+    });
+
+    test("gates conditional branches on prompt state", () => {
+        const context = createMacroContext({ preset: createPreset() });
+
+        expect(
+            resolvePresetMacros(
+                "{{#if isPrompt::🍂 | Voice & SFX (Lewd)}}on{{else}}off{{/if}}",
+                context,
+            ),
+        ).toBe("on");
+        expect(
+            resolvePresetMacros(
+                "{{#if isPrompt::Style & Prose}}on{{else}}off{{/if}}",
+                context,
+            ),
+        ).toBe("off");
+        expect(
+            resolvePresetMacros(
+                "{{#unless isPrompt::Style & Prose}}off{{/unless}}",
+                context,
+            ),
+        ).toBe("off");
+    });
+
+    test("leaves unresolvable prompt state macros literal", () => {
+        const withoutPreset = createMacroContext();
+
+        expect(resolvePresetMacros("{{isPrompt::Any}}", withoutPreset)).toBe(
+            "{{isPrompt::Any}}",
+        );
+
+        const context = createMacroContext({ preset: createPreset() });
+        expect(resolvePresetMacros("{{isPrompt::Typo Title}}", context)).toBe(
+            "{{isPrompt::Typo Title}}",
+        );
+        expect(resolvePresetMacros("{{isPrompt::}}", context)).toBe("{{isPrompt::}}");
+    });
+
     test("resolves {{chat_history}} respecting namesBehavior setting", () => {
         const messages = [
             message("m1", "user", "Hello there"),
@@ -264,6 +316,40 @@ describe("resolvePresetMacros", () => {
         );
     });
 });
+
+function createPreset(): SmileyPreset {
+    const prompts = [
+        presetPrompt("voice", "🍂 | Voice & SFX (Lewd)"),
+        presetPrompt("style", "Style & Prose"),
+        presetPrompt("unlisted", "Never Listed"),
+    ];
+
+    return {
+        id: "preset-1",
+        title: "Test preset",
+        prompts,
+        promptOrder: [
+            { promptId: "voice", enabled: true },
+            { promptId: "style", enabled: false },
+        ],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+}
+
+function presetPrompt(id: string, title: string): PresetPrompt {
+    return {
+        id,
+        title,
+        role: "system",
+        content: "",
+        systemPrompt: false,
+        marker: true,
+        injectionPosition: "none",
+        injectionDepth: 0,
+        forbidOverrides: false,
+    };
+}
 
 function createMacroContext(overrides: Partial<MacroContext> = {}): MacroContext {
     const character = overrides.character ?? createCharacter();
