@@ -26,7 +26,7 @@ except port/host/CSRF secret.
 | Trusted private nets     | Which CIDRs count as "private" for the lockdown's purposes                        | RFC 1918 + CGNAT + link-local + IPv6 ULA | `SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS`                                            |
 | CSRF                     | Origin/Referer + signed token + magic header on every write                       | on                                       | `SMILEYCHAT_TRUSTED_ORIGINS`, `SMILEYCHAT_CSRF_SECRET`                           |
 | Security headers         | CSP, X-Frame-Options, Referrer-Policy, etc. on every response                     | on                                       | _(none)_                                                                         |
-| Privileged gate          | Extra gate for connection-secret reads and writes                                 | loopback exempt from admin secret        | `SMILEYCHAT_ADMIN_SECRET`, `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK`         |
+| Privileged gate          | Extra gate for connection secrets, plugin grants, and plugin code swaps           | loopback exempt from admin secret        | `SMILEYCHAT_ADMIN_SECRET`, `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK`         |
 | SSRF guard               | Block plugin, registry, and artifact fetches to loopback / private / reserved IPs | on                                       | `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH`, `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS` |
 | Logging & Redaction      | Structured diagnostics with automatic credential scrubbing                        | on (`info` level, sensitive masked)      | `SMILEYCHAT_LOG_LEVEL`, `SMILEYCHAT_LOG_SENSITIVE_PAYLOADS`                      |
 
@@ -241,6 +241,15 @@ secret. Normal remote chat does not need that header: `/api/generate` resolves
 the saved profile and its key only on the Bun server, then streams the result
 back without returning the key.
 
+Plugin endpoints that use the same gate:
+
+- `PUT /api/plugins/grants/{pluginId}` when it adds `server:process`. Removing
+  the permission, or sending the same set back, is a normal request.
+- `POST /api/plugins/install` and `POST /api/plugins/{pluginId}/update` when the
+  installed plugin already holds `server:process`, because both replace code the
+  user approved to run programs. A first install of a plugin that has no grant yet
+  does not need the gate.
+
 ### SSRF guard (`safeFetch`)
 
 `server/security/safe-fetch.ts` is the outbound-fetch wrapper used by
@@ -272,6 +281,73 @@ SmileyChat features structured multi-level logging (`trace`, `debug`, `info`, `w
 - **Sensitive Payload Gating:** To preserve privacy, full conversation prompts, system instructions, and raw LLM request bodies are never written to log sinks by default. Logging sensitive prompt payloads requires an explicit `.env` opt-in via `SMILEYCHAT_LOG_SENSITIVE_PAYLOADS=true`, which cannot be enabled from the UI.
 - **Security Audit Trail:** Security events (such as remote lockdown triggers, allowlist rejections, CSRF failures, rate-limit warnings, and admin-secret rejections) are tagged under the `security` subsystem.
 - **Tiered Log Sinks:** High-signal messages are displayed in the terminal console (default `INFO`), while the full log stream is available in the 1,000-entry in-memory buffer (accessible via `GET /api/logs/stream` and the in-app Diagnostics viewer in Options) and persistent rotating files in `userData/logs/`.
+
+## Plugin server modules
+
+A plugin can ship one ESM module that runs inside the Bun server. The manifest
+declares it as `serverMain`, and the manifest must also declare the
+`server:process` permission. SmileyChat then asks the user for a second, explicit
+approval on the plugin card in **Options > Plugins > Approvals** ("Run programs on
+your computer"). The approval is stored per plugin ID in
+`userData/settings/plugin-grants.json`; the module is never imported without it.
+
+What this design does guarantee:
+
+- Declaring `server:process` is not approval. Without the grant the module is not
+  loaded, so its code never runs.
+- Granting `server:process` requires privileged access: loopback, or a request that
+  carries `X-SmileyChat-Admin-Secret` matching `SMILEYCHAT_ADMIN_SECRET`. Revoking it
+  does not, so a phone can always take the power away.
+- Installing or updating a plugin that already holds the grant requires the same
+  privileged access. A remote client that passes normal API auth cannot swap the
+  approved code for different code.
+- Revoking, disabling, updating, uninstalling, or shutting the app down stops the
+  module and kills every process tree it started.
+- Uninstalling an installed plugin also drops its runtime approvals:
+  `clearPluginGrants` removes that plugin's whole entry from
+  `plugin-grants.json` (every grantable permission, not just `server:process`), so a
+  reinstall of the same ID has to be approved again. `data/` is still kept unless the
+  user asks to delete it.
+- A failing module is contained: `activate`, `dispose`, and `handle` errors are
+  caught, logged under the `plugins` subsystem with a `Plugin server <id>:` prefix,
+  and reported on the plugin card. They do not take the server down.
+
+What it does not guarantee:
+
+- **There is no sandbox.** The module is ordinary code in the SmileyChat process,
+  running with the user's OS privileges. It can read `userData` (connection secrets,
+  the grants file, other plugins), open network connections, run any program, and
+  read anything else the user can read. A malicious or compromised approved plugin
+  owns the machine. The approval is a decision point, not a boundary.
+- Replacement of an approved plugin is trusted blindly. There are no artifact
+  hashes or signatures in release v1, and a registry artifact is not hash-verified,
+  so whoever can pass the privileged gate can change what the approved plugin does.
+- The grant is per plugin ID and survives updates, so an update can change the
+  behaviour that runs under the existing approval. Local development folders cannot
+  be uninstalled, so a grant on one stays until it is revoked by hand.
+- A remote client that passes the normal API security pipeline can still call
+  `/api/plugins/{id}/host/*`, start or stop an already approved module by toggling
+  the plugin's `enabled` flag, and read or write the plugin's data with the normal
+  storage API.
+- The module's source is served like any other plugin file under
+  `/plugins/{pluginFolder}/...`, and each start copies the plugin folder (except
+  `data/`) into the OS temp directory, so the code exists in both places.
+- Spawned programs are not isolated or resource-limited. On Windows they join the
+  app's kill-on-close job object, so a hard crash takes them down; on Linux and
+  macOS a hard crash can orphan them, the same as MCP stdio servers.
+
+The `/host` route itself is not behind the privileged gate: the module decides what
+it exposes, so the pipeline is the normal one (auth, host/IP rules, rate limit, CSRF
+on unsafe methods). Because `api()` only CSRF-checks unsafe methods, a request whose
+`Sec-Fetch-Site` header reports another site (`cross-site`, `same-site`) is refused
+with `403`, while an absent header (scripts, non-browser clients) is still allowed.
+Handlers must therefore treat callers as "anyone who can use this app", treat
+request bodies and their own `data/` folder as untrusted, and keep `GET` free of
+state changes.
+
+The shared list of permissions that can be granted at runtime is
+`GRANTABLE_PLUGIN_PERMISSIONS` in `src/lib/plugins/core-catalog.ts`; the server and
+the options UI both read it.
 
 ## Hot-reload
 
@@ -347,6 +423,10 @@ Then in Caddy / nginx / Tailscale Serve, terminate TLS and proxy to
   SmileyChat origin can still read keys unless
   `SMILEYCHAT_REQUIRE_ADMIN_SECRET_ON_LOOPBACK=true`; the CSP restricts what
   scripts can load.
+- **No sandbox for plugin server modules.** An approved plugin runs in the
+  SmileyChat process with the user's privileges. The grant is a consent gate
+  before that happens, not a boundary around it; see
+  [Plugin server modules](#plugin-server-modules).
 
 If you find a security issue, open an issue on the SmileyChat repo or
 reach the maintainer via the address in the project's README.

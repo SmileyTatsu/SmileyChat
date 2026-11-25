@@ -53,8 +53,14 @@ These permissions are currently checked:
 | `api.connections.registerProvider`, `api.formatting.*`                         | `connections:providers` |
 | `api.tools.registerTool`                                                       | `tools:register`        |
 | `api.events.on`, `api.events.emit`                                             | `events`                |
+| `api.host.fetch`, manifest `serverMain` loading                                | `server:process`        |
 
 `api.storage` and `api.logger` are available to loaded plugins without separate runtime permissions. `storage` is still a useful manifest label for user visibility.
+
+`server:process` is one of the permissions that also needs a separate approval after
+install. Declaring it makes the plugin visible in Options > Plugins > Approvals as
+"Run programs on your computer"; until the user approves it, `api.host.fetch` throws
+and `serverMain` is not loaded. See [Plugin Security](security.md#server-modules).
 
 ## `api.plugin`
 
@@ -1178,6 +1184,121 @@ Use namespaced event names to avoid collisions.
 
 Requires `events`.
 
+## `api.host`
+
+Calls the plugin's own server module (`serverMain`) through the app.
+
+```js
+const response = await api.host.fetch("/status");
+
+if (response.ok) {
+    const status = await response.json();
+    console.log(status);
+}
+```
+
+Requires `server:process` declared and approved. Core extensions cannot run a
+server module, so they are refused.
+
+`path` is relative to the plugin's server module, so it must start with a single
+`/`. SmileyChat refuses `//`, backslashes, control characters, malformed
+percent-encoding, and `.`/`..` segments, including percent-encoded ones, before
+sending anything. Query strings are allowed and are passed through untouched.
+
+`init` accepts the usual `RequestInit` fields, except `credentials` and `mode`,
+which are ignored: the request always uses the app's own credentials and mode.
+The promise resolves with whatever the module's `handle()` returned, including a
+`503` when the module is not running or a `404` when it has no `handle()`.
+
+The module decides what it exposes. A handler must not do state-changing work on
+`GET`, must treat request data and its `data/` folder as untrusted input, and must
+not assume a trusted caller: anything that can use this app can reach the route.
+
+The TypeScript shape is generated into `types/smileychat-plugin-api.d.ts` with
+`bun run plugin-types`.
+
+## Server modules
+
+A plugin can ship one ESM module that runs in the SmileyChat server process
+instead of the browser page. The manifest points at it with `serverMain`, and the
+module exports `activate`.
+
+```js
+// server/main.js
+export async function activate(host) {
+    host.logger.info(`Starting with data in ${host.dataDir}`);
+
+    return {
+        async handle(request, subpath) {
+            if (subpath === "/status") {
+                return Response.json({ pid: process.pid });
+            }
+
+            return new Response("Not found", { status: 404 });
+        },
+        dispose() {
+            // release anything activate() opened
+        },
+    };
+}
+```
+
+`activate(host)` may return `{ handle, dispose }`, both optional. `handle`
+receives the raw `Request` and the plugin-relative subpath, and must return a
+`Response`; anything else is reported as a failure. `dispose` runs before the
+module is stopped and its processes are killed.
+
+The host object:
+
+- `pluginId`: the plugin's manifest ID.
+- `dataDir`: absolute path of the plugin's `data/` folder, created if missing.
+  This is the only place the module should keep user data.
+- `logger`: `debug`, `info`, `warn`, `error`, writing to the `plugins` subsystem
+  with a `Plugin server <id>:` prefix. Child process output goes here too.
+- `spawn(command, args?, options?)`: starts a program and returns
+  `{ pid, exited, kill() }`. Arguments are passed as an argv list with no shell,
+  so `.cmd` shims, shell builtins, and globs are not resolved: pass the real
+  executable. `options.cwd` defaults to the plugin folder, and `options.env` is
+  added on top of the server's environment. Children are tracked, killed with
+  their whole process tree when the module stops, and on Windows they also join
+  SmileyChat's kill-on-close job object. Spawning after a stop throws.
+
+Limits: `activate` gets 15 seconds, `dispose` 5 seconds, and a killed process tree
+is given up to 3 seconds to exit. Errors from `activate`, `dispose`, and `handle`
+are caught and logged instead of escaping into the server. A failed `activate`
+shows on the plugin card through `serverStatus`, and a failed `handle` answers
+`500` with `{ "error": "Plugin server request failed." }`. Requests to a module
+that is not running answer `503`, and a module without `handle` answers `404`.
+
+Restarts are decided from the plugin version and the `serverMain` entry file's
+modification time and size only. Editing a helper module that the entry imports is
+not noticed: the running module keeps the old code until the plugin version changes,
+the plugin is toggled, or SmileyChat restarts. The same signature is why a failed
+start is not retried while the version and entry file stay the same.
+
+### Where the code is loaded from
+
+Bun caches evaluated ES modules for the life of the process and ignores `?v=`
+query strings, so a restart would otherwise keep running the code from a previous
+install. Each start therefore copies the plugin folder, except `data/`, into a
+private directory under the OS temp dir (`<tmp>/smileychat-plugin-runtime/<id>/<token>`),
+imports the module from that copy, and deletes it on stop. Leftovers from a crash
+are swept at the next start.
+
+Consequences worth designing around:
+
+- `import.meta.url` points at the copy, not at `userData/plugins`.
+- User data must go through `host.dataDir`; writing next to the module is
+  writing into a throwaway copy.
+- Bare imports resolve against the copy of the plugin folder, so the artifact has to
+  ship or bundle what the module imports. SmileyChat's own dependencies are not
+  available to it.
+- Module-level state does not survive a restart: every start imports a fresh copy.
+- A large plugin folder is copied again on every start.
+
+If the copy itself fails, the module is imported from the real plugin folder
+instead, and the log warns that a restart may reuse previously cached code.
+
 ## Local Plugin API Routes
 
 These routes are used by the app and plugin runtime:
@@ -1191,6 +1312,9 @@ These routes are used by the app and plugin runtime:
 - `GET /api/plugins/profiles`: load plugin profile state plus built-in profile definitions.
 - `PUT /api/plugins/profiles`: save plugin profile state.
 - `DELETE /api/plugins/profiles/{profileId}`: delete a user plugin profile.
+- `GET /api/plugins/grants`: read the runtime permissions the user approved per plugin.
+- `PUT /api/plugins/grants/{pluginId}`: replace one plugin's approved runtime permissions. Send `{ "permissions": [] }` to revoke. Adding `server:process` requires privileged access.
+- `GET /api/plugins/{pluginId}/host` and `/api/plugins/{pluginId}/host/*`: forward a request to the plugin's server module for every method (`GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`). The subpath is passed to the module untouched; `.`/`..` segments, backslashes, and malformed percent-encoding are rejected with `400`. Normal API auth, host rules, rate limiting, and CSRF on unsafe methods apply, and a browser request whose `Sec-Fetch-Site` header is not `same-origin` or `none` is rejected with `403`. The route is not behind the privileged gate.
 - `GET /api/plugins/{pluginId}/storage`: load a full plugin-owned JSON storage snapshot.
 - `PUT /api/plugins/{pluginId}/storage`: replace a full plugin-owned JSON storage snapshot.
 - `GET /api/plugins/{pluginId}/storage/{key}`: load one plugin-owned JSON value.

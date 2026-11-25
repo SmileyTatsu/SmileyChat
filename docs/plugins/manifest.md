@@ -36,10 +36,42 @@ User-facing version string. SmileyChat displays it but does not enforce semver y
 
 Optional text shown in Options > Plugins.
 
+`apiVersion`
+
+Optional version of the plugin API contract the plugin was built against. Missing means `1`, which is the contract every plugin has used so far. A plugin that targets a newer contract than this SmileyChat build exposes is refused instead of being activated against an API it does not know.
+
+`minAppVersion`
+
+Optional oldest SmileyChat release that can run the plugin, as a version such as `0.0.6`. SmileyChat rejects a manifest whose `minAppVersion` is newer than the running app, and the Extension Store disables **Install** with the same reason. A malformed value is an error, not a silent skip.
+
+A plugin that uses `serverMain` should set `minAppVersion` to the first SmileyChat release that includes plugin server modules, so the Store does not offer it to a build that would ignore the field. Older builds ignore `serverMain` entirely and expose no `api.host`.
+
 `main`
 
 Path to the browser ESM entry file, relative to the plugin folder.
 If omitted or blank, SmileyChat falls back to `dist/index.js`.
+
+`serverMain`
+
+Optional path to an ESM module that the Bun server runs on this machine, relative to the plugin folder. The path rules match `main` and `styles`: relative only, no drive letter, no backslashes, no `.`, `..`, or empty segments, and the file must stay inside the plugin folder. The file must also exist in the installed artifact.
+
+Declaring `serverMain` requires the `server:process` permission in the same manifest. A Store or manual install that ships a server module without it is rejected with `400`. For a local folder, the plugin stays listed and its browser half still loads, but the module is dropped and the plugin card reports `serverStatus` with `state: "error"`; the module never runs.
+
+```json
+{
+    "id": "example-plugin",
+    "name": "Example Plugin",
+    "version": "1.0.0",
+    "minAppVersion": "0.0.6",
+    "main": "dist/index.js",
+    "serverMain": "server/main.js",
+    "permissions": ["server:process"]
+}
+```
+
+The permission is only a declaration. The module starts after the user approves it separately in Options > Plugins (see [Plugin Security](security.md#server-modules)). The contract for the module itself is documented in the [Plugin API Reference](api-reference.md#server-modules).
+
+Discovery adds a computed `serverStatus` to the manifest that `GET /api/plugins` returns: `state` (`running`, `stopped`, or `error`), `error` when the start failed, and `lastRequestError` from the most recent failed `/host` request. SmileyChat never writes `serverStatus` to `plugin.json`.
 
 `styles`
 
@@ -80,6 +112,7 @@ Recommended labels:
 - `chat:output`
 - `chat:message-update`
 - `presets:macros`
+- `server:process`
 - `connections:providers`
 - `tools:register`
 - `events`
@@ -95,6 +128,8 @@ Recommended labels:
 provider using `promptMode: "text-completion"` can use
 `api.formatting.formatTextCompletionPrompt(...)` to serialize the active
 instruct template and prompt messages.
+
+`server:process` declares that the plugin runs code outside the browser: a server module, and any programs that module starts, on the user's computer. It is required for `serverMain` and for `api.host`, and it is one of the two permissions the user has to approve after install (the other is `connections:secrets`). Revoking the approval in Options > Plugins stops the module without uninstalling the plugin. The permission is per plugin ID, so it survives updates; uninstalling an installed plugin drops it, so a reinstall has to be approved again.
 
 `enabled`
 

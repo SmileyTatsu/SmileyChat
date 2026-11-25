@@ -113,6 +113,9 @@ _See [Plugin API Reference](../plugins/api-reference.md) for full context on plu
 - `GET /api/plugins/profiles`: Load plugin profile state.
 - `PUT /api/plugins/profiles`: Save plugin profile state.
 - `DELETE /api/plugins/profiles/:profileId`: Delete a user plugin profile.
+- `GET /api/plugins/grants`: Read the runtime permissions approved per plugin.
+- `PUT /api/plugins/grants/:pluginId`: Replace one plugin's approved runtime permissions (`connections:secrets`, `server:process`). Send `{ "permissions": [] }` to revoke. Adding `server:process` needs privileged access; revoking it does not.
+- `GET|HEAD|POST|PUT|PATCH|DELETE /api/plugins/:pluginId/host` and `/api/plugins/:pluginId/host/*`: Forward the request to the plugin's `serverMain` module. The subpath after `/host` is passed through untouched, and is `/` when the request ends at `/host`. A subpath with `.`/`..` segments, backslashes, or malformed percent-encoding is rejected with `400`. The normal API pipeline applies (auth, host rules, rate limit, CSRF on unsafe methods), plus a `403` when `Sec-Fetch-Site` is neither `same-origin` nor `none`. Not behind the privileged gate. Answers `503` when the module is not running, `404` when it has no handler, and `500` when the handler throws.
 - `GET /api/plugins/:pluginId/storage`: Load a full plugin-owned JSON storage snapshot.
 - `PUT /api/plugins/:pluginId/storage`: Replace a full plugin-owned JSON storage snapshot.
 - `GET /api/plugins/:pluginId/storage/:key`: Load plugin-owned JSON storage value.
