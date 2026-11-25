@@ -152,6 +152,7 @@ export function usePromptGeneration({
             mode,
             personaDescription: persona.description,
             personaName: persona.name,
+            preset: activePreset,
             userStatus,
         });
     }
@@ -186,6 +187,7 @@ export function usePromptGeneration({
                         mode: context.mode,
                         personaDescription: context.persona.description,
                         personaName: context.persona.name,
+                        preset: activePreset,
                         userStatus: context.userStatus,
                     }),
                     anchor: "at-depth",
@@ -644,7 +646,6 @@ export function usePromptGeneration({
         return new DOMException("The operation was aborted.", "AbortError");
     }
 
-
     async function getDebugPayload(
         sourceMessages: Message[],
         sourceCharacter: SmileyCharacter,
@@ -822,6 +823,7 @@ export function usePromptGeneration({
                                 mode: context.mode,
                                 personaDescription: context.persona.description,
                                 personaName: context.persona.name,
+                                preset: activePreset,
                                 userStatus: context.userStatus,
                             }),
                     }),
@@ -864,6 +866,7 @@ export function usePromptGeneration({
             mode: sourceMode,
             personaDescription: promptPersona.description,
             personaName: promptPersona.name,
+            preset: activePreset,
             userStatus: sourceUserStatus,
         };
         const sequenceMacroFields = [

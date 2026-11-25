@@ -74,7 +74,7 @@ Write full descriptive paragraphs.
 {{/if}}
 ```
 
-A reference that matches no prompt at all is left as literal text, so a typo shows up in the preset preview instead of silently reading as "disabled". Prompt state is read from the preset being compiled, which covers preset prompts, character card fields, Story Strings, and the Options > Preset preview; content resolved outside compilation (author notes, instruct sequences) does not see it.
+A reference that matches no prompt at all is left as literal text, so a typo shows up in the preset preview instead of silently reading as "disabled". Prompt state always comes from the active preset, so it resolves wherever SmileyChat resolves prompt text for a request: preset prompts, character card fields, Story Strings, lorebook entries, author notes, instruct sequences, and the Options > Preset preview. Text resolved outside a request — a character's greeting message when a chat is created, for example — does not see it.
 
 ## Preset conditionals
 
