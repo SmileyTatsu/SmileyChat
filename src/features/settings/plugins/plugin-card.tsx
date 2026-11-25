@@ -21,7 +21,11 @@ import {
 } from "#frontend/lib/plugins/types";
 import type { GrantablePluginPermission } from "#frontend/lib/plugins/grants";
 
-import { CATEGORY_ICONS, type RequestState } from "./plugin-settings-helpers";
+import {
+    CATEGORY_ICONS,
+    pluginServerStatusLine,
+    type RequestState,
+} from "./plugin-settings-helpers";
 
 import { PluginIcon } from "./plugin-icon";
 import { PluginPermissionGrants } from "./plugin-permission-grants";
@@ -81,6 +85,7 @@ export function PluginCard({
         (plugin.install ? plugin.install.source !== "registry" : !registryStatus);
     const canUpdate = plugin.install?.source === "registry" && Boolean(availableVersion);
     const canReinstall = plugin.install?.source === "manual-artifact";
+    const serverStatus = pluginServerStatusLine(plugin, grantedPermissions);
 
     return (
         <article className="plugin-card">
@@ -199,10 +204,12 @@ export function PluginCard({
                 <PluginPermissionList permissions={plugin.permissions} />
             )}
 
-            {onToggleGrant && plugin.source !== "core" && plugin.permissions && (
+            {onToggleGrant && plugin.source !== "core" && (
                 <PluginPermissionGrants
-                    declared={plugin.permissions}
+                    pluginName={plugin.name}
+                    declared={plugin.permissions ?? []}
                     granted={grantedPermissions}
+                    serverStatus={serverStatus}
                     busy={grantBusy}
                     onToggle={onToggleGrant}
                 />

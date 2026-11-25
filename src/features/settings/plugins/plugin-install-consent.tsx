@@ -1,30 +1,50 @@
+import { type ComponentChildren } from "preact";
 import { ShieldAlert } from "lucide-preact";
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
-import type { PluginRegistryEntry } from "#frontend/lib/api/client";
 import { PluginPermissionList, PluginPermissionUnlisted } from "./plugin-permission-list";
 
+/**
+ * Only what the dialog reads. A registry entry fits, and so does the installed
+ * manifest when the same dialog asks to approve one runtime permission.
+ */
+export type PluginConsentTarget = {
+    name: string;
+    permissions?: readonly string[];
+};
+
 export type PluginInstallConsentDialogProps = {
-    plugin: PluginRegistryEntry;
+    plugin: PluginConsentTarget;
     isBusy?: boolean;
     confirmDisabled?: boolean;
+    /** Defaults to the install question. */
+    title?: string;
+    /** Defaults to "Install". */
+    confirmLabel?: string;
+    /** Replaces the paragraph that explains the download. */
+    intro?: ComponentChildren;
+    /** Replaces the closing note about permissions not being a sandbox. */
+    note?: ComponentChildren;
     onConfirm: () => void | Promise<void>;
     onClose: () => void;
 };
 
 /**
- * The "install this extension?" dialog.
+ * The dialog that asks the user to accept a set of permissions.
  *
- * Shared by the Store card and the notice for extensions that moved out of the
- * bundle, so an extension always shows the same permissions before it is
- * installed — no matter which button started the install. A plugin that was
- * already installed only asks again for permissions it did not declare before;
- * that case lives in the Store card, since only it knows the installed version.
+ * Shared by three callers: the Store card (install), the update-consent dialogs
+ * ("new permissions"), and the plugin card's Approvals block (approving a
+ * runtime grant). Only the title, the confirm word, and the two paragraphs
+ * change, so the permission list and its emphasis stay identical everywhere.
  */
 export function PluginInstallConsentDialog({
     plugin,
     isBusy = false,
     confirmDisabled = false,
+    title,
+    confirmLabel = "Install",
+    intro,
+    note,
     onConfirm,
     onClose,
 }: PluginInstallConsentDialogProps) {
@@ -32,19 +52,21 @@ export function PluginInstallConsentDialog({
 
     return (
         <ConfirmDialog
-            title={`Install ${plugin.name}?`}
+            title={title ?? `Install ${plugin.name}?`}
             icon={<ShieldAlert size={19} aria-hidden="true" />}
-            confirmLabel="Install"
+            confirmLabel={confirmLabel}
             isBusy={isBusy}
             confirmDisabled={confirmDisabled}
             onConfirm={onConfirm}
             onClose={onClose}
             body={
                 <>
-                    <p>
-                        SmileyChat will download this extension from the verified
-                        registry, install it, and enable it right away.
-                    </p>
+                    {intro ?? (
+                        <p>
+                            SmileyChat will download this extension from the verified
+                            registry, install it, and enable it right away.
+                        </p>
+                    )}
                     {permissions === undefined ? (
                         <PluginPermissionUnlisted />
                     ) : permissions.length === 0 ? (
@@ -54,11 +76,13 @@ export function PluginInstallConsentDialog({
                     ) : (
                         <PluginPermissionList permissions={permissions} />
                     )}
-                    <p className="plugin-permission-note">
-                        Permissions describe what a plugin may use, but they are not a
-                        sandbox: installed plugins run as trusted browser code. Your
-                        plugin data and settings are kept.
-                    </p>
+                    {note ?? (
+                        <p className="plugin-permission-note">
+                            Permissions describe what a plugin may use, but they are not a
+                            sandbox: installed plugins run as trusted browser code. Your
+                            plugin data and settings are kept.
+                        </p>
+                    )}
                 </>
             }
         />

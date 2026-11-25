@@ -856,6 +856,13 @@
     line-height: 1.35;
 }
 
+/* Extra line for permissions that run outside the browser; same amber as the
+   high-impact name, so it reads as part of that item and not as a new badge. */
+.plugin-permission-extra {
+    color: #f0c879;
+    font-weight: 600;
+}
+
 /* Runtime approvals sit next to the declared permissions, styled as the same
    list so the card reads as one block instead of two competing widgets. */
 .plugin-grants {
@@ -910,6 +917,60 @@
 
 .plugin-grant-granted .plugin-permission-name {
     color: #8fd6a4;
+}
+
+/* Runtime grants use the same amber language as the declared-permission list,
+   so `server:process` reads as the strongest thing on the card. Granting it
+   still wins: an approved row keeps the green "granted" treatment. */
+.plugin-grant-list li.plugin-grant-high-impact {
+    border-color: #5d4a24;
+    background: #211d16;
+}
+
+.plugin-grant-high-impact .plugin-permission-name {
+    color: #f0c879;
+}
+
+.plugin-grant-list li.plugin-grant-high-impact.plugin-grant-granted {
+    border-color: #2f4a37;
+    background: #1a231d;
+}
+
+.plugin-grant-high-impact.plugin-grant-granted .plugin-permission-name {
+    color: #8fd6a4;
+}
+
+/* Server module state: one line inside the approvals block, no banner. */
+.plugin-grants .plugin-grant-server {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin: 0;
+    color: #9ea4b3;
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+
+.plugin-grants .plugin-grant-server svg {
+    flex: 0 0 auto;
+}
+
+.plugin-grants .plugin-grant-server small {
+    color: #8f96a6;
+    font-size: 0.72rem;
+}
+
+.plugin-grants .plugin-grant-server.pending {
+    color: #f0c879;
+}
+
+.plugin-grants .plugin-grant-server.running {
+    color: #8fd6a4;
+}
+
+.plugin-grants .plugin-grant-server.error {
+    color: #ffb4bd;
 }
 
 .plugin-permission-unlisted {

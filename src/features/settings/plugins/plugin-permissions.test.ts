@@ -3,9 +3,11 @@ import { expect, test } from "bun:test";
 import {
     describePluginPermission,
     describePluginPermissions,
+    describePluginPermissionsForReview,
     findNewPluginPermissions,
     formatPluginPermissionList,
     isHighImpactPermission,
+    pluginPermissionEmphasisNote,
 } from "./plugin-permissions";
 
 test("known permissions get plain-language labels and high-impact flags", () => {
@@ -87,4 +89,41 @@ test("formatPluginPermissionList joins labels for prose", () => {
         "Rewrite AI replies, Add styles, and Read app state",
     );
     expect(formatPluginPermissionList([])).toBe("");
+});
+
+test("server:process reads as running programs outside the browser", () => {
+    expect(describePluginPermission("server:process")).toEqual({
+        key: "server:process",
+        label: "Run programs on your computer",
+        description:
+            "This plugin includes code that runs on your computer, outside the browser. It can start programs and use your files and graphics card. Only approve plugins you trust.",
+        highImpact: true,
+    });
+    expect(isHighImpactPermission("server:process")).toBe(true);
+});
+
+test("only server:process carries the extra emphasis line", () => {
+    expect(pluginPermissionEmphasisNote("server:process")).toBe(
+        "Runs on your computer, not in the browser.",
+    );
+    expect(pluginPermissionEmphasisNote("connections:secrets")).toBeUndefined();
+    expect(pluginPermissionEmphasisNote("ui:styles")).toBeUndefined();
+});
+
+test("review order puts server:process first and keeps the declared order after it", () => {
+    expect(
+        describePluginPermissionsForReview([
+            "ui:styles",
+            "connections:secrets",
+            "server:process",
+            "state:read",
+        ]).map((permission) => permission.key),
+    ).toEqual(["server:process", "ui:styles", "connections:secrets", "state:read"]);
+
+    expect(
+        describePluginPermissionsForReview(["state:read", "ui:styles"]).map(
+            (permission) => permission.key,
+        ),
+    ).toEqual(["state:read", "ui:styles"]);
+    expect(describePluginPermissionsForReview(undefined)).toEqual([]);
 });
