@@ -6,6 +6,7 @@ import { CORE_PLUGIN_IDS } from "#frontend/lib/plugins/core-catalog";
 import { BadRequestError, HttpError, NotFoundError, json } from "./http";
 import { logger } from "./logger";
 import { pluginsDir } from "./paths";
+import { stopPluginServer } from "./plugin-server-runtime";
 import {
     isSafeChild,
     readPluginInstallMetadata,
@@ -65,6 +66,11 @@ export async function uninstallPlugin(
             "Only plugins installed by SmileyChat can be uninstalled. Local plugin folders must be removed manually.",
         );
     }
+
+    // A live server module (or a child process it spawned) keeps handles inside
+    // the folder; on Windows that turns the delete below into EPERM. Stop it and
+    // release its module copy before anything is removed.
+    await stopPluginServer(pluginId);
 
     // Stop discovery before touching anything else. A failure later can leave
     // files behind, but never a plugin the app still lists or loads.

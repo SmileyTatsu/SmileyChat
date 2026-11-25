@@ -84,8 +84,10 @@ import {
 } from "./persona-store";
 import {
     deletePluginStorage,
+    hostRequestIsCrossSite,
     installVerifiedPlugin,
     logPluginTelemetry,
+    pluginHostRequestSubpath,
     proxyPluginFetch,
     readMovedCorePluginLegacyIds,
     readPluginManifests,
@@ -99,7 +101,14 @@ import {
     writePluginStorageSnapshot,
 } from "./plugins";
 import { uninstallPlugin } from "./plugin-uninstall";
-import { readPluginGrants, writePluginPermissionGrant } from "./plugin-grants";
+import {
+    grantChangeNeedsPrivilege,
+    readPluginGrants,
+    readPluginGrantPermissions,
+    writePluginPermissionGrant,
+} from "./plugin-grants";
+import { syncPluginServers } from "./plugin-server-sync";
+import { handlePluginServerRequest, stopAllPluginServers } from "./plugin-server-runtime";
 import {
     deleteUserPluginProfile,
     readPluginProfiles,
@@ -168,7 +177,9 @@ const shutdown = async (signal: string) => {
     server?.stop(true);
     try {
         await Promise.race([
-            closeAll(),
+            // Plugin server modules (and the processes they spawned) must go
+            // down with the app, not outlive it.
+            Promise.all([closeAll(), stopAllPluginServers()]),
             new Promise((resolve) => setTimeout(resolve, 4_500)),
         ]);
     } catch (error) {
@@ -252,8 +263,19 @@ const createServer = () =>
             },
 
             "/api/plugins/install": {
-                POST: api(async (request) => {
-                    return installVerifiedPlugin(await readJsonBody(request));
+                POST: api(async (request, _server, context) => {
+                    const body = await readJsonBody(request);
+                    // A first install does not need the privileged gate, but
+                    // installing over a plugin that already holds
+                    // `server:process` does; `installPluginArtifact` decides.
+                    const privileged =
+                        requirePrivilegedAccess(request, context.ip, {
+                            feature: "Running programs from plugins",
+                        }) === null;
+
+                    return withPluginServerSync(() =>
+                        installVerifiedPlugin(body, { privileged }),
+                    );
                 }),
             },
 
@@ -286,17 +308,46 @@ const createServer = () =>
             },
 
             "/api/plugins/grants/:pluginId": {
-                PUT: api(async (request) => {
-                    return writePluginPermissionGrant(
+                PUT: api(async (request, _server, context) => {
+                    const body = await readJsonBody(request);
+                    // Granting `server:process` hands the plugin arbitrary code
+                    // execution on this computer, so adding it needs the same
+                    // privileged gate as the connection secrets. Revoking it, or
+                    // leaving it unchanged, stays a normal request.
+                    const requested = Array.isArray(
+                        (body as { permissions?: unknown } | null)?.permissions,
+                    )
+                        ? ((body as { permissions: unknown[] }).permissions.filter(
+                              (value): value is string => typeof value === "string",
+                          ) as string[])
+                        : [];
+                    const current = await readPluginGrantPermissions(
                         request.params.pluginId,
-                        await readJsonBody(request),
+                    );
+
+                    if (grantChangeNeedsPrivilege(current, requested)) {
+                        const rejection = requirePrivilegedAccess(request, context.ip, {
+                            feature: "Running programs from plugins",
+                        });
+                        if (rejection) return rejection;
+                    }
+
+                    return withPluginServerSync(() =>
+                        writePluginPermissionGrant(request.params.pluginId, body),
                     );
                 }),
             },
 
             "/api/plugins/:pluginId/update": {
-                POST: api(async (request) => {
-                    return updateInstalledPlugin(request.params.pluginId);
+                POST: api(async (request, _server, context) => {
+                    const privileged =
+                        requirePrivilegedAccess(request, context.ip, {
+                            feature: "Running programs from plugins",
+                        }) === null;
+
+                    return withPluginServerSync(() =>
+                        updateInstalledPlugin(request.params.pluginId, { privileged }),
+                    );
                 }),
             },
 
@@ -388,18 +439,30 @@ const createServer = () =>
                     const body = await readJsonBody(request);
                     const enabled =
                         body && typeof body === "object" && "enabled" in body
-                            ? body.enabled
+                            ? (body as { enabled?: unknown }).enabled
                             : undefined;
 
-                    return updatePluginEnabled(request.params.pluginId, enabled);
+                    return withPluginServerSync(() =>
+                        updatePluginEnabled(request.params.pluginId, enabled),
+                    );
                 }),
 
                 DELETE: api(async (request) => {
                     const deleteData =
                         new URL(request.url).searchParams.get("deleteData") === "true";
-                    return uninstallPlugin(request.params.pluginId, { deleteData });
+                    return withPluginServerSync(() =>
+                        uninstallPlugin(request.params.pluginId, { deleteData }),
+                    );
                 }),
             },
+
+            // A plugin's own server module answers everything below `/host`.
+            // Deliberately not gated by `requirePrivilegedAccess`: the plugin
+            // decides what this surface exposes, and the browser side already
+            // needs a `server:process` grant to reach it. The normal API
+            // pipeline still applies (auth, remote policy, CSRF on writes).
+            "/api/plugins/:pluginId/host": pluginHostRoutes(),
+            "/api/plugins/:pluginId/host/*": pluginHostRoutes(),
 
             "/api/plugins/:pluginId/storage": {
                 GET: api(async (request) => {
@@ -1077,6 +1140,11 @@ if (hostname === "0.0.0.0" || hostname === "::") {
     );
 }
 
+// Plugin server modules come up once the app is reachable: they are optional,
+// and a plugin must never delay or break the listening socket. The promise is
+// observed here because it resolves on its own and never rejects.
+void syncPluginServers();
+
 /**
  * Offer to kill processes currently holding `targetPort` so startup can bind
  * cleanly. Windows-only; a no-op elsewhere. This targets orphaned children
@@ -1189,6 +1257,132 @@ async function startServerWithRetry<T>(create: () => T): Promise<T> {
             await new Promise((resolve) => setTimeout(resolve, 250));
         }
     }
+}
+
+/**
+ * Runs a plugin-state change and reconciles the server modules afterwards.
+ *
+ * The sync runs even when the change threw and rolled back: a failed update or
+ * uninstall can still have stopped a server, and a rolled-back install can leave
+ * one that should not run.
+ *
+ * The Response is built inside the operation, so the plugin list it carries was
+ * read before this sync. `refreshPluginServerStatus` swaps in the post-sync
+ * list so the caller sees the `serverStatus` that actually applies now.
+ */
+async function withPluginServerSync<T>(operation: () => Promise<T>): Promise<T> {
+    let result: T | undefined;
+    let failure: unknown;
+    let failed = false;
+
+    try {
+        result = await operation();
+    } catch (error) {
+        failed = true;
+        failure = error;
+    }
+
+    await syncPluginServers();
+
+    if (failed) {
+        throw failure;
+    }
+
+    return (await refreshPluginServerStatus(result)) as T;
+}
+
+/**
+ * Re-reads the plugin list for a JSON response that carries one.
+ *
+ * `/api/plugins/*` changes answer with the full list, but they build it before
+ * `withPluginServerSync` starts or stops a module, so `serverStatus` can lag by
+ * one tick (a freshly granted plugin still reads "stopped"). Rewriting just the
+ * plugin entries keeps every route honest without restructuring each handler.
+ *
+ * Only a successful answer is rewritten, and it keeps its status: an error
+ * response must stay the error it is.
+ */
+async function refreshPluginServerStatus<T>(result: T) {
+    if (!(result instanceof Response) || result.status !== 200) {
+        return result;
+    }
+
+    if (!result.headers.get("content-type")?.includes("application/json")) {
+        return result;
+    }
+
+    const payload = (await result
+        .clone()
+        .json()
+        .catch(() => null)) as { plugin?: { id?: unknown }; plugins?: unknown } | null;
+
+    if (!payload || !Array.isArray(payload.plugins)) {
+        return result;
+    }
+
+    const plugins = await readPluginManifests();
+    const byId = new Map(plugins.map((plugin) => [plugin.id, plugin]));
+    const single = payload.plugin;
+    const singleId =
+        single && typeof single === "object" && typeof single.id === "string"
+            ? single.id
+            : null;
+
+    return json(
+        {
+            ...payload,
+            ...(singleId && byId.has(singleId) ? { plugin: byId.get(singleId) } : {}),
+            plugins,
+        },
+        result.status,
+    );
+}
+
+/**
+ * Routes for a plugin's own server module.
+ *
+ * Every method goes through `api()`, so the same auth, remote-access policy and
+ * CSRF checks as the rest of `/api` apply. The plugin's handler decides what it
+ * exposes; there is no privileged gate here on purpose.
+ *
+ * `api()` only verifies CSRF on unsafe methods, so a cross-site `GET`/`HEAD`
+ * would otherwise reach the handler. `hostRequestIsCrossSite` closes that: a
+ * browser that reports another origin as the initiator is refused, while
+ * scripts (no `Sec-Fetch-Site` header) keep working.
+ */
+function pluginHostRoutes() {
+    const handler = api<string>(async (request) => {
+        if (hostRequestIsCrossSite(request.headers)) {
+            return json(
+                {
+                    error: "Cross-site requests to a plugin's server module are not allowed.",
+                    code: "plugin_host_cross_site",
+                },
+                403,
+            );
+        }
+
+        const parsed = pluginHostRequestSubpath(new URL(request.url).pathname);
+
+        if (!parsed.ok) {
+            return json({ error: parsed.error }, 400);
+        }
+
+        return handlePluginServerRequest(
+            request.params.pluginId,
+            request,
+            parsed.subpath,
+        );
+    });
+
+    return {
+        GET: handler,
+        HEAD: handler,
+        POST: handler,
+        PUT: handler,
+        PATCH: handler,
+        DELETE: handler,
+    };
 }
 
 function api<Path extends string, WebSocketData = undefined>(

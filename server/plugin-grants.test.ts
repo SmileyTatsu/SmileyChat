@@ -6,8 +6,11 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { BadRequestError } from "./http";
 import {
+    grantChangeNeedsPrivilege,
     normalizePluginGrantsState,
+    pluginHasGrant,
     readPluginGrantsState,
+    readPluginGrantPermissions,
     writePluginPermissionGrant,
 } from "./plugin-grants";
 
@@ -39,6 +42,7 @@ const manifests = [
         permissions: ["connections:secrets", "ui:settings"],
     },
     { id: "plain", permissions: ["ui:settings"] },
+    { id: "server-plugin", permissions: ["server:process"] },
 ];
 
 function grant(pluginId: string, permissions: unknown, pathname = scratchPath()) {
@@ -142,5 +146,66 @@ describe("plugin permission grants", () => {
             (caught: unknown) => caught,
         );
         expect(malformed).toBeInstanceOf(BadRequestError);
+    });
+
+    test("server:process is grantable only when the manifest declares it", async () => {
+        const pathname = scratchPath();
+
+        const granted = await (
+            await grant("server-plugin", ["server:process"], pathname)
+        ).json();
+        expect(granted.grants["server-plugin"].permissions).toEqual(["server:process"]);
+        expect(await pluginHasGrant("server-plugin", "server:process", pathname)).toBe(
+            true,
+        );
+
+        const undeclared = await grant("plain", ["server:process"]).catch(
+            (caught: unknown) => caught,
+        );
+        expect(undeclared).toBeInstanceOf(BadRequestError);
+        expect((undeclared as Error).message).toContain("does not declare");
+    });
+
+    test("a missing grants file means no grant", async () => {
+        const pathname = scratchPath();
+
+        expect(await pluginHasGrant("server-plugin", "server:process", pathname)).toBe(
+            false,
+        );
+        expect(await readPluginGrantPermissions("server-plugin", pathname)).toEqual([]);
+    });
+
+    test("revoking server:process removes the grant", async () => {
+        const pathname = scratchPath();
+
+        await grant("server-plugin", ["server:process"], pathname);
+        expect(await pluginHasGrant("server-plugin", "server:process", pathname)).toBe(
+            true,
+        );
+
+        await grant("server-plugin", [], pathname);
+        expect(await pluginHasGrant("server-plugin", "server:process", pathname)).toBe(
+            false,
+        );
+    });
+
+    test("granting server:process is the only change that needs privilege", () => {
+        const needs = grantChangeNeedsPrivilege;
+
+        expect(needs([], ["server:process"])).toBe(true);
+        expect(needs(["connections:secrets"], ["server:process"])).toBe(true);
+        expect(
+            needs(["connections:secrets"], ["connections:secrets", "server:process"]),
+        ).toBe(true);
+
+        // Already approved, or not part of the request: no privilege needed.
+        expect(needs(["server:process"], ["server:process"])).toBe(false);
+        expect(needs(["server:process"], ["server:process", "connections:secrets"])).toBe(
+            false,
+        );
+        expect(needs(["server:process"], [])).toBe(false);
+        expect(needs(["server:process"], ["connections:secrets"])).toBe(false);
+        expect(needs([], [])).toBe(false);
+        expect(needs([], ["connections:secrets"])).toBe(false);
     });
 });
