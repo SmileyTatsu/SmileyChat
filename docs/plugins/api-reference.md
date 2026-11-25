@@ -1259,12 +1259,17 @@ The host object:
   `{ pid, exited, kill() }`. Arguments are passed as an argv list with no shell,
   so `.cmd` shims, shell builtins, and globs are not resolved: pass the real
   executable. `options.cwd` defaults to the plugin folder, and `options.env` is
-  added on top of the server's environment. Children are tracked, killed with
-  their whole process tree when the module stops, and on Windows they also join
-  SmileyChat's kill-on-close job object. Spawning after a stop throws.
+  added on top of the server's environment. Children are tracked and stopped with
+  the module. On Windows each spawned process is killed with its whole process tree
+  (`taskkill /F /T`) and also joins SmileyChat's kill-on-close job object, so
+  descendants go too. On Linux, macOS, and Termux only the process the plugin
+  spawned is killed: a child that starts a wrapper script or launcher must `exec`
+  the real program, or stop its own grandchildren in `dispose()`, otherwise those
+  descendants can survive. Spawning after a stop throws.
 
-Limits: `activate` gets 15 seconds, `dispose` 5 seconds, and a killed process tree
-is given up to 3 seconds to exit. Errors from `activate`, `dispose`, and `handle`
+Limits: `activate` gets 15 seconds, `dispose` 5 seconds, and a killed process gets
+up to 3 seconds to exit before the module stops waiting for it. Errors from
+`activate`, `dispose`, and `handle`
 are caught and logged instead of escaping into the server. A failed `activate`
 shows on the plugin card through `serverStatus`, and a failed `handle` answers
 `500` with `{ "error": "Plugin server request failed." }`. Requests to a module

@@ -302,7 +302,7 @@ What this design does guarantee:
   privileged access. A remote client that passes normal API auth cannot swap the
   approved code for different code.
 - Revoking, disabling, updating, uninstalling, or shutting the app down stops the
-  module and kills every process tree it started.
+  module and kills every process it spawned; on Windows, their whole trees.
 - Uninstalling an installed plugin also drops its runtime approvals:
   `clearPluginGrants` removes that plugin's whole entry from
   `plugin-grants.json` (every grantable permission, not just `server:process`), so a
@@ -333,8 +333,13 @@ What it does not guarantee:
   `/plugins/{pluginFolder}/...`, and each start copies the plugin folder (except
   `data/`) into the OS temp directory, so the code exists in both places.
 - Spawned programs are not isolated or resource-limited. On Windows they join the
-  app's kill-on-close job object, so a hard crash takes them down; on Linux and
-  macOS a hard crash can orphan them, the same as MCP stdio servers.
+  app's kill-on-close job object, so a hard crash takes them down, and stopping the
+  module kills whole process trees. On Linux, macOS, and Termux only the process the
+  plugin spawned is killed (a plain `SIGKILL`), the same as MCP stdio servers: a
+  wrapper script or launcher that does not `exec` the real program leaves its own
+  children running on those platforms, and a hard crash can orphan them. Plugin
+  server modules have been developed and verified on Windows only; that non-Windows
+  kill path has not been exercised on a real Linux or macOS host.
 
 The `/host` route itself is not behind the privileged gate: the module decides what
 it exposes, so the pipeline is the normal one (auth, host/IP rules, rate limit, CSRF

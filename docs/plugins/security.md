@@ -49,7 +49,7 @@ What SmileyChat enforces:
 - Approval and replacement of an approved plugin require privileged access: loopback, or the `X-SmileyChat-Admin-Secret` header. A remote client that passes normal API auth cannot grant the permission or swap the code of a plugin that holds it.
 - Revoking the approval stops the module without uninstalling the plugin.
 - The grant is stored per plugin ID in `userData/settings/plugin-grants.json`, so it survives restarts and updates.
-- Stopping a module disposes it, then kills every process tree it started. The shutdown handlers do the same on `SIGINT`, `SIGTERM`, `SIGHUP`, and `SIGBREAK`, with a 4.5 second cap.
+- Stopping a module disposes it, then kills every process it spawned; on Windows, their whole process trees (`taskkill /F /T`), and on Linux and macOS only the process it spawned. The shutdown handlers do the same on `SIGINT`, `SIGTERM`, `SIGHUP`, and `SIGBREAK`, with a 4.5 second cap.
 - The module's routes live under `/api/plugins/{pluginId}/host/*` and pass through the normal API security pipeline. They are not behind the privileged gate: the module decides what it exposes, so a handler must treat its callers as "someone who can use this app" and must not change state on `GET`.
 
 What it does not give you:
@@ -59,7 +59,7 @@ What it does not give you:
 - A remote client that passes normal API auth can still call the plugin's host routes, toggle the plugin's `enabled` flag to start or stop an approved module, and read or write the plugin's `data/` through the storage API.
 - The module's source is served like any other plugin file under `/plugins/{pluginFolder}/...`, so it can be read by anyone who can load the app.
 - A private copy of the plugin folder is made in the OS temp directory for each start, so the code is also on disk there while it runs.
-- Spawned programs inherit the user's environment and privileges, and are not isolated from each other or from the rest of the machine. On Windows the app's job object kills them if SmileyChat crashes; on Linux and macOS a hard crash can leave them running, the same as MCP stdio servers.
+- Spawned programs inherit the user's environment and privileges, and are not isolated from each other or from the rest of the machine. On Windows stopping a module kills each spawned process with its whole tree, and the app's job object kills them if SmileyChat crashes. On Linux, macOS, and Termux only the process the plugin spawned is killed, so a launcher that does not `exec` the real program leaves its own children running, and a hard crash can leave them behind, the same as MCP stdio servers. Plugin server modules have been developed and verified on Windows only; that non-Windows kill path has not been exercised on a real Linux or macOS host.
 
 The full guarantee list, including how the privileged check resolves for loopback and remote callers, is in [the security model](../reference/security.md#plugin-server-modules).
 
