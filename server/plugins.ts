@@ -510,6 +510,15 @@ export async function installVerifiedPlugin(
 export async function updateInstalledPlugin(
     pluginId: string,
     options: PluginInstallOptions = {},
+    dependencies: {
+        /**
+         * Test seam: proving that the privileged gate runs before anything is
+         * fetched needs the download to be observable. Routes never pass this.
+         */
+        downloadArtifact?: typeof downloadArtifact;
+        pluginsRoot?: string;
+        grantsPath?: string;
+    } = {},
 ) {
     const safePluginId = safeSegment(pluginId);
 
@@ -517,12 +526,23 @@ export async function updateInstalledPlugin(
         throw new BadRequestError("Plugin cannot be updated.");
     }
 
-    const installRoot = join(pluginsDir, pluginId);
+    const pluginsRoot = dependencies.pluginsRoot ?? pluginsDir;
+    const installRoot = join(pluginsRoot, pluginId);
     const metadata = await readPluginInstallMetadata(installRoot);
 
     if (!metadata) {
         throw new BadRequestError("Plugin was not installed by SmileyChat.");
     }
+
+    // This runs before the source is resolved and before the artifact is
+    // downloaded: resolving a registry entry is already a request the client
+    // caused, and an unauthorised client should not be able to make this server
+    // fetch anything on its behalf. `installPluginArtifact` keeps its own copy
+    // of the gate for installs over an existing id from other callers.
+    await assertPluginReplacementAllowed(pluginId, {
+        grantsPath: dependencies.grantsPath,
+        privileged: options.privileged === true,
+    });
 
     const source =
         metadata.source === "registry"
@@ -541,7 +561,8 @@ export async function updateInstalledPlugin(
 
     assertInstallSourceCompatibility(source);
 
-    const bytes = await downloadArtifact(source.artifactUrl, {
+    const download = dependencies.downloadArtifact ?? downloadArtifact;
+    const bytes = await download(source.artifactUrl, {
         allowedHostnames:
             source.source === "registry"
                 ? getPluginArtifactAllowedHostnames()
@@ -553,6 +574,8 @@ export async function updateInstalledPlugin(
         expectedPluginId: pluginId,
         privileged: options.privileged === true,
         source,
+        ...(dependencies.grantsPath ? { grantsPath: dependencies.grantsPath } : {}),
+        ...(dependencies.pluginsRoot ? { pluginsRoot: dependencies.pluginsRoot } : {}),
     });
 }
 

@@ -10,7 +10,11 @@ import { APP_VERSION } from "#frontend/lib/app-version";
 import { PLUGIN_API_VERSION } from "#frontend/lib/plugins/compatibility";
 
 import { writePluginPermissionGrant } from "./plugin-grants";
-import { pluginInstallTestInternals, servePluginAsset } from "./plugins";
+import {
+    pluginInstallTestInternals,
+    servePluginAsset,
+    updateInstalledPlugin,
+} from "./plugins";
 
 const tempRoots: string[] = [];
 const originalManualFlag = Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS;
@@ -1008,6 +1012,71 @@ test("replacing a plugin that holds server:process needs privileged access", asy
 
     const response = await update(true);
 
+    expect((await response.json()).ok).toBe(true);
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).json(),
+    ).toMatchObject({ version: "2.0.0" });
+});
+
+test("a non-privileged update is refused before anything is downloaded", async () => {
+    const pluginsRoot = await tempRoot();
+    const grantsRoot = await tempRoot();
+    const grantsPath = join(grantsRoot, "settings", "plugin-grants.json");
+    const downloads: string[] = [];
+
+    await installZip(pluginsRoot, pluginZip({ version: "1.0.0" }));
+    // A manual artifact keeps the registry lookup out of the way, so this test
+    // observes only the download it is meant to observe.
+    await Bun.write(
+        join(pluginsRoot, "example-plugin", "smileychat-install.json"),
+        JSON.stringify({
+            source: "manual-artifact",
+            pluginId: "example-plugin",
+            artifactUrl: "https://example.com/example-plugin.zip",
+            unverified: true,
+            installedAt: new Date().toISOString(),
+        }),
+    );
+    Bun.env.SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS = "true";
+    await writePluginPermissionGrant(
+        "example-plugin",
+        { permissions: ["server:process"] },
+        {
+            readManifests: async () => [
+                { id: "example-plugin", permissions: ["server:process"] },
+            ],
+            pathname: grantsPath,
+        },
+    );
+
+    const download = async (artifactUrl: string) => {
+        downloads.push(artifactUrl);
+        return pluginZip({ version: "2.0.0" });
+    };
+
+    await expect(
+        updateInstalledPlugin(
+            "example-plugin",
+            { privileged: false },
+            { downloadArtifact: download, grantsPath, pluginsRoot },
+        ),
+    ).rejects.toThrow("requires privileged access");
+
+    // The gate ran before the artifact download: a remote client cannot make
+    // this server fetch code it is not allowed to install.
+    expect(downloads).toEqual([]);
+    expect(
+        await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).json(),
+    ).toMatchObject({ version: "1.0.0" });
+
+    // Cleared for this client, the same call downloads once and replaces.
+    const response = await updateInstalledPlugin(
+        "example-plugin",
+        { privileged: true },
+        { downloadArtifact: download, grantsPath, pluginsRoot },
+    );
+
+    expect(downloads).toHaveLength(1);
     expect((await response.json()).ok).toBe(true);
     expect(
         await Bun.file(join(pluginsRoot, "example-plugin", "plugin.json")).json(),
