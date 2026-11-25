@@ -2,6 +2,7 @@ import { Cpu, PanelRight, Send } from "lucide-preact";
 
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type { ChatMode } from "#frontend/types";
+import { DeferredNumberInput } from "./deferred-number-input";
 import {
     NumberInput,
     SegmentedControl,
@@ -126,6 +127,24 @@ export function GeneralSettings({
                         updateLayout({ characterPanelOpenByDefault })
                     }
                 />
+
+                <SettingField
+                    label="Model list display limit"
+                    description="Most rows shown at once in the connection model picker. Search always covers every model; this only limits what is drawn."
+                >
+                    <DeferredNumberInput
+                        min={50}
+                        max={2000}
+                        step={50}
+                        value={preferences.layout.modelPickerLimit}
+                        integer
+                        onCommit={(modelPickerLimit) => {
+                            if (modelPickerLimit !== undefined) {
+                                updateLayout({ modelPickerLimit });
+                            }
+                        }}
+                    />
+                </SettingField>
             </section>
         </section>
     );

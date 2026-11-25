@@ -554,6 +554,8 @@ export type AppPreferences = {
 	};
 	layout: {
 		characterPanelOpenByDefault: boolean;
+		/** Most rows drawn at once in the connection model picker. */
+		modelPickerLimit: number;
 		railOrder: string[];
 	};
 	/** Global text-completion formatting, merged with active preset overrides for generation. */
@@ -975,6 +977,12 @@ export type KoboldCPPConnectionConfig = {
 	};
 };
 export type ConnectionProviderId = "openai-compatible" | "openrouter" | "google-ai" | "anthropic" | "novelai" | "xai" | "koboldcpp" | (string & {});
+export type ProfileModelUsage = {
+	/** Model IDs the user starred in this connection profile's model picker. */
+	favoriteModels?: string[];
+	/** Recently selected model IDs for this profile, newest first. */
+	recentModels?: string[];
+};
 export type OpenAICompatibleConnectionProfile = {
 	id: string;
 	name: string;
@@ -1064,7 +1072,7 @@ export type PluginConnectionProfile = {
 	createdAt: string;
 	updatedAt: string;
 };
-export type ConnectionProfile = OpenAICompatibleConnectionProfile | OpenRouterConnectionProfile | GoogleAIConnectionProfile | AnthropicConnectionProfile | NovelAIConnectionProfile | XAIConnectionProfile | KoboldCPPConnectionProfile | PluginConnectionProfile;
+export type ConnectionProfile = (OpenAICompatibleConnectionProfile | OpenRouterConnectionProfile | GoogleAIConnectionProfile | AnthropicConnectionProfile | NovelAIConnectionProfile | XAIConnectionProfile | KoboldCPPConnectionProfile | PluginConnectionProfile) & ProfileModelUsage;
 export type ConnectionSettings = {
 	version: 1;
 	activeProfileId: string;

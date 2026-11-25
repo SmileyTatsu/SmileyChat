@@ -38,6 +38,13 @@ export type ConnectionProviderId =
     | "koboldcpp"
     | (string & {});
 
+export type ProfileModelUsage = {
+    /** Model IDs the user starred in this connection profile's model picker. */
+    favoriteModels?: string[];
+    /** Recently selected model IDs for this profile, newest first. */
+    recentModels?: string[];
+};
+
 export type OpenAICompatibleConnectionProfile = {
     id: string;
     name: string;
@@ -143,7 +150,7 @@ export type PluginConnectionProfile = {
     updatedAt: string;
 };
 
-export type ConnectionProfile =
+export type ConnectionProfile = (
     | OpenAICompatibleConnectionProfile
     | OpenRouterConnectionProfile
     | GoogleAIConnectionProfile
@@ -151,7 +158,9 @@ export type ConnectionProfile =
     | NovelAIConnectionProfile
     | XAIConnectionProfile
     | KoboldCPPConnectionProfile
-    | PluginConnectionProfile;
+    | PluginConnectionProfile
+) &
+    ProfileModelUsage;
 
 export type ConnectionSettings = {
     version: 1;
@@ -446,8 +455,16 @@ export function switchProfileProvider(
 
     const { preservedBaseUrl: _preservedBaseUrl, ...profile } = currentProfile;
 
+    // Favorites and recents are model IDs, which are provider-specific, so a
+    // provider switch starts with an empty list.
+    const {
+        favoriteModels: _favoriteModels,
+        recentModels: _recentModels,
+        ...profileWithoutModelUsage
+    } = profile;
+
     return {
-        ...profile,
+        ...profileWithoutModelUsage,
         provider: nextProviderId,
         contextTokenBudget: currentProfile.contextTokenBudget,
         overrideModelContext: currentProfile.overrideModelContext,
@@ -564,6 +581,8 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
 
     const now = new Date().toISOString();
     const preservedBaseUrl = stringOrUndefined(profile.preservedBaseUrl);
+    const favoriteModels = normalizeModelIdList(profile.favoriteModels, 200);
+    const recentModels = normalizeModelIdList(profile.recentModels, 6);
 
     return {
         id: stringOrFallback(profile.id, createConnectionProfileId()),
@@ -573,6 +592,8 @@ function normalizeConnectionProfile(value: unknown): ConnectionProfile | undefin
         overrideModelContext: profile.overrideModelContext === true,
         tokenizer: normalizeTokenizerSelection(profile.tokenizer),
         ...(preservedBaseUrl ? { preservedBaseUrl } : {}),
+        ...(favoriteModels.length > 0 ? { favoriteModels } : {}),
+        ...(recentModels.length > 0 ? { recentModels } : {}),
         config:
             provider === "openai-compatible"
                 ? normalizeOpenAICompatibleConfig(profile.config)
@@ -628,6 +649,24 @@ function migrateLegacySecrets(secrets: Record<string, unknown>): ConnectionSecre
 
 function normalizeProvider(value: unknown): ConnectionProviderId | undefined {
     return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function normalizeModelIdList(value: unknown, max: number): string[] {
+    if (!Array.isArray(value)) return [];
+
+    const seen = new Set<string>();
+    const ids: string[] = [];
+
+    for (const item of value) {
+        if (typeof item !== "string") continue;
+        const id = item.trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+        if (ids.length >= max) break;
+    }
+
+    return ids;
 }
 
 function normalizePluginConfig(value: unknown): Record<string, unknown> {

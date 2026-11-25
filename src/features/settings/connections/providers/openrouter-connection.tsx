@@ -1,4 +1,3 @@
-import { useState } from "preact/hooks";
 import { DeferredNumberInput } from "#frontend/features/settings/deferred-number-input";
 
 import {
@@ -13,12 +12,22 @@ import type {
     OpenRouterSort,
 } from "#frontend/lib/connections/openrouter/types";
 
-import { ApiKeyField, ConnectionActions } from "./shared-fields";
+import { formatContextTokens, formatPricePerMillion } from "../model-picker/format";
+import { ModelPicker } from "../model-picker/model-picker";
+import { groupOfModelId } from "../model-picker/search";
+import type { ModelPickerContext, ModelPickerItem } from "../model-picker/types";
+
+import {
+    ApiKeyField,
+    ConnectionActions,
+    preventLabelClickThrough,
+} from "./shared-fields";
 
 type OpenRouterConnectionProps = {
     config: OpenRouterConnectionConfig;
     disabled?: boolean;
     modelLoadingDisabled?: boolean;
+    modelPicker: ModelPickerContext;
     models: OpenRouterModel[];
     onChange: (config: OpenRouterConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -32,14 +41,13 @@ export function OpenRouterConnection({
     config,
     disabled,
     modelLoadingDisabled,
+    modelPicker,
     models,
     onChange,
     onClearApiKey,
     onLoadModels,
     onTest,
 }: OpenRouterConnectionProps) {
-    const [modelSearch, setModelSearch] = useState("");
-
     function updateConfig(nextConfig: Partial<OpenRouterConnectionConfig>) {
         onChange({ ...config, ...nextConfig });
     }
@@ -89,27 +97,20 @@ export function OpenRouterConnection({
         });
     }
 
-    function updateSelectedModel(value: string) {
-        const separatorIndex = value.indexOf(":");
-        const source = value.slice(0, separatorIndex);
-        const id = value.slice(separatorIndex + 1);
+    function selectModel(id: string) {
+        const selected = models.find((model) => model.id === id);
 
-        if (source === "api") {
-            const selected = models.find((model) => model.id === id);
-
-            updateConfig({
-                model: {
-                    source: "api",
-                    id,
-                    supportedParameters:
-                        selected?.supported_parameters?.filter(Boolean) ?? [],
-                },
-            });
-            return;
-        }
+        updateConfig({
+            model: {
+                source: "api",
+                id,
+                supportedParameters:
+                    selected?.supported_parameters?.filter(Boolean) ?? [],
+            },
+        });
+        modelPicker.onModelUsed(id);
     }
 
-    const selectedModelValue = config.model.id ? `api:${config.model.id}` : "api:";
     const preferences = config.providerPreferences;
     const reasoning = config.reasoning;
     const reasoningStrategy = reasoning?.max_tokens
@@ -118,11 +119,31 @@ export function OpenRouterConnection({
           ? "effort"
           : "none";
     const selectedModel = models.find((model) => model.id === config.model.id);
-    const filteredModels = filterModels(models, modelSearch);
-    const selectedModelIsLoaded = models.some((model) => model.id === config.model.id);
-    const selectedModelIsVisible = filteredModels.some(
-        (model) => model.id === config.model.id,
-    );
+    const modelItems: ModelPickerItem[] = models.map((model) => {
+        const contextTokens = model.context_length ?? model.top_provider?.context_length;
+        const meta = [
+            formatContextTokens(contextTokens),
+            formatPricePerMillion(model.pricing?.prompt),
+        ]
+            .filter(Boolean)
+            .join(" · ");
+
+        return {
+            id: model.id,
+            label: model.name ?? model.id,
+            group: groupOfModelId(model.id),
+            meta: meta || undefined,
+        };
+    });
+
+    // Keep a saved model visible before Load fills the list again.
+    if (config.model.id && !models.some((model) => model.id === config.model.id)) {
+        modelItems.push({
+            id: config.model.id,
+            label: config.model.id,
+            group: "Current",
+        });
+    }
 
     return (
         <section className="connection-provider-panel">
@@ -134,47 +155,20 @@ export function OpenRouterConnection({
                 onClear={onClearApiKey}
             />
             <div className="inline-field-row">
-                <label>
+                <label onClick={preventLabelClickThrough}>
                     Model
-                    <select
-                        value={selectedModelValue}
-                        onInput={(event) =>
-                            updateSelectedModel(
-                                (event.currentTarget as HTMLSelectElement).value,
-                            )
-                        }
-                    >
-                        {!config.model.id && (
-                            <option value="api:">Load models and choose one</option>
-                        )}
-                        {config.model.id && !selectedModelIsLoaded && (
-                            <option value={`api:${config.model.id}`}>
-                                {config.model.id}
-                            </option>
-                        )}
-                        {config.model.id &&
-                            selectedModelIsLoaded &&
-                            !selectedModelIsVisible && (
-                                <option value={`api:${config.model.id}`}>
-                                    {modelLabel(selectedModel)}
-                                </option>
-                            )}
-                        {models.length === 0 && (
-                            <option disabled value="api:">
-                                Load required
-                            </option>
-                        )}
-                        {models.length > 0 && filteredModels.length === 0 && (
-                            <option disabled value="api:">
-                                No matching models
-                            </option>
-                        )}
-                        {filteredModels.map((model) => (
-                            <option key={model.id} value={`api:${model.id}`}>
-                                {modelLabel(model)}
-                            </option>
-                        ))}
-                    </select>
+                    <ModelPicker
+                        disabled={disabled}
+                        emptyHint="Press Load to fetch the models from OpenRouter."
+                        favorites={modelPicker.favorites}
+                        items={modelItems}
+                        limit={modelPicker.limit}
+                        placeholder="Load models and choose one"
+                        recent={modelPicker.recent}
+                        value={config.model.id}
+                        onSelect={selectModel}
+                        onToggleFavorite={modelPicker.onToggleFavorite}
+                    />
                 </label>
                 <button
                     type="button"
@@ -189,17 +183,6 @@ export function OpenRouterConnection({
                     Load
                 </button>
             </div>
-            <label>
-                Search models
-                <input
-                    value={modelSearch}
-                    placeholder="Filter loaded OpenRouter models"
-                    disabled={models.length === 0}
-                    onInput={(event) =>
-                        setModelSearch((event.currentTarget as HTMLInputElement).value)
-                    }
-                />
-            </label>
             {selectedModel && (
                 <dl className="openrouter-model-meta">
                     <div>
@@ -445,26 +428,4 @@ function normalizeSort(value: string): OpenRouterSort | undefined {
     return value === "price" || value === "throughput" || value === "latency"
         ? value
         : undefined;
-}
-
-function filterModels(models: OpenRouterModel[], search: string) {
-    const query = search.trim().toLowerCase();
-
-    if (!query) {
-        return models;
-    }
-
-    return models.filter((model) =>
-        [model.id, model.name, model.description]
-            .filter(Boolean)
-            .some((value) => value?.toLowerCase().includes(query)),
-    );
-}
-
-function modelLabel(model: OpenRouterModel | undefined) {
-    if (!model) {
-        return "";
-    }
-
-    return model.name ? `${model.name} (${model.id})` : model.id;
 }

@@ -1,5 +1,5 @@
 import { Copy, Plus, Trash2 } from "lucide-preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 import { ConfirmDialog } from "#frontend/components/ui/confirm-dialog";
 import {
@@ -37,6 +37,10 @@ import { createGoogleAIGenerateUrl } from "#frontend/lib/connections/google-ai/a
 import { listGoogleAIModels } from "#frontend/lib/connections/google-ai/models";
 import type { GoogleAIModel } from "#frontend/lib/connections/google-ai/types";
 import { trimTrailingSlash } from "#frontend/lib/connections/http";
+import {
+    pushRecentModel,
+    toggleFavoriteModel,
+} from "#frontend/lib/connections/model-usage";
 import { createServerGenerationConnection } from "#frontend/lib/connections/server-adapter";
 import { createNovelAICompletionUrl } from "#frontend/lib/connections/novelai/adapter";
 import { listOpenAICompatibleModels } from "#frontend/lib/connections/openai-compatible/models";
@@ -79,6 +83,7 @@ import {
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
 
 import { formatConnectionError } from "./connection-error";
+import type { ModelPickerContext } from "./model-picker/types";
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
@@ -90,6 +95,7 @@ const cachedXAIModelsByProfileId: Record<string, XAIModel[]> = {};
 type ConnectionsSettingsProps = {
     canManageSecrets: boolean;
     loadError?: string;
+    modelPickerLimit: number;
     securityNotice?: string;
     settings: ConnectionSettings;
     onSettingsChange: (settings: ConnectionSettings) => void;
@@ -98,6 +104,7 @@ type ConnectionsSettingsProps = {
 export function ConnectionsSettings({
     canManageSecrets,
     loadError,
+    modelPickerLimit,
     securityNotice,
     settings,
     onSettingsChange,
@@ -145,6 +152,26 @@ export function ConnectionsSettings({
         activePluginProvider && activeProfile
             ? getPluginConnectionProviderOwnerId(activeProfile.provider)
             : undefined;
+
+    /**
+     * `settings` is only a render snapshot, and one model selection can update
+     * this draft twice in a single tick (the config change plus the recent-list
+     * push). Keep the newest draft here and rebuild every update from it so the
+     * second update cannot undo the first one.
+     */
+    const draftSettingsRef = useRef(settings);
+    const committedSettingsRef = useRef(settings);
+
+    if (settings !== committedSettingsRef.current) {
+        draftSettingsRef.current = settings;
+        committedSettingsRef.current = settings;
+    }
+
+    function commitSettings(nextSettings: ConnectionSettings) {
+        draftSettingsRef.current = nextSettings;
+        committedSettingsRef.current = nextSettings;
+        onSettingsChange(nextSettings);
+    }
 
     useEffect(() => {
         if (loadError) {
@@ -750,70 +777,139 @@ export function ConnectionsSettings({
     }
 
     function updateActiveProfileConfig(nextConfig: Record<string, unknown>) {
-        if (!activeProfile) {
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile) {
             return;
         }
 
         const config =
-            isOpenAICompatibleProfile(activeProfile) &&
-            (nextConfig.baseUrl !== activeProfile.config.baseUrl ||
-                nextConfig.apiKey !== activeProfile.config.apiKey)
+            isOpenAICompatibleProfile(profile) &&
+            (nextConfig.baseUrl !== profile.config.baseUrl ||
+                nextConfig.apiKey !== profile.config.apiKey)
                 ? { ...nextConfig, cachedModels: undefined }
                 : nextConfig;
 
-        onSettingsChange(updateProfileConfig(settings, activeProfile.id, config));
+        commitSettings(updateProfileConfig(currentSettings, profile.id, config));
     }
 
     function updateActiveProfileName(name: string) {
-        if (!activeProfile) {
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile) {
             return;
         }
 
-        onSettingsChange(updateProfile(settings, activeProfile.id, { name }));
+        commitSettings(updateProfile(currentSettings, profile.id, { name }));
     }
 
     function updateActiveProfileContextTokenBudget(value: number) {
-        if (!activeProfile) {
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile) {
             return;
         }
 
-        onSettingsChange(
-            updateProfile(settings, activeProfile.id, {
+        commitSettings(
+            updateProfile(currentSettings, profile.id, {
                 contextTokenBudget: normalizeContextTokenBudget(
                     value,
-                    activeProfile.contextTokenBudget,
+                    profile.contextTokenBudget,
                 ),
             }),
         );
     }
 
     function updateActiveProfileContextOverride(overrideModelContext: boolean) {
-        if (!activeProfile) {
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile) {
             return;
         }
 
-        onSettingsChange(
-            updateProfile(settings, activeProfile.id, { overrideModelContext }),
+        commitSettings(
+            updateProfile(currentSettings, profile.id, { overrideModelContext }),
         );
     }
 
     function updateActiveProfileTokenizer(tokenizer: TokenizerSelection) {
-        if (!activeProfile) return;
-        onSettingsChange(updateProfile(settings, activeProfile.id, { tokenizer }));
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile) return;
+
+        commitSettings(updateProfile(currentSettings, profile.id, { tokenizer }));
     }
 
+    function toggleActiveProfileFavoriteModel(modelId: string) {
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile) {
+            return;
+        }
+
+        commitSettings(
+            updateProfile(currentSettings, profile.id, {
+                favoriteModels: toggleFavoriteModel(profile.favoriteModels, modelId),
+            }),
+        );
+    }
+
+    function recordActiveProfileModelUse(modelId: string) {
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile) {
+            return;
+        }
+
+        commitSettings(
+            updateProfile(currentSettings, profile.id, {
+                recentModels: pushRecentModel(profile.recentModels, modelId),
+            }),
+        );
+    }
+
+    const modelPicker: ModelPickerContext = {
+        limit: modelPickerLimit,
+        favorites: activeProfile?.favoriteModels ?? [],
+        recent: activeProfile?.recentModels ?? [],
+        onToggleFavorite: toggleActiveProfileFavoriteModel,
+        onModelUsed: recordActiveProfileModelUse,
+    };
+
     function addProfile() {
+        const currentSettings = draftSettingsRef.current;
         const profile = createConnectionProfile(
             "openai-compatible",
-            `OpenAI compatible ${settings.profiles.length + 1}`,
+            `OpenAI compatible ${currentSettings.profiles.length + 1}`,
         );
         const nextSettings = {
-            ...settings,
+            ...currentSettings,
             activeProfileId: profile.id,
-            profiles: [...settings.profiles, profile],
+            profiles: [...currentSettings.profiles, profile],
         };
 
-        onSettingsChange(nextSettings);
+        commitSettings(nextSettings);
         setStatusMessage("Created connection profile.");
         setRequestState("success");
     }
@@ -825,36 +921,42 @@ export function ConnectionsSettings({
             return;
         }
 
+        const currentSettings = draftSettingsRef.current;
         const profile = createConnectionProfile(
             provider.id,
             provider.label,
             provider.defaultConfig,
         );
         const nextSettings = {
-            ...settings,
+            ...currentSettings,
             activeProfileId: profile.id,
-            profiles: [...settings.profiles, profile],
+            profiles: [...currentSettings.profiles, profile],
         };
 
-        onSettingsChange(nextSettings);
+        commitSettings(nextSettings);
         setStatusMessage(`Created ${provider.label} profile.`);
         setRequestState("success");
     }
 
     function changeActiveProvider(providerId: string) {
-        if (!activeProfile || activeProfile.provider === providerId) {
+        const currentSettings = draftSettingsRef.current;
+        const profile = activeProfile
+            ? findProfile(currentSettings, activeProfile.id)
+            : undefined;
+
+        if (!profile || profile.provider === providerId) {
             return;
         }
 
         const provider = getPluginConnectionProvider(providerId);
         const nextProfile = switchProfileProvider(
-            activeProfile,
+            profile,
             providerId,
             provider?.defaultConfig,
         );
 
-        onSettingsChange(
-            updateProfile(settings, activeProfile.id, {
+        commitSettings(
+            updateProfile(currentSettings, profile.id, {
                 provider: nextProfile.provider,
                 config: nextProfile.config,
                 preservedBaseUrl: nextProfile.preservedBaseUrl,
@@ -883,36 +985,45 @@ export function ConnectionsSettings({
                     : {}),
             },
             contextTokenBudget: activeProfile.contextTokenBudget,
+            // The copy keeps the same provider and model list, so favorites stay useful.
+            favoriteModels: activeProfile.favoriteModels
+                ? [...activeProfile.favoriteModels]
+                : undefined,
             createdAt: now,
             updatedAt: now,
         };
+        const currentSettings = draftSettingsRef.current;
         const nextSettings = {
-            ...settings,
+            ...currentSettings,
             activeProfileId: profile.id,
-            profiles: [...settings.profiles, profile],
+            profiles: [...currentSettings.profiles, profile],
         };
 
-        onSettingsChange(nextSettings);
+        commitSettings(nextSettings);
         setStatusMessage("Duplicated connection profile without copying its API key.");
         setRequestState("success");
     }
 
     function deleteProfile(profile: ConnectionProfile) {
-        if (settings.profiles.length <= 1) {
+        const currentSettings = draftSettingsRef.current;
+
+        if (currentSettings.profiles.length <= 1) {
             return;
         }
 
-        const profiles = settings.profiles.filter((entry) => entry.id !== profile.id);
+        const profiles = currentSettings.profiles.filter(
+            (entry) => entry.id !== profile.id,
+        );
         const nextSettings = {
-            ...settings,
+            ...currentSettings,
             activeProfileId:
-                settings.activeProfileId === profile.id
+                currentSettings.activeProfileId === profile.id
                     ? profiles[0].id
-                    : settings.activeProfileId,
+                    : currentSettings.activeProfileId,
             profiles,
         };
 
-        onSettingsChange(nextSettings);
+        commitSettings(nextSettings);
         setOpenRouterModelsByProfileId((current) => {
             const next = { ...current };
             delete next[profile.id];
@@ -1127,6 +1238,7 @@ export function ConnectionsSettings({
                         <OpenAICompatibleConnection
                             config={activeProfile.config}
                             disabled={isBusy}
+                            modelPicker={modelPicker}
                             models={activeModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
@@ -1137,6 +1249,7 @@ export function ConnectionsSettings({
                         <OpenRouterConnection
                             config={activeProfile.config}
                             disabled={isBusy}
+                            modelPicker={modelPicker}
                             models={activeOpenRouterModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
@@ -1147,6 +1260,7 @@ export function ConnectionsSettings({
                         <GoogleAIConnection
                             config={activeProfile.config}
                             disabled={isBusy}
+                            modelPicker={modelPicker}
                             models={activeGoogleAIModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
@@ -1157,6 +1271,7 @@ export function ConnectionsSettings({
                         <AnthropicConnection
                             config={activeProfile.config}
                             disabled={isBusy}
+                            modelPicker={modelPicker}
                             models={activeAnthropicModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
@@ -1175,6 +1290,7 @@ export function ConnectionsSettings({
                         <XAIConnection
                             config={activeProfile.config}
                             disabled={isBusy}
+                            modelPicker={modelPicker}
                             models={activeXAIModels}
                             onChange={(config) => updateActiveProfileConfig(config)}
                             onClearApiKey={clearApiKey}
@@ -1260,6 +1376,10 @@ export function ConnectionsSettings({
             )}
         </section>
     );
+}
+
+function findProfile(settings: ConnectionSettings, profileId: string) {
+    return settings.profiles.find((profile) => profile.id === profileId);
 }
 
 function updateProfile(

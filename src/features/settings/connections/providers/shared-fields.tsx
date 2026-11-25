@@ -1,3 +1,30 @@
+import type { JSX } from "preact";
+
+import { formatContextTokens } from "../model-picker/format";
+import { ModelPicker } from "../model-picker/model-picker";
+import { groupOfModelId } from "../model-picker/search";
+import type { ModelPickerContext, ModelPickerItem } from "../model-picker/types";
+
+/**
+ * Model pickers render their popover inside the field's <label>. Without this
+ * guard a click on a popover row, section or hint would also click the trigger
+ * button (a label forwards clicks to its control) and toggle the list closed.
+ */
+export function preventLabelClickThrough(
+    event: JSX.TargetedMouseEvent<HTMLLabelElement>,
+) {
+    const target = event.target as HTMLElement | null;
+
+    if (
+        target === event.currentTarget ||
+        target?.closest("button, input, select, textarea, a")
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+}
+
 type ApiKeyFieldProps = {
     apiKey?: string;
     disabled?: boolean;
@@ -41,6 +68,7 @@ type CatalogModelFieldProps<TModel> = {
     disabled?: boolean;
     modelLoadingDisabled?: boolean;
     model: CatalogModelSelection;
+    modelPicker: ModelPickerContext;
     onChange: (model: CatalogModelSelection) => void;
     onLoadModels: () => void;
     getApiModelId: (model: TModel) => string;
@@ -106,120 +134,111 @@ export function CatalogModelField<TModel>({
     disabled,
     modelLoadingDisabled,
     model,
+    modelPicker,
     onChange,
     onLoadModels,
     getApiModelId,
     getApiModelLabel,
 }: CatalogModelFieldProps<TModel>) {
-    const selectedModelValue =
-        model.source === "custom" ? "custom:" : `${model.source}:${model.id}`;
-    const hasLoadedApiModels = apiModels.length > 0;
-    const savedApiModelId =
-        !hasLoadedApiModels && model.source === "api" && model.id.length > 0
-            ? model.id
-            : null;
+    const items: ModelPickerItem[] = [];
+    const defaultModelIds = new Set<string>();
+    const itemIds = new Set<string>();
 
-    function updateSelectedModel(value: string) {
-        const separatorIndex = value.indexOf(":");
-        const source = value.slice(0, separatorIndex);
-        const id = value.slice(separatorIndex + 1);
+    for (const category of defaultModelCategories) {
+        for (const defaultModel of category.models) {
+            if (itemIds.has(defaultModel.id)) {
+                continue;
+            }
 
-        if (source === "api") {
-            onChange({ source: "api", id });
-            return;
-        }
-
-        if (source === "custom") {
-            onChange({
-                source: "custom",
-                id: model.source === "custom" ? model.id : "",
+            defaultModelIds.add(defaultModel.id);
+            itemIds.add(defaultModel.id);
+            items.push({
+                id: defaultModel.id,
+                label: defaultModel.label,
+                group: category.label,
+                meta: formatContextTokens(defaultModel.contextTokenLimit),
             });
+        }
+    }
+
+    const apiModelIds = new Set<string>();
+
+    for (const apiModel of apiModels) {
+        const id = getApiModelId(apiModel);
+
+        if (!id) {
+            continue;
+        }
+
+        apiModelIds.add(id);
+
+        if (itemIds.has(id)) {
+            continue;
+        }
+
+        itemIds.add(id);
+        items.push({
+            id,
+            label: getApiModelLabel(apiModel),
+            group: groupOfModelId(id),
+        });
+    }
+
+    // A saved model can be missing from both lists, e.g. an API id stored before
+    // Load ran. Keep it in the list so the trigger can show the current selection.
+    if (model.id && !itemIds.has(model.id)) {
+        items.push({
+            id: model.id,
+            label: model.id,
+            group: "Current",
+        });
+    }
+
+    function selectModel(id: string) {
+        if (!id) {
             return;
         }
 
-        onChange({ source: "default", id });
+        onChange(
+            defaultModelIds.has(id)
+                ? { source: "default", id }
+                : apiModelIds.has(id)
+                  ? { source: "api", id }
+                  : { source: "custom", id },
+        );
+        modelPicker.onModelUsed(id);
     }
 
     return (
-        <>
-            <div className="inline-field-row">
-                <label>
-                    Model
-                    <select
-                        value={selectedModelValue}
-                        onInput={(event) =>
-                            updateSelectedModel(
-                                (event.currentTarget as HTMLSelectElement).value,
-                            )
-                        }
-                    >
-                        {defaultModelCategories.map((category) => (
-                            <optgroup key={category.id} label={category.label}>
-                                {category.models.map((defaultModel) => (
-                                    <option
-                                        key={defaultModel.id}
-                                        value={`default:${defaultModel.id}`}
-                                    >
-                                        {defaultModel.label}
-                                    </option>
-                                ))}
-                            </optgroup>
-                        ))}
-                        {hasLoadedApiModels ? (
-                            <optgroup label="Other">
-                                {apiModels.map((apiModel) => {
-                                    const id = getApiModelId(apiModel);
-
-                                    return (
-                                        <option key={id} value={`api:${id}`}>
-                                            {getApiModelLabel(apiModel)}
-                                        </option>
-                                    );
-                                })}
-                            </optgroup>
-                        ) : (
-                            <optgroup label="Other">
-                                {savedApiModelId && (
-                                    <option value={`api:${savedApiModelId}`}>
-                                        Selected API model: {savedApiModelId}
-                                    </option>
-                                )}
-                                <option disabled value="api:">
-                                    Load models to fill this category
-                                </option>
-                            </optgroup>
-                        )}
-                        <option value="custom:">Custom model...</option>
-                    </select>
-                </label>
-                <button
-                    type="button"
-                    disabled={disabled || modelLoadingDisabled}
-                    onClick={onLoadModels}
-                    title={
-                        modelLoadingDisabled
-                            ? "Load models on the computer running SmileyChat."
-                            : undefined
-                    }
-                >
-                    Load
-                </button>
-            </div>
-            <label>
-                Custom model
-                <input
-                    disabled={model.source !== "custom"}
-                    value={model.source === "custom" ? model.id : ""}
-                    placeholder="Use when the endpoint does not list models"
-                    onInput={(event) =>
-                        onChange({
-                            source: "custom",
-                            id: (event.currentTarget as HTMLInputElement).value,
-                        })
-                    }
+        <div className="inline-field-row">
+            <label onClick={preventLabelClickThrough}>
+                Model
+                <ModelPicker
+                    disabled={disabled}
+                    emptyHint="Press Load to fetch the models from this endpoint."
+                    favorites={modelPicker.favorites}
+                    items={items}
+                    limit={modelPicker.limit}
+                    placeholder="Select a model"
+                    recent={modelPicker.recent}
+                    value={model.id}
+                    onSelect={selectModel}
+                    onToggleFavorite={modelPicker.onToggleFavorite}
                 />
             </label>
-        </>
+            <button
+                type="button"
+                disabled={disabled || modelLoadingDisabled}
+                onClick={onLoadModels}
+                title={
+                    modelLoadingDisabled
+                        ? "Load models on the computer running SmileyChat."
+                        : undefined
+                }
+            >
+                Load
+            </button>
+        </div>
     );
 }
 

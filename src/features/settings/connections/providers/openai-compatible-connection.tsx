@@ -6,6 +6,8 @@ import type {
     OpenAICompatibleReasoningConfig,
 } from "#frontend/lib/connections/openai-compatible/types";
 
+import type { ModelPickerContext } from "../model-picker/types";
+
 import {
     ApiKeyField,
     BaseUrlField,
@@ -17,6 +19,7 @@ type OpenAICompatibleConnectionProps = {
     config: OpenAICompatibleConnectionConfig;
     disabled?: boolean;
     modelLoadingDisabled?: boolean;
+    modelPicker: ModelPickerContext;
     models: OpenAICompatibleModel[];
     onChange: (config: OpenAICompatibleConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -28,6 +31,7 @@ export function OpenAICompatibleConnection({
     config,
     disabled,
     modelLoadingDisabled,
+    modelPicker,
     models,
     onChange,
     onClearApiKey,
@@ -89,6 +93,7 @@ export function OpenAICompatibleConnection({
                 disabled={disabled}
                 modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
+                modelPicker={modelPicker}
                 onChange={(model) => updateConfig({ model })}
                 onLoadModels={onLoadModels}
                 getApiModelId={(model) => model.id}

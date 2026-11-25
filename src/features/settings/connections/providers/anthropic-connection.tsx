@@ -7,6 +7,8 @@ import type {
     AnthropicThinkingConfig,
 } from "#frontend/lib/connections/anthropic/types";
 
+import type { ModelPickerContext } from "../model-picker/types";
+
 import {
     ApiKeyField,
     BaseUrlField,
@@ -18,6 +20,7 @@ type AnthropicConnectionProps = {
     config: AnthropicConnectionConfig;
     disabled?: boolean;
     modelLoadingDisabled?: boolean;
+    modelPicker: ModelPickerContext;
     models: AnthropicModel[];
     onChange: (config: AnthropicConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -32,6 +35,7 @@ export function AnthropicConnection({
     config,
     disabled,
     modelLoadingDisabled,
+    modelPicker,
     models,
     onChange,
     onClearApiKey,
@@ -130,6 +134,7 @@ export function AnthropicConnection({
                 disabled={disabled}
                 modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
+                modelPicker={modelPicker}
                 onChange={(model) => updateConfig({ model })}
                 onLoadModels={onLoadModels}
                 getApiModelId={(model) => model.id}

@@ -41,6 +41,8 @@ export type AppPreferences = {
     };
     layout: {
         characterPanelOpenByDefault: boolean;
+        /** Most rows drawn at once in the connection model picker. */
+        modelPickerLimit: number;
         railOrder: string[];
     };
     /** Global text-completion formatting, merged with active preset overrides for generation. */
@@ -113,6 +115,7 @@ export const defaultAppPreferences: AppPreferences = {
     },
     layout: {
         characterPanelOpenByDefault: true,
+        modelPickerLimit: 250,
         railOrder: [],
     },
     formatting: {
@@ -295,6 +298,12 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             characterPanelOpenByDefault: booleanOrFallback(
                 layout.characterPanelOpenByDefault,
                 defaultAppPreferences.layout.characterPanelOpenByDefault,
+            ),
+            modelPickerLimit: numberInRange(
+                layout.modelPickerLimit,
+                defaultAppPreferences.layout.modelPickerLimit,
+                50,
+                2000,
             ),
             railOrder: normalizeRailOrder(layout.railOrder),
         },

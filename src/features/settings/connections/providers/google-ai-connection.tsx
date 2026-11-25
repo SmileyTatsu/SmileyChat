@@ -8,6 +8,8 @@ import type {
     GoogleAIThinkingLevel,
 } from "#frontend/lib/connections/google-ai/types";
 
+import type { ModelPickerContext } from "../model-picker/types";
+
 import {
     ApiKeyField,
     BaseUrlField,
@@ -19,6 +21,7 @@ type GoogleAIConnectionProps = {
     config: GoogleAIConnectionConfig;
     disabled?: boolean;
     modelLoadingDisabled?: boolean;
+    modelPicker: ModelPickerContext;
     models: GoogleAIModel[];
     onChange: (config: GoogleAIConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -51,6 +54,7 @@ export function GoogleAIConnection({
     config,
     disabled,
     modelLoadingDisabled,
+    modelPicker,
     models,
     onChange,
     onClearApiKey,
@@ -104,6 +108,7 @@ export function GoogleAIConnection({
                 disabled={disabled}
                 modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
+                modelPicker={modelPicker}
                 onChange={(model) => {
                     const nextCatalogModel = catalogModels.find(
                         (candidate) => candidate.id === model.id,

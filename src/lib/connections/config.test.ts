@@ -546,6 +546,93 @@ describe("connection config normalization", () => {
         });
     });
 
+    test("normalizes per-profile favorite and recent models", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-openai",
+            profiles: [
+                {
+                    id: "profile-openai",
+                    name: "OpenAI",
+                    provider: "openai-compatible",
+                    favoriteModels: [" gpt-4o ", "gpt-4o", "", 42, "o3"],
+                    recentModels: ["a", "b", "a", "c", "d", "e", "f", "g"],
+                    config: { model: { source: "default", id: "gpt-4o" } },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.favoriteModels).toEqual(["gpt-4o", "o3"]);
+        expect(settings.profiles[0]?.recentModels).toEqual([
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+        ]);
+    });
+
+    test("caps normalized favorites at 200 entries", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-openai",
+            profiles: [
+                {
+                    id: "profile-openai",
+                    name: "OpenAI",
+                    provider: "openai-compatible",
+                    favoriteModels: Array.from(
+                        { length: 205 },
+                        (_, index) => `model-${index}`,
+                    ),
+                    config: { model: { source: "default", id: "gpt-4o" } },
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+            ],
+        });
+
+        expect(settings.profiles[0]?.favoriteModels).toHaveLength(200);
+        expect(settings.profiles[0]?.favoriteModels?.[0]).toBe("model-0");
+        expect(settings.profiles[0]?.favoriteModels?.[199]).toBe("model-199");
+    });
+
+    test("omits empty model usage keys so stored profiles stay unchanged", () => {
+        const settings = normalizeConnectionSettings({
+            version: 1,
+            activeProfileId: "profile-openai",
+            profiles: [
+                {
+                    id: "profile-openai",
+                    name: "OpenAI",
+                    provider: "openai-compatible",
+                    favoriteModels: [],
+                    recentModels: ["  "],
+                    config: { model: { source: "default", id: "gpt-4o" } },
+                },
+            ],
+        });
+        const profile = settings.profiles[0];
+
+        expect(profile).not.toHaveProperty("favoriteModels");
+        expect(profile).not.toHaveProperty("recentModels");
+    });
+
+    test("clears favorites and recents when switching a profile's provider", () => {
+        const profile = createConnectionProfile("openai-compatible", "OpenAI");
+        profile.favoriteModels = ["gpt-4o", "o3"];
+        profile.recentModels = ["o3"];
+
+        const switched = switchProfileProvider(profile, "anthropic");
+
+        expect(switched).not.toHaveProperty("favoriteModels");
+        expect(switched).not.toHaveProperty("recentModels");
+        expect(switched).toMatchObject({ id: profile.id, provider: "anthropic" });
+    });
+
     test("correctly identifies text completion vs chat completion profiles", () => {
         expect(isTextCompletionProfile(createConnectionProfile("koboldcpp"))).toBe(true);
 

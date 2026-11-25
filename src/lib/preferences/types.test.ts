@@ -90,4 +90,28 @@ describe("app preference normalization", () => {
                 .toolIterationLimit,
         ).toBe(12);
     });
+
+    test("defaults the model picker limit when older files lack it", () => {
+        expect(normalizeAppPreferences({ layout: {} }).layout.modelPickerLimit).toBe(250);
+        expect(
+            normalizeAppPreferences({
+                layout: { characterPanelOpenByDefault: false },
+            }).layout.modelPickerLimit,
+        ).toBe(250);
+    });
+
+    test("clamps the model picker limit to the supported range", () => {
+        expect(
+            normalizeAppPreferences({ layout: { modelPickerLimit: 10 } }).layout
+                .modelPickerLimit,
+        ).toBe(50);
+        expect(
+            normalizeAppPreferences({ layout: { modelPickerLimit: 5000 } }).layout
+                .modelPickerLimit,
+        ).toBe(2000);
+        expect(
+            normalizeAppPreferences({ layout: { modelPickerLimit: 400.6 } }).layout
+                .modelPickerLimit,
+        ).toBe(401);
+    });
 });

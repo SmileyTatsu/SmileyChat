@@ -1,0 +1,418 @@
+/* Closed trigger looks like the other fields in Options > Connections. */
+
+.model-picker {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    color: #ececf1;
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+
+.model-picker-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    border-radius: 8px;
+    background: var(--surface-3, #22252e);
+    color: #ececf1;
+    padding: 0 10px 0 11px;
+    text-align: left;
+    font-size: 0.86rem;
+}
+
+.model-picker-trigger:hover:not(:disabled) {
+    background: var(--surface-4, #282d38);
+}
+
+.model-picker-trigger:focus-visible {
+    border-color: #7583a7;
+    outline: 2px solid rgba(126, 160, 255, 0.42);
+    outline-offset: 1px;
+}
+
+.model-picker-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.model-picker-trigger-text {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.model-picker-trigger-label,
+.model-picker-trigger-id {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.model-picker-trigger-label {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+.model-picker-trigger.is-placeholder .model-picker-trigger-label {
+    color: #798194;
+}
+
+.model-picker-trigger-label.is-mono,
+.model-picker-trigger-id {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 0.76rem;
+}
+
+.model-picker-trigger-id {
+    flex: 0 1 auto;
+    min-width: 0;
+    color: #8f96a6;
+}
+
+.model-picker-chevron {
+    flex: 0 0 auto;
+    color: #8f96a6;
+    transition: transform 120ms ease-out;
+}
+
+.model-picker-trigger[aria-expanded="true"] .model-picker-chevron {
+    transform: rotate(180deg);
+}
+
+/* Open list: fixed so the Options modal's own scroll box cannot clip it. */
+
+.model-picker-popover {
+    position: fixed;
+    z-index: 10020;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #343845;
+    border-radius: 10px;
+    background: #17191f;
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.03);
+    animation: model-picker-enter 120ms ease-out;
+    /* The picker sits inside a settings <label>; reset what it inherits there. */
+    color: #ececf1;
+    font-size: 0.86rem;
+    line-height: 1.4;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+@keyframes model-picker-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-3px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .model-picker-popover {
+        animation: none;
+    }
+}
+
+.model-picker-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-height: 40px;
+    border-bottom: 1px solid #292c35;
+    color: #798194;
+    padding: 0 8px 0 10px;
+}
+
+.model-picker-search:focus-within {
+    border-bottom-color: #596a8e;
+}
+
+/*
+ * `.tool-window input:not(...)` (App.css) and `.tool-window input`
+ * (characters.css) style every field in this panel, including this one. The
+ * `!important` flags only reset that box so the search reads as a plain line.
+ */
+.model-picker-search input,
+.model-picker-popover .model-picker-search input {
+    flex: 1;
+    min-width: 0;
+    width: auto !important;
+    min-height: 0;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #ececf1;
+    padding: 4px 0 !important;
+    font-size: 0.86rem;
+    outline: none !important;
+}
+
+.model-picker-search input::placeholder {
+    color: #798194;
+}
+
+.model-picker-search input:focus,
+.model-picker-search input:focus-visible,
+.model-picker-popover .model-picker-search input:focus,
+.model-picker-popover .model-picker-search input:focus-visible {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.model-picker-popover .model-picker-clear {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
+    color: #8f96a6;
+    padding: 0;
+}
+
+.model-picker-popover .model-picker-clear:hover {
+    border-color: transparent;
+    background: #2c303b;
+    box-shadow: none;
+    color: #ececf1;
+}
+
+.model-picker-groups {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 5px;
+    flex: 0 0 auto;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-bottom: 1px solid #292c35;
+    padding: 8px 10px;
+    scrollbar-width: thin;
+}
+
+.model-picker-popover .model-picker-chip {
+    flex: 0 0 auto;
+    min-height: 28px;
+    height: 28px;
+    border: 1px solid #303440;
+    border-radius: 999px;
+    background: #20232b;
+    box-shadow: none;
+    color: #b9bfd0;
+    padding: 0 10px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+.model-picker-popover .model-picker-chip:hover {
+    border-color: #3a3f4d;
+    background: #2a2e39;
+    box-shadow: none;
+    color: #ececf1;
+}
+
+.model-picker-popover .model-picker-chip.is-on {
+    border-color: #596a8e;
+    background: rgba(89, 106, 142, 0.26);
+    box-shadow: none;
+    color: #dde4f7;
+}
+
+.model-picker-chip:focus-visible {
+    outline: 2px solid rgba(126, 160, 255, 0.42);
+    outline-offset: 1px;
+}
+
+.model-picker-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 4px 0 6px;
+    scrollbar-width: thin;
+}
+
+.model-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 4px 10px;
+    color: #ececf1;
+    cursor: pointer;
+}
+
+.model-picker-row:hover,
+.model-picker-row.is-active {
+    background: var(--surface-active, #242832);
+}
+
+.model-picker-row.is-current {
+    box-shadow: inset 3px 0 #596a8e;
+}
+
+.model-picker-row-text {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.model-picker-row-label {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    color: #e5e7ee;
+    font-size: 0.84rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.model-picker-row-id {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    color: #8f96a6;
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.model-picker-row-meta {
+    flex: 0 0 auto;
+    color: #8f96a6;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.model-picker-row-custom {
+    border-top: 1px solid #292c35;
+}
+
+.model-picker-row mark {
+    border-radius: 2px;
+    background: rgba(89, 106, 142, 0.32);
+    color: inherit;
+}
+
+.model-picker-popover .model-picker-star {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
+    color: #6f7789;
+    padding: 0;
+}
+
+.model-picker-popover .model-picker-star:hover {
+    border-color: transparent;
+    background: #303440;
+    box-shadow: none;
+    color: #c4cad8;
+}
+
+.model-picker-popover .model-picker-star.is-on {
+    color: #f0c879;
+}
+
+.model-picker-star:focus-visible {
+    outline: 2px solid rgba(126, 160, 255, 0.42);
+    outline-offset: 1px;
+}
+
+.model-picker-section {
+    padding: 8px 10px 3px;
+    color: #7f8798;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.model-picker-hint {
+    padding: 5px 10px;
+    color: #8f96a6;
+    font-size: 0.76rem;
+    line-height: 1.4;
+}
+
+.model-picker-empty {
+    padding: 12px 10px;
+    color: #9ea4b3;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.model-picker-footer {
+    flex: 0 0 auto;
+    border-top: 1px solid #292c35;
+    padding: 6px 10px;
+    color: #8f96a6;
+    font-size: 0.72rem;
+}
+
+/* Phone: rows become full touch targets without changing the desktop density. */
+
+@media (max-width: 640px) {
+    .model-picker-search {
+        min-height: 44px;
+    }
+
+    .model-picker-popover .model-picker-chip {
+        min-height: 32px;
+        height: 32px;
+    }
+
+    .model-picker-row {
+        min-height: 44px;
+        padding: 6px 10px;
+    }
+
+    .model-picker-popover .model-picker-star {
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+        min-height: 32px;
+    }
+
+    .model-picker-list {
+        max-height: 300px;
+    }
+
+    .model-picker-footer {
+        padding: 8px 10px;
+    }
+}

@@ -6,6 +6,8 @@ import type {
     XAIReasoningConfig,
 } from "#frontend/lib/connections/xai/types";
 
+import type { ModelPickerContext } from "../model-picker/types";
+
 import {
     ApiKeyField,
     BaseUrlField,
@@ -17,6 +19,7 @@ type XAIConnectionProps = {
     config: XAIConnectionConfig;
     disabled?: boolean;
     modelLoadingDisabled?: boolean;
+    modelPicker: ModelPickerContext;
     models: XAIModel[];
     onChange: (config: XAIConnectionConfig) => void;
     onClearApiKey: () => void;
@@ -28,6 +31,7 @@ export function XAIConnection({
     config,
     disabled,
     modelLoadingDisabled,
+    modelPicker,
     models,
     onChange,
     onClearApiKey,
@@ -84,6 +88,7 @@ export function XAIConnection({
                 disabled={disabled}
                 modelLoadingDisabled={modelLoadingDisabled}
                 model={config.model}
+                modelPicker={modelPicker}
                 onChange={(model) => updateConfig({ model })}
                 onLoadModels={onLoadModels}
                 getApiModelId={(model) => model.id}

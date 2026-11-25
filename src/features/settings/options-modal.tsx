@@ -452,6 +452,7 @@ export function OptionsModal({
                                 loadError={connectionLoadError}
                                 securityNotice={connectionSecurityNotice}
                                 canManageSecrets={connectionSecretsAccessible}
+                                modelPickerLimit={preferences.layout.modelPickerLimit}
                                 settings={connectionSettings}
                                 onSettingsChange={onConnectionSettingsChange}
                             />
