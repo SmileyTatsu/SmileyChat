@@ -904,7 +904,7 @@ export type OpenAICompatibleModelSelection = {
 };
 export type OpenAICompatibleReasoningConfig = {
 	enabled?: boolean;
-	effort?: "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
+	effort?: "max" | "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
 	wireFormat?: "chat-reasoning-effort" | "chat-reasoning-object";
 };
 export type OpenAICompatibleModel = {
@@ -1098,6 +1098,8 @@ export type MacroContext = {
 	outlets?: PromptOutletRegistry;
 	personaName: string;
 	personaDescription: string;
+	/** Active preset, so prompt-state macros can read its prompt toggles. */
+	preset?: SmileyPreset;
 	userStatus: UserStatus;
 	worldInfoBefore?: string;
 	worldInfoAfter?: string;
