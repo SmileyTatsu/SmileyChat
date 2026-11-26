@@ -35,18 +35,22 @@ const next = `${HEADER}\n${generated}`;
 
 await rm(SOURCE, { force: true });
 
+// A Windows checkout restores this file with CRLF (`core.autocrlf`), while
+// `dts-bundle-generator` emits LF. Keep the line ending already on disk when
+// rewriting (so regenerating does not leave a phantom modified file in
+// `git status`) and normalize it away when comparing (so the check answers "is
+// the typings content current?" instead of "was this file written on Linux?").
+// Git stores LF either way.
+const current = await readFile(OUTPUT, "utf8").catch(() => "");
+const normalizedCurrent = current.replace(/\r\n/g, "\n");
+
 if (!checkOnly) {
-    await writeFile(OUTPUT, next, "utf8");
+    const content = current.includes("\r\n") ? next.replace(/\n/g, "\r\n") : next;
+
+    await writeFile(OUTPUT, content, "utf8");
     console.log(`Wrote ${OUTPUT}`);
     process.exit(0);
 }
-
-const current = await readFile(OUTPUT, "utf8").catch(() => "");
-// A Windows checkout restores this file with CRLF (`core.autocrlf`), while both
-// `dts-bundle-generator` and this script write LF. Compare the EOL-normalized
-// content so the check answers "is the typings content current?" instead of
-// reporting drift that only means "this clone is not Linux".
-const normalizedCurrent = current.replace(/\r\n/g, "\n");
 
 if (normalizedCurrent === next) {
     console.log(`${OUTPUT} is up to date.`);
