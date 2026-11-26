@@ -508,6 +508,17 @@
     color: #ececf1;
 }
 
+/* The generic 26px icon-button rule above would squash the shortcut label into
+   a 26px box and let it overflow off-centre. Size it to its text and inset it
+   so its right edge mirrors the magnifier's left inset. Keep the 26px height
+   so the bar does not jump when the clear button replaces it. */
+.sidebar-filter-bar .sidebar-filter-hint {
+    width: auto;
+    height: 26px;
+    border-radius: 5px;
+    padding: 0 5px;
+}
+
 .rail-icon-button {
     display: inline-flex;
     align-items: center;
@@ -575,6 +586,9 @@
 
 .chat-row {
     position: relative;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
     align-items: center;
