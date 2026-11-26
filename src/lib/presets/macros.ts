@@ -27,11 +27,27 @@ export type MacroContext = {
     personaDescription: string;
     /** Active preset, so prompt-state macros can read its prompt toggles. */
     preset?: SmileyPreset;
+    /**
+     * Tools that will reach the model with this request, so
+     * `{{hasTool::name}}` / `{{hasToolGroup::ref}}` can gate prompt text on
+     * them. Leave it undefined where no provider request is being built (a
+     * plugin's own compile, a greeting); an empty array means "this request
+     * carries no tools", which is a real answer.
+     */
+    tools?: readonly ToolMacroEntry[];
     userStatus: UserStatus;
     worldInfoBefore?: string;
     worldInfoAfter?: string;
     anchorBefore?: string;
     anchorAfter?: string;
+};
+
+/** One tool that will be sent to the model, as the tool macros see it. */
+export type ToolMacroEntry = {
+    name: string;
+    /** `${pluginId}:${groupKey}`, the value stored in `enabledToolGroups`. */
+    groupId: string;
+    groupLabel: string;
 };
 
 type MacroValue = {
@@ -43,6 +59,7 @@ const commentMacroPattern = /\{\{\/\/[\s\S]*?\}\}/g;
 const macroPattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
 const randomMacroPattern = /^(random|pick)\s*(?:::|:)([\s\S]*)$/i;
 const promptStateMacroPattern = /^(isPrompt|hasPrompt)\s*(?:::|:)([\s\S]*)$/i;
+const toolStateMacroPattern = /^(hasTool|hasToolGroup)\s*(?:::|:)([\s\S]*)$/i;
 const maxNestedMacroDepth = 8;
 
 export function resolvePresetMacros(content: string, context: MacroContext) {
@@ -450,6 +467,12 @@ function valueForMacro(key: string, context: MacroContext): MacroValue | undefin
         return promptState;
     }
 
+    const toolState = toolStateMacroValue(key, context);
+
+    if (toolState) {
+        return toolState;
+    }
+
     const lower = key.toLowerCase().replace(/[\s_-]+/g, "");
 
     // System prompt alias that checks formatting.systemPrompt fallback if character prompt is empty (text completion only)
@@ -669,7 +692,7 @@ function promptStateMacroValue(
         return undefined;
     }
 
-    const query = normalizePromptReference(match[2]);
+    const query = normalizePresetReference(match[2]);
 
     if (!query) {
         return undefined;
@@ -684,8 +707,8 @@ function promptStateMacroValue(
 
     for (const prompt of preset.prompts) {
         const matches =
-            normalizePromptReference(prompt.id) === query ||
-            normalizePromptReference(prompt.title) === query;
+            normalizePresetReference(prompt.id) === query ||
+            normalizePresetReference(prompt.title) === query;
 
         if (!matches) {
             continue;
@@ -701,8 +724,55 @@ function promptStateMacroValue(
     return known ? { value: "" } : undefined;
 }
 
-function normalizePromptReference(value: string) {
+/** Case- and whitespace-insensitive key for `::` macro references. */
+function normalizePresetReference(value: string) {
     return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * `{{hasTool::name}}` / `{{hasToolGroup::ref}}` reports whether a tool, or a
+ * whole tool group, will be sent to the model with this request, so a preset
+ * can gate instructions on tools the user actually has.
+ *
+ * The answer is "will it reach the model", not "will the model call it": the
+ * list arrives already filtered by plugin state, `isAvailable` and the chat's
+ * `enabledToolGroups`, and the resolver never inspects the active provider.
+ *
+ * A known-but-absent tool resolves to an empty string, so `{{#if}}` takes its
+ * else branch. Unlike `{{isPrompt::…}}`, an unmatched reference is not left
+ * literal at runtime: a user who never installed the plugin is the normal case,
+ * not a typo. Contexts that cannot know the list omit `tools`, and the token
+ * stays literal there (a plugin compiling its own prompt, the greeting path).
+ */
+function toolStateMacroValue(key: string, context: MacroContext): MacroValue | undefined {
+    const match = toolStateMacroPattern.exec(key.trim());
+
+    if (!match || !context.tools) {
+        return undefined;
+    }
+
+    const query = normalizePresetReference(match[2]);
+
+    if (!query) {
+        return undefined;
+    }
+
+    const matchesGroup = match[1].toLowerCase() === "hastoolgroup";
+    const matched = context.tools.some((tool) => {
+        if (!matchesGroup) {
+            return normalizePresetReference(tool.name) === query;
+        }
+
+        // A group is addressable by its stored id, its label, or its owning
+        // plugin, because that is what a preset author actually knows: the id
+        // (`smiley-mcp:mcp-1pfbnt9`) is generated, the label ("websearch") is
+        // what the UI shows, the plugin id is what the Store lists.
+        return [tool.groupId, tool.groupLabel, tool.groupId.split(":")[0]].some(
+            (candidate) => normalizePresetReference(candidate) === query,
+        );
+    });
+
+    return { value: matched ? "true" : "" };
 }
 
 function pluginMacroValue(key: string, context: MacroContext) {

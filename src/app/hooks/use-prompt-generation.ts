@@ -27,6 +27,7 @@ import { isGroupChat } from "#frontend/lib/chats/normalize";
 import { createLorebookPromptInjections } from "#frontend/lib/lorebooks/engine";
 import type { Lorebook, LorebookCollection } from "#frontend/lib/lorebooks/types";
 import {
+    getEnabledPluginToolEntries,
     getInputMiddlewares,
     getOutputMiddlewares,
     getPluginSnapshot,
@@ -153,8 +154,29 @@ export function usePromptGeneration({
             personaDescription: persona.description,
             personaName: persona.name,
             preset: activePreset,
+            tools: chatMacroTools(latestChatRef.current),
             userStatus,
         });
+    }
+
+    /**
+     * Tools that will reach the model for this chat, in the shape the preset
+     * macros read (`{{hasTool::…}}` / `{{hasToolGroup::…}}`).
+     *
+     * The prompt is compiled before the provider request is assembled, so this
+     * runs the same filter the payload builder uses: registered, available, and
+     * a group this chat enabled. An empty list is a real answer (the request
+     * carries no tools), not "unknown".
+     */
+    function chatMacroTools(sourceChat: ChatSession | undefined) {
+        return getEnabledPluginToolEntries(
+            getPluginSnapshot(),
+            sourceChat?.metadata?.enabledToolGroups ?? [],
+        ).map(({ tool, groupId, groupLabel }) => ({
+            name: tool.name,
+            groupId,
+            groupLabel,
+        }));
     }
 
     function createAuthorNotePromptInjector(): PromptInjector {
@@ -188,6 +210,7 @@ export function usePromptGeneration({
                         personaDescription: context.persona.description,
                         personaName: context.persona.name,
                         preset: activePreset,
+                        tools: chatMacroTools(context.chat),
                         userStatus: context.userStatus,
                     }),
                     anchor: "at-depth",
@@ -806,6 +829,7 @@ export function usePromptGeneration({
                 isTextCompletion,
                 tokenBudget: contextTokenBudget,
                 tokenContext,
+                tools: chatMacroTools(promptChat),
                 userStatus: sourceUserStatus,
             },
             contextMiddlewares: getPromptContextMiddlewares(),
@@ -824,6 +848,7 @@ export function usePromptGeneration({
                                 personaDescription: context.persona.description,
                                 personaName: context.persona.name,
                                 preset: activePreset,
+                                tools: chatMacroTools(context.chat),
                                 userStatus: context.userStatus,
                             }),
                     }),
@@ -867,6 +892,7 @@ export function usePromptGeneration({
             personaDescription: promptPersona.description,
             personaName: promptPersona.name,
             preset: activePreset,
+            tools: chatMacroTools(promptChat),
             userStatus: sourceUserStatus,
         };
         const sequenceMacroFields = [

@@ -83,6 +83,36 @@ describe("compilePresetMessages", () => {
         expect(text).toMatch(/Mood: (calm|tense)/);
     });
 
+    test("gates compiled prompt content on the tools sent with the request", () => {
+        const preset = presetWithPrompts([
+            prompt(
+                "tools",
+                "Tools",
+                "{{#if hasTool::random_pick}}Call random_pick before choosing.{{else}}Choose yourself.{{/if}}",
+            ),
+        ]);
+
+        expect(textContents(compilePresetMessages(preset, context()))).toEqual([
+            "Choose yourself.",
+        ]);
+        expect(
+            textContents(
+                compilePresetMessages(
+                    preset,
+                    context({
+                        tools: [
+                            {
+                                name: "random_pick",
+                                groupId: "smiley-random-tools:random",
+                                groupLabel: "Randomness",
+                            },
+                        ],
+                    }),
+                ),
+            ),
+        ).toEqual(["Call random_pick before choosing."]);
+    });
+
     test("gates compiled prompt content on another prompt's toggle", () => {
         const voice = prompt("voice", "Voice & SFX", "Voice block");
         const gated = prompt(
@@ -880,7 +910,12 @@ describe("compilePresetMessages", () => {
     });
 });
 
-function context(overrides: { messages?: Message[] } = {}) {
+function context(
+    overrides: {
+        messages?: Message[];
+        tools?: { name: string; groupId: string; groupLabel: string }[];
+    } = {},
+) {
     return {
         character: createCharacter(),
         messages: overrides.messages ?? [],
@@ -888,6 +923,7 @@ function context(overrides: { messages?: Message[] } = {}) {
         personaDescription: "A careful tester.",
         personaName: "Anon",
         userStatus: "online" as const,
+        ...(overrides.tools ? { tools: overrides.tools } : {}),
     };
 }
 

@@ -746,14 +746,29 @@ export function getPluginTools(
     snapshot = latestSnapshot,
     enabledToolGroups?: Iterable<string>,
 ) {
+    return getEnabledPluginToolEntries(snapshot, enabledToolGroups).map(
+        (entry) => entry.tool,
+    );
+}
+
+/**
+ * Registered tools that will actually be offered for a chat: available now and
+ * belonging to a group the chat enabled.
+ *
+ * The prompt compiler needs the group metadata too (preset macros address a
+ * group by id, label or plugin), so this is the shared filter and
+ * `getPluginTools` is the payload-shaped view of it.
+ */
+export function getEnabledPluginToolEntries(
+    snapshot = latestSnapshot,
+    enabledToolGroups?: Iterable<string>,
+) {
     const enabledGroups = enabledToolGroups ? new Set(enabledToolGroups) : undefined;
 
-    return getRegisteredPluginTools(snapshot)
-        .filter(
-            (entry) =>
-                entry.isAvailable && (!enabledGroups || enabledGroups.has(entry.groupId)),
-        )
-        .map((entry) => entry.tool);
+    return getRegisteredPluginTools(snapshot).filter(
+        (entry) =>
+            entry.isAvailable && (!enabledGroups || enabledGroups.has(entry.groupId)),
+    );
 }
 
 export function getPluginTool(name: string, snapshot = latestSnapshot) {

@@ -1,4 +1,5 @@
 import { messageContentToText } from "#frontend/lib/connections/images";
+import { getEnabledPluginToolEntries } from "#frontend/lib/plugins/registry";
 import {
     compilePresetContext,
     compilePresetMessages,
@@ -35,6 +36,14 @@ export function PresetPreview({
             mode,
             personaDescription,
             personaName,
+            // The preview answers "what does this preset look like with the
+            // tools I have installed", so chat group toggles are ignored here;
+            // `enabledToolGroups` decides that per chat at request time.
+            tools: getEnabledPluginToolEntries().map(({ tool, groupId, groupLabel }) => ({
+                name: tool.name,
+                groupId,
+                groupLabel,
+            })),
             userStatus,
         }),
         [character, messages, mode, personaDescription, personaName, userStatus],

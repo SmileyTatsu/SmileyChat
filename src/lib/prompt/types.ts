@@ -11,6 +11,7 @@ import type { ChatGenerationMessage } from "../connections/types";
 import type { Lorebook } from "../lorebooks/types";
 import type { AppPreferences } from "../preferences/types";
 import type { SmileyPreset } from "../presets/types";
+import type { ToolMacroEntry } from "../presets/macros";
 import type { TokenCountContext } from "../tokenizer";
 
 export type PromptGenerationTrigger =
@@ -70,6 +71,12 @@ export type PromptBuildContext = {
     };
     tokenBudget: number;
     tokenContext?: TokenCountContext;
+    /**
+     * Tools that will reach the model with this request. Preset macros read
+     * them (`{{hasTool::…}}`), so the list must be resolved before the prompt
+     * is compiled.
+     */
+    tools?: readonly ToolMacroEntry[];
     userStatus: UserStatus;
 };
 

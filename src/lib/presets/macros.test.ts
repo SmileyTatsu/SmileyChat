@@ -282,6 +282,97 @@ describe("resolvePresetMacros", () => {
         expect(resolvePresetMacros("{{isPrompt::}}", context)).toBe("{{isPrompt::}}");
     });
 
+    test("reports the tools that reach the model with the request", () => {
+        const context = createMacroContext({
+            tools: [
+                {
+                    name: "random_pick",
+                    groupId: "smiley-random-tools:random",
+                    groupLabel: "Randomness",
+                },
+                {
+                    name: "generate_image",
+                    groupId: "smiley-image-generation:image",
+                    groupLabel: "Image generation",
+                },
+            ],
+        });
+
+        expect(resolvePresetMacros("{{hasTool::random_pick}}", context)).toBe("true");
+        expect(resolvePresetMacros("{{hasTool::  RANDOM_PICK  }}", context)).toBe("true");
+        expect(resolvePresetMacros("{{hasTool::shuffle_list}}", context)).toBe("");
+    });
+
+    test("addresses a tool group by id, label or owning plugin", () => {
+        const context = createMacroContext({
+            tools: [
+                {
+                    name: "random_pick",
+                    groupId: "smiley-random-tools:random",
+                    groupLabel: "Randomness",
+                },
+            ],
+        });
+
+        expect(
+            resolvePresetMacros("{{hasToolGroup::smiley-random-tools:random}}", context),
+        ).toBe("true");
+        expect(resolvePresetMacros("{{hasToolGroup::Randomness}}", context)).toBe("true");
+        expect(
+            resolvePresetMacros("{{hasToolGroup::smiley-random-tools}}", context),
+        ).toBe("true");
+        expect(resolvePresetMacros("{{hasToolGroup::smiley-mcp}}", context)).toBe("");
+    });
+
+    test("gates conditional branches on tool state", () => {
+        const context = createMacroContext({
+            tools: [
+                {
+                    name: "random_pick",
+                    groupId: "smiley-random-tools:random",
+                    groupLabel: "Randomness",
+                },
+            ],
+        });
+
+        expect(
+            resolvePresetMacros(
+                "{{#if hasTool::random_pick}}call it{{else}}guess{{/if}}",
+                context,
+            ),
+        ).toBe("call it");
+        expect(
+            resolvePresetMacros(
+                "{{#if hasTool::shuffle_list}}call it{{else}}guess{{/if}}",
+                context,
+            ),
+        ).toBe("guess");
+        expect(
+            resolvePresetMacros(
+                "{{#unless hasToolGroup::Randomness}}guess{{/unless}}",
+                context,
+            ),
+        ).toBe("");
+    });
+
+    test("keeps tool macros literal when the context cannot know the tools", () => {
+        const withoutTools = createMacroContext();
+
+        expect(resolvePresetMacros("{{hasTool::random_pick}}", withoutTools)).toBe(
+            "{{hasTool::random_pick}}",
+        );
+        expect(resolvePresetMacros("{{hasToolGroup::Randomness}}", withoutTools)).toBe(
+            "{{hasToolGroup::Randomness}}",
+        );
+    });
+
+    test("treats an empty tool list as a real answer", () => {
+        const context = createMacroContext({ tools: [] });
+
+        expect(resolvePresetMacros("{{hasTool::random_pick}}", context)).toBe("");
+        expect(resolvePresetMacros("{{hasTool::}}", context)).toBe("{{hasTool::}}");
+    });
+
     test("resolves {{chat_history}} respecting namesBehavior setting", () => {
         const messages = [
             message("m1", "user", "Hello there"),

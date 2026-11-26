@@ -90,6 +90,7 @@ export async function buildPromptForGeneration({
         outlets,
         personaDescription: promptContext.persona.description,
         personaName: promptContext.persona.name,
+        tools: promptContext.tools,
         userStatus: promptContext.userStatus,
         formatting: promptContext.preferences.formatting.settings,
         isTextCompletion: promptContext.isTextCompletion,

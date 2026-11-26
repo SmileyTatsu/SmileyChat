@@ -13,6 +13,7 @@ import {
 import { dynamicPromptIds } from "./defaults";
 import { defaultStoryString } from "../instruct";
 import { formatCharacterBook, renderStoryString, resolvePresetMacros } from "./macros";
+import type { ToolMacroEntry } from "./macros";
 import { messageTextForHistory as formatMessageTextForHistory } from "./message-format";
 import type { PresetFormattingSettings, PresetPrompt, SmileyPreset } from "./types";
 import type { AnchoredPromptMessage } from "../prompt/injections";
@@ -55,6 +56,11 @@ type CompilePresetContext = {
      * argument so prompt-state macros (`{{isPrompt::Title}}`) can read toggles.
      */
     preset?: SmileyPreset;
+    /**
+     * Tools that will reach the model with this request, forwarded so
+     * `{{hasTool::…}}` / `{{hasToolGroup::…}}` can gate prompt text.
+     */
+    tools?: readonly ToolMacroEntry[];
     userStatus: UserStatus;
     worldInfoBefore?: string;
     worldInfoAfter?: string;
@@ -80,6 +86,7 @@ function macroContextForCompile(context: CompilePresetContext) {
         personaDescription: context.personaDescription,
         personaName: context.personaName,
         preset: context.preset,
+        tools: context.tools,
         userStatus: context.userStatus,
         worldInfoBefore: context.worldInfoBefore,
         worldInfoAfter: context.worldInfoAfter,

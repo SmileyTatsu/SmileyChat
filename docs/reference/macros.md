@@ -76,6 +76,29 @@ Write full descriptive paragraphs.
 
 A reference that matches no prompt at all is left as literal text, so a typo shows up in the preset preview instead of silently reading as "disabled". Prompt state always comes from the active preset, so it resolves wherever SmileyChat resolves prompt text for a request: preset prompts, character card fields, Story Strings, lorebook entries, author notes, instruct sequences, and the Options > Preset preview. Text resolved outside a request — a character's greeting message when a chat is created, for example — does not see it.
 
+## Tool state
+
+- `{{hasTool::name}}` / `{{hasToolGroup::ref}}`: `true` when that tool, or a whole tool group, will be sent to the model with this request, otherwise an empty string.
+
+"Will be sent" means the tool survived every filter SmileyChat applies before calling the provider: the plugin is enabled and loaded, the tool reports itself available, and the chat has its group switched on in Chat Details > Tools & Connections. It does not mean the model will call the tool — nothing in a prompt can promise that.
+
+`{{hasToolGroup::…}}` matches by any of the three names a user actually sees:
+
+- the group id stored in the chat, e.g. `{{hasToolGroup::smiley-random-tools:random}}`
+- the label shown in Chat Details, e.g. `{{hasToolGroup::Randomness}}`
+- the owning plugin, e.g. `{{hasToolGroup::smiley-random-tools}}` or `{{hasToolGroup::smiley-mcp}}`
+
+Because the disabled case resolves to nothing, the macro belongs inside a conditional:
+
+```
+{{#if hasTool::random_pick}}
+When the scene needs an outcome you do not control, list the possibilities
+out loud, then call `random_pick` before narrating what happens.
+{{/if}}
+```
+
+A tool that is not there resolves to nothing rather than to literal text: not having the plugin installed is the normal case, not a typo, so the else branch is taken and no stray token reaches the model. Contexts that cannot know the tool list leave the macro literal — a plugin compiling its own prompt through `api.presets.compileMessages`, and the greeting path when a chat is created. The Options > Preset preview shows the branches as if every installed, available tool group were enabled, because the preview has no chat to ask.
+
 ## Preset conditionals
 
 Preset blocks support `{{#if macro}}...{{else}}...{{/if}}` and `{{#unless macro}}...{{else}}...{{/unless}}`. Conditionals can be nested; each closing tag matches its own enclosing block. The macro name is evaluated by whether its resolved value contains non-whitespace content.
