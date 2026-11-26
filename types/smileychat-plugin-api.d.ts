@@ -599,6 +599,48 @@ export type AppPreferences = {
 		};
 	};
 };
+export type PromptOutletRegistry = {
+	add(outletName: string, injection: PromptInjection): void;
+	render(outletName: string): string;
+};
+export type MacroContext = {
+	character: SmileyCharacter;
+	formatting?: PresetFormattingSettings;
+	group?: {
+		joinPrefix?: string;
+		memberIds?: string[];
+	};
+	isTextCompletion?: boolean;
+	messages: Message[];
+	mode: ChatMode;
+	generation?: PromptGenerationContext;
+	metadata?: Record<string, unknown>;
+	outlets?: PromptOutletRegistry;
+	personaName: string;
+	personaDescription: string;
+	/** Active preset, so prompt-state macros can read its prompt toggles. */
+	preset?: SmileyPreset;
+	/**
+	 * Tools that will reach the model with this request, so
+	 * `{{hasTool::name}}` / `{{hasToolGroup::ref}}` can gate prompt text on
+	 * them. Leave it undefined where no provider request is being built (a
+	 * plugin's own compile, a greeting); an empty array means "this request
+	 * carries no tools", which is a real answer.
+	 */
+	tools?: readonly ToolMacroEntry[];
+	userStatus: UserStatus;
+	worldInfoBefore?: string;
+	worldInfoAfter?: string;
+	anchorBefore?: string;
+	anchorAfter?: string;
+};
+/** One tool that will be sent to the model, as the tool macros see it. */
+export type ToolMacroEntry = {
+	name: string;
+	/** `${pluginId}:${groupKey}`, the value stored in `enabledToolGroups`. */
+	groupId: string;
+	groupLabel: string;
+};
 declare const tokenizerAlgorithms: readonly [
 	"auto",
 	"o200k_base",
@@ -660,6 +702,12 @@ export type PromptBuildContext = {
 	};
 	tokenBudget: number;
 	tokenContext?: TokenCountContext;
+	/**
+	 * Tools that will reach the model with this request. Preset macros read
+	 * them (`{{hasTool::…}}`), so the list must be resolved before the prompt
+	 * is compiled.
+	 */
+	tools?: readonly ToolMacroEntry[];
 	userStatus: UserStatus;
 };
 export type PromptInjection = {
@@ -1086,33 +1134,6 @@ export type MessageFormattingOptions = {
 	highlightQuotes: boolean;
 	italicizeMessages: boolean;
 	hideNamePrefix?: boolean;
-};
-export type PromptOutletRegistry = {
-	add(outletName: string, injection: PromptInjection): void;
-	render(outletName: string): string;
-};
-export type MacroContext = {
-	character: SmileyCharacter;
-	formatting?: PresetFormattingSettings;
-	group?: {
-		joinPrefix?: string;
-		memberIds?: string[];
-	};
-	isTextCompletion?: boolean;
-	messages: Message[];
-	mode: ChatMode;
-	generation?: PromptGenerationContext;
-	metadata?: Record<string, unknown>;
-	outlets?: PromptOutletRegistry;
-	personaName: string;
-	personaDescription: string;
-	/** Active preset, so prompt-state macros can read its prompt toggles. */
-	preset?: SmileyPreset;
-	userStatus: UserStatus;
-	worldInfoBefore?: string;
-	worldInfoAfter?: string;
-	anchorBefore?: string;
-	anchorAfter?: string;
 };
 export declare const PLUGIN_CATEGORIES: readonly [
 	"interface",
