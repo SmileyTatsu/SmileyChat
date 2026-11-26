@@ -42,8 +42,13 @@ if (!checkOnly) {
 }
 
 const current = await readFile(OUTPUT, "utf8").catch(() => "");
+// A Windows checkout restores this file with CRLF (`core.autocrlf`), while both
+// `dts-bundle-generator` and this script write LF. Compare the EOL-normalized
+// content so the check answers "is the typings content current?" instead of
+// reporting drift that only means "this clone is not Linux".
+const normalizedCurrent = current.replace(/\r\n/g, "\n");
 
-if (current === next) {
+if (normalizedCurrent === next) {
     console.log(`${OUTPUT} is up to date.`);
     process.exit(0);
 }
@@ -51,6 +56,6 @@ if (current === next) {
 console.error(
     `${OUTPUT} is out of date.\n` +
         "Run `bun run plugin-types` in the SmileyChat repo and commit the result.\n" +
-        `Expected ${next.length} characters, found ${current.length}.`,
+        `Expected ${next.length} characters, found ${normalizedCurrent.length}.`,
 );
 process.exit(1);

@@ -11,6 +11,8 @@
         "format": "prettier --write .",
         "plugin-types": "bunx --bun dts-bundle-generator --no-check --export-referenced-types -o types/.generated.d.ts --project tsconfig.json src/lib/plugins/types.ts && bun scripts/plugin-types.ts",
         "plugin-types:check": "bun run plugin-types --check",
+        "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+        "setup:hooks": "git config core.hooksPath .githooks",
         "test": "bun test",
         "start": "bun server/index.ts",
         "preview": "bun --bun vite preview --host 127.0.0.1",

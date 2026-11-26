@@ -1215,7 +1215,18 @@ The module decides what it exposes. A handler must not do state-changing work on
 not assume a trusted caller: anything that can use this app can reach the route.
 
 The TypeScript shape is generated into `types/smileychat-plugin-api.d.ts` with
-`bun run plugin-types`.
+`bun run plugin-types`. The generated file is committed so plugin authors can read
+the API without building the app.
+
+Regenerating it is automatic: a pre-commit hook (`.githooks/pre-commit`, installed
+by `bun install`, or by `bun run setup:hooks` in a clone that predates it)
+rebuilds the file whenever a commit stages a TypeScript file and stages the result
+with it. On a push to `main` CI regenerates and commits the file itself when it is
+still stale, so a type change no longer needs a separate "regenerate API typings"
+commit to turn the pipeline green. Pull requests only run the check
+(`bun run plugin-types:check`), so run `bun run plugin-types` before pushing from a
+branch. Skip the hook with `SMILEYCHAT_SKIP_PLUGIN_TYPES=1` when a commit should
+not touch the generated file.
 
 ## Server modules
 
