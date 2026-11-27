@@ -757,6 +757,25 @@ export function deleteChat(chatId: string) {
     });
 }
 
+export type ChatTrashEntry = {
+    chatId: string;
+    title: string;
+    mode: "chat" | "rp";
+    messageCount: number;
+    deletedAt: string;
+    sizeBytes: number;
+};
+
+export function fetchChatTrash() {
+    return requestJson<{ chats: ChatTrashEntry[] }>("/api/chats/trash");
+}
+
+export function emptyTrash() {
+    return requestJson<{ ok: true; removed: number }>("/api/chats/trash", {
+        method: "DELETE",
+    });
+}
+
 export function restoreChat(chatId: string) {
     return requestJson<{
         ok: true;

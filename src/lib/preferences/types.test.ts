@@ -99,6 +99,24 @@ describe("app preference normalization", () => {
         expect(clamped.chat.attachmentLimits.perMessage).toBe(1);
     });
 
+    test("defaults and clamps trash retention", () => {
+        const defaults = normalizeAppPreferences({ chat: {} });
+
+        expect(defaults.chat.trashRetention).toEqual({ keepCount: 40, keepDays: 7 });
+
+        expect(
+            normalizeAppPreferences({
+                chat: { trashRetention: { keepCount: -3, keepDays: 0 } },
+            }).chat.trashRetention,
+        ).toEqual({ keepCount: 0, keepDays: 1 });
+
+        expect(
+            normalizeAppPreferences({
+                chat: { trashRetention: { keepCount: 4000, keepDays: 9999 } },
+            }).chat.trashRetention,
+        ).toEqual({ keepCount: 500, keepDays: 365 });
+    });
+
     test("normalizes the default chat theme preference", () => {
         expect(
             normalizeAppPreferences({ appearance: { defaultChatTheme: "rp" } }).appearance

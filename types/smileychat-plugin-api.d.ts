@@ -587,6 +587,12 @@ export type AppPreferences = {
 			maxDimension: number;
 			jpegQualityPercent: number;
 		};
+		/** How long deleted chats stay recoverable before they are purged. */
+		trashRetention: {
+			/** Chats kept recoverable; 0 purges a chat as soon as it is deleted. */
+			keepCount: number;
+			keepDays: number;
+		};
 	};
 	layout: {
 		characterPanelOpenByDefault: boolean;

@@ -29,7 +29,9 @@ import {
     createChat,
     deleteChatById,
     deleteChatsByCharacterId,
+    emptyChatTrash,
     purgeChatTrash,
+    readChatTrash,
     restoreChatFromTrash,
     deleteGroupWorkspaceById,
     forkChatAtMessage,
@@ -160,8 +162,18 @@ const port = getPort();
 const hostname = getHost();
 
 ensureUserData();
-void purgeChatTrash();
+await purgeTrashByPreferences();
 await importDroppedCharacterFiles();
+
+/** Sweeps the trash using the retention the user set in Settings. */
+async function purgeTrashByPreferences() {
+    const { chat } = await readAppPreferences();
+
+    await purgeChatTrash({
+        keepCount: chat.trashRetention.keepCount,
+        maxAgeMs: chat.trashRetention.keepDays * 24 * 60 * 60 * 1000,
+    });
+}
 
 const envWatcher = startEnvWatcher();
 
@@ -750,6 +762,17 @@ const createServer = () =>
                 }),
             },
 
+            "/api/chats/trash": {
+                GET: api(async () => {
+                    return json({ chats: await readChatTrash() });
+                }),
+
+                DELETE: api(async () => {
+                    const result = await emptyChatTrash();
+                    return json({ ok: true, ...result });
+                }),
+            },
+
             "/api/chats/index": {
                 PUT: api(async (request) => {
                     const index = await updateChatIndex(await readJsonBody(request));
@@ -855,6 +878,11 @@ const createServer = () =>
                     const result = await deleteChatById(request.params.chatId, {
                         permanent,
                     });
+
+                    if (result && !permanent) {
+                        await purgeTrashByPreferences();
+                    }
+
                     return result
                         ? json({ ok: true, ...result })
                         : json({ error: "Chat not found." }, 404);

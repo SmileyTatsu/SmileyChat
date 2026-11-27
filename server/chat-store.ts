@@ -23,6 +23,8 @@ import { isRecord } from "#frontend/lib/common/guards";
 
 import { timestampMs } from "./time";
 
+import { selectTrashPurgeCandidates } from "./chat-trash-retention";
+
 import {
     copyChatMessageAssets,
     deleteChatAssetDirectory,
@@ -275,10 +277,7 @@ export async function deleteChatById(
 
         if (!fileExists) {
             // A chat already in the trash can still be purged for good.
-            if (
-                options.permanent &&
-                (await pathExists(chatTrashEntryPath(chatId)))
-            ) {
+            if (options.permanent && (await pathExists(chatTrashEntryPath(chatId)))) {
                 await rm(chatTrashEntryPath(chatId), { force: true });
                 await rm(chatTrashEntryAssetsPath(chatId), {
                     recursive: true,
@@ -356,7 +355,10 @@ export async function restoreChatFromTrash(chatId: string) {
 
         if (await pathExists(chatTrashEntryAssetsPath(chatId))) {
             await mkdir(chatAssetsDir, { recursive: true });
-            await rename(chatTrashEntryAssetsPath(chatId), chatAssetDirectoryPath(chatId));
+            await rename(
+                chatTrashEntryAssetsPath(chatId),
+                chatAssetDirectoryPath(chatId),
+            );
         }
 
         const rawJson = await Bun.file(trashPath).json();
@@ -376,13 +378,93 @@ export async function restoreChatFromTrash(chatId: string) {
 export async function purgeChatTrash({
     keepCount = 40,
     maxAgeMs = 7 * 24 * 60 * 60 * 1000,
-} = {}) {
+}: { keepCount?: number; maxAgeMs?: number } = {}) {
     if (!(await pathExists(chatTrashDir))) {
         return;
     }
 
+    const candidates = await readTrashEntries();
+
+    for (const path of selectTrashPurgeCandidates(candidates, { keepCount, maxAgeMs })) {
+        const candidate = candidates.find((entry) => entry.path === path);
+
+        await rm(path, { recursive: !candidate?.isFile, force: true });
+    }
+}
+
+export type ChatTrashEntry = {
+    chatId: string;
+    title: string;
+    mode: ChatSession["mode"];
+    messageCount: number;
+    deletedAt: string;
+    sizeBytes: number;
+};
+
+/**
+ * What the trash currently holds, newest first. Asset folders are reported on
+ * their session entry so the UI shows one row per deleted chat.
+ */
+export async function readChatTrash(): Promise<ChatTrashEntry[]> {
+    const entries: ChatTrashEntry[] = [];
+
+    for (const candidate of await readTrashEntries()) {
+        if (!candidate.isFile) {
+            continue;
+        }
+
+        const chatId = basename(candidate.path, ".json");
+
+        try {
+            const chat = normalizeChat(await Bun.file(candidate.path).json());
+
+            if (!chat) {
+                continue;
+            }
+
+            entries.push({
+                chatId,
+                title: chatDisplayTitle(chat),
+                mode: chat.mode,
+                messageCount: chat.messages.length,
+                deletedAt: new Date(candidate.mtime).toISOString(),
+                sizeBytes:
+                    (await stat(candidate.path)).size +
+                    (await directorySize(chatTrashEntryAssetsPath(chatId))),
+            });
+        } catch {
+            // A damaged entry cannot be reported; it still gets swept by purge.
+        }
+    }
+
+    return entries.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
+}
+
+/** Empties the trash for good and reports how many chats were removed. */
+export async function emptyChatTrash() {
+    if (!(await pathExists(chatTrashDir))) {
+        return { removed: 0 };
+    }
+
+    let removed = 0;
+
+    for (const candidate of await readTrashEntries()) {
+        if (candidate.isFile) {
+            removed += 1;
+        }
+
+        await rm(candidate.path, { recursive: !candidate.isFile, force: true });
+    }
+
+    return { removed };
+}
+
+async function readTrashEntries() {
+    if (!(await pathExists(chatTrashDir))) {
+        return [] as { path: string; mtime: number; isFile: boolean }[];
+    }
+
     const entries = await readdir(chatTrashDir);
-    const now = Date.now();
     const candidates: { path: string; mtime: number; isFile: boolean }[] = [];
 
     for (const entry of entries) {
@@ -396,15 +478,29 @@ export async function purgeChatTrash({
         }
     }
 
-    candidates.sort((a, b) => b.mtime - a.mtime);
+    return candidates.sort((a, b) => b.mtime - a.mtime);
+}
 
-    for (const [index, candidate] of candidates.entries()) {
-        if (index < keepCount && now - candidate.mtime < maxAgeMs) {
-            continue;
-        }
-
-        await rm(candidate.path, { recursive: !candidate.isFile, force: true });
+async function directorySize(pathname: string) {
+    if (!(await pathExists(pathname))) {
+        return 0;
     }
+
+    let total = 0;
+
+    for (const entry of await readdir(pathname, { withFileTypes: true })) {
+        const path = join(pathname, entry.name);
+
+        try {
+            total += entry.isDirectory()
+                ? await directorySize(path)
+                : (await stat(path)).size;
+        } catch {
+            // Skip anything that vanished mid-scan.
+        }
+    }
+
+    return total;
 }
 
 function chatTrashEntryPath(chatId: string) {

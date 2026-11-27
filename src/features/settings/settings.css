@@ -223,6 +223,14 @@
     gap: 8px;
 }
 
+/* A count or hint that sits opposite the action it belongs to. */
+.button-row .settings-field-note {
+    align-self: center;
+    margin-right: auto;
+    color: #8f939e;
+    font-size: 0.8rem;
+}
+
 /* Keep the destructive action away from New and Duplicate. */
 .button-row .connection-profile-delete {
     margin-left: auto;

@@ -1,6 +1,7 @@
-import { Bell, Image, PanelRight, Send, Sparkles } from "lucide-preact";
-import { useState } from "preact/hooks";
+import { Bell, Image, PanelRight, Send, Sparkles, Trash2 } from "lucide-preact";
+import { useEffect, useState } from "preact/hooks";
 
+import { emptyTrash, fetchChatTrash } from "#frontend/lib/api/client";
 import {
     playGenerationChime,
     primeGenerationAlertAudio,
@@ -127,6 +128,78 @@ export function GeneralSettings({
         }
 
         updateNotifications({ sound });
+    }
+
+    function updateTrashRetention(
+        nextRetention: Partial<AppPreferences["chat"]["trashRetention"]>,
+    ) {
+        updateChat({
+            trashRetention: {
+                ...preferences.chat.trashRetention,
+                ...nextRetention,
+            },
+        });
+    }
+
+    const [trashCount, setTrashCount] = useState<number | undefined>(undefined);
+    const [trashStatus, setTrashStatus] = useState("");
+    const [isTrashBusy, setIsTrashBusy] = useState(false);
+    const [confirmEmptyTrash, setConfirmEmptyTrash] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void fetchChatTrash()
+            .then((result) => {
+                if (!cancelled) {
+                    setTrashCount(result.chats.length);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setTrashCount(0);
+                    setTrashStatus("The trash could not be read.");
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!confirmEmptyTrash) {
+            return;
+        }
+
+        // A confirm that waits forever is a dead button; drop it on its own.
+        const timer = setTimeout(() => setConfirmEmptyTrash(false), 6000);
+
+        return () => clearTimeout(timer);
+    }, [confirmEmptyTrash]);
+
+    async function handleEmptyTrash() {
+        if (!confirmEmptyTrash) {
+            setConfirmEmptyTrash(true);
+            return;
+        }
+
+        setConfirmEmptyTrash(false);
+        setIsTrashBusy(true);
+
+        try {
+            const result = await emptyTrash();
+            setTrashCount(0);
+            setTrashStatus(
+                result.removed === 1
+                    ? "Deleted 1 chat for good."
+                    : `Deleted ${result.removed} chats for good.`,
+            );
+        } catch {
+            setTrashStatus("The trash could not be emptied.");
+        } finally {
+            setIsTrashBusy(false);
+        }
     }
 
     return (
@@ -379,6 +452,62 @@ export function GeneralSettings({
                         }
                     />
                 </SettingField>
+            </section>
+
+            <section className="settings-card">
+                <header>
+                    <Trash2 size={18} />
+                    <div>
+                        <h3>Deleted chats</h3>
+                        <p>
+                            Deleted chats stay recoverable for a while before they are
+                            swept.
+                        </p>
+                    </div>
+                </header>
+
+                <SettingField
+                    label="Chats kept in the trash"
+                    description="0 deletes a chat for good as soon as you remove it."
+                >
+                    <NumberInput
+                        min={0}
+                        max={500}
+                        step={1}
+                        value={preferences.chat.trashRetention.keepCount}
+                        onChange={(keepCount) => updateTrashRetention({ keepCount })}
+                    />
+                </SettingField>
+
+                <SettingField
+                    label="Days kept"
+                    description="Older entries are removed on the next delete or restart."
+                >
+                    <NumberInput
+                        min={1}
+                        max={365}
+                        step={1}
+                        value={preferences.chat.trashRetention.keepDays}
+                        onChange={(keepDays) => updateTrashRetention({ keepDays })}
+                    />
+                </SettingField>
+
+                <div className="button-row">
+                    <span className="settings-field-note">
+                        {trashStatus ||
+                            (trashCount === undefined
+                                ? "Checking the trash…"
+                                : `${trashCount} ${trashCount === 1 ? "chat" : "chats"} waiting.`)}
+                    </span>
+                    <button
+                        className="danger-button"
+                        type="button"
+                        disabled={isTrashBusy || trashCount === 0}
+                        onClick={() => void handleEmptyTrash()}
+                    >
+                        {confirmEmptyTrash ? "Confirm: delete forever" : "Empty trash"}
+                    </button>
+                </div>
             </section>
 
             <section className="settings-card">

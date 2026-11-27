@@ -65,6 +65,12 @@ export type AppPreferences = {
             maxDimension: number;
             jpegQualityPercent: number;
         };
+        /** How long deleted chats stay recoverable before they are purged. */
+        trashRetention: {
+            /** Chats kept recoverable; 0 purges a chat as soon as it is deleted. */
+            keepCount: number;
+            keepDays: number;
+        };
     };
     layout: {
         characterPanelOpenByDefault: boolean;
@@ -153,6 +159,10 @@ export const defaultAppPreferences: AppPreferences = {
         imageTransport: {
             maxDimension: 1568,
             jpegQualityPercent: 85,
+        },
+        trashRetention: {
+            keepCount: 40,
+            keepDays: 7,
         },
     },
     layout: {
@@ -419,6 +429,24 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                     defaultAppPreferences.chat.imageTransport.jpegQualityPercent,
                     50,
                     100,
+                ),
+            },
+            trashRetention: {
+                keepCount: numberInRange(
+                    isRecord(chat.trashRetention)
+                        ? chat.trashRetention.keepCount
+                        : undefined,
+                    defaultAppPreferences.chat.trashRetention.keepCount,
+                    0,
+                    500,
+                ),
+                keepDays: numberInRange(
+                    isRecord(chat.trashRetention)
+                        ? chat.trashRetention.keepDays
+                        : undefined,
+                    defaultAppPreferences.chat.trashRetention.keepDays,
+                    1,
+                    365,
                 ),
             },
         },
