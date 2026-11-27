@@ -4619,3 +4619,15 @@ input[aria-invalid="true"] {
     width: 100%;
     max-width: 100%;
 }
+
+/* Inline advisory under a settings row group (blocked notification permission, etc.). */
+.settings-inline-note {
+    margin: 0;
+    padding: 9px 11px;
+    border: 1px solid #5d4a24;
+    border-radius: 8px;
+    background: #211d16;
+    color: #f0c879;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}

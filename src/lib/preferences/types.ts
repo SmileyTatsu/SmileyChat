@@ -38,6 +38,12 @@ export type AppPreferences = {
         showThoughtProcess: boolean;
         showToolActivity: boolean;
         toolIterationLimit: number;
+        /** How a finished reply announces itself while the window is away. */
+        notifications: {
+            desktop: boolean;
+            sound: boolean;
+            onlyWhenUnfocused: boolean;
+        };
     };
     layout: {
         characterPanelOpenByDefault: boolean;
@@ -112,6 +118,11 @@ export const defaultAppPreferences: AppPreferences = {
         showThoughtProcess: true,
         showToolActivity: true,
         toolIterationLimit: 8,
+        notifications: {
+            desktop: false,
+            sound: false,
+            onlyWhenUnfocused: true,
+        },
     },
     layout: {
         characterPanelOpenByDefault: true,
@@ -293,6 +304,22 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                 1,
                 32,
             ),
+            notifications: {
+                desktop: booleanOrFallback(
+                    isRecord(chat.notifications) ? chat.notifications.desktop : undefined,
+                    defaultAppPreferences.chat.notifications.desktop,
+                ),
+                sound: booleanOrFallback(
+                    isRecord(chat.notifications) ? chat.notifications.sound : undefined,
+                    defaultAppPreferences.chat.notifications.sound,
+                ),
+                onlyWhenUnfocused: booleanOrFallback(
+                    isRecord(chat.notifications)
+                        ? chat.notifications.onlyWhenUnfocused
+                        : undefined,
+                    defaultAppPreferences.chat.notifications.onlyWhenUnfocused,
+                ),
+            },
         },
         layout: {
             characterPanelOpenByDefault: booleanOrFallback(

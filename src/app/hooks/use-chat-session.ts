@@ -26,6 +26,7 @@ import {
 } from "#frontend/lib/streaming-message-drafts";
 import { isGroupChat } from "#frontend/lib/chats/normalize";
 import type { LorebookCollection } from "#frontend/lib/lorebooks/types";
+import { alertGenerationComplete } from "#frontend/lib/notifications/generation-alert";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import { resolvePresetStreaming } from "#frontend/lib/presets/generation";
 import { getAdapterForSettings } from "#frontend/lib/connections/registry";
@@ -157,6 +158,18 @@ export function useChatSession({
         )?.generation,
         preferences.chat.streaming,
     );
+
+    /**
+     * Announces a reply that finished while the user was elsewhere. The
+     * notification module decides whether anything should happen.
+     */
+    function announceFinishedReply(characterName: string, body: string) {
+        alertGenerationComplete({
+            body,
+            characterName,
+            preferences: preferences.chat.notifications,
+        });
+    }
 
     useEffect(() => {
         setChatError("");
@@ -518,6 +531,12 @@ export function useChatSession({
                     });
                 }
             }
+
+            // Automatic group turns would otherwise ring the alert repeatedly
+            // right after the reply the user is already being told about.
+            if (!(options.autoTurnCount ?? 0)) {
+                announceFinishedReply(generationCharacter.data.name, result.message);
+            }
         } catch (error) {
             if (isAbortError(error)) {
                 cleanupEmptyAbortedGeneration(chatId);
@@ -735,6 +754,8 @@ export function useChatSession({
                     updateMessageAttachments(messageId, resultAttachments, completedChat);
                 }
             }
+
+            announceFinishedReply(generationCharacter.data.name, result.message);
         } catch (error) {
             if (isAbortError(error)) {
                 cleanupEmptyAbortedGeneration(chatId);
@@ -902,6 +923,8 @@ export function useChatSession({
                 result.pendingToolContinuation ?? null,
                 currentOrSourceChat(sourceChat),
             );
+
+            announceFinishedReply(generationCharacter.data.name, result.message);
         } catch (error) {
             if (!isAbortError(error)) {
                 updateMessageContent(
@@ -1252,7 +1275,6 @@ export function formatInterruptedGeneration(content: string, error: unknown): st
 
     return `${trimmed}\n\n*[Generation interrupted during streaming: ${errorDetail}]*`;
 }
-
 
 function isActiveMessageSwipeEmpty(message: Message) {
     const swipe = message.swipes[message.activeSwipeIndex] ?? message.swipes[0];

@@ -1,5 +1,11 @@
-import { PanelRight, Send, Sparkles } from "lucide-preact";
+import { Bell, PanelRight, Send, Sparkles } from "lucide-preact";
+import { useState } from "preact/hooks";
 
+import {
+    playGenerationChime,
+    primeGenerationAlertAudio,
+    requestDesktopNotificationPermission,
+} from "#frontend/lib/notifications/generation-alert";
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type { ChatMode } from "#frontend/types";
 import { DeferredNumberInput } from "./deferred-number-input";
@@ -41,6 +47,53 @@ export function GeneralSettings({
                 ...nextLayout,
             },
         });
+    }
+
+    function updateNotifications(
+        nextNotifications: Partial<AppPreferences["chat"]["notifications"]>,
+    ) {
+        updateChat({
+            notifications: {
+                ...preferences.chat.notifications,
+                ...nextNotifications,
+            },
+        });
+    }
+
+    const [notificationNotice, setNotificationNotice] = useState("");
+    const hasNotificationChannel =
+        preferences.chat.notifications.desktop || preferences.chat.notifications.sound;
+
+    async function updateDesktopNotifications(desktop: boolean) {
+        if (!desktop) {
+            setNotificationNotice("");
+            updateNotifications({ desktop: false });
+            return;
+        }
+
+        const permission = await requestDesktopNotificationPermission();
+
+        if (permission === "granted") {
+            setNotificationNotice("");
+            updateNotifications({ desktop: true });
+            return;
+        }
+
+        setNotificationNotice(
+            permission === "unsupported"
+                ? "This browser does not support desktop notifications."
+                : "Desktop notifications are blocked for this site. Allow them in your browser's site settings, then try again.",
+        );
+        updateNotifications({ desktop: false });
+    }
+
+    function updateNotificationSound(sound: boolean) {
+        if (sound) {
+            primeGenerationAlertAudio();
+            playGenerationChime();
+        }
+
+        updateNotifications({ sound });
     }
 
     return (
@@ -119,6 +172,48 @@ export function GeneralSettings({
                         }
                     />
                 </SettingField>
+            </section>
+
+            <section className="settings-card">
+                <header>
+                    <Bell size={18} />
+                    <div>
+                        <h3>Notifications</h3>
+                        <p>Get told when a reply finishes while you are elsewhere.</p>
+                    </div>
+                </header>
+
+                <ToggleRow
+                    checked={preferences.chat.notifications.desktop}
+                    description="Show a system notification with the start of the reply."
+                    label="Desktop notification"
+                    onChange={(desktop) => void updateDesktopNotifications(desktop)}
+                />
+
+                <ToggleRow
+                    checked={preferences.chat.notifications.sound}
+                    description="Play a short chime when the reply is ready."
+                    label="Sound"
+                    onChange={updateNotificationSound}
+                />
+
+                <ToggleRow
+                    checked={preferences.chat.notifications.onlyWhenUnfocused}
+                    description={
+                        hasNotificationChannel
+                            ? "Stay quiet while SmileyChat has focus."
+                            : "Turn on a notification above to use this."
+                    }
+                    disabled={!hasNotificationChannel}
+                    label="Only when away from the app"
+                    onChange={(onlyWhenUnfocused) =>
+                        updateNotifications({ onlyWhenUnfocused })
+                    }
+                />
+
+                {notificationNotice && (
+                    <p className="settings-inline-note">{notificationNotice}</p>
+                )}
             </section>
 
             <section className="settings-card">

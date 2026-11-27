@@ -551,6 +551,12 @@ export type AppPreferences = {
 		showThoughtProcess: boolean;
 		showToolActivity: boolean;
 		toolIterationLimit: number;
+		/** How a finished reply announces itself while the window is away. */
+		notifications: {
+			desktop: boolean;
+			sound: boolean;
+			onlyWhenUnfocused: boolean;
+		};
 	};
 	layout: {
 		characterPanelOpenByDefault: boolean;
