@@ -748,6 +748,7 @@ export function PresetSettings({
                             preset={activePreset}
                             character={character}
                             messages={messages}
+                            mediaWindow={preferences?.chat.mediaWindow}
                             mode={mode}
                             personaDescription={persona.description}
                             personaName={persona.name}

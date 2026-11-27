@@ -557,6 +557,15 @@ export type AppPreferences = {
 			sound: boolean;
 			onlyWhenUnfocused: boolean;
 		};
+		/**
+		 * How much attachment binary is replayed to the model: images/files
+		 * older than this become text markers instead of pixels.
+		 */
+		mediaWindow: {
+			maxActiveImages: number;
+			maxActiveFiles: number;
+			maxMessageDistance: number;
+		};
 	};
 	layout: {
 		characterPanelOpenByDefault: boolean;

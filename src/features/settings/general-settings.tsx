@@ -1,4 +1,4 @@
-import { Bell, PanelRight, Send, Sparkles } from "lucide-preact";
+import { Bell, Image, PanelRight, Send, Sparkles } from "lucide-preact";
 import { useState } from "preact/hooks";
 
 import {
@@ -56,6 +56,17 @@ export function GeneralSettings({
             notifications: {
                 ...preferences.chat.notifications,
                 ...nextNotifications,
+            },
+        });
+    }
+
+    function updateMediaWindow(
+        nextMediaWindow: Partial<AppPreferences["chat"]["mediaWindow"]>,
+    ) {
+        updateChat({
+            mediaWindow: {
+                ...preferences.chat.mediaWindow,
+                ...nextMediaWindow,
             },
         });
     }
@@ -214,6 +225,61 @@ export function GeneralSettings({
                 {notificationNotice && (
                     <p className="settings-inline-note">{notificationNotice}</p>
                 )}
+            </section>
+
+            <section className="settings-card">
+                <header>
+                    <Image size={18} />
+                    <div>
+                        <h3>Attachments & media</h3>
+                        <p>How much attachment data is resent with each request.</p>
+                    </div>
+                </header>
+
+                <SettingField
+                    label="Images kept in context"
+                    description="History images resent to the model as actual pixels. The newest message always keeps its images; older ones become short text markers."
+                >
+                    <NumberInput
+                        min={0}
+                        max={10}
+                        step={1}
+                        value={preferences.chat.mediaWindow.maxActiveImages}
+                        onChange={(maxActiveImages) =>
+                            updateMediaWindow({ maxActiveImages })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField
+                    label="Files kept in context"
+                    description="History files re-uploaded or inlined with each request. Older files are described in text instead."
+                >
+                    <NumberInput
+                        min={0}
+                        max={10}
+                        step={1}
+                        value={preferences.chat.mediaWindow.maxActiveFiles}
+                        onChange={(maxActiveFiles) =>
+                            updateMediaWindow({ maxActiveFiles })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField
+                    label="Media look-back (messages)"
+                    description="How far back in the chat images and files can still be resent. Anything older becomes a text marker."
+                >
+                    <NumberInput
+                        min={0}
+                        max={30}
+                        step={1}
+                        value={preferences.chat.mediaWindow.maxMessageDistance}
+                        onChange={(maxMessageDistance) =>
+                            updateMediaWindow({ maxMessageDistance })
+                        }
+                    />
+                </SettingField>
             </section>
 
             <section className="settings-card">

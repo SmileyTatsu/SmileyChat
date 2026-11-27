@@ -53,6 +53,24 @@ describe("app preference normalization", () => {
         expect(preferences.appearance.hideNamePrefixInMessages).toBe(false);
     });
 
+    test("defaults and clamps the media window", () => {
+        const defaults = normalizeAppPreferences({ chat: {} });
+
+        expect(defaults.chat.mediaWindow).toEqual({
+            maxActiveImages: 2,
+            maxActiveFiles: 2,
+            maxMessageDistance: 6,
+        });
+
+        const clamped = normalizeAppPreferences({
+            chat: { mediaWindow: { maxActiveImages: 40, maxActiveFiles: -5 } },
+        });
+
+        expect(clamped.chat.mediaWindow.maxActiveImages).toBe(10);
+        expect(clamped.chat.mediaWindow.maxActiveFiles).toBe(0);
+        expect(clamped.chat.mediaWindow.maxMessageDistance).toBe(6);
+    });
+
     test("normalizes the default chat theme preference", () => {
         expect(
             normalizeAppPreferences({ appearance: { defaultChatTheme: "rp" } }).appearance

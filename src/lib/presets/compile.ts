@@ -23,6 +23,7 @@ import {
     formatActiveAttachmentDescription,
     formatAttachmentContextText,
     getActiveBinaryAttachmentIds,
+    type SlidingMediaWindowOptions,
 } from "./sliding-media-window";
 import type { PromptOutletRegistry } from "../prompt/outlets";
 import type { PromptGenerationContext } from "../prompt/types";
@@ -48,6 +49,11 @@ type CompilePresetContext = {
      */
     messages: Message[];
     mode: ChatMode;
+    /**
+     * How far back attachment binary is replayed. Defaults to the built-in
+     * window when a caller has no preferences (plugins, previews).
+     */
+    mediaWindow?: SlidingMediaWindowOptions;
     outlets?: PromptOutletRegistry;
     personaDescription: string;
     personaName: string;
@@ -143,7 +149,10 @@ export function compilePresetMessagesWithMetadata(
     }
 
     const history = historyMessagesForCompile(context).filter(isMessageIncludedInPrompt);
-    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(history);
+    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(
+        history,
+        context.mediaWindow,
+    );
 
     if (!preset) {
         return [
@@ -270,7 +279,10 @@ function compileStoryStringMessagesWithMetadata(
     }
 
     const history = historyMessagesForCompile(context).filter(isMessageIncludedInPrompt);
-    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(history);
+    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(
+        history,
+        context.mediaWindow,
+    );
     messages.push(
         ...history.flatMap((msg) =>
             toAnchoredHistoryMessages(
@@ -435,7 +447,10 @@ function injectConversationMessages(
     }
 
     const placements = createInjectionPlacements(promptMessages, injectedPrompts);
-    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(promptMessages);
+    const activeBinaryAttachmentIds = getActiveBinaryAttachmentIds(
+        promptMessages,
+        context.mediaWindow,
+    );
     const output: AnchoredPromptMessage[] = [];
 
     for (let index = 0; index < promptMessages.length; index += 1) {
@@ -761,7 +776,10 @@ function messageContentWithAttachments(
 
     const binaryAttachmentIds =
         activeBinaryAttachmentIds ??
-        getActiveBinaryAttachmentIds(historyMessagesForCompile(context));
+        getActiveBinaryAttachmentIds(
+            historyMessagesForCompile(context),
+            context.mediaWindow,
+        );
 
     const allowedAttachments = attachments.filter(
         (attachment) => !(attachment.type === "image" && hasGeneratedImage),

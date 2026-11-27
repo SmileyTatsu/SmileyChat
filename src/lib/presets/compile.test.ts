@@ -217,6 +217,65 @@ describe("compilePresetMessages", () => {
         ]);
     });
 
+    test("honors a media window narrower than the default", () => {
+        const preset = presetWithPrompts([
+            prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
+        ]);
+        const withImage = (id: string, content: string): Message => {
+            const base = message(id, "user", content);
+
+            return {
+                ...base,
+                swipes: [
+                    {
+                        ...base.swipes[0],
+                        attachments: [
+                            {
+                                id: `${id}-image`,
+                                type: "image" as const,
+                                url: `/api/chats/chat-1/attachments/${id}.png`,
+                                name: `${id}.png`,
+                                mimeType: "image/png",
+                                sizeBytes: 10,
+                            },
+                        ],
+                    },
+                ],
+            };
+        };
+        const messages = [
+            withImage("m1", "First"),
+            message("m2", "character", "Second"),
+            message("m3", "user", "Third"),
+        ];
+        const imageParts = (output: ReturnType<typeof compilePresetMessages>) =>
+            output.flatMap((item) =>
+                Array.isArray(item.content)
+                    ? item.content.filter((part) => part.type === "image_url")
+                    : [],
+            );
+
+        expect(
+            imageParts(compilePresetMessages(preset, context({ messages }))),
+        ).toHaveLength(1);
+        expect(
+            imageParts(
+                compilePresetMessages(
+                    preset,
+                    context({ messages, mediaWindow: { maxActiveImages: 0 } }),
+                ),
+            ),
+        ).toHaveLength(0);
+        expect(
+            imageParts(
+                compilePresetMessages(
+                    preset,
+                    context({ messages, mediaWindow: { maxMessageDistance: 0 } }),
+                ),
+            ),
+        ).toHaveLength(0);
+    });
+
     test("interleaves photo placeholders and leaves files in the attachment tail", () => {
         const preset = presetWithPrompts([
             prompt(dynamicPromptIds.chatHistory, "Chat History", ""),
@@ -913,6 +972,11 @@ describe("compilePresetMessages", () => {
 function context(
     overrides: {
         messages?: Message[];
+        mediaWindow?: {
+            maxActiveImages?: number;
+            maxActiveFiles?: number;
+            maxMessageDistance?: number;
+        };
         tools?: { name: string; groupId: string; groupLabel: string }[];
     } = {},
 ) {
@@ -923,6 +987,7 @@ function context(
         personaDescription: "A careful tester.",
         personaName: "Anon",
         userStatus: "online" as const,
+        ...(overrides.mediaWindow ? { mediaWindow: overrides.mediaWindow } : {}),
         ...(overrides.tools ? { tools: overrides.tools } : {}),
     };
 }

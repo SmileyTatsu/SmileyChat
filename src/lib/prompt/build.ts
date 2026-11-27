@@ -87,6 +87,7 @@ export async function buildPromptForGeneration({
         metadata: promptContext.metadata ?? promptContext.chat.metadata,
         messages: promptContext.messages,
         mode: promptContext.mode,
+        mediaWindow: promptContext.preferences.chat.mediaWindow,
         outlets,
         personaDescription: promptContext.persona.description,
         personaName: promptContext.persona.name,

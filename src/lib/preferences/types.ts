@@ -44,6 +44,15 @@ export type AppPreferences = {
             sound: boolean;
             onlyWhenUnfocused: boolean;
         };
+        /**
+         * How much attachment binary is replayed to the model: images/files
+         * older than this become text markers instead of pixels.
+         */
+        mediaWindow: {
+            maxActiveImages: number;
+            maxActiveFiles: number;
+            maxMessageDistance: number;
+        };
     };
     layout: {
         characterPanelOpenByDefault: boolean;
@@ -122,6 +131,11 @@ export const defaultAppPreferences: AppPreferences = {
             desktop: false,
             sound: false,
             onlyWhenUnfocused: true,
+        },
+        mediaWindow: {
+            maxActiveImages: 2,
+            maxActiveFiles: 2,
+            maxMessageDistance: 6,
         },
     },
     layout: {
@@ -318,6 +332,32 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                         ? chat.notifications.onlyWhenUnfocused
                         : undefined,
                     defaultAppPreferences.chat.notifications.onlyWhenUnfocused,
+                ),
+            },
+            mediaWindow: {
+                maxActiveImages: numberInRange(
+                    isRecord(chat.mediaWindow)
+                        ? chat.mediaWindow.maxActiveImages
+                        : undefined,
+                    defaultAppPreferences.chat.mediaWindow.maxActiveImages,
+                    0,
+                    10,
+                ),
+                maxActiveFiles: numberInRange(
+                    isRecord(chat.mediaWindow)
+                        ? chat.mediaWindow.maxActiveFiles
+                        : undefined,
+                    defaultAppPreferences.chat.mediaWindow.maxActiveFiles,
+                    0,
+                    10,
+                ),
+                maxMessageDistance: numberInRange(
+                    isRecord(chat.mediaWindow)
+                        ? chat.mediaWindow.maxMessageDistance
+                        : undefined,
+                    defaultAppPreferences.chat.mediaWindow.maxMessageDistance,
+                    0,
+                    30,
                 ),
             },
         },

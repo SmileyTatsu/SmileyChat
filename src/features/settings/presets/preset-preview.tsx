@@ -5,6 +5,7 @@ import {
     compilePresetMessages,
 } from "#frontend/lib/presets/compile";
 import type { SmileyPreset } from "#frontend/lib/presets/types";
+import type { SlidingMediaWindowOptions } from "#frontend/lib/presets/sliding-media-window";
 import type { ChatMode, Message, SmileyCharacter, UserStatus } from "#frontend/types";
 import { useMemo } from "preact/hooks";
 
@@ -13,6 +14,7 @@ type PresetPreviewProps = {
     preset?: SmileyPreset;
     character: SmileyCharacter;
     messages: Message[];
+    mediaWindow?: SlidingMediaWindowOptions;
     mode: ChatMode;
     personaDescription: string;
     personaName: string;
@@ -24,6 +26,7 @@ export function PresetPreview({
     preset,
     character,
     messages,
+    mediaWindow,
     mode,
     personaDescription,
     personaName,
@@ -33,6 +36,7 @@ export function PresetPreview({
         () => ({
             character,
             messages,
+            mediaWindow,
             mode,
             personaDescription,
             personaName,
