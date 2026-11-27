@@ -1,4 +1,5 @@
 import { h } from "preact";
+import { useState } from "preact/hooks";
 import {
     BookOpen,
     CheckCircle2,
@@ -51,40 +52,69 @@ export function ThemesSettings({
     onPreferencesChange,
 }: ThemesSettingsProps) {
     const activeThemeId = preferences.appearance.defaultChatTheme || "chat";
-    const currentTheme = getChatTheme(activeThemeId);
     const visualMode = (activeThemeId === "rp" ? "rp" : "chat") as ChatMode;
-    const formatting = messageFormattingForMode(preferences, visualMode);
+    // Which mode's display settings this tab edits, and therefore which theme
+    // the preview renders. Chat-mode themes (chat/bubbles) share one set of
+    // values; Roleplay keeps its own.
+    const [displayMode, setDisplayMode] = useState<ChatMode>(visualMode);
+    const previewThemeId =
+        displayMode === "rp" ? "rp" : activeThemeId === "rp" ? "chat" : activeThemeId;
+    const currentTheme = getChatTheme(previewThemeId);
+    const formatting = messageFormattingForMode(preferences, displayMode);
 
     const effectiveShowAvatars =
+        (displayMode === "rp"
+            ? preferences.appearance.showRpCharacterImages
+            : preferences.appearance.showCharacterImages) ??
         preferences.appearance.showCharacterImages ??
         preferences.appearance.showRpCharacterImages;
 
-    const effectiveHighlightQuotes =
-        preferences.appearance.highlightQuotedText ?? formatting.highlightQuotes;
-
-    const effectiveItalicizeMessages =
-        preferences.appearance.italicizeMessages ?? formatting.italicizeMessages;
+    const effectiveHighlightQuotes = formatting.highlightQuotes;
+    const effectiveItalicizeMessages = formatting.italicizeMessages;
 
     function updateAppearancePreferences(patch: Partial<AppPreferences["appearance"]>) {
-        const updated = { ...patch };
-        if ("showCharacterImages" in patch) {
-            updated.showRpCharacterImages = patch.showCharacterImages!;
-        }
-        if ("highlightQuotedText" in patch) {
-            updated.highlightQuotedTextInChat = patch.highlightQuotedText!;
-            updated.highlightQuotedTextInRp = patch.highlightQuotedText!;
-        }
-        if ("italicizeMessages" in patch) {
-            updated.italicizeChatMessages = patch.italicizeMessages!;
-            updated.italicizeRpMessages = patch.italicizeMessages!;
-        }
         onPreferencesChange({
             ...preferences,
             appearance: {
                 ...preferences.appearance,
-                ...updated,
+                ...patch,
             },
         });
+    }
+
+    /**
+     * Writes only the selected mode's key. The unsuffixed duplicates stay as the
+     * legacy fallback for a preference file that predates per-mode values.
+     */
+    function updateModeDisplay(
+        patch:
+            | { showAvatars: boolean }
+            | { highlightQuotes: boolean }
+            | { italicize: boolean },
+    ) {
+        if ("showAvatars" in patch) {
+            updateAppearancePreferences(
+                displayMode === "rp"
+                    ? { showRpCharacterImages: patch.showAvatars }
+                    : { showCharacterImages: patch.showAvatars },
+            );
+            return;
+        }
+
+        if ("highlightQuotes" in patch) {
+            updateAppearancePreferences(
+                displayMode === "rp"
+                    ? { highlightQuotedTextInRp: patch.highlightQuotes }
+                    : { highlightQuotedTextInChat: patch.highlightQuotes },
+            );
+            return;
+        }
+
+        updateAppearancePreferences(
+            displayMode === "rp"
+                ? { italicizeRpMessages: patch.italicize }
+                : { italicizeChatMessages: patch.italicize },
+        );
     }
 
     function updateChatPreferences(patch: Partial<AppPreferences["chat"]>) {
@@ -247,8 +277,8 @@ export function ThemesSettings({
                 </header>
 
                 <div
-                    className={`global-theme-preview-workspace chat-workspace ${activeThemeId} theme-${activeThemeId} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale} ${effectiveItalicizeMessages ? "italicized-message-text" : ""} ${effectiveHighlightQuotes ? "highlight-quoted-text" : ""}`}
-                    data-theme={activeThemeId}
+                    className={`global-theme-preview-workspace chat-workspace ${previewThemeId} theme-${previewThemeId} density-${preferences.appearance.messageDensity} font-${preferences.appearance.fontScale} ${effectiveItalicizeMessages ? "italicized-message-text" : ""} ${effectiveHighlightQuotes ? "highlight-quoted-text" : ""}`}
+                    data-theme={previewThemeId}
                     style={{
                         ...(preferences.appearance.uiFontFamily?.trim()
                             ? {
@@ -275,9 +305,9 @@ export function ThemesSettings({
                                 previewMessages[index - 1].role === msg.role &&
                                 previewMessages[index - 1].author === msg.author;
                             const showRpAvatar =
-                                activeThemeId === "rp" && effectiveShowAvatars;
+                                previewThemeId === "rp" && effectiveShowAvatars;
                             const hideChatAvatar =
-                                activeThemeId !== "rp" && !effectiveShowAvatars;
+                                previewThemeId !== "rp" && !effectiveShowAvatars;
 
                             const hidePrefix =
                                 preferences.appearance.hideNamePrefixInMessages !== false;
@@ -428,18 +458,6 @@ export function ThemesSettings({
                 </SettingField>
 
                 <ToggleRow
-                    checked={effectiveShowAvatars}
-                    description="Display avatar images beside messages across all themes."
-                    label="Show avatars"
-                    onChange={(showCharacterImages) =>
-                        updateAppearancePreferences({
-                            showCharacterImages,
-                            showRpCharacterImages: showCharacterImages,
-                        })
-                    }
-                />
-
-                <ToggleRow
                     checked={preferences.appearance.hideNamePrefixInMessages !== false}
                     description="Automatically hide leading character and user name prefixes (e.g. 'Character:' or 'User:') from the message view."
                     label="Hide name prefixes in messages"
@@ -490,31 +508,50 @@ export function ThemesSettings({
                     />
                 </SettingField>
 
-                <ToggleRow
-                    checked={effectiveHighlightQuotes}
-                    description="Use a subtle accent color for dialogue and text inside quotation marks across all themes."
-                    label="Highlight quoted text"
-                    onChange={(highlightQuotedText) =>
-                        updateAppearancePreferences({
-                            highlightQuotedText,
-                            highlightQuotedTextInChat: highlightQuotedText,
-                            highlightQuotedTextInRp: highlightQuotedText,
-                        })
-                    }
-                />
+                <div className="per-mode-display">
+                    <div className="per-mode-display-header">
+                        <div>
+                            <h4>Per-mode display</h4>
+                            <p>
+                                Avatars, quote highlighting and italics keep separate
+                                values for Chatting and Roleplaying. These rows edit the
+                                mode selected here; the preview above follows it.
+                            </p>
+                        </div>
+                        <SegmentedControl<ChatMode>
+                            ariaLabel="Display settings mode"
+                            value={displayMode}
+                            options={[
+                                { value: "chat", label: "Chatting" },
+                                { value: "rp", label: "Roleplaying" },
+                            ]}
+                            onChange={setDisplayMode}
+                        />
+                    </div>
 
-                <ToggleRow
-                    checked={effectiveItalicizeMessages}
-                    description="Render message body text in italics across all themes."
-                    label="Italicize message text"
-                    onChange={(italicizeMessages) =>
-                        updateAppearancePreferences({
-                            italicizeMessages,
-                            italicizeChatMessages: italicizeMessages,
-                            italicizeRpMessages: italicizeMessages,
-                        })
-                    }
-                />
+                    <ToggleRow
+                        checked={Boolean(effectiveShowAvatars)}
+                        description={`Display avatar images beside messages in ${displayMode === "rp" ? "Roleplaying" : "Chatting"} mode.`}
+                        label="Show avatars"
+                        onChange={(showAvatars) => updateModeDisplay({ showAvatars })}
+                    />
+
+                    <ToggleRow
+                        checked={effectiveHighlightQuotes}
+                        description={`Use a subtle accent color for dialogue inside quotation marks in ${displayMode === "rp" ? "Roleplaying" : "Chatting"} mode.`}
+                        label="Highlight quoted text"
+                        onChange={(highlightQuotes) =>
+                            updateModeDisplay({ highlightQuotes })
+                        }
+                    />
+
+                    <ToggleRow
+                        checked={effectiveItalicizeMessages}
+                        description={`Render message body text in italics in ${displayMode === "rp" ? "Roleplaying" : "Chatting"} mode.`}
+                        label="Italicize message text"
+                        onChange={(italicize) => updateModeDisplay({ italicize })}
+                    />
+                </div>
             </section>
 
             {/* Typography */}

@@ -179,7 +179,11 @@ export const MessageItem = memo(function MessageItem({
             : message.role === "character" && isLastSwipe
               ? "Generate next swipe"
               : "Next swipe";
-    const effectiveShowAvatars = showCharacterImages ?? showRpCharacterImages;
+    const effectiveShowAvatars =
+        (mode === "rp" ? showRpCharacterImages : showCharacterImages) ??
+        showRpCharacterImages ??
+        showCharacterImages ??
+        false;
     const showRpMessageAvatar = mode === "rp" && effectiveShowAvatars;
     const hideChatAvatar = mode !== "rp" && !effectiveShowAvatars;
 

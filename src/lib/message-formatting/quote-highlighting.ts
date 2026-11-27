@@ -27,17 +27,19 @@ export function messageFormattingForMode(
 ): MessageFormattingOptions {
     const hideNamePrefix = preferences.appearance.hideNamePrefixInMessages !== false;
 
+    // The unsuffixed keys are the pre-per-mode values and only seed a mode that
+    // has no value of its own; the mode-specific key always wins.
     const highlightQuotes =
-        preferences.appearance.highlightQuotedText ??
         (mode === "rp"
             ? preferences.appearance.highlightQuotedTextInRp
-            : preferences.appearance.highlightQuotedTextInChat);
+            : preferences.appearance.highlightQuotedTextInChat) ??
+        preferences.appearance.highlightQuotedText;
 
     const italicizeMessages =
-        preferences.appearance.italicizeMessages ??
         (mode === "rp"
             ? preferences.appearance.italicizeRpMessages
-            : preferences.appearance.italicizeChatMessages);
+            : preferences.appearance.italicizeChatMessages) ??
+        preferences.appearance.italicizeMessages;
 
     return {
         highlightQuotes,

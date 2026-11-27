@@ -542,12 +542,8 @@ export const MessageList = memo(function MessageList({
                             renderer={messageRenderers[0]}
                             messageFormatting={messageFormatting}
                             canForkMessages={canForkMessages}
-                            showCharacterImages={
-                                showCharacterImages ?? showRpCharacterImages
-                            }
-                            showRpCharacterImages={
-                                showCharacterImages ?? showRpCharacterImages
-                            }
+                            showCharacterImages={showCharacterImages}
+                            showRpCharacterImages={showRpCharacterImages}
                             showThoughtProcess={showThoughtProcess}
                             showTimestamps={showTimestamps}
                             showToolActivity={showToolActivity}

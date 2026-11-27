@@ -4493,6 +4493,42 @@ input[aria-invalid="true"] {
     color: #9ea4b3;
 }
 
+/* --- Per-mode display subset --- */
+.per-mode-display {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    border-top: 1px solid #292c35;
+    padding-top: 13px;
+}
+
+.per-mode-display-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.per-mode-display-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ececf1;
+}
+
+.per-mode-display-header p {
+    margin: 2px 0 0;
+    max-width: 48ch;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: #9ea4b3;
+}
+
+.per-mode-display-header .settings-segmented-control {
+    flex-shrink: 0;
+}
+
 /* --- Full-width Global Theme Preview --- */
 .global-theme-preview-card {
     width: 100%;
