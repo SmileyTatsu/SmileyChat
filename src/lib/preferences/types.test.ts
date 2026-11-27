@@ -71,6 +71,34 @@ describe("app preference normalization", () => {
         expect(clamped.chat.mediaWindow.maxMessageDistance).toBe(6);
     });
 
+    test("defaults and clamps the image transport and attachment limits", () => {
+        const defaults = normalizeAppPreferences({ chat: {} });
+
+        expect(defaults.chat.imageTransport).toEqual({
+            maxDimension: 1568,
+            jpegQualityPercent: 85,
+        });
+        expect(defaults.chat.attachmentLimits).toEqual({
+            imageMegabytes: 25,
+            fileMegabytes: 48,
+            perMessage: 10,
+        });
+
+        const clamped = normalizeAppPreferences({
+            chat: {
+                imageTransport: { maxDimension: -20, jpegQualityPercent: 5 },
+                attachmentLimits: { imageMegabytes: 999, perMessage: 0 },
+            },
+        });
+
+        expect(clamped.chat.imageTransport).toEqual({
+            maxDimension: 0,
+            jpegQualityPercent: 50,
+        });
+        expect(clamped.chat.attachmentLimits.imageMegabytes).toBe(256);
+        expect(clamped.chat.attachmentLimits.perMessage).toBe(1);
+    });
+
     test("normalizes the default chat theme preference", () => {
         expect(
             normalizeAppPreferences({ appearance: { defaultChatTheme: "rp" } }).appearance

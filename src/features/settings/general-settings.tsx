@@ -82,6 +82,17 @@ export function GeneralSettings({
         });
     }
 
+    function updateImageTransport(
+        nextTransport: Partial<AppPreferences["chat"]["imageTransport"]>,
+    ) {
+        updateChat({
+            imageTransport: {
+                ...preferences.chat.imageTransport,
+                ...nextTransport,
+            },
+        });
+    }
+
     const [notificationNotice, setNotificationNotice] = useState("");
     const hasNotificationChannel =
         preferences.chat.notifications.desktop || preferences.chat.notifications.sound;
@@ -334,6 +345,38 @@ export function GeneralSettings({
                         step={1}
                         value={preferences.chat.attachmentLimits.perMessage}
                         onChange={(perMessage) => updateAttachmentLimits({ perMessage })}
+                    />
+                </SettingField>
+
+                <h4 className="settings-subheading">Images sent to providers</h4>
+
+                <SettingField
+                    label="Maximum image dimension (px)"
+                    description="Longest side of an image when it is sent to the model. The file on disk is untouched. Set 0 to send the original pixels."
+                >
+                    <NumberInput
+                        min={0}
+                        max={4096}
+                        step={16}
+                        value={preferences.chat.imageTransport.maxDimension}
+                        onChange={(maxDimension) =>
+                            updateImageTransport({ maxDimension })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField
+                    label="JPEG quality (%)"
+                    description="Quality used when an image is re-encoded for a request. Lower is smaller and cheaper; PNGs stay PNG."
+                >
+                    <NumberInput
+                        min={50}
+                        max={100}
+                        step={5}
+                        value={preferences.chat.imageTransport.jpegQualityPercent}
+                        onChange={(jpegQualityPercent) =>
+                            updateImageTransport({ jpegQualityPercent })
+                        }
                     />
                 </SettingField>
             </section>

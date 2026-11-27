@@ -1,14 +1,47 @@
 export const MAX_IMAGE_DIMENSION = 1568;
 export const IMAGE_COMPRESSION_QUALITY = 0.85;
 
+export type ImageDownscaleOptions = {
+    /** Longest side in pixels. 0 sends the original pixels untouched. */
+    maxDimension: number;
+    /** JPEG quality for re-encoded images, 0..1. */
+    quality: number;
+};
+
+export const defaultImageDownscaleOptions: ImageDownscaleOptions = {
+    maxDimension: MAX_IMAGE_DIMENSION,
+    quality: IMAGE_COMPRESSION_QUALITY,
+};
+
+let activeOptions: ImageDownscaleOptions = { ...defaultImageDownscaleOptions };
+
+/**
+ * Provider adapters only receive a blob, so the app pushes the user's
+ * preference here once instead of threading options through every adapter.
+ */
+export function setImageDownscaleOptions(options: Partial<ImageDownscaleOptions>) {
+    activeOptions = { ...activeOptions, ...options };
+}
+
+export function imageDownscaleOptions(): ImageDownscaleOptions {
+    return activeOptions;
+}
+
 /**
  * Downscales an image Blob on the client-side before base64 encoding for provider calls.
  * Preserves the original file untouched on disk while dramatically reducing API request payload sizes.
  */
 export async function downscaleImageBlob(
     blob: Blob,
-    maxDimension = MAX_IMAGE_DIMENSION,
+    overrides?: Partial<ImageDownscaleOptions>,
 ): Promise<Blob> {
+    const options = { ...activeOptions, ...overrides };
+    const maxDimension = options.maxDimension;
+
+    if (maxDimension <= 0) {
+        return blob;
+    }
+
     if (
         !blob.type.startsWith("image/") ||
         blob.type === "image/svg+xml" ||
@@ -80,8 +113,7 @@ export async function downscaleImageBlob(
             bitmap.close?.();
 
             const targetMime = blob.type === "image/png" ? "image/png" : "image/jpeg";
-            const quality =
-                targetMime === "image/jpeg" ? IMAGE_COMPRESSION_QUALITY : undefined;
+            const quality = targetMime === "image/jpeg" ? options.quality : undefined;
 
             let downscaledBlob: Blob | null = null;
             if ("convertToBlob" in canvas && typeof canvas.convertToBlob === "function") {

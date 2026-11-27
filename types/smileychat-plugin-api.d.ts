@@ -581,6 +581,12 @@ export type AppPreferences = {
 		};
 		/** Upload limits shared by the composer and the local server. */
 		attachmentLimits: ChatAttachmentLimits;
+		/** How images are resized before they are sent to a provider. */
+		imageTransport: {
+			/** Longest side in pixels; 0 sends the original pixels. */
+			maxDimension: number;
+			jpegQualityPercent: number;
+		};
 	};
 	layout: {
 		characterPanelOpenByDefault: boolean;

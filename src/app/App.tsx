@@ -56,6 +56,7 @@ import {
     setActiveTokenCountContext,
     tokenizerContextForProfile,
 } from "#frontend/lib/tokenizer";
+import { setImageDownscaleOptions } from "#frontend/lib/connections/image-downscale";
 import {
     defaultAppPreferences,
     normalizeAppPreferences,
@@ -405,6 +406,12 @@ export function App() {
 
     useEffect(() => {
         latestPreferencesRef.current = preferences;
+        // Provider adapters only see a blob, so the image transport preference
+        // is published to the downscaler instead of threaded through them.
+        setImageDownscaleOptions({
+            maxDimension: preferences.chat.imageTransport.maxDimension,
+            quality: preferences.chat.imageTransport.jpegQualityPercent / 100,
+        });
     }, [preferences]);
 
     useEffect(() => {

@@ -59,6 +59,12 @@ export type AppPreferences = {
         };
         /** Upload limits shared by the composer and the local server. */
         attachmentLimits: ChatAttachmentLimits;
+        /** How images are resized before they are sent to a provider. */
+        imageTransport: {
+            /** Longest side in pixels; 0 sends the original pixels. */
+            maxDimension: number;
+            jpegQualityPercent: number;
+        };
     };
     layout: {
         characterPanelOpenByDefault: boolean;
@@ -144,6 +150,10 @@ export const defaultAppPreferences: AppPreferences = {
             maxMessageDistance: 6,
         },
         attachmentLimits: defaultChatAttachmentLimits,
+        imageTransport: {
+            maxDimension: 1568,
+            jpegQualityPercent: 85,
+        },
     },
     layout: {
         characterPanelOpenByDefault: true,
@@ -391,6 +401,24 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                     defaultAppPreferences.chat.attachmentLimits.perMessage,
                     1,
                     50,
+                ),
+            },
+            imageTransport: {
+                maxDimension: numberInRange(
+                    isRecord(chat.imageTransport)
+                        ? chat.imageTransport.maxDimension
+                        : undefined,
+                    defaultAppPreferences.chat.imageTransport.maxDimension,
+                    0,
+                    4096,
+                ),
+                jpegQualityPercent: numberInRange(
+                    isRecord(chat.imageTransport)
+                        ? chat.imageTransport.jpegQualityPercent
+                        : undefined,
+                    defaultAppPreferences.chat.imageTransport.jpegQualityPercent,
+                    50,
+                    100,
                 ),
             },
         },
