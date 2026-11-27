@@ -155,6 +155,14 @@ describe("app preference normalization", () => {
         ).toBe(12);
     });
 
+    test("defaults and preserves the tool call count preference", () => {
+        expect(normalizeAppPreferences({ chat: {} }).chat.showToolCallCount).toBe(true);
+        expect(
+            normalizeAppPreferences({ chat: { showToolCallCount: false } }).chat
+                .showToolCallCount,
+        ).toBe(false);
+    });
+
     test("defaults the model picker limit when older files lack it", () => {
         expect(normalizeAppPreferences({ layout: {} }).layout.modelPickerLimit).toBe(250);
         expect(

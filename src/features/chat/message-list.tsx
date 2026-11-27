@@ -45,6 +45,7 @@ type MessageListProps = {
     showRpCharacterImages: boolean;
     showThoughtProcess: boolean;
     showToolActivity: boolean;
+    showToolCallCount: boolean;
     toolIterationLimit: number;
 
     onDeleteMessage: (messageId: string) => void;
@@ -82,6 +83,7 @@ export const MessageList = memo(function MessageList({
     showRpCharacterImages,
     showThoughtProcess,
     showToolActivity,
+    showToolCallCount,
     toolIterationLimit,
     showTimestamps,
     timeFormat,
@@ -547,6 +549,7 @@ export const MessageList = memo(function MessageList({
                             showThoughtProcess={showThoughtProcess}
                             showTimestamps={showTimestamps}
                             showToolActivity={showToolActivity}
+                            showToolCallCount={showToolCallCount}
                             timeFormat={timeFormat}
                             toolIterationLimit={toolIterationLimit}
                             onCancelEdit={cancelEdit}

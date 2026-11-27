@@ -719,6 +719,14 @@
     margin: 0;
 }
 
+.thought-process-static-summary {
+    display: block;
+    padding: 8px 12px;
+    color: #b0b8cc;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
 .tool-activity.running {
     border-color: rgba(108, 143, 235, 0.28);
 }

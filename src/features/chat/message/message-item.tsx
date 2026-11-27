@@ -83,6 +83,8 @@ export type MessageItemProps = {
     showTimestamps: boolean;
     showThoughtProcess: boolean;
     showToolActivity: boolean;
+    /** Show how many tools ran inside the thought process summary. */
+    showToolCallCount: boolean;
     timeFormat: TimeFormat;
     toolIterationLimit: number;
     onCancelEdit: () => void;
@@ -131,6 +133,7 @@ export const MessageItem = memo(function MessageItem({
     showTimestamps,
     showThoughtProcess,
     showToolActivity,
+    showToolCallCount,
     timeFormat,
     toolIterationLimit,
     onCancelEdit,
@@ -523,6 +526,7 @@ export const MessageItem = memo(function MessageItem({
                         renderer={renderer}
                         showThoughtProcess={showThoughtProcess}
                         showToolActivity={showToolActivity}
+                        showToolCallCount={showToolCallCount}
                         showTimestamps={showTimestamps}
                         timeFormat={timeFormat}
                         onRemoveAttachment={onRemoveAttachment}
@@ -655,6 +659,7 @@ function areMessageItemPropsEqual(
         previous.showTimestamps === next.showTimestamps &&
         previous.showThoughtProcess === next.showThoughtProcess &&
         previous.showToolActivity === next.showToolActivity &&
+        previous.showToolCallCount === next.showToolCallCount &&
         previous.timeFormat === next.timeFormat &&
         previous.toolIterationLimit === next.toolIterationLimit &&
         previous.onCancelEdit === next.onCancelEdit &&
@@ -686,6 +691,7 @@ type MessageLiveContentProps = {
     renderer?: MessageRenderer;
     showThoughtProcess: boolean;
     showToolActivity: boolean;
+    showToolCallCount: boolean;
     showTimestamps: boolean;
     timeFormat: TimeFormat;
     onRemoveAttachment: (messageId: string, attachmentId: string) => void;
@@ -703,6 +709,7 @@ function MessageLiveContent({
     renderer,
     showThoughtProcess,
     showToolActivity,
+    showToolCallCount,
     showTimestamps,
     timeFormat,
     onRemoveAttachment,
@@ -745,6 +752,7 @@ function MessageLiveContent({
                 onVisibleContentChange={onVisibleContentChange}
                 show={showThoughtProcess}
                 showToolActivity={showToolActivity}
+                showToolCallCount={showToolCallCount}
                 timeline={timeline}
             />
             <MessageAttachments
@@ -782,11 +790,13 @@ function ThoughtProcess({
     onVisibleContentChange,
     show,
     showToolActivity,
+    showToolCallCount,
     timeline,
 }: {
     onVisibleContentChange: () => void;
     show: boolean;
     showToolActivity: boolean;
+    showToolCallCount: boolean;
     timeline: ReturnType<typeof getMessageTimeline>;
 }) {
     const entries = getVisibleMessageTimeline(timeline, show, showToolActivity);
@@ -814,7 +824,17 @@ function ThoughtProcess({
         return () => window.clearInterval(interval);
     }, [hasRunningEntry]);
 
-    if (!show || !entries.length) return null;
+    // Counted from the raw timeline so hiding the tool rows (Show tool activity)
+    // still reports how many calls the reply made.
+    const toolCallCount = new Set(
+        timeline.flatMap((entry) =>
+            entry.type === "tool" ? [entry.activity.call.id] : [],
+        ),
+    ).size;
+    const hasToolCallCount = showToolCallCount && toolCallCount > 0;
+
+    if (!show) return null;
+    if (!entries.length && !hasToolCallCount) return null;
 
     const isOpen = userToggled !== null ? userToggled : hasRunningEntry;
 
@@ -834,11 +854,28 @@ function ThoughtProcess({
             (durationMs ?? (startedAt === undefined ? 0 : Math.max(0, now - startedAt)))
         );
     }, 0);
-    const summary = hasRunningThought
-        ? `Thinking... (${formatDuration(totalDurationMs)})`
-        : timedEntries.length
-          ? `Thought Process (${formatDuration(totalDurationMs)})`
-          : "Thought Process";
+    const summaryDetails = [
+        timedEntries.length > 0 || hasRunningThought
+            ? formatDuration(totalDurationMs)
+            : "",
+        showToolCallCount && toolCallCount > 0
+            ? `${toolCallCount} tool call${toolCallCount === 1 ? "" : "s"}`
+            : "",
+    ].filter(Boolean);
+    const summaryHeadline = hasRunningThought ? "Thinking..." : "Thought Process";
+    const summary = summaryDetails.length
+        ? `${summaryHeadline} (${summaryDetails.join(" · ")})`
+        : summaryHeadline;
+
+    if (!entries.length) {
+        // Tool rows are hidden but the count preference still asks for the
+        // number of calls, so report it without an expandable empty panel.
+        return (
+            <div className="message-reasoning thought-process thought-process-static">
+                <span className="thought-process-static-summary">{summary}</span>
+            </div>
+        );
+    }
 
     return (
         <details

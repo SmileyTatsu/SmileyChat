@@ -247,6 +247,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     showThoughtProcess={preferences.chat.showThoughtProcess}
                     showTimestamps={preferences.appearance.showTimestamps}
                     showToolActivity={preferences.chat.showToolActivity}
+                    showToolCallCount={preferences.chat.showToolCallCount}
                     timeFormat={preferences.appearance.timeFormat}
                     toolIterationLimit={preferences.chat.toolIterationLimit}
                     messageFormatting={messageFormatting}

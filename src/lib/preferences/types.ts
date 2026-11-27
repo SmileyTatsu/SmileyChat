@@ -41,6 +41,8 @@ export type AppPreferences = {
         streaming: boolean;
         showThoughtProcess: boolean;
         showToolActivity: boolean;
+        /** Show how many tools ran inside the thought process summary. */
+        showToolCallCount: boolean;
         toolIterationLimit: number;
         /** How a finished reply announces itself while the window is away. */
         notifications: {
@@ -144,6 +146,7 @@ export const defaultAppPreferences: AppPreferences = {
         streaming: true,
         showThoughtProcess: true,
         showToolActivity: true,
+        showToolCallCount: true,
         toolIterationLimit: 8,
         notifications: {
             desktop: false,
@@ -338,6 +341,10 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
             showToolActivity: booleanOrFallback(
                 chat.showToolActivity,
                 defaultAppPreferences.chat.showToolActivity,
+            ),
+            showToolCallCount: booleanOrFallback(
+                chat.showToolCallCount,
+                defaultAppPreferences.chat.showToolCallCount,
             ),
             toolIterationLimit: numberInRange(
                 chat.toolIterationLimit,

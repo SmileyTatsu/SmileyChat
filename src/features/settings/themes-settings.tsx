@@ -364,7 +364,12 @@ export function ThemesSettings({
                                                     open
                                                 >
                                                     <summary>
-                                                        Thought Process (0.9s)
+                                                        Thought Process (0.9s
+                                                        {preferences.chat
+                                                            .showToolCallCount && msg.tool
+                                                            ? " · 1 tool call"
+                                                            : ""}
+                                                        )
                                                     </summary>
                                                     <div className="thought-process-timeline">
                                                         <p className="thought-process-thought">
@@ -482,6 +487,16 @@ export function ThemesSettings({
                     label="Show tool activity"
                     onChange={(showToolActivity) =>
                         updateChatPreferences({ showToolActivity })
+                    }
+                />
+
+                <ToggleRow
+                    checked={preferences.chat.showToolCallCount}
+                    description="Show how many tools ran during the thought process. The count stays visible when tool entries are hidden."
+                    disabled={!preferences.chat.showThoughtProcess}
+                    label="Show tool call count"
+                    onChange={(showToolCallCount) =>
+                        updateChatPreferences({ showToolCallCount })
                     }
                 />
 
