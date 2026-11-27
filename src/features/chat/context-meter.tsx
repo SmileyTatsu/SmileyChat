@@ -15,7 +15,7 @@ export function ContextMeter({ budget, usedTokens }: ContextMeterProps) {
         <span
             className="composer-context-meter"
             data-state={state}
-            title={`Chat history uses about ${formatTokens(usedTokens)} of the ${formatTokens(budget)} input tokens. Preset prompts, lorebooks and the author note share the same budget.`}
+            title={`The next request uses about ${formatTokens(usedTokens)} of the ${formatTokens(budget)} input tokens once preset prompts, LoreBooks, the author note and chat history are compiled.`}
         >
             <span className="composer-context-track" aria-hidden="true">
                 <span

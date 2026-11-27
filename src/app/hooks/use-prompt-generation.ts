@@ -715,25 +715,21 @@ export function usePromptGeneration({
         };
     }
 
-    async function buildGenerationRequest(
+    async function preparePromptBuild(
         sourceMessages: Message[],
         sourceCharacter: SmileyCharacter,
         sourceMode: ChatMode,
         sourceUserStatus: UserStatus,
         options: {
             impersonate?: boolean;
-            onImage?: (url: string) => void;
             promptCharacter?: SmileyCharacter;
-            onReasoningToken?: (token: string) => void;
-            onToken?: (token: string) => void;
-            signal?: AbortSignal;
             continuation?: PendingToolContinuation;
             sourceChat?: ChatSession;
             stream?: boolean;
             targetMessageId?: string;
             trigger?: PromptGenerationTrigger;
         } = {},
-    ): Promise<ChatGenerationRequest> {
+    ) {
         const contextTokenBudget = contextTokenBudgetForProfile(
             options.continuation?.profileId,
         );
@@ -855,6 +851,60 @@ export function usePromptGeneration({
                 ...getPromptInjectors(),
             ],
         });
+
+        return {
+            contextTokenBudget,
+            isTextCompletion,
+            profileModelId,
+            promptBuild,
+            promptCharacter,
+            promptChat,
+            promptPersona,
+            rawFormatting,
+            sourceGenerationMessages,
+            templateResolution,
+            tokenContext,
+        };
+    }
+
+    async function buildGenerationRequest(
+        sourceMessages: Message[],
+        sourceCharacter: SmileyCharacter,
+        sourceMode: ChatMode,
+        sourceUserStatus: UserStatus,
+        options: {
+            impersonate?: boolean;
+            onImage?: (url: string) => void;
+            promptCharacter?: SmileyCharacter;
+            onReasoningToken?: (token: string) => void;
+            onToken?: (token: string) => void;
+            signal?: AbortSignal;
+            continuation?: PendingToolContinuation;
+            sourceChat?: ChatSession;
+            stream?: boolean;
+            targetMessageId?: string;
+            trigger?: PromptGenerationTrigger;
+        } = {},
+    ): Promise<ChatGenerationRequest> {
+        const {
+            contextTokenBudget,
+            isTextCompletion,
+            profileModelId,
+            promptBuild,
+            promptCharacter,
+            promptChat,
+            promptPersona,
+            rawFormatting,
+            sourceGenerationMessages,
+            templateResolution,
+            tokenContext,
+        } = await preparePromptBuild(
+            sourceMessages,
+            sourceCharacter,
+            sourceMode,
+            sourceUserStatus,
+            options,
+        );
         const generationMessages = promptBuild.messages;
         const promptMessages = await applyPromptMiddlewares(
             promptBuild.promptMessages,
@@ -1007,6 +1057,36 @@ export function usePromptGeneration({
         };
     }
 
+    /**
+     * Same compile path the Prompt Inspector uses, without middleware output,
+     * attachment materialization or provider payload building. The context
+     * meter reads these numbers so it can never disagree with the inspector.
+     */
+    async function buildPromptUsage(
+        sourceMessages: Message[],
+        sourceCharacter: SmileyCharacter,
+        sourceMode: ChatMode,
+        sourceUserStatus: UserStatus,
+        options: {
+            promptCharacter?: SmileyCharacter;
+            sourceChat?: ChatSession;
+            stream?: boolean;
+        } = {},
+    ): Promise<{ budget: number; usedTokens: number }> {
+        const { promptBuild } = await preparePromptBuild(
+            sourceMessages,
+            sourceCharacter,
+            sourceMode,
+            sourceUserStatus,
+            { ...options, trigger: "send" },
+        );
+
+        return {
+            budget: promptBuild.debug.budget.tokenBudget,
+            usedTokens: promptBuild.debug.tokenEstimate,
+        };
+    }
+
     async function loadNativeLorebooks(
         sourceChat: ChatSession,
         sourceCharacter: SmileyCharacter,
@@ -1128,6 +1208,7 @@ export function usePromptGeneration({
     return {
         applyInputMiddlewares,
         buildGenerationRequest,
+        buildPromptUsage,
         generateWithPreset,
         getDebugPayload,
         resolveChatMacros,

@@ -63,7 +63,7 @@ import {
     type AppPreferences,
 } from "#frontend/lib/preferences/types";
 
-import { useContextUsage } from "./hooks/use-context-usage";
+import { usePromptUsage } from "./hooks/use-prompt-usage";
 import { CommandPalette } from "#frontend/features/command-palette/command-palette";
 import { loadRuntimePlugins } from "#frontend/lib/plugins/runtime";
 import type {
@@ -125,6 +125,31 @@ function chatModeForTheme(theme: string): ChatMode {
     return theme === "rp" ? "rp" : "chat";
 }
 
+/**
+ * Runs after the browser has painted the next frame, so state set in the same
+ * click (a loading modal) is visible before a synchronous build blocks it.
+ * Background tabs pause `requestAnimationFrame`, hence the timer fallback.
+ */
+function nextFrame(run: () => void) {
+    let started = false;
+    const start = () => {
+        if (started) {
+            return;
+        }
+
+        started = true;
+        run();
+    };
+
+    if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(start));
+        window.setTimeout(start, 120);
+        return;
+    }
+
+    window.setTimeout(start, 0);
+}
+
 export function App() {
     const [mode, setMode] = useState<ChatMode>("chat");
     const [theme, setTheme] = useState<string>("chat");
@@ -162,6 +187,8 @@ export function App() {
     const [isPayloadModalOpen, setIsPayloadModalOpen] = useState(false);
     const [debugPayloadData, setDebugPayloadData] =
         useState<DebugGenerationPayload | null>(null);
+    const [debugPayloadError, setDebugPayloadError] = useState("");
+    const debugPayloadRequestRef = useRef(0);
     const [connectionSettingsLoaded, setConnectionSettingsLoaded] = useState(false);
     const [startupStatus, setStartupStatus] = useState<StartupStatus>("loading");
     const [startupLabel, setStartupLabel] = useState("Loading preferences...");
@@ -276,6 +303,25 @@ export function App() {
         presetCollection.presets.find(
             (preset) => preset.id === presetCollection.activePresetId,
         ) ?? presetCollection.presets[0];
+    const promptUsage = usePromptUsage({
+        chatId: activeChat?.id ?? "",
+        deps: [
+            chatSession.messages,
+            character,
+            persona,
+            presetCollection,
+            mode,
+            userStatus,
+            connectionSettings,
+            preferences,
+        ],
+        enabled:
+            Boolean(activeChat) &&
+            !isChatLoading &&
+            !chatSession.isSending &&
+            !chatSession.isImpersonating,
+        load: chatSession.getPromptUsage,
+    });
     const appShellClassName = useMemo(
         () =>
             computed(
@@ -357,21 +403,6 @@ export function App() {
         () => getActiveConnectionProfile(connectionSettings),
         [connectionSettings],
     );
-    const tokenCountContext = useMemo(
-        () =>
-            activeConnectionProfile
-                ? tokenizerContextForProfile(activeConnectionProfile)
-                : undefined,
-        [activeConnectionProfile],
-    );
-    const tokenContextKey = tokenCountContext
-        ? `${tokenCountContext.provider}:${tokenCountContext.modelId}:${tokenCountContext.selection.mode}:${tokenCountContext.selection.algorithm ?? ""}`
-        : "none";
-    const contextTokenBudget = useMemo(
-        () => getEffectiveContextTokenBudget(activeConnectionProfile).tokenBudget,
-        [activeConnectionProfile],
-    );
-    const contextUsedTokens = useContextUsage(chatSession.messages, tokenContextKey);
 
     const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -1172,18 +1203,44 @@ export function App() {
     const handlePanelUpdateChatMetadata = useEventCallback((metadata: ChatMetadata) => {
         handleUpdateChatMetadata(metadata);
     });
-    const handleShowDebugPayload = useEventCallback(async () => {
-        try {
-            const data = await chatSession.getDebugPayload();
-
-            setDebugPayloadData(data);
+    const handleShowDebugPayload = useEventCallback(() => {
+        if (debugPayloadRequestRef.current > 0) {
             setIsPayloadModalOpen(true);
-            setLocalApiWarning("");
-        } catch (error) {
-            setLocalApiWarning(
-                `Could not build prompt payload: ${messageFromError(error)}`,
-            );
+            return;
         }
+
+        const requestId = debugPayloadRequestRef.current + 1;
+        debugPayloadRequestRef.current = requestId;
+        setDebugPayloadError("");
+        setDebugPayloadData(null);
+        setIsPayloadModalOpen(true);
+
+        // Let the loading state paint before the compile can block the frame.
+        void nextFrame(() =>
+            chatSession
+                .getDebugPayload()
+                .then((data) => {
+                    if (debugPayloadRequestRef.current !== requestId) {
+                        return;
+                    }
+
+                    setDebugPayloadData(data);
+                })
+                .catch((error: unknown) => {
+                    if (debugPayloadRequestRef.current !== requestId) {
+                        return;
+                    }
+
+                    setDebugPayloadError(messageFromError(error));
+                })
+                .finally(() => {
+                    if (debugPayloadRequestRef.current !== requestId) {
+                        return;
+                    }
+
+                    debugPayloadRequestRef.current = 0;
+                }),
+        );
     });
     const handleClosePayloadModal = useEventCallback(() => {
         setIsPayloadModalOpen(false);
@@ -1401,10 +1458,7 @@ export function App() {
                 onToggleSidebar={toggleSidebar}
                 onToggleCharacter={handleToggleCharacter}
                 pluginComposerState={pluginComposerState}
-                contextUsage={{
-                    budget: contextTokenBudget,
-                    usedTokens: contextUsedTokens,
-                }}
+                contextUsage={promptUsage}
                 saveState={chatSaveState}
                 getPluginSnapshot={getPluginSnapshotForActions}
                 pluginSnapshot={pluginSnapshot}
@@ -1504,10 +1558,12 @@ export function App() {
 
             <PluginModalHost snapshot={pluginSnapshot} />
             <PluginConfirmHost />
-            {isPayloadModalOpen && debugPayloadData ? (
+            {isPayloadModalOpen ? (
                 <ChatPayloadModal
                     data={debugPayloadData}
+                    error={debugPayloadError}
                     onClose={handleClosePayloadModal}
+                    onRetry={handleShowDebugPayload}
                 />
             ) : null}
         </main>

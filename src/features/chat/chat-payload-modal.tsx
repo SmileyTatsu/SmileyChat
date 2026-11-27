@@ -1,4 +1,4 @@
-import { Braces, Check, Copy, FileText, ListTree, X } from "lucide-preact";
+import { Braces, Check, Copy, FileText, ListTree, RotateCcw, X } from "lucide-preact";
 import type { ComponentChildren } from "preact";
 import { useMemo, useState } from "preact/hooks";
 
@@ -8,8 +8,10 @@ import type { PromptDebugBlock } from "#frontend/lib/prompt/types";
 import { estimateGenerationMessage } from "#frontend/lib/prompt/token-estimator";
 
 type ChatPayloadModalProps = {
-    data: DebugGenerationPayload;
+    data: DebugGenerationPayload | null;
+    error?: string;
     onClose: () => void;
+    onRetry?: () => void;
 };
 
 type PayloadTab = "context" | "final" | "request";
@@ -17,7 +19,95 @@ type PayloadTab = "context" | "final" | "request";
 const maxInlineMediaStringLength = 240;
 const base64PreviewLength = 96;
 
-export function ChatPayloadModal({ data, onClose }: ChatPayloadModalProps) {
+/**
+ * Opens on the click and shows the compile progress. Building the debug
+ * payload preloads a tokenizer and resolves LoreBooks, which takes long enough
+ * that a silent button reads as a broken one.
+ */
+export function ChatPayloadModal({
+    data,
+    error,
+    onClose,
+    onRetry,
+}: ChatPayloadModalProps) {
+    if (!data) {
+        return (
+            <div className="plugin-modal-backdrop" role="presentation" onClick={onClose}>
+                <section
+                    className="plugin-modal chat-payload-modal"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="chat-payload-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                >
+                    <header>
+                        <div>
+                            <h2 id="chat-payload-modal-title">Prompt Inspector</h2>
+                        </div>
+                        <div className="chat-payload-header-actions">
+                            <button
+                                className="icon-button"
+                                type="button"
+                                title="Close"
+                                onClick={onClose}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                    </header>
+                    <div className="plugin-modal-body chat-payload-modal-body">
+                        {error ? (
+                            <div className="chat-payload-status" role="alert">
+                                <p className="chat-payload-status-title">
+                                    Could not build the prompt payload.
+                                </p>
+                                <p className="chat-payload-status-detail">{error}</p>
+                                {onRetry ? (
+                                    <button
+                                        className="secondary-button"
+                                        type="button"
+                                        onClick={onRetry}
+                                    >
+                                        <RotateCcw size={15} />
+                                        Try again
+                                    </button>
+                                ) : null}
+                            </div>
+                        ) : (
+                            <div
+                                className="chat-payload-status"
+                                role="status"
+                                aria-live="polite"
+                            >
+                                <span
+                                    className="chat-payload-spinner"
+                                    aria-hidden="true"
+                                />
+                                <p className="chat-payload-status-title">
+                                    Compiling prompt…
+                                </p>
+                                <p className="chat-payload-status-detail">
+                                    Resolving preset prompts, LoreBooks, injections and
+                                    chat history for this request.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            </div>
+        );
+    }
+
+    return <PayloadContent data={data} onClose={onClose} />;
+}
+
+function PayloadContent({
+    data,
+    onClose,
+}: {
+    data: DebugGenerationPayload;
+    onClose: () => void;
+}) {
     const [activeTab, setActiveTab] = useState<PayloadTab>("context");
     const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
     const promptMessages = data.request.promptMessages ?? [];

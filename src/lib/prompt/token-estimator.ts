@@ -1,11 +1,7 @@
 import type { Message } from "#frontend/types";
 
 import type { ChatGenerationMessage } from "../connections/types";
-import {
-    getMessageAttachments,
-    getMessageContent,
-    getMessageReasoning,
-} from "../messages";
+import { getMessageAttachments, getMessageContent } from "../messages";
 import type { PromptInjection } from "./types";
 import { estimateTextForContext, type TokenCountContext } from "../tokenizer";
 import { providerTokenPolicy } from "../connections/token-policy";
@@ -29,11 +25,12 @@ export function estimateText(value: string, context?: TokenCountContext) {
 }
 
 export function estimateMessage(message: Message, context?: TokenCountContext) {
+    // Reasoning is display-only: no adapter sends historical reasoning back to
+    // the provider, so counting it here would trim history that fits.
     return (
         6 +
         estimateText(message.author, context) +
         estimateText(getMessageContent(message), context) +
-        estimateText(getMessageReasoning(message), context) +
         estimateMessageToolTokens(message, context) +
         getMessageAttachments(message).length * 1024
     );

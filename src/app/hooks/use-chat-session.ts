@@ -112,6 +112,7 @@ export function useChatSession({
     const {
         applyInputMiddlewares,
         buildGenerationRequest,
+        buildPromptUsage,
         generateWithPreset,
         getDebugPayload: buildDebugPayload,
         resolveChatMacros,
@@ -982,6 +983,41 @@ export function useChatSession({
         );
     }
 
+    async function getPromptUsage() {
+        const sourceChat = latestChatRef.current;
+
+        if (!sourceChat) {
+            return undefined;
+        }
+
+        const generationCharacter = selectGenerationCharacter({
+            character,
+            groupCharacters,
+            messages: sourceChat.messages,
+            sourceChat,
+        });
+
+        if (!generationCharacter) {
+            return undefined;
+        }
+
+        return buildPromptUsage(
+            sourceChat.messages,
+            generationCharacter,
+            mode,
+            userStatus,
+            {
+                promptCharacter: promptCharacterForGeneration({
+                    activeSpeaker: generationCharacter,
+                    groupCharacters,
+                    sourceChat,
+                }),
+                sourceChat,
+                stream: streamGeneration,
+            },
+        );
+    }
+
     function stopGeneration() {
         const activeChatId = latestChatRef.current?.id;
 
@@ -1243,6 +1279,7 @@ export function useChatSession({
         editMessage,
         generatingSpeaker: activeChatId ? generatingSpeakers[activeChatId] : undefined,
         getDebugPayload,
+        getPromptUsage,
         isSending: activeChatId ? pendingChatIds.includes(activeChatId) : false,
         isImpersonating: activeChatId
             ? getActiveGeneration(activeChatId)?.kind === "impersonation"
