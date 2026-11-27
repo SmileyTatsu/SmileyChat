@@ -1,4 +1,4 @@
-import { Cpu, PanelRight, Send } from "lucide-preact";
+import { PanelRight, Send, Sparkles } from "lucide-preact";
 
 import type { AppPreferences } from "#frontend/lib/preferences/types";
 import type { ChatMode } from "#frontend/types";
@@ -87,12 +87,23 @@ export function GeneralSettings({
 
             <section className="settings-card">
                 <header>
-                    <Cpu size={18} />
+                    <Sparkles size={18} />
                     <div>
-                        <h3>Tool Execution</h3>
-                        <p>Configure model tool-call limits.</p>
+                        <h3>Generation</h3>
+                        <p>Defaults for presets that leave these values unset.</p>
                     </div>
                 </header>
+
+                <ToggleRow
+                    checked={preferences.chat.streaming}
+                    description={
+                        preferences.chat.streaming
+                            ? "Presets without their own streaming mode show replies token by token as they arrive."
+                            : "Presets without their own streaming mode wait and show the finished reply at once."
+                    }
+                    label="Stream responses"
+                    onChange={(streaming) => updateChat({ streaming })}
+                />
 
                 <SettingField
                     label="Tool-call iterations per generation"
