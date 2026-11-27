@@ -2,7 +2,7 @@
 
 SmileyChat provides a local API via its Bun server (`server/index.ts`) for managing local data structures, extensions, generation, and connections. This API is used by the frontend and is available at `http://localhost:port/api/*`.
 
-These routes provide filesystem persistence to `userData/` and proxy capabilities (e.g. Generation, Plugin fetch) without exposing raw secrets to the client app.
+These routes provide filesystem persistence to `userData/`, generation for native providers, and a guarded fetch bridge for plugins. Native chat generation is proxied through `POST /api/generate` so saved provider API keys stay on the host machine, which is what makes remote devices usable without exposing secrets to their browsers.
 
 ## Characters
 
@@ -27,7 +27,8 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `GET /api/chats/:chatId`: Load a saved chat session by ID.
 - `PUT /api/chats/:chatId`: Update a chat session.
 - `PATCH /api/chats/:chatId/metadata`: Patch a chat session's title, mode, and metadata without modifying messages.
-- `DELETE /api/chats/:chatId`: Delete a saved chat session.
+- `DELETE /api/chats/:chatId`: Delete a saved chat session. Moves it to `userData/chats/trash` unless `?permanent=true`.
+- `POST /api/chats/:chatId/restore`: Restore a trashed chat session and its assets.
 - `DELETE /api/chats/workspaces/:workspaceId`: Delete a group workspace and all of its saved conversations in one operation.
 - `POST /api/chats/:chatId/fork`: Fork an existing chat at a specific message ID.
 - `PUT /api/chats/index`: Save active chat selection metadata.
@@ -57,7 +58,7 @@ These routes provide filesystem persistence to `userData/` and proxy capabilitie
 - `GET /api/connections/secrets`: Load saved connection secrets (requires privileged access if accessed remotely).
 - `PUT /api/connections/secrets`: Save connection secrets to JSON (requires privileged access).
 - `GET /api/connections/:profileId/models`: List available models for a specific connection profile by querying the upstream provider.
-- `POST /api/generate`: Generate a response using a saved connection profile. Routes through the server to avoid exposing API keys to the frontend UI.
+- `POST /api/generate`: Generate a response using a saved connection profile. Runs the provider call on the local server, so the browser never needs the saved API key.
 
 ## LoreBooks
 
@@ -109,6 +110,7 @@ _See [Plugin API Reference](../plugins/api-reference.md) for full context on plu
 - `GET /api/plugins/registry`: Load the verified extension registry.
 - `POST /api/plugins/install`: Install a registry plugin or a manual ZIP artifact.
 - `POST /api/plugins/:pluginId/update`: Update a plugin installed by SmileyChat.
+- `DELETE /api/plugins/:pluginId`: Uninstall a plugin installed by SmileyChat. Refuses core extensions and local folders without `smileychat-install.json`, keeps plugin `data/` unless `?deleteData=true`, and revokes the plugin's runtime grants.
 - `POST /api/plugins/fetch`: SSRF-guarded outbound fetch for trusted local plugins (gated by `.env`).
 - `GET /api/plugins/profiles`: Load plugin profile state.
 - `PUT /api/plugins/profiles`: Save plugin profile state.

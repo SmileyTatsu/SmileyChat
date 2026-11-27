@@ -14,7 +14,7 @@ These are defaults only. A provider's loaded models appear separately in the UI,
 
 ## Catalog Structure
 
-Each file is an ordered array of display categories. Keep category IDs, labels, model order, model IDs, labels, and existing `contextTokenLimit` values stable unless a deliberate catalog update requires changing them.
+Each file is an ordered list of display categories, except `default-novelai-models.json`, which is one category object (`{ id, label, models }`) because NovelAI's models are not grouped. Keep category IDs, labels, model order, model IDs, labels, and existing `contextTokenLimit` values stable unless a deliberate catalog update requires changing them.
 
 ```json
 [

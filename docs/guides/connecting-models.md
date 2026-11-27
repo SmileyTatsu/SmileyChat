@@ -16,11 +16,11 @@ Use the **OpenAI-compatible** provider type for local tools that expose an OpenA
     - **Ollama:** `http://127.0.0.1:11434/v1`
     - **text-generation-webui:** `http://127.0.0.1:5000/v1`
 5. Click **Load Models**.
-6. Select a model from the dropdown, or enter a custom model name.
+6. Select a model from the picker, or use the picker's `Use "text" as the model id` row to type an ID.
 7. Click **Test Connection**.
 8. Click **Save**.
 
-If model loading fails but you know the model ID, enter it manually and use **Test Connection**.
+If model loading fails but you know the model ID, type it in the picker's `Use "text" as the model id` row and use **Test Connection**.
 
 ## 2. KoboldCPP (Native Local Generation)
 
@@ -98,8 +98,8 @@ Use **xAI** to connect directly to Grok through the xAI API.
 3. Enter your **xAI API key**.
 4. Keep the default base URL unless you need another one.
 5. Click **Load Models**.
-6. Select a Grok model, such as `grok-4.5`.
-7. Select your preferred `reasoning_effort` if applicable (`low`, `medium`, `high`).
+6. Select a Grok model, such as `grok-4.6`.
+7. Select your preferred `reasoning_effort` if applicable (`low`, `medium`, `high`, or `xhigh`).
 8. Click **Test Connection**.
 9. Click **Save**.
 
@@ -111,7 +111,7 @@ For cloud APIs that use the standard OpenAI Chat Completions format:
 2. Choose **OpenAI-compatible**.
 3. Enter the provider's **Base URL**, such as `https://api.groq.com/openai/v1`.
 4. Enter your **API key**.
-5. Load models or enter a custom model ID.
+5. Load models, or use the model picker's `Use "text" as the model id` row to type a custom ID.
 6. Click **Test Connection**.
 7. Click **Save**.
 

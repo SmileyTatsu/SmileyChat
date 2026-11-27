@@ -88,7 +88,7 @@ Check these first:
 - The provider allows browser requests from SmileyChat.
 - Local providers such as Ollama or text-generation-webui are configured for OpenAI-compatible access.
 
-If model listing is unavailable, enter the model ID manually and use **Test Connection**.
+If model listing is unavailable, use the picker's `Use "text" as the model id` row to type the ID, then use **Test Connection**.
 
 ## Test Connection Fails
 
@@ -103,7 +103,7 @@ For Anthropic, use the Anthropic provider instead of OpenAI-compatible. For Open
 
 ## Local Provider CORS Errors
 
-SmileyChat calls providers directly from the browser. Some local AI tools require a setting or launch flag to allow browser requests.
+**Load Models** and **Test Connection** call the configured `baseUrl` directly from the browser, so those two actions are subject to CORS. Normal chat generation runs on the local Bun server and is not, so a CORS error usually means model listing or a connection test failed while chatting still works. Some local AI tools require a setting or launch flag to allow browser requests.
 
 Typical fixes:
 
@@ -133,7 +133,7 @@ If you encounter unexpected errors, connection failures, or plugin crashes:
 1. Open **Options** (gear icon in the bottom-left persona bar) and select **Diagnostics**.
 2. View real-time streaming logs from the Bun server and frontend extensions.
 3. Use the search input or toggle subsystem and severity level pills (`generate`, `http`, `plugins`, `mcp`, `server`, `security`) to isolate relevant events.
-4. Click **Export Logs** to save a snapshot of current logs for bug reports.
+4. Click the **Export Logs as File** download button to save a snapshot of current logs for bug reports.
 
 Server log files are also saved locally to `userData/logs/smileychat-YYYY-MM-DD.log`.
 

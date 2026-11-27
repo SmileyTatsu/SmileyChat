@@ -39,6 +39,12 @@ Enabling a listed local plugin from Options > Plugins loads it into the current 
 
 A plugin server module follows the plugin itself: it starts when the plugin is enabled, compatible, declares `serverMain` and `server:process`, and the user has approved the permission. Disabling the plugin, revoking the approval, updating it, uninstalling it, or shutting SmileyChat down stops the module and the programs it started.
 
+## Connection Secrets
+
+`connections:secrets` lets a plugin read the API key saved for a connection profile through `api.connections.hasApiKey` and `api.connections.getProfileWithSecrets`. Declaring it is not enough: the user approves "Use connection secrets" for that plugin in **Options > Plugins > the plugin card > Approvals**, and until then those calls throw. Bundled core extensions ship with the approval already in place because the app ships their code. The grant is stored per plugin ID in `userData/settings/plugin-grants.json`, survives restarts and updates, and is dropped when the plugin is uninstalled.
+
+A plugin that only chats through the normal pipeline never needs this permission: generation requests are compiled by the app and run by the local server, which already holds the key.
+
 ## Server Modules
 
 A plugin with a `serverMain` entry runs code inside the SmileyChat server process. That code is not sandboxed. It can read `userData` (including saved connection secrets and the grants file), open network connections, and start any program the user can start. The approval is a deliberate stop before that power is handed over, not a boundary around it.

@@ -25,17 +25,13 @@ Use this page for day-to-day development commands and project orientation. Produ
 
 ## Running in Dev Mode
 
-Run the frontend dev server:
+Start the frontend dev server and the local API server together:
 
 ```bash
 bun run dev
 ```
 
-In a second terminal, start the local API server:
-
-```bash
-bun run dev:api
-```
+This runs Vite on port `5173` and the API server on `4173` with file watching. To run one side on its own, use `bun run dev:web` or `bun run dev:api`.
 
 The production-style local server is:
 

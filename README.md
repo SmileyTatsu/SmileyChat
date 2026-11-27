@@ -174,12 +174,10 @@ Dive deeper into SmileyChat's features and technical architecture in the `docs/`
 To run the app with Hot Module Replacement (HMR) for active development:
 
 ```bash
-# Terminal 1: Frontend
 bun run dev
-
-# Terminal 2: Local API server
-bun run dev:api
 ```
+
+That starts Vite on port `5173` and the local API server on `4173` together. Use `bun run dev:web` or `bun run dev:api` to run only one side.
 
 Helpful checks before submitting PRs:
 

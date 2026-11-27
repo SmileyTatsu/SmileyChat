@@ -112,8 +112,11 @@ Recommended labels:
 - `chat:output`
 - `chat:message-update`
 - `presets:macros`
+- `presets:compile`
+- `commands:register`
 - `server:process`
 - `connections:providers`
+- `connections:secrets`
 - `tools:register`
 - `events`
 - `storage`
@@ -124,12 +127,24 @@ Recommended labels:
 `api.model.generate`, `api.model.estimateTokens`, and
 `api.model.getContextBudget`.
 
+`presets:compile` permits `api.presets.compileMessages`, which turns one saved preset
+into the chat-completion messages the app would send for it.
+
+`commands:register` permits `api.commands.register`, which adds a slash command the
+composer runs when the user types `/name`.
+
 `connections:providers` permits registering browser-run connection adapters. A
 provider using `promptMode: "text-completion"` can use
 `api.formatting.formatTextCompletionPrompt(...)` to serialize the active
 instruct template and prompt messages.
 
 `server:process` declares that the plugin runs code outside the browser: a server module, and any programs that module starts, on the user's computer. It is required for `serverMain` and for `api.host`, and it is one of the two permissions the user has to approve after install (the other is `connections:secrets`). Revoking the approval in Options > Plugins stops the module without uninstalling the plugin. The permission is per plugin ID, so it survives updates; uninstalling an installed plugin drops it, so a reinstall has to be approved again.
+
+`connections:secrets` declares that the plugin reads saved connection secrets through
+`api.connections.hasApiKey` and `api.connections.getProfileWithSecrets`. Like
+`server:process`, the declaration alone is not enough: the user approves "Use
+connection secrets" for that plugin in Options > Plugins > Approvals, and the key is
+only handed out after that. Bundled core extensions ship with the approval in place.
 
 `enabled`
 

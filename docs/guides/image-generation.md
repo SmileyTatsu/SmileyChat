@@ -1,6 +1,6 @@
 # NovelAI Image Generation
 
-SmileyChat includes a bundled **Image Generation** core extension. The first release supports NovelAI image generation only. It can turn the active chat context into a NovelAI prompt, preserve a user-authored master prompt exactly, generate one or more images, save them into the active chat, and keep later model requests lightweight by representing generated images as text.
+SmileyChat's **Image Generation** extension ships as a Store plugin (`smiley-image-generation`), installed from **Options > Plugins > Extension Store**. Its first release supports NovelAI image generation only. It can turn the active chat context into a NovelAI prompt, preserve a user-authored master prompt exactly, generate one or more images, save them into the active chat, and keep later model requests lightweight by representing generated images as text.
 
 The extension is disabled by default.
 
@@ -10,7 +10,7 @@ Before generating an image:
 
 1. Open **Options > Connections**.
 2. Create or select a **NovelAI** connection profile and save its API token.
-3. Open **Options > Plugins** and enable **Image Generation**.
+3. Open **Options > Plugins > Extension Store** and install **Image Generation** if it is not installed yet, then enable it.
 4. Open the plugin's **Configure** panel and select the NovelAI profile if SmileyChat should not choose it automatically.
 5. Open a saved chat. Images cannot be attached without an active chat.
 

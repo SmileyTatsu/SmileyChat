@@ -72,10 +72,12 @@ to that computer, and the computer calls the selected provider and streams the
 answer back. Connection profile names and models remain visible on the phone,
 but stored API keys are intentionally never sent to it.
 
-For this reason, the Connections screen on a remote device may show a notice
-that keys are protected locally. You can load the saved profile's model catalog
-and test it from your phone; SmileyChat performs both requests on the computer
-that holds the key. Add, replace, or remove provider keys only on that computer.
+`GET /api/connections/secrets` is behind the privileged gate for remote
+callers, so a phone has no key to work with. **Load Models** and **Test
+Connection** run in the phone's browser against the provider URL, so without that
+key they usually fail (some local endpoints list models anonymously). Run them on
+the computer that holds the key, and add, replace, or remove provider keys only
+there.
 
 **Tip for Mobile Users:** Once the page loads, you can use your browser's **"Add to Home Screen"** feature. This will install SmileyChat as a Web App (PWA) on your device, giving you a full-screen, native app-like experience without the browser address bar.
 

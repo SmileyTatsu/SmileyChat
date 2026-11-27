@@ -10,8 +10,8 @@ IP allowlist. Loopback (`127.0.0.1`) is always exempt.
 
 Every protection layer is configured through environment variables in
 `.env`. The file is auto-created from `.env.example` on first boot, and
-edits hot-reload within ~2 seconds, no restart needed for any setting
-except port/host/CSRF secret.
+edits hot-reload within ~2 seconds, with one exception: host, ports, and the
+CSRF secret are read only at boot.
 
 ## Layers, top to bottom
 
@@ -20,7 +20,7 @@ except port/host/CSRF secret.
 | Server binding           | What interfaces the OS can reach the server on                                    | loopback (`127.0.0.1`)                   | `SMILEYCHAT_HOST`, `SMILEYCHAT_PORT`                                             |
 | IP allowlist             | Network-level deny-by-default                                                     | no allowlist                             | `SMILEYCHAT_IP_ALLOWLIST`, `SMILEYCHAT_IP_ALLOWLIST_ENABLED`                     |
 | Trusted-interface bypass | Explicitly skip allowlist & auth for trusted networks                             | disabled                                 | `SMILEYCHAT_BYPASS_AUTH_TAILSCALE`, `SMILEYCHAT_BYPASS_AUTH_DOCKER`              |
-| Rate limit               | Throttle abuse / accidental floods                                                | 600 req/min/IP                           | `SMILEYCHAT_RATE_LIMIT_ENABLED`, `SMILEYCHAT_RATE_LIMIT_DEFAULT`                 |
+| Rate limit               | Throttle abuse / accidental floods                                                | 2000 req/min/IP                          | `SMILEYCHAT_RATE_LIMIT_ENABLED`, `SMILEYCHAT_RATE_LIMIT_DEFAULT`                 |
 | Basic Auth               | Username/password gate                                                            | unset → lockdown for non-loopback        | `SMILEYCHAT_BASIC_AUTH_USER/PASS/REALM`                                          |
 | Remote lockdown          | Fail-closed when neither allowlist nor Basic Auth is set                          | enforced                                 | `SMILEYCHAT_ALLOW_UNAUTHENTICATED_PRIVATE_NETWORK`, `_REMOTE`                    |
 | Trusted private nets     | Which CIDRs count as "private" for the lockdown's purposes                        | RFC 1918 + CGNAT + link-local + IPv6 ULA | `SMILEYCHAT_TRUSTED_PRIVATE_NETWORKS`                                            |
@@ -35,7 +35,8 @@ except port/host/CSRF secret.
 ### Server binding (`SMILEYCHAT_HOST`)
 
 The Bun server calls `Bun.serve({ hostname, port })`. The default is
-`0.0.0.0`, so every interface on the machine accepts connections. By
+`127.0.0.1`, so only this machine can reach it. Set
+`SMILEYCHAT_HOST=0.0.0.0` to accept connections on every interface; by
 itself that would be alarming, but the lockdown below catches every
 non-loopback request and refuses it unless you've opted into one of the
 auth mechanisms. So the practical effect on a fresh install is:
@@ -104,14 +105,14 @@ SMILEYCHAT_BYPASS_AUTH_DOCKER=true
 
 ### Rate limit
 
-Fixed window, per-IP, per-route-class. The default bucket (`600/min`)
+Fixed window, per-IP, per-route-class. The default bucket (`2000/min`)
 applies to every `/api/*` endpoint; tighter buckets are configured in
 `server/security/rate-limit.ts` for:
 
 - `/api/csrf`: 60/min (the token grab; cheap, but no reason to hammer)
-- `/api/{characters,chats,personas}/import`: 20/min (file uploads)
-- `/api/{characters,personas}/<id>/avatar`: 30/min
-- `/api/characters/<id>/export.png`: 30/min
+- `/api/{characters,chats,lorebooks,personas}/import`: 300/min (file uploads)
+- `/api/{characters,personas}/<id>/avatar`: 120/min
+- `/api/characters/<id>/export.png`: 60/min
 - `/api/connections/secrets`: 120/min (frontend reads this on every boot)
 
 Every response carries `RateLimit-Limit`, `RateLimit-Remaining`, and
@@ -372,6 +373,7 @@ trigger a `[env-watcher] … require a server restart to take effect`
 warn if you change them at runtime:
 
 - `SMILEYCHAT_HOST`
+- `SMILEYCHAT_PORT`
 - `SMILEYCHAT_API_PORT`
 - `SMILEYCHAT_FRONTEND_PORT`
 - `SMILEYCHAT_CSRF_SECRET` (the secret is read once at process start)
@@ -384,8 +386,8 @@ poll fires.
 
 ### Local only (default)
 
-Do nothing. SmileyChat binds to every interface but the lockdown gates
-everything except loopback. Browse to `http://127.0.0.1:4173` as usual.
+Do nothing. SmileyChat binds to loopback only, so nothing outside this
+machine can reach it. Browse to `http://127.0.0.1:4173` as usual.
 
 ### Tailscale (multi-device, no public exposure)
 

@@ -17,7 +17,7 @@ Inside this folder, you will find:
 - `personas/`: User profiles and avatars.
 - `presets/`: Prompt presets and generation settings.
 - `lorebooks/`: Native LoreBooks and imported World Info data.
-- `settings/`: Preferences, connection profiles, core extensions data, and separate local API key files.
+- `settings/`: Preferences, connection profiles, plugin runtime grants, core extensions data, and separate local API key files.
 - `logs/`: Daily rotating server diagnostics and runtime log files.
 - `plugins/`: Locally installed trusted plugins and plugin-owned storage.
 
@@ -38,5 +38,11 @@ If your backup location is shared or synced to a third party, remember that `con
 3. Start SmileyChat.
 
 All chats, characters, personas, presets, LoreBooks, settings, and plugins should be available from the restored folder.
+
+## Recovering a Deleted Chat
+
+Deleting a chat moves it to `userData/chats/trash/` instead of erasing it, and the sidebar offers an **Undo** action right after the deletion. Trashed chats are pruned after 7 days or once 40 newer deletions push them out. After that window, a trashed chat can still be recovered with `POST /api/chats/{chatId}/restore` or by copying the folder back from a backup while SmileyChat is closed.
+
+Characters, personas, and LoreBooks are deleted permanently, so keep a `userData` backup if you might want them back.
 
 For the full storage layout, see [User Data & Storage](../reference/user-data.md).

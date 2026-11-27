@@ -18,7 +18,7 @@ SmileyChat currently includes these provider adapters:
 - **xAI**: Direct browser calls to the Grok Chat Completions API.
 - **KoboldCPP**: Direct local generation via KoboldCPP's native HTTP API with customizable instruct formatting.
 
-Chat generation and model discovery are sent through the local Bun server using a saved connection profile (via `/api/generate`). This lets remote devices use the PC's configured providers without receiving provider API keys. The server accepts only a saved profile ID; it is not a general-purpose provider proxy.
+Chat generation runs on the local Bun server against a saved connection profile (via `/api/generate`), which is how a phone or another device can chat without receiving provider API keys. Load Models, Test Connection, and direct provider inspection still run in the browser against the configured `baseUrl`. The server accepts only a saved profile ID and a compiled prompt; it is not a general-purpose provider proxy.
 
 ## OpenAI-compatible APIs
 
@@ -35,7 +35,7 @@ Common examples:
 
 The provider sends `model` and ordered chat-completion `messages`, then normalizes the first assistant message from `choices`.
 
-Model selection starts with the local default catalog in `src/data/default-openai-models.json`. Models loaded from `GET {baseUrl}/models` are shown under `Other` and cached with the connection profile. The cache is replaced when models are loaded again and cleared when the base URL or API key changes. A custom model field remains available for endpoints that require manual IDs.
+Model selection uses the shared `ModelPicker`: a searchable popover with group chips and Favorites / Recent / All sections. Models loaded from `GET {baseUrl}/models` are shown under `Other` and cached with the connection profile; the cache is replaced when models are loaded again and cleared when the base URL or API key changes. Endpoints that do not expose model listing use the picker's `Use "text" as the model id` row to enter an ID by hand.
 
 ## OpenRouter
 

@@ -26,7 +26,11 @@ Current plugin surfaces:
 - Chat input, prompt, output, message display, and message-update middleware.
 - Runtime character presence and direct message injection.
 - Custom preset macros.
+- Preset compilation into chat-completion messages.
+- Slash commands in the composer.
 - Connection provider and tool registration.
+- Connection secrets, gated by a separate approval.
+- Message and utility helpers (`api.messages`, `api.util`).
 - Plugin-owned JSON storage.
 
 Plugin API permissions are runtime declarations checked by most protected hooks. A plugin that calls a protected API without the matching manifest permission fails to load or fails when that API is called, but plugins are trusted local code and are not sandboxed.

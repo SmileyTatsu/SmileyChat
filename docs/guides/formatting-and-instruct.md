@@ -2,7 +2,7 @@
 
 > **Beta:** Formatting and custom Instruct Templates are usable, stored locally, and covered by automated tests, but their controls and SillyTavern compatibility are still evolving. Check the generated prompt preview before relying on a template for an important long-running chat.
 
-The **Options > Instruct Templates (Beta)** tab configures how SmileyChat turns an assembled chat into a text-completion prompt. It is a provider-neutral formatting layer for text-completion backends. KoboldCPP is the currently integrated text-completion provider; additional text-completion adapters can use the same assembled formatting contract in the future. It does not replace Presets: Presets control prompt content, order, and generation settings; Formatting wraps that assembled content in model-specific tokens.
+The **Options > Instruct Templates (Beta)** tab configures how SmileyChat turns an assembled chat into a text-completion prompt. It is a provider-neutral formatting layer for text-completion backends. KoboldCPP and NovelAI's raw text models (Erato, Kayra) are the currently integrated text-completion providers; additional text-completion adapters can use the same assembled formatting contract in the future. It does not replace Presets: Presets control prompt content, order, and generation settings; Formatting wraps that assembled content in model-specific tokens.
 
 ## Choosing a template
 
@@ -75,7 +75,7 @@ For the remaining compatibility differences, see [SillyTavern Compatibility](../
 When typing in the chat composer or editing an existing message swipe, SmileyChat supports standard formatting shortcuts and inline markdown tags:
 
 | Shortcut                                 | Format          | Output Syntax      |
-| ---------------------------------------- | --------------- | ------------------ | --- | ---- | --- | --- |
+| ---------------------------------------- | --------------- | ------------------ |
 | `Ctrl + B` (or `Cmd + B`)                | Bold            | `**text**`         |
 | `Ctrl + I` (or `Cmd + I`)                | Italic          | `*text*`           |
 | `Ctrl + U` (or `Cmd + U`)                | Underline       | `<u>text</u>`      |
@@ -83,7 +83,7 @@ When typing in the chat composer or editing an existing message swipe, SmileyCha
 | `Ctrl + Shift + C`                       | Inline Code     | `` `text` ``       |
 | `Ctrl + Shift + K`                       | Code Block      | ` ```\ntext\n``` ` |
 | `Ctrl + Shift + M`                       | Message Bubble  | `<msg>text</msg>`  |
-| `Ctrl + Shift + P`                       | Spoiler         | `                  |     | text |     | `   |
+| `Ctrl + Shift + P`                       | Spoiler         | `\|\|text\|\|`     |
 | `Ctrl + Shift + 9` or `Alt + Q`          | Blockquote      | `> text`           |
 | `Ctrl + Shift + 2` or `Ctrl + Shift + '` | Dialogue Quotes | `"text"`           |
 

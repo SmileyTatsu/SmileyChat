@@ -41,7 +41,7 @@ These permissions are currently checked:
 | `api.ui.registerComposerAction`, `api.ui.registerComposerOption`               | `ui:composer`           |
 | `api.ui.setComposerState`                                                      | `ui:composer-state`     |
 | `api.ui.registerHeaderAction`                                                  | `ui:header`             |
-| `api.ui.openModal`                                                             | `ui:modals`             |
+| `api.ui.openModal`, `api.ui.confirm`                                           | `ui:modals`             |
 | `api.ui.addStyles` and manifest `styles` loading                               | `ui:styles`             |
 | `api.chat.registerInputMiddleware`                                             | `chat:input`            |
 | `api.chat.registerPromptContextMiddleware`                                     | `chat:prompt-context`   |
@@ -50,12 +50,21 @@ These permissions are currently checked:
 | `api.chat.registerOutputMiddleware`                                            | `chat:output`           |
 | `api.chat.registerMessageUpdateMiddleware`                                     | `chat:message-update`   |
 | `api.presets.registerMacro`, `api.presets.resolveMacros`                       | `presets:macros`        |
+| `api.presets.compileMessages`                                                  | `presets:compile`       |
 | `api.connections.registerProvider`, `api.formatting.*`                         | `connections:providers` |
+| `api.connections.hasApiKey`, `api.connections.getProfileWithSecrets`           | `connections:secrets`   |
 | `api.tools.registerTool`                                                       | `tools:register`        |
+| `api.commands.register`                                                        | `commands:register`     |
 | `api.events.on`, `api.events.emit`                                             | `events`                |
 | `api.host.fetch`, manifest `serverMain` loading                                | `server:process`        |
 
-`api.storage` and `api.logger` are available to loaded plugins without separate runtime permissions. `storage` is still a useful manifest label for user visibility.
+`api.storage` and `api.logger` are available to loaded plugins without separate runtime permissions. `storage` is still a useful manifest label for user visibility. `api.messages` and `api.util` are pure helpers and need no permission either.
+
+`connections:secrets` is the other permission that also needs a separate approval after
+install. Declaring it makes the plugin visible in Options > Plugins > Approvals as
+"Use connection secrets"; until the user approves it, `api.connections.hasApiKey` and
+`api.connections.getProfileWithSecrets` throw. Bundled core extensions ship with the
+approval already in place.
 
 `server:process` is one of the permissions that also needs a separate approval after
 install. Declaring it makes the plugin visible in Options > Plugins > Approvals as
@@ -419,6 +428,29 @@ Notes:
 - Dispatched server logs appear in the live in-app Diagnostics viewer, Server-Sent Events log stream (`/api/logs/stream`), and daily rotating server log files under `userData/logs/`.
 - Automatic secret scrubbing is performed by the server logger.
 
+## `api.messages`
+
+Read-only helpers for the message model.
+
+```js
+const text = api.messages.content(message);
+```
+
+`content(message)` returns the text of the message's active swipe, or an empty string
+when there is none, so plugins do not reimplement swipe lookup. No permission required.
+
+## `api.util`
+
+Small pure helpers so plugins stop reimplementing them.
+
+```js
+const id = api.util.createId("job");
+if (api.util.isAbortError(error)) return;
+```
+
+`createId(prefix)` returns a unique id, and `isAbortError(error)` recognizes aborted
+fetch/stream errors. No permission required.
+
 ## `api.ui.h`
 
 Preact `h` helper for plugin UI.
@@ -741,6 +773,26 @@ const close = api.ui.openModal({
 
 Requires `ui:modals`.
 
+## `api.ui.confirm`
+
+Asks a yes/no question in an app-drawn dialog and resolves with the answer. Use it
+instead of rendering a modal of your own for simple confirmations.
+
+```js
+const shouldDelete = await api.ui.confirm({
+    title: "Delete image?",
+    message: "This removes the generated image from the chat.",
+    details: ["The file is deleted from the chat folder."],
+    confirmLabel: "Delete",
+    destructive: true,
+});
+```
+
+`cancelLabel` defaults to `"Cancel"`, and `destructive: true` styles the confirm
+button as dangerous.
+
+Requires `ui:modals`.
+
 ## `api.ui.addStyles`
 
 Injects CSS into the app page.
@@ -950,6 +1002,55 @@ const prompt = api.presets.resolveMacros(
 `resolveMacros` uses the active snapshot by default and includes registered plugin
 macros. It does not compile presets or run prompt middleware.
 
+## `api.presets.compileMessages`
+
+Compiles one saved preset into ordered chat-completion messages, the same output the
+app builds when it sends a normal chat request. Pass `undefined` as the preset to
+compile the default prompt order.
+
+```js
+const messages = api.presets.compileMessages(undefined, {
+    character: snapshot.character,
+    messages: snapshot.messages,
+    mode: snapshot.mode,
+    personaName: snapshot.persona.name,
+    personaDescription: snapshot.persona.description,
+    userStatus: snapshot.userStatus,
+    historyMessages: snapshot.messages.slice(-8),
+});
+```
+
+`messages` is the full session used for macro resolution; the optional
+`historyMessages` is the budget-selected slice actually inserted as chat history. The
+rest of the context supplies the character, mode, persona details, and user status that
+macros resolve against. `formatting` and `isTextCompletion` are optional and let a
+plugin compile for a text-completion provider. Compilation applies the preset's prompt
+order, roles, macros, and preset prompt injections, but does not run plugin prompt
+middleware or plugin prompt injectors.
+
+Requires `presets:compile`.
+
+## `api.commands.register`
+
+Registers a slash command the composer runs when the user types `/name` in the draft.
+The command name is validated as 1-32 characters of `a-z`, `0-9`, `_`, or `-`, and a
+description is required. The returned function unregisters it.
+
+```js
+const unregister = api.commands.register({
+    name: "mood",
+    description: "Set the scene mood",
+    run(argumentsText, { draft, snapshot }) {
+        console.log(argumentsText, draft, snapshot.mode);
+    },
+});
+```
+
+`run` receives the text after the command name and the current draft plus app
+snapshot.
+
+Requires `commands:register`.
+
 ## `api.connections.registerProvider`
 
 Adds a connection provider without editing SmileyChat source.
@@ -1014,6 +1115,22 @@ stop sequences are available as `request.formatting` and
 Provider adapters run in the browser. Built-in providers use the local server
 generation path, while registered plugin providers receive generation requests
 directly through their `createAdapter` result.
+
+### `api.connections.hasApiKey` and `api.connections.getProfileWithSecrets`
+
+Read a saved connection profile from inside a plugin. `hasApiKey` reports whether a
+key exists for the profile; `getProfileWithSecrets` returns a detached copy of the
+profile including its key.
+
+```js
+if (api.connections.hasApiKey(profileId)) {
+    const profile = api.connections.getProfileWithSecrets(profileId);
+    const key = profile?.apiKey;
+}
+```
+
+Requires `connections:secrets` declared _and_ approved by the user in Options >
+Plugins > Approvals. Bundled core extensions ship with the approval already in place.
 
 ## `api.formatting`
 
@@ -1351,6 +1468,7 @@ These routes are used by the app and plugin runtime:
 - `GET /api/plugins/registry`: load the verified extension registry.
 - `POST /api/plugins/install`: install one registry plugin with `{ "pluginId": "..." }`, or install one manual HTTPS ZIP artifact with `{ "artifactUrl": "..." }` when `SMILEYCHAT_ALLOW_UNVERIFIED_PLUGINS=true`.
 - `POST /api/plugins/{pluginId}/update`: update a plugin installed by SmileyChat using `smileychat-install.json`.
+- `DELETE /api/plugins/{pluginId}`: uninstall a plugin installed by SmileyChat. Refuses core extensions and local folders without `smileychat-install.json`, keeps the plugin's `data/` folder unless `?deleteData=true`, and revokes its runtime grants.
 - `POST /api/plugins/fetch`: SSRF-guarded outbound fetch for trusted local plugins with `network:fetch`, gated by `SMILEYCHAT_PLUGINS_ALLOW_OUTBOUND_FETCH=true`.
 - `GET /api/plugins/profiles`: load plugin profile state plus built-in profile definitions.
 - `PUT /api/plugins/profiles`: save plugin profile state.
@@ -1365,4 +1483,4 @@ These routes are used by the app and plugin runtime:
 - `DELETE /api/plugins/{pluginId}/storage/{key}`: delete one plugin-owned JSON value.
 - `POST /api/plugins/{pluginId}/logs`: submit client-side plugin telemetry and diagnostics to the server logger.
 
-Provider adapter testing and plugin providers run directly in the browser, while normal chat generation is routed securely through the local server's `/api/generate` endpoint to protect API keys during remote access.
+Provider adapter testing and plugin providers run directly in the browser, while native chat generation uses the local server's `/api/generate` endpoint so saved API keys never reach a remote browser.
