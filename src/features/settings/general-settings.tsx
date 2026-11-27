@@ -71,6 +71,17 @@ export function GeneralSettings({
         });
     }
 
+    function updateAttachmentLimits(
+        nextLimits: Partial<AppPreferences["chat"]["attachmentLimits"]>,
+    ) {
+        updateChat({
+            attachmentLimits: {
+                ...preferences.chat.attachmentLimits,
+                ...nextLimits,
+            },
+        });
+    }
+
     const [notificationNotice, setNotificationNotice] = useState("");
     const hasNotificationChannel =
         preferences.chat.notifications.desktop || preferences.chat.notifications.sound;
@@ -232,7 +243,7 @@ export function GeneralSettings({
                     <Image size={18} />
                     <div>
                         <h3>Attachments & media</h3>
-                        <p>How much attachment data is resent with each request.</p>
+                        <p>What can be attached, and how much is resent to the model.</p>
                     </div>
                 </header>
 
@@ -278,6 +289,51 @@ export function GeneralSettings({
                         onChange={(maxMessageDistance) =>
                             updateMediaWindow({ maxMessageDistance })
                         }
+                    />
+                </SettingField>
+
+                <h4 className="settings-subheading">Upload limits</h4>
+
+                <SettingField
+                    label="Image size limit (MB)"
+                    description="Largest image a message can carry. Applied by the composer and by the local server that stores the file."
+                >
+                    <NumberInput
+                        min={1}
+                        max={256}
+                        step={1}
+                        value={preferences.chat.attachmentLimits.imageMegabytes}
+                        onChange={(imageMegabytes) =>
+                            updateAttachmentLimits({ imageMegabytes })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField
+                    label="File size limit (MB)"
+                    description="Largest non-image attachment a message can carry."
+                >
+                    <NumberInput
+                        min={1}
+                        max={512}
+                        step={1}
+                        value={preferences.chat.attachmentLimits.fileMegabytes}
+                        onChange={(fileMegabytes) =>
+                            updateAttachmentLimits({ fileMegabytes })
+                        }
+                    />
+                </SettingField>
+
+                <SettingField
+                    label="Attachments per message"
+                    description="How many files can be attached to a single message."
+                >
+                    <NumberInput
+                        min={1}
+                        max={50}
+                        step={1}
+                        value={preferences.chat.attachmentLimits.perMessage}
+                        onChange={(perMessage) => updateAttachmentLimits({ perMessage })}
                     />
                 </SettingField>
             </section>

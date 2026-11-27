@@ -517,6 +517,19 @@ export type LorebookImportMetadata = {
 	importedAt?: string;
 	sourceFileName?: string;
 };
+/**
+ * Upload limits are a user preference (Options > Settings > Attachments and
+ * media). The composer validates against the same values the server enforces,
+ * so raising a limit actually takes effect instead of failing during upload.
+ */
+export type ChatAttachmentLimits = {
+	/** Inline raster images, in megabytes. */
+	imageMegabytes: number;
+	/** Everything else, in megabytes. */
+	fileMegabytes: number;
+	/** Attachments allowed on one message. */
+	perMessage: number;
+};
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type FontScale = "small" | "default" | "large";
 export type TimeFormat = "12h" | "24h";
@@ -566,6 +579,8 @@ export type AppPreferences = {
 			maxActiveFiles: number;
 			maxMessageDistance: number;
 		};
+		/** Upload limits shared by the composer and the local server. */
+		attachmentLimits: ChatAttachmentLimits;
 	};
 	layout: {
 		characterPanelOpenByDefault: boolean;

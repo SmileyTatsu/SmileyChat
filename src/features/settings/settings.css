@@ -4631,3 +4631,13 @@ input[aria-invalid="true"] {
     font-size: 0.8rem;
     line-height: 1.45;
 }
+
+/* Group label inside a settings card (e.g. upload limits under attachments). */
+.settings-subheading {
+    margin: 2px 0 0;
+    padding-top: 13px;
+    border-top: 1px solid #292c35;
+    color: #ececf1;
+    font-size: 0.9rem;
+    font-weight: 600;
+}

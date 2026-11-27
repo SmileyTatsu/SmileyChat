@@ -1,3 +1,7 @@
+import {
+    defaultChatAttachmentLimits,
+    type ChatAttachmentLimits,
+} from "#frontend/lib/chat-attachment-limits";
 import { isRecord } from "#frontend/lib/common/guards";
 import type { ChatMode } from "#frontend/types";
 import type { PresetFormattingSettings } from "#frontend/lib/presets/types";
@@ -53,6 +57,8 @@ export type AppPreferences = {
             maxActiveFiles: number;
             maxMessageDistance: number;
         };
+        /** Upload limits shared by the composer and the local server. */
+        attachmentLimits: ChatAttachmentLimits;
     };
     layout: {
         characterPanelOpenByDefault: boolean;
@@ -137,6 +143,7 @@ export const defaultAppPreferences: AppPreferences = {
             maxActiveFiles: 2,
             maxMessageDistance: 6,
         },
+        attachmentLimits: defaultChatAttachmentLimits,
     },
     layout: {
         characterPanelOpenByDefault: true,
@@ -358,6 +365,32 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
                     defaultAppPreferences.chat.mediaWindow.maxMessageDistance,
                     0,
                     30,
+                ),
+            },
+            attachmentLimits: {
+                imageMegabytes: numberInRange(
+                    isRecord(chat.attachmentLimits)
+                        ? chat.attachmentLimits.imageMegabytes
+                        : undefined,
+                    defaultAppPreferences.chat.attachmentLimits.imageMegabytes,
+                    1,
+                    256,
+                ),
+                fileMegabytes: numberInRange(
+                    isRecord(chat.attachmentLimits)
+                        ? chat.attachmentLimits.fileMegabytes
+                        : undefined,
+                    defaultAppPreferences.chat.attachmentLimits.fileMegabytes,
+                    1,
+                    512,
+                ),
+                perMessage: numberInRange(
+                    isRecord(chat.attachmentLimits)
+                        ? chat.attachmentLimits.perMessage
+                        : undefined,
+                    defaultAppPreferences.chat.attachmentLimits.perMessage,
+                    1,
+                    50,
                 ),
             },
         },

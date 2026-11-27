@@ -5,30 +5,44 @@ import type { ChatAttachment, ChatSession, Message } from "#frontend/types";
 import { isAllowedChatAttachmentUrl } from "#frontend/lib/chat-attachments";
 
 import { BadRequestError, NotFoundError } from "./http";
+import { chatAssetsDir } from "./paths";
+import { readAppPreferences } from "./settings";
 import {
-    chatAssetsDir,
-    maxChatAssetBytes,
-    maxChatAttachmentsPerMessage,
-    maxChatFileAssetBytes,
-} from "./paths";
+    chatAttachmentLimitBytes,
+    type ChatAttachmentLimits,
+} from "#frontend/lib/chat-attachment-limits";
 
-export async function writeChatAssets(chatId: string, files: File[]) {
-    if (files.length > maxChatAttachmentsPerMessage) {
+export async function writeChatAssets(
+    chatId: string,
+    files: File[],
+    limitsOverride?: ChatAttachmentLimits,
+) {
+    // The composer validates against these same preference values, so the
+    // server must honour them too or a raised limit would fail here.
+    const limits = chatAttachmentLimitBytes(
+        limitsOverride ?? (await readAppPreferences()).chat.attachmentLimits,
+    );
+
+    if (files.length > limits.perMessage) {
         throw new BadRequestError(
-            `A message can include up to ${maxChatAttachmentsPerMessage} attachments.`,
+            `A message can include up to ${limits.perMessage} attachments.`,
         );
     }
 
     const attachments: ChatAttachment[] = [];
 
     for (const file of files) {
-        attachments.push(await writeChatAsset(chatId, file));
+        attachments.push(await writeChatAsset(chatId, file, limits));
     }
 
     return attachments;
 }
 
-async function writeChatAsset(chatId: string, file: File): Promise<ChatAttachment> {
+async function writeChatAsset(
+    chatId: string,
+    file: File,
+    limits: ReturnType<typeof chatAttachmentLimitBytes>,
+): Promise<ChatAttachment> {
     const cleanChatId = safePathSegment(chatId);
 
     if (!cleanChatId) {
@@ -41,11 +55,13 @@ async function writeChatAsset(chatId: string, file: File): Promise<ChatAttachmen
         inferredMimeType,
         extname(originalName).toLowerCase(),
     );
-    const maxBytes = isImage ? maxChatAssetBytes : maxChatFileAssetBytes;
+    const maxBytes = isImage ? limits.imageBytes : limits.fileBytes;
 
     if (file.size > maxBytes) {
         throw new BadRequestError(
-            isImage ? "Image attachment is too large." : "File attachment is too large.",
+            isImage
+                ? `Image attachment exceeds the ${Math.round(limits.imageBytes / (1024 * 1024))} MB limit.`
+                : `File attachment exceeds the ${Math.round(limits.fileBytes / (1024 * 1024))} MB limit.`,
         );
     }
 

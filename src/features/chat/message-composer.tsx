@@ -12,6 +12,7 @@ import {
 import {
     isSafeInlineImageFile,
     validateChatAttachmentFiles,
+    type ChatAttachmentLimits,
 } from "#frontend/lib/chat-attachment-limits";
 import {
     getPluginComposerActions,
@@ -39,6 +40,7 @@ type MessageComposerProps = {
     isGroup?: boolean;
     disabled?: boolean;
     enterToSend: boolean;
+    attachmentLimits?: ChatAttachmentLimits;
     isGenerating?: boolean;
     uploadingAttachmentCount?: number;
     mode: ChatMode;
@@ -111,6 +113,7 @@ export const MessageComposer = memo(function MessageComposer({
     isGroup,
     disabled: externallyDisabled,
     enterToSend,
+    attachmentLimits,
     isGenerating: externallyGenerating,
     uploadingAttachmentCount = 0,
     mode,
@@ -389,7 +392,11 @@ export const MessageComposer = memo(function MessageComposer({
             return false;
         }
 
-        const validation = validateChatAttachmentFiles(files, stagedFiles.length);
+        const validation = validateChatAttachmentFiles(
+            files,
+            stagedFiles.length,
+            attachmentLimits,
+        );
         setAttachmentError(validation.errors[0] ?? "");
 
         if (validation.acceptedFiles.length === 0) {
@@ -687,7 +694,6 @@ export const MessageComposer = memo(function MessageComposer({
                     {isGenerating ? <Square size={17} /> : <SendHorizonal size={18} />}
                 </button>
             </div>
-
         </form>
     );
 });

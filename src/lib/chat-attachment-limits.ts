@@ -1,11 +1,29 @@
 type AttachmentFile = Pick<File, "name" | "size" | "type">;
 
-// TODO: Ability to remove file limits (prob using config)
-// Consider doing limits per provider (future me please don't).
-// For now we'll just use a single limit for all providers, and a separate limit for inline images.
-export const maxChatAssetBytes = 25 * 1024 * 1024;
-export const maxChatFileAssetBytes = 48 * 1024 * 1024;
-export const maxChatAttachmentsPerMessage = 10;
+/**
+ * Upload limits are a user preference (Options > Settings > Attachments and
+ * media). The composer validates against the same values the server enforces,
+ * so raising a limit actually takes effect instead of failing during upload.
+ */
+export type ChatAttachmentLimits = {
+    /** Inline raster images, in megabytes. */
+    imageMegabytes: number;
+    /** Everything else, in megabytes. */
+    fileMegabytes: number;
+    /** Attachments allowed on one message. */
+    perMessage: number;
+};
+
+export const defaultChatAttachmentLimits: ChatAttachmentLimits = {
+    imageMegabytes: 25,
+    fileMegabytes: 48,
+    perMessage: 10,
+};
+
+export const maxChatAssetBytes = defaultChatAttachmentLimits.imageMegabytes * 1024 * 1024;
+export const maxChatFileAssetBytes =
+    defaultChatAttachmentLimits.fileMegabytes * 1024 * 1024;
+export const maxChatAttachmentsPerMessage = defaultChatAttachmentLimits.perMessage;
 
 const safeImageExtensions = new Set(["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"]);
 const safeImageMimeTypes = new Set([
@@ -17,16 +35,25 @@ const safeImageMimeTypes = new Set([
     "image/avif",
 ]);
 
+export function chatAttachmentLimitBytes(limits: ChatAttachmentLimits) {
+    return {
+        fileBytes: Math.round(limits.fileMegabytes * 1024 * 1024),
+        imageBytes: Math.round(limits.imageMegabytes * 1024 * 1024),
+        perMessage: limits.perMessage,
+    };
+}
+
 export function validateChatAttachmentFiles<T extends AttachmentFile>(
     files: T[],
     currentCount = 0,
+    limits: ChatAttachmentLimits = defaultChatAttachmentLimits,
 ) {
-    if (currentCount + files.length > maxChatAttachmentsPerMessage) {
+    const bytes = chatAttachmentLimitBytes(limits);
+
+    if (currentCount + files.length > bytes.perMessage) {
         return {
             acceptedFiles: [] as T[],
-            errors: [
-                `A message can include up to ${maxChatAttachmentsPerMessage} attachments.`,
-            ],
+            errors: [`A message can include up to ${bytes.perMessage} attachments.`],
         };
     }
 
@@ -35,8 +62,8 @@ export function validateChatAttachmentFiles<T extends AttachmentFile>(
 
     for (const file of files) {
         const maximumBytes = isSafeInlineImageFile(file)
-            ? maxChatAssetBytes
-            : maxChatFileAssetBytes;
+            ? bytes.imageBytes
+            : bytes.fileBytes;
 
         if (file.size > maximumBytes) {
             errors.push(

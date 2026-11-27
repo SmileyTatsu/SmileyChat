@@ -278,6 +278,7 @@ export const ChatWorkspace = memo(function ChatWorkspace({
                     }
                     mode={visualMode}
                     enterToSend={preferences.chat.enterToSend}
+                    attachmentLimits={preferences.chat.attachmentLimits}
                     isGenerating={Boolean(isSending)}
                     uploadingAttachmentCount={uploadingAttachmentCount}
                     placeholder={pluginComposerState?.placeholder}

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+    defaultChatAttachmentLimits,
     maxChatAssetBytes,
     maxChatAttachmentsPerMessage,
     validateChatAttachmentFiles,
@@ -17,6 +18,17 @@ describe("chat attachment limits", () => {
         expect(result.errors).toEqual(["image.png exceeds the 25 MB limit."]);
     });
 
+    test("applies configured limits instead of the defaults", () => {
+        const result = validateChatAttachmentFiles(
+            [file("photo.png", "image/png", 6 * 1024 * 1024)],
+            0,
+            { imageMegabytes: 5, fileMegabytes: 48, perMessage: 10 },
+        );
+
+        expect(result.acceptedFiles).toHaveLength(0);
+        expect(result.errors).toEqual(["photo.png exceeds the 5 MB limit."]);
+    });
+
     test("rejects selections above the per-message attachment cap", () => {
         const files = Array.from(
             { length: maxChatAttachmentsPerMessage + 1 },
@@ -29,6 +41,19 @@ describe("chat attachment limits", () => {
                 `A message can include up to ${maxChatAttachmentsPerMessage} attachments.`,
             ],
         });
+    });
+
+    test("honours a raised per-message cap", () => {
+        const files = Array.from({ length: 14 }, (_, index) =>
+            file(`file-${index}.txt`, "text/plain", 1),
+        );
+
+        expect(
+            validateChatAttachmentFiles(files, 0, {
+                ...defaultChatAttachmentLimits,
+                perMessage: 14,
+            }).acceptedFiles,
+        ).toHaveLength(14);
     });
 });
 
