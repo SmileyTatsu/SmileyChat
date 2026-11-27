@@ -741,11 +741,11 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .tool-activity-spinner {
-        animation: none;
-    }
-}
+/*
+ * Deliberately not disabled under prefers-reduced-motion: this ~11px ring is
+ * the only signal that the model is working, and freezing it left users with
+ * reduced motion staring at a static circle that looked like a broken row.
+ */
 
 .message-actions-trigger,
 .swipe-controls button {
@@ -1305,11 +1305,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .chat-payload-spinner {
-        animation: none;
-    }
-}
+/* Same reasoning as .tool-activity-spinner: it is a working signal, not decor. */
 
 .chat-payload-modal-body {
     display: grid;
