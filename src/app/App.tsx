@@ -33,6 +33,7 @@ import {
     groupWorkspaceId,
     isGroupChat,
     isGroupWorkspace,
+    sortChatsByInteraction,
 } from "#frontend/lib/chats/normalize";
 import { clientLogger } from "#frontend/lib/logging/client-logger";
 import { messageFromError } from "#frontend/lib/common/errors";
@@ -983,15 +984,20 @@ export function App() {
     }
 
     const groupWorkspaces = useMemo(
-        () => chatSummaries.chats.filter((chat) => isGroupWorkspace(chat)),
+        () =>
+            sortChatsByInteraction(
+                chatSummaries.chats.filter((chat) => isGroupWorkspace(chat)),
+            ),
         [chatSummaries.chats],
     );
     const groupConversations = useMemo(
         () =>
-            chatSummaries.chats.filter(
-                (chat) =>
-                    isGroupChat(chat) &&
-                    getSmileyGroupMetadata(chat)?.role === "conversation",
+            sortChatsByInteraction(
+                chatSummaries.chats.filter(
+                    (chat) =>
+                        isGroupChat(chat) &&
+                        getSmileyGroupMetadata(chat)?.role === "conversation",
+                ),
             ),
         [chatSummaries.chats],
     );
@@ -1168,14 +1174,14 @@ export function App() {
         void selectCharacter(characterId);
     });
     const handleSidebarSelectGroup = useEventCallback((groupId: string) => {
-        const conversations = chatSummaries.chats
-            .filter(
+        const conversations = sortChatsByInteraction(
+            chatSummaries.chats.filter(
                 (chat) =>
                     isGroupChat(chat) &&
                     getSmileyGroupMetadata(chat)?.role === "conversation" &&
                     groupWorkspaceId(chat) === groupId,
-            )
-            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+            ),
+        );
         const next =
             conversations[0] ?? chatSummaries.chats.find((chat) => chat.id === groupId);
         if (next) void selectChat(next.id);

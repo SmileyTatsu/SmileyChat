@@ -81,6 +81,9 @@ export function useMessageOperations({
         const nextChat = {
             ...sourceChat,
             messages: nextMessages,
+            // Only conversation edits reach this path; renaming, theming or
+            // metadata patches leave the chat where it sat in the list.
+            lastInteractionAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
 

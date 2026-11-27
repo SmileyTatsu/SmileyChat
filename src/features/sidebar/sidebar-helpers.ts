@@ -27,7 +27,9 @@ export function formatChatMeta(chat: ChatSummary) {
     const messageCount = `${chat.messageCount} message${
         chat.messageCount === 1 ? "" : "s"
     }`;
-    const lastMessage = formatLastMessageTime(chat.lastMessageAt);
+    const lastMessage = formatLastMessageTime(
+        chat.lastInteractionAt ?? chat.lastMessageAt,
+    );
 
     return lastMessage ? `${messageCount} - ${lastMessage}` : messageCount;
 }

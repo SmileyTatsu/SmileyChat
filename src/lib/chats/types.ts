@@ -87,6 +87,8 @@ export type ChatSession = {
     theme?: string;
     metadata?: ChatMetadata;
     messages: Message[];
+    /** Last message sent, reply received or swipe made; drives chat ordering. */
+    lastInteractionAt?: string;
     createdAt: string;
     updatedAt: string;
 };
@@ -105,6 +107,8 @@ export type ChatSummary = {
     metadata?: ChatMetadata;
     messageCount: number;
     lastMessageAt?: string;
+    /** Last message sent, reply received or swipe made; drives chat ordering. */
+    lastInteractionAt?: string;
     createdAt: string;
     updatedAt: string;
 };

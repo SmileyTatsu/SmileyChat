@@ -28,6 +28,7 @@ import {
     isGroupWorkspace,
     normalizeChat,
     normalizeChatSummaryCollection,
+    sortChatsByInteraction,
 } from "#frontend/lib/chats/normalize";
 import { messageFromError } from "#frontend/lib/common/errors";
 import { createCharacterGreetingMessage } from "#frontend/lib/messages";
@@ -1163,15 +1164,13 @@ export function useChatLibrary({
 
             if (deletedActiveChat) {
                 if (deletedGroupMetadata?.role === "conversation") {
-                    const nextConversation = summaries.chats
-                        .filter(
+                    const nextConversation = sortChatsByInteraction(
+                        summaries.chats.filter(
                             (chat) =>
                                 getSmileyGroupMetadata(chat)?.role === "conversation" &&
                                 groupWorkspaceId(chat) === deletedGroupId,
-                        )
-                        .sort((left, right) =>
-                            right.updatedAt.localeCompare(left.updatedAt),
-                        )[0];
+                        ),
+                    )[0];
 
                     if (nextConversation) {
                         await selectChat(nextConversation.id);
@@ -1323,8 +1322,11 @@ export function useChatLibrary({
 
     const activeCharacterChats = useMemo(
         () =>
-            chatSummaries.chats.filter(
-                (chat) => !isGroupChat(chat) && chat.characterId === activeCharacterId,
+            sortChatsByInteraction(
+                chatSummaries.chats.filter(
+                    (chat) =>
+                        !isGroupChat(chat) && chat.characterId === activeCharacterId,
+                ),
             ),
         [activeCharacterId, chatSummaries.chats],
     );

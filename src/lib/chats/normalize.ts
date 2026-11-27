@@ -66,6 +66,9 @@ export function normalizeChat(value: unknown): ChatSession | undefined {
             ? { metadata: normalizeMetadata(value.metadata) }
             : {}),
         messages,
+        ...(asIsoString(value.lastInteractionAt)
+            ? { lastInteractionAt: asIsoString(value.lastInteractionAt) }
+            : {}),
         createdAt: asIsoString(value.createdAt) || now,
         updatedAt: asIsoString(value.updatedAt) || now,
     };
@@ -105,6 +108,9 @@ export function normalizeChatSummary(value: unknown): ChatSummary | undefined {
         messageCount: asNonNegativeInteger(value.messageCount),
         ...(asIsoString(value.lastMessageAt)
             ? { lastMessageAt: asIsoString(value.lastMessageAt) }
+            : {}),
+        ...(asIsoString(value.lastInteractionAt)
+            ? { lastInteractionAt: asIsoString(value.lastInteractionAt) }
             : {}),
         createdAt: asIsoString(value.createdAt) || new Date().toISOString(),
         updatedAt: asIsoString(value.updatedAt) || new Date().toISOString(),
@@ -168,6 +174,7 @@ export function chatToSummary(chat: ChatSession): ChatSummary {
         ...(chat.metadata ? { metadata: chat.metadata } : {}),
         messageCount: chat.messages.length,
         ...(chatLastMessageAt(chat) ? { lastMessageAt: chatLastMessageAt(chat) } : {}),
+        ...(chat.lastInteractionAt ? { lastInteractionAt: chat.lastInteractionAt } : {}),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,
     };
@@ -224,6 +231,38 @@ export function defaultGroupTitle(members: ChatGroupMember[]) {
 export function chatLastMessageAt(chat: Pick<ChatSession, "messages">) {
     const lastMessage = chat.messages[chat.messages.length - 1];
     return lastMessage ? getMessageCreatedAt(lastMessage) : "";
+}
+
+type InteractionSortedChat = {
+    id: string;
+    lastInteractionAt?: string;
+    lastMessageAt?: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
+/**
+ * Time the user last touched this chat's conversation: a message sent, a reply
+ * received, or a swipe. Falls back to the last message, then the save time, so
+ * chats written before `lastInteractionAt` existed still sort sensibly.
+ */
+export function chatInteractionAt(
+    chat: Pick<
+        InteractionSortedChat,
+        "lastInteractionAt" | "lastMessageAt" | "updatedAt"
+    >,
+) {
+    return chat.lastInteractionAt || chat.lastMessageAt || chat.updatedAt;
+}
+
+/** Newest interaction first, with a stable id tiebreak for equal timestamps. */
+export function sortChatsByInteraction<T extends InteractionSortedChat>(chats: T[]): T[] {
+    return [...chats].sort((left, right) => {
+        const rightTime = Date.parse(chatInteractionAt(right)) || 0;
+        const leftTime = Date.parse(chatInteractionAt(left)) || 0;
+
+        return rightTime - leftTime || right.id.localeCompare(left.id);
+    });
 }
 
 function normalizeMessage(value: unknown): Message | undefined {

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { normalizeChat, normalizeChatSummaryCollection } from "./normalize";
-import type { ChatSummary } from "./types";
+import {
+    chatToSummary,
+    normalizeChat,
+    normalizeChatSummaryCollection,
+    sortChatsByInteraction,
+} from "./normalize";
+import type { ChatSession, ChatSummary } from "./types";
 
 describe("normalizeChatSummaryCollection", () => {
     const directChat: ChatSummary = {
@@ -106,5 +111,67 @@ describe("normalizeChat", () => {
         expect(chat?.messages[0]?.swipes[0]?.content).toBe(
             "First {{photo:id=photo-b}} then {{photo:id=photo-a}}",
         );
+    });
+
+    test("keeps lastInteractionAt through normalization and summary conversion", () => {
+        const chat = normalizeChat({
+            id: "chat-1",
+            characterId: "char-1",
+            mode: "chat",
+            lastInteractionAt: "2026-01-03T10:00:00.000Z",
+            messages: [],
+        }) as ChatSession;
+
+        expect(chat.lastInteractionAt).toBe("2026-01-03T10:00:00.000Z");
+        expect(chatToSummary(chat).lastInteractionAt).toBe("2026-01-03T10:00:00.000Z");
+    });
+});
+
+describe("sortChatsByInteraction", () => {
+    function summary(
+        id: string,
+        lastInteractionAt: string | undefined,
+        lastMessageAt: string,
+    ): ChatSummary {
+        return {
+            id,
+            characterId: "char-1",
+            defaultTitle: id,
+            mode: "chat",
+            messageCount: 1,
+            lastMessageAt,
+            ...(lastInteractionAt ? { lastInteractionAt } : {}),
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: lastMessageAt,
+        };
+    }
+
+    test("orders by interaction time, not by the last message", () => {
+        const sorted = sortChatsByInteraction([
+            summary(
+                "old-interaction",
+                "2026-01-02T00:00:00.000Z",
+                "2026-01-05T00:00:00.000Z",
+            ),
+            summary(
+                "recent-swipe",
+                "2026-01-06T00:00:00.000Z",
+                "2026-01-02T00:00:00.000Z",
+            ),
+        ]);
+
+        expect(sorted.map((chat) => chat.id)).toEqual([
+            "recent-swipe",
+            "old-interaction",
+        ]);
+    });
+
+    test("falls back to the last message for chats written before the field", () => {
+        const sorted = sortChatsByInteraction([
+            summary("older", undefined, "2026-01-02T00:00:00.000Z"),
+            summary("newer", undefined, "2026-01-04T00:00:00.000Z"),
+        ]);
+
+        expect(sorted.map((chat) => chat.id)).toEqual(["newer", "older"]);
     });
 });

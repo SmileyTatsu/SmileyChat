@@ -11,6 +11,7 @@ import {
     normalizeChat,
     normalizeChatSummary,
     normalizeChatSummaryCollection,
+    sortChatsByInteraction,
 } from "#frontend/lib/chats/normalize";
 import { createId } from "#frontend/lib/common/ids";
 import type {
@@ -935,18 +936,18 @@ function normalizeChatIndex(value: unknown): ChatIndex {
 
 function sortChats(chats: ChatSession[]) {
     return [...chats].sort((left, right) => {
-        const rightTime = timestampMs(chatLastMessageAt(right) || right.updatedAt);
-        const leftTime = timestampMs(chatLastMessageAt(left) || left.updatedAt);
+        const rightTime = timestampMs(
+            right.lastInteractionAt || chatLastMessageAt(right) || right.updatedAt,
+        );
+        const leftTime = timestampMs(
+            left.lastInteractionAt || chatLastMessageAt(left) || left.updatedAt,
+        );
         return rightTime - leftTime || right.id.localeCompare(left.id);
     });
 }
 
 function sortChatSummaries(chats: ChatSummary[]) {
-    return [...chats].sort((left, right) => {
-        const rightTime = timestampMs(right.lastMessageAt || right.updatedAt);
-        const leftTime = timestampMs(left.lastMessageAt || left.updatedAt);
-        return rightTime - leftTime || right.id.localeCompare(left.id);
-    });
+    return sortChatsByInteraction(chats);
 }
 
 function replaceChatSummary(summaries: ChatSummary[], summary: ChatSummary) {
